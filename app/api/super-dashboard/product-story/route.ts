@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdooApi } from '@/lib/odoo-auth';
+import { callOdoo } from '@/lib/odoo-auth';
 
 // Type definitions
 interface OdooMany2One {
@@ -120,27 +120,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const session = await getOdooSession();
-    if (!session?.session_id) {
-      return NextResponse.json({ success: false, error: 'Odoo authentication failed' }, { status: 401 });
-    }
-
-    // Build date domain filter
-    const dateDomain: unknown[] = [];
-    if (dateFrom) dateDomain.push(['date_order', '>=', dateFrom]);
-    if (dateTo) dateDomain.push(['date_order', '<=', dateTo]);
-
     // 1. Get product info
-    const productResult = await callOdooApi<ProductInfo[]>(session.session_id, {
-      model: 'product.product',
-      method: 'search_read',
-      args: [
+    const productResult = await callOdoo(
+      null,
+      'product.product',
+      'search_read',
+      [
         [['id', '=', productId]],
         ['id', 'name', 'default_code', 'barcode', 'categ_id', 'qty_available', 'virtual_available',
           'incoming_qty', 'outgoing_qty', 'list_price', 'standard_price', 'image_128', 'seller_ids']
       ],
-      kwargs: {}
-    });
+      {}
+    ) as ProductInfo[];
 
     if (!productResult || productResult.length === 0) {
       return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
@@ -149,127 +140,136 @@ export async function GET(request: NextRequest) {
     const product = productResult[0];
 
     // 2. Get supplier info
-    const supplierInfos = await callOdooApi<SupplierInfo[]>(session.session_id, {
-      model: 'product.supplierinfo',
-      method: 'search_read',
-      args: [
+    const supplierInfos = await callOdoo(
+      null,
+      'product.supplierinfo',
+      'search_read',
+      [
         [['id', 'in', product.seller_ids]],
         ['id', 'partner_id', 'price', 'min_qty', 'delay']
       ],
-      kwargs: {}
-    });
+      {}
+    ) as SupplierInfo[];
 
     // 3. Get purchase order lines
     const purchaseLinesDomain: unknown[] = [['product_id', '=', productId]];
     if (dateFrom) purchaseLinesDomain.push(['order_id.date_order', '>=', dateFrom]);
     if (dateTo) purchaseLinesDomain.push(['order_id.date_order', '<=', dateTo]);
 
-    const purchaseLines = await callOdooApi<PurchaseOrderLine[]>(session.session_id, {
-      model: 'purchase.order.line',
-      method: 'search_read',
-      args: [
+    const purchaseLines = await callOdoo(
+      null,
+      'purchase.order.line',
+      'search_read',
+      [
         purchaseLinesDomain,
         ['id', 'order_id', 'product_qty', 'qty_received', 'price_unit', 'price_subtotal', 'date_planned', 'state']
       ],
-      kwargs: { order: 'id desc', limit: 100 }
-    });
+      { order: 'id desc', limit: 100 }
+    ) as PurchaseOrderLine[];
 
     // Get purchase order details
-    const purchaseOrderIds = [...new Set(purchaseLines.map(l => l.order_id[0]))];
-    const purchaseOrders = purchaseOrderIds.length > 0 ? await callOdooApi<PurchaseOrder[]>(session.session_id, {
-      model: 'purchase.order',
-      method: 'search_read',
-      args: [
+    const purchaseOrderIds = Array.from(new Set((purchaseLines || []).map(l => l.order_id[0])));
+    const purchaseOrders = purchaseOrderIds.length > 0 ? await callOdoo(
+      null,
+      'purchase.order',
+      'search_read',
+      [
         [['id', 'in', purchaseOrderIds]],
         ['id', 'name', 'partner_id', 'date_order', 'state']
       ],
-      kwargs: {}
-    }) : [];
+      {}
+    ) as PurchaseOrder[] : [];
 
     // 4. Get sale order lines
     const saleLinesDomain: unknown[] = [['product_id', '=', productId]];
     if (dateFrom) saleLinesDomain.push(['order_id.date_order', '>=', dateFrom]);
     if (dateTo) saleLinesDomain.push(['order_id.date_order', '<=', dateTo]);
 
-    const saleLines = await callOdooApi<SaleOrderLine[]>(session.session_id, {
-      model: 'sale.order.line',
-      method: 'search_read',
-      args: [
+    const saleLines = await callOdoo(
+      null,
+      'sale.order.line',
+      'search_read',
+      [
         saleLinesDomain,
         ['id', 'order_id', 'product_uom_qty', 'qty_delivered', 'qty_invoiced', 'price_unit',
           'price_subtotal', 'discount', 'margin', 'margin_percent', 'purchase_price', 'state']
       ],
-      kwargs: { order: 'id desc', limit: 200 }
-    });
+      { order: 'id desc', limit: 200 }
+    ) as SaleOrderLine[];
 
     // Get sale order details
-    const saleOrderIds = [...new Set(saleLines.map(l => l.order_id[0]))];
-    const saleOrders = saleOrderIds.length > 0 ? await callOdooApi<SaleOrder[]>(session.session_id, {
-      model: 'sale.order',
-      method: 'search_read',
-      args: [
+    const saleOrderIds = Array.from(new Set((saleLines || []).map(l => l.order_id[0])));
+    const saleOrders = saleOrderIds.length > 0 ? await callOdoo(
+      null,
+      'sale.order',
+      'search_read',
+      [
         [['id', 'in', saleOrderIds]],
         ['id', 'name', 'partner_id', 'date_order', 'state']
       ],
-      kwargs: {}
-    }) : [];
+      {}
+    ) as SaleOrder[] : [];
 
     // 5. Get stock movements
     const moveDomain: unknown[] = [['product_id', '=', productId], ['state', '=', 'done']];
     if (dateFrom) moveDomain.push(['date', '>=', dateFrom]);
     if (dateTo) moveDomain.push(['date', '<=', dateTo]);
 
-    const stockMoves = await callOdooApi<StockMove[]>(session.session_id, {
-      model: 'stock.move',
-      method: 'search_read',
-      args: [
+    const stockMoves = await callOdoo(
+      null,
+      'stock.move',
+      'search_read',
+      [
         moveDomain,
         ['id', 'product_uom_qty', 'quantity', 'location_id', 'location_dest_id', 'date', 'origin', 'reference', 'state', 'picking_id']
       ],
-      kwargs: { order: 'date desc', limit: 100 }
-    });
+      { order: 'date desc', limit: 100 }
+    ) as StockMove[];
 
     // 6. Get stock quants (current inventory by location)
-    const stockQuants = await callOdooApi<StockQuant[]>(session.session_id, {
-      model: 'stock.quant',
-      method: 'search_read',
-      args: [
+    const stockQuants = await callOdoo(
+      null,
+      'stock.quant',
+      'search_read',
+      [
         [['product_id', '=', productId], ['quantity', '!=', 0], ['location_id.usage', '=', 'internal']],
         ['id', 'location_id', 'quantity', 'reserved_quantity', 'lot_id']
       ],
-      kwargs: {}
-    });
+      {}
+    ) as StockQuant[];
 
     // 7. Get lots
-    const stockLots = await callOdooApi<StockLot[]>(session.session_id, {
-      model: 'stock.lot',
-      method: 'search_read',
-      args: [
+    const stockLots = await callOdoo(
+      null,
+      'stock.lot',
+      'search_read',
+      [
         [['product_id', '=', productId]],
         ['id', 'name', 'product_qty', 'expiration_date']
       ],
-      kwargs: { order: 'expiration_date asc', limit: 50 }
-    });
+      { order: 'expiration_date asc', limit: 50 }
+    ) as StockLot[];
 
     // 8. Get scraps
     const scrapDomain: unknown[] = [['product_id', '=', productId], ['state', '=', 'done']];
     if (dateFrom) scrapDomain.push(['date_done', '>=', dateFrom]);
     if (dateTo) scrapDomain.push(['date_done', '<=', dateTo]);
 
-    const scraps = await callOdooApi<StockScrap[]>(session.session_id, {
-      model: 'stock.scrap',
-      method: 'search_read',
-      args: [
+    const scraps = await callOdoo(
+      null,
+      'stock.scrap',
+      'search_read',
+      [
         scrapDomain,
         ['id', 'product_id', 'scrap_qty', 'date_done', 'origin']
       ],
-      kwargs: {}
-    });
+      {}
+    ) as StockScrap[];
 
     // Process data for response
 
     // Aggregate purchases by supplier
-    const purchaseOrderMap = new Map(purchaseOrders.map(po => [po.id, po]));
+    const purchaseOrderMap = new Map((purchaseOrders || []).map(po => [po.id, po]));
     const supplierPurchases = new Map<number, {
       supplierId: number;
       supplierName: string;
@@ -281,7 +281,7 @@ export async function GET(request: NextRequest) {
       orders: Array<{ orderName: string; date: string; qty: number; received: number; price: number; state: string }>;
     }>();
 
-    for (const line of purchaseLines) {
+    for (const line of (purchaseLines || [])) {
       const order = purchaseOrderMap.get(line.order_id[0]);
       if (!order) continue;
 
@@ -316,12 +316,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate average price for each supplier
-    for (const [, data] of supplierPurchases) {
+    supplierPurchases.forEach((data) => {
       data.avgPrice = data.totalQty > 0 ? data.totalValue / data.totalQty : 0;
-    }
+    });
 
     // Aggregate sales by customer
-    const saleOrderMap = new Map(saleOrders.map(so => [so.id, so]));
+    const saleOrderMap = new Map((saleOrders || []).map(so => [so.id, so]));
     const customerSales = new Map<number, {
       customerId: number;
       customerName: string;
@@ -338,7 +338,7 @@ export async function GET(request: NextRequest) {
     // Track gifts (100% discount)
     const gifts: Array<{ orderName: string; customerName: string; date: string; qty: number; value: number }> = [];
 
-    for (const line of saleLines) {
+    for (const line of (saleLines || [])) {
       const order = saleOrderMap.get(line.order_id[0]);
       if (!order) continue;
 
@@ -389,25 +389,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate averages for each customer
-    for (const [, data] of customerSales) {
+    customerSales.forEach((data) => {
       data.avgPrice = data.totalQty > 0 ? data.totalRevenue / data.totalQty : 0;
       data.avgMarginPercent = data.totalRevenue > 0 ? (data.totalMargin / data.totalRevenue) * 100 : 0;
-    }
+    });
 
     // Calculate inventory discrepancy
-    const totalPurchased = purchaseLines
+    const totalPurchased = (purchaseLines || [])
       .filter(l => ['purchase', 'done'].includes(l.state))
       .reduce((sum, l) => sum + l.qty_received, 0);
 
-    const totalSold = saleLines
+    const totalSold = (saleLines || [])
       .filter(l => ['sale', 'done'].includes(l.state))
       .reduce((sum, l) => sum + l.qty_delivered, 0);
 
     const totalGifts = gifts.reduce((sum, g) => sum + g.qty, 0);
-    const totalScrapped = scraps.reduce((sum, s) => sum + s.scrap_qty, 0);
+    const totalScrapped = (scraps || []).reduce((sum, s) => sum + s.scrap_qty, 0);
 
     // Count inventory adjustments from stock moves
-    const inventoryAdjustments = stockMoves.filter(m =>
+    const inventoryAdjustments = (stockMoves || []).filter(m =>
       m.location_id[1].includes('Inventory adjustment') ||
       m.location_dest_id[1].includes('Inventory adjustment')
     );
@@ -424,7 +424,7 @@ export async function GET(request: NextRequest) {
     const discrepancy = currentStock - theoreticalStock;
 
     // Process movements for timeline
-    const movements = stockMoves.map(m => {
+    const movements = (stockMoves || []).map(m => {
       let type: 'in' | 'out' | 'internal' | 'adjustment' = 'internal';
       if (m.location_id[1].includes('Vendor') || m.location_id[1].includes('Supplier')) {
         type = 'in';
@@ -476,7 +476,7 @@ export async function GET(request: NextRequest) {
         list: Array.from(supplierPurchases.values()).sort((a, b) =>
           new Date(b.lastPurchase).getTime() - new Date(a.lastPurchase).getTime()
         ),
-        info: supplierInfos.map(s => ({
+        info: (supplierInfos || []).map(s => ({
           id: s.id,
           supplierId: s.partner_id[0],
           supplierName: s.partner_id[1],
@@ -517,13 +517,13 @@ export async function GET(request: NextRequest) {
           scrapped: totalScrapped,
           adjustments: totalAdjustments
         },
-        locations: stockQuants.map(q => ({
+        locations: (stockQuants || []).map(q => ({
           location: q.location_id[1],
           quantity: q.quantity,
           reserved: q.reserved_quantity,
           lot: q.lot_id ? q.lot_id[1] : null
         })),
-        scraps: scraps.map(s => ({
+        scraps: (scraps || []).map(s => ({
           date: s.date_done,
           qty: s.scrap_qty,
           origin: s.origin || null
@@ -537,7 +537,7 @@ export async function GET(request: NextRequest) {
         marginPercent: totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0,
         marginPerUnit: totalSold > 0 ? totalMargin / totalSold : 0
       },
-      lots: stockLots.map(l => ({
+      lots: (stockLots || []).map(l => ({
         name: l.name,
         qty: l.product_qty,
         expirationDate: l.expiration_date || null,

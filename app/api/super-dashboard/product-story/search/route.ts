@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSession, callOdooApi } from '@/lib/odoo-auth';
+import { callOdoo } from '@/lib/odoo-auth';
 
 interface ProductSearchResult {
   id: number;
@@ -26,11 +26,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const session = await getOdooSession();
-    if (!session?.session_id) {
-      return NextResponse.json({ success: false, error: 'Odoo authentication failed' }, { status: 401 });
-    }
-
     // Search products by name, code, or barcode
     const productDomain = [
       '|', '|', '|',
@@ -40,51 +35,42 @@ export async function GET(request: NextRequest) {
       ['categ_id.name', 'ilike', query]
     ];
 
-    const products = await callOdooApi<ProductSearchResult[]>(session.session_id, {
-      model: 'product.product',
-      method: 'search_read',
-      args: [
-        productDomain,
-        ['id', 'name', 'default_code', 'barcode', 'categ_id', 'qty_available', 'list_price', 'image_128']
-      ],
-      kwargs: { limit, order: 'name asc' }
-    });
+    const products = await callOdoo(
+      null,
+      'product.product',
+      'search_read',
+      [productDomain, ['id', 'name', 'default_code', 'barcode', 'categ_id', 'qty_available', 'list_price', 'image_128']],
+      { limit, order: 'name asc' }
+    ) as ProductSearchResult[];
 
     // Also search by supplier name if no results from direct search
     let supplierProducts: ProductSearchResult[] = [];
     if (products.length < limit) {
       // Search suppliers matching the query
-      const suppliers = await callOdooApi<Array<{ id: number; product_tmpl_id: [number, string] }>>(
-        session.session_id,
-        {
-          model: 'product.supplierinfo',
-          method: 'search_read',
-          args: [
-            [['partner_id.name', 'ilike', query]],
-            ['product_tmpl_id']
-          ],
-          kwargs: { limit: 20 }
-        }
-      );
+      const suppliers = await callOdoo(
+        null,
+        'product.supplierinfo',
+        'search_read',
+        [[['partner_id.name', 'ilike', query]], ['product_tmpl_id']],
+        { limit: 20 }
+      ) as Array<{ id: number; product_tmpl_id: [number, string] }>;
 
-      if (suppliers.length > 0) {
-        const templateIds = [...new Set(suppliers.map(s => s.product_tmpl_id[0]))];
+      if (suppliers && suppliers.length > 0) {
+        const templateIds = Array.from(new Set(suppliers.map(s => s.product_tmpl_id[0])));
 
         // Get products from these templates
-        supplierProducts = await callOdooApi<ProductSearchResult[]>(session.session_id, {
-          model: 'product.product',
-          method: 'search_read',
-          args: [
-            [['product_tmpl_id', 'in', templateIds]],
-            ['id', 'name', 'default_code', 'barcode', 'categ_id', 'qty_available', 'list_price', 'image_128']
-          ],
-          kwargs: { limit: limit - products.length }
-        });
+        supplierProducts = await callOdoo(
+          null,
+          'product.product',
+          'search_read',
+          [[['product_tmpl_id', 'in', templateIds]], ['id', 'name', 'default_code', 'barcode', 'categ_id', 'qty_available', 'list_price', 'image_128']],
+          { limit: limit - products.length }
+        ) as ProductSearchResult[];
       }
     }
 
     // Merge and deduplicate results
-    const allProducts = [...products, ...supplierProducts];
+    const allProducts = [...(products || []), ...(supplierProducts || [])];
     const uniqueProducts = allProducts.filter((product, index, self) =>
       index === self.findIndex(p => p.id === product.id)
     );
