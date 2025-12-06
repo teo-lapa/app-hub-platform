@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar, Calculator, Lock, ClipboardCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Heart, Package, Truck, AlertCircle, Percent, BarChart, Building2, Activity, RefreshCcw, X, ChevronDown, ChevronUp, Radar, Calculator, Lock, ClipboardCheck, History } from 'lucide-react';
 import Link from 'next/link';
 
 interface KPICardProps {
@@ -25,6 +25,7 @@ function KPICard({ title, value, change, changeType, icon, gradient, subtitle, i
     switch (title) {
       case 'Margini': return '/super-dashboard/margini';
       case 'Analisi Prodotti': return '/analisi-prodotto';
+      case 'Product Story': return '/super-dashboard/product-story';
       case 'Banca': return '/import-movimenti-ubs';
       case 'App Usage': return '/super-dashboard/app-usage';
       case 'Budget': return '/super-dashboard/budget';
@@ -495,6 +496,15 @@ export function KPISummarySection({ period }: KPISummarySectionProps) {
       icon: <BarChart className="w-6 h-6 text-white" />,
       gradient: 'from-indigo-500 to-purple-600',
       subtitle: 'Analisi dettagliata vendite e margini per prodotto',
+    },
+    {
+      title: 'Product Story',
+      value: 'Cerca',
+      change: '',
+      changeType: 'neutral' as const,
+      icon: <History className="w-6 h-6 text-white" />,
+      gradient: 'from-violet-500 to-fuchsia-600',
+      subtitle: 'Storia completa di un prodotto: acquisti, vendite, giacenza',
     },
     {
       title: 'Customers',
