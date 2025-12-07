@@ -151,7 +151,7 @@ async function createBlogPost(
       subtitle: recipeData.description,
       content: htmlContent,
       website_published: true,
-      cover_image_id: recipeImageId, // ID immagine cover
+      // cover_image_id rimosso - può richiedere permessi speciali
       cover_properties: JSON.stringify({
         background_image: `/web/image/${recipeImageId}`,
         opacity: 0.4,
