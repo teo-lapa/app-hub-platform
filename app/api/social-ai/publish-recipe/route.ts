@@ -593,7 +593,7 @@ ${translatedRecipe.description.substring(0, 100)}...
 
     console.log('[6/7] Publishing to social media directly via XML-RPC...');
 
-    const socialPublishResults: Record<string, any> = {};
+    let socialPublishResults: any = null;
     const socialPublishFailures: string[] = [];
 
     // Account IDs social
@@ -603,56 +603,54 @@ ${translatedRecipe.description.substring(0, 100)}...
     const TWITTER_ID = 13;
     const OTHER_ACCOUNTS = [FACEBOOK_ID, INSTAGRAM_ID, LINKEDIN_ID]; // FB, IG, LI insieme
 
-    // Pubblica su Odoo usando createSocialPost (XML-RPC diretto)
-    for (const lang of languages) {
-      console.log(`  Publishing social post in ${lang.name}...`);
+    // Usa il post ITALIANO per i social (UN SOLO POST sui 4 account!)
+    const socialCaption = socialPosts['it_IT'];
 
-      const socialCaption = socialPosts[lang.code];
+    try {
+      console.log('  Creating social post for 4 accounts (FB, IG, LI, Twitter)...');
 
-      try {
-        // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
-        const postId1 = await createSocialPost(
-          ODOO_URL,
-          ODOO_DB,
-          uid,
-          ODOO_PASSWORD,
-          socialCaption,
-          OTHER_ACCOUNTS,
-          recipeImageId
-        );
+      // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
+      const postId1 = await createSocialPost(
+        ODOO_URL,
+        ODOO_DB,
+        uid,
+        ODOO_PASSWORD,
+        socialCaption,
+        OTHER_ACCOUNTS,
+        recipeImageId
+      );
 
-        console.log(`  ✅ Social post ${postId1} created for FB/IG/LI in ${lang.name}`);
+      console.log(`  ✅ Social post ${postId1} created for Facebook/Instagram/LinkedIn`);
 
-        // POST 2: Twitter (messaggio abbreviato max 280 caratteri)
-        let twitterMessage = socialCaption;
-        if (twitterMessage.length > 280) {
-          // Abbrevia per Twitter
-          twitterMessage = twitterMessage.substring(0, 250) + '... 👉 www.lapa.ch';
-        }
-
-        const postId2 = await createSocialPost(
-          ODOO_URL,
-          ODOO_DB,
-          uid,
-          ODOO_PASSWORD,
-          twitterMessage,
-          [TWITTER_ID],
-          recipeImageId
-        );
-
-        console.log(`  ✅ Social post ${postId2} created for Twitter in ${lang.name}`);
-
-        socialPublishResults[lang.code] = {
-          success: true,
-          postIds: [postId1, postId2],
-          accounts: ['Facebook', 'Instagram', 'LinkedIn', 'Twitter']
-        };
-
-      } catch (error: any) {
-        const errorMsg = `${lang.name}: ${error.message}`;
-        socialPublishFailures.push(errorMsg);
-        console.error(`  ❌ Error publishing social for ${lang.name}:`, error.message);
+      // POST 2: Twitter (messaggio abbreviato max 280 caratteri)
+      let twitterMessage = socialCaption;
+      if (twitterMessage.length > 280) {
+        // Abbrevia per Twitter
+        twitterMessage = twitterMessage.substring(0, 250) + '... 👉 www.lapa.ch';
       }
+
+      const postId2 = await createSocialPost(
+        ODOO_URL,
+        ODOO_DB,
+        uid,
+        ODOO_PASSWORD,
+        twitterMessage,
+        [TWITTER_ID],
+        recipeImageId
+      );
+
+      console.log(`  ✅ Social post ${postId2} created for Twitter`);
+
+      socialPublishResults = {
+        success: true,
+        postIds: [postId1, postId2],
+        accounts: ['Facebook', 'Instagram', 'LinkedIn', 'Twitter']
+      };
+
+    } catch (error: any) {
+      const errorMsg = `Social publishing failed: ${error.message}`;
+      socialPublishFailures.push(errorMsg);
+      console.error(`  ❌ Error publishing social posts:`, error.message);
     }
 
     console.log('✅ Social media publication completed!');
@@ -681,7 +679,7 @@ ${translatedRecipe.description.substring(0, 100)}...
         translations: Object.keys(translations),
         stats: {
           totalLanguages: languages.length,
-          successfulSocialPublishes: Object.keys(socialPublishResults).length,
+          successfulSocialPublishes: socialPublishResults ? 1 : 0, // 1 post social pubblicato (su 4 account)
           failedSocialPublishes: socialPublishFailures.length
         }
       },

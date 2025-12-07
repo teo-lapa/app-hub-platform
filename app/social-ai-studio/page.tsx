@@ -400,21 +400,22 @@ export default function SocialAIStudioPage() {
         progressMessages.push(`✅ ${Object.keys(data.data.blogPosts).length} Blog post creati!`);
       }
 
-      // Check social posts (mostra sia successi che failures)
+      // Check social posts
       if (data.data?.stats) {
         const { successfulSocialPublishes, failedSocialPublishes } = data.data.stats;
 
         if (successfulSocialPublishes > 0) {
-          progressMessages.push(`✅ Post social pubblicati: ${successfulSocialPublishes}/${successfulSocialPublishes + failedSocialPublishes}`);
+          // 1 post pubblicato sui 4 account
+          progressMessages.push('✅ Post social pubblicato su Facebook, Instagram, LinkedIn, Twitter');
         }
 
         if (failedSocialPublishes > 0) {
-          progressMessages.push(`⚠️ Falliti: ${failedSocialPublishes} pubblicazioni social`);
+          progressMessages.push('❌ Pubblicazione social fallita');
 
           // Mostra dettagli failures se disponibili
           if (data.data?.socialPublishFailures) {
             data.data.socialPublishFailures.forEach((failure: string) => {
-              progressMessages.push(`  ❌ ${failure}`);
+              progressMessages.push(`  ${failure}`);
             });
           }
         }
