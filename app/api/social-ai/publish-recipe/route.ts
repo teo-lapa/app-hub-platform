@@ -287,6 +287,82 @@ async function createBlogPost(
 }
 
 // ==========================================
+// CREA SOCIAL POST SU ODOO
+// ==========================================
+
+async function createSocialPost(
+  odooUrl: string,
+  odooDb: string,
+  uid: number,
+  password: string,
+  message: string,
+  accountIds: number[],
+  imageId?: number
+) {
+  // Prepara valori del post
+  const postValues: Record<string, any> = {
+    message: message,
+    account_ids: [[6, 0, accountIds]],
+    post_method: 'now' // Pubblica immediatamente
+  };
+
+  // Aggiungi immagine se presente
+  if (imageId) {
+    postValues.image_ids = [[6, 0, [imageId]]];
+  }
+
+  // Crea social.post
+  const createPostBody = buildXMLRPC('execute_kw', [
+    odooDb,
+    uid,
+    password,
+    'social.post',
+    'create',
+    [postValues]
+  ]);
+
+  const response = await fetch(`${odooUrl}/xmlrpc/2/object`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml' },
+    body: createPostBody
+  });
+
+  const responseXML = await response.text();
+  const postIdMatch = responseXML.match(/<int>(\d+)<\/int>/);
+
+  if (!postIdMatch) {
+    throw new Error('Failed to create social post');
+  }
+
+  const postId = parseInt(postIdMatch[1]);
+
+  // Pubblica immediatamente con action_post
+  try {
+    const publishBody = buildXMLRPC('execute_kw', [
+      odooDb,
+      uid,
+      password,
+      'social.post',
+      'action_post',
+      [[postId]]
+    ]);
+
+    await fetch(`${odooUrl}/xmlrpc/2/object`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml' },
+      body: publishBody
+    });
+
+    console.log(`  ✅ Social post ${postId} pubblicato`);
+  } catch (publishError: any) {
+    console.warn(`  ⚠️ action_post fallito per ${postId}:`, publishError.message);
+    // Il post è comunque creato, solo non pubblicato automaticamente
+  }
+
+  return postId;
+}
+
+// ==========================================
 // GENERA HTML BLOG
 // ==========================================
 
@@ -515,53 +591,63 @@ ${translatedRecipe.description.substring(0, 100)}...
     // FASE 6: PUBBLICAZIONE SUI SOCIAL MEDIA
     // ==========================================
 
-    console.log('[6/7] Publishing to social media via publish-to-odoo endpoint...');
+    console.log('[6/7] Publishing to social media directly via XML-RPC...');
 
     const socialPublishResults: Record<string, any> = {};
     const socialPublishFailures: string[] = [];
 
-    // Estrai cookies dalla request originale per forwardarli a publish-to-odoo
-    const userCookies = request.headers.get('cookie') || '';
+    // Account IDs social
+    const FACEBOOK_ID = 2;
+    const INSTAGRAM_ID = 4;
+    const LINKEDIN_ID = 6;
+    const TWITTER_ID = 13;
+    const OTHER_ACCOUNTS = [FACEBOOK_ID, INSTAGRAM_ID, LINKEDIN_ID]; // FB, IG, LI insieme
 
-    // Pubblica su Odoo usando l'endpoint esistente publish-to-odoo
-    // Nota: publish-to-odoo gestisce automaticamente i 4 social (Facebook, Instagram, LinkedIn, Twitter)
+    // Pubblica su Odoo usando createSocialPost (XML-RPC diretto)
     for (const lang of languages) {
       console.log(`  Publishing social post in ${lang.name}...`);
 
       const socialCaption = socialPosts[lang.code];
-      const recipeImageBase64 = recipeImage.replace(/^data:image\/\w+;base64,/, '');
 
       try {
-        // Converti immagine ricetta da base64 a data URL per publish-to-odoo
-        const recipeImageDataUrl = `data:image/jpeg;base64,${recipeImageBase64}`;
+        // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
+        const postId1 = await createSocialPost(
+          ODOO_URL,
+          ODOO_DB,
+          uid,
+          ODOO_PASSWORD,
+          socialCaption,
+          OTHER_ACCOUNTS,
+          recipeImageId
+        );
 
-        // Chiama l'endpoint publish-to-odoo che gestisce la pubblicazione sui 4 social
-        const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/social-ai/publish-to-odoo`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'cookie': userCookies  // Forward user cookies for Odoo authentication
-          },
-          body: JSON.stringify({
-            caption: socialCaption,
-            hashtags: [`#RecipesLAPA`, `#ItalianFood`, `#Cucina${translations[lang.code].region}`],
-            cta: `👉 Leggi la ricetta completa su www.lapa.ch`,
-            imageUrl: recipeImageDataUrl,
-            platform: 'instagram', // Placeholder - publish-to-odoo pubblica su tutti i social
-            accountIds: [2, 4, 6, 13] // Facebook, Instagram, LinkedIn, Twitter
-          })
-        });
+        console.log(`  ✅ Social post ${postId1} created for FB/IG/LI in ${lang.name}`);
 
-        const publishData = await publishResponse.json();
-
-        if (publishData.success) {
-          socialPublishResults[lang.code] = publishData;
-          console.log(`  ✅ Social post published for ${lang.name}`);
-        } else {
-          const errorMsg = `${lang.name}: ${publishData.error || 'Unknown error'}`;
-          socialPublishFailures.push(errorMsg);
-          console.warn(`  ⚠️ Failed to publish social for ${lang.name}:`, publishData.error);
+        // POST 2: Twitter (messaggio abbreviato max 280 caratteri)
+        let twitterMessage = socialCaption;
+        if (twitterMessage.length > 280) {
+          // Abbrevia per Twitter
+          twitterMessage = twitterMessage.substring(0, 250) + '... 👉 www.lapa.ch';
         }
+
+        const postId2 = await createSocialPost(
+          ODOO_URL,
+          ODOO_DB,
+          uid,
+          ODOO_PASSWORD,
+          twitterMessage,
+          [TWITTER_ID],
+          recipeImageId
+        );
+
+        console.log(`  ✅ Social post ${postId2} created for Twitter in ${lang.name}`);
+
+        socialPublishResults[lang.code] = {
+          success: true,
+          postIds: [postId1, postId2],
+          accounts: ['Facebook', 'Instagram', 'LinkedIn', 'Twitter']
+        };
+
       } catch (error: any) {
         const errorMsg = `${lang.name}: ${error.message}`;
         socialPublishFailures.push(errorMsg);
