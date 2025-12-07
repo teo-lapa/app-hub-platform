@@ -6,7 +6,7 @@ import {
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
-  AlertCircle, Zap
+  AlertCircle, Zap, Youtube
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -85,6 +85,10 @@ export default function SocialAIStudioPage() {
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
   const [isPublishingRecipe, setIsPublishingRecipe] = useState(false);
   const [publishProgress, setPublishProgress] = useState<string[]>([]);
+
+  // YouTube publishing states
+  const [isPublishingYouTube, setIsPublishingYouTube] = useState(false);
+  const [youtubePublishResult, setYoutubePublishResult] = useState<any | null>(null);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -581,6 +585,66 @@ export default function SocialAIStudioPage() {
     link.download = `marketing-${socialPlatform}-${Date.now()}.mp4`;
     link.click();
     toast.success('Download video avviato!');
+  };
+
+  // ==========================================
+  // Pubblica Video su YouTube
+  // ==========================================
+  const handlePublishYouTube = async () => {
+    if (!result?.video?.dataUrl || !result?.copywriting) {
+      toast.error('Video o copywriting non disponibili');
+      return;
+    }
+
+    if (!productName) {
+      toast.error('Nome prodotto richiesto');
+      return;
+    }
+
+    setIsPublishingYouTube(true);
+    const loadingToast = toast.loading('Pubblicazione su YouTube in corso...');
+
+    try {
+      console.log('[YouTube] Starting publication...');
+
+      const response = await fetch('/api/social-ai/publish-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoDataUrl: result.video.dataUrl,
+          productName,
+          productDescription: productDescription || undefined,
+          caption: result.copywriting.caption,
+          hashtags: result.copywriting.hashtags
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione YouTube');
+      }
+
+      setYoutubePublishResult(data.data);
+
+      toast.success(
+        <div>
+          <div className="font-bold">Video pubblicato su YouTube! 🎉</div>
+          <div className="text-sm mt-1">{data.data.youtubeTitle}</div>
+        </div>,
+        { id: loadingToast, duration: 6000 }
+      );
+
+      console.log('[YouTube] Published successfully:', data.data);
+
+    } catch (error: any) {
+      console.error('[YouTube] Publish error:', error);
+      toast.error(error.message || 'Errore durante pubblicazione YouTube', {
+        id: loadingToast
+      });
+    } finally {
+      setIsPublishingYouTube(false);
+    }
   };
 
   // ==========================================
@@ -1670,13 +1734,59 @@ export default function SocialAIStudioPage() {
                           className="w-full h-auto rounded-lg border border-purple-500/50 mb-3"
                         />
 
-                        <button
-                          onClick={handleDownloadVideo}
-                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Download Video</span>
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={handleDownloadVideo}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            <span>Download Video</span>
+                          </button>
+
+                          <button
+                            onClick={handlePublishYouTube}
+                            disabled={isPublishingYouTube}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                          >
+                            {isPublishingYouTube ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Pubblicazione in corso...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Youtube className="h-4 w-4" />
+                                <span>Pubblica su YouTube</span>
+                              </>
+                            )}
+                          </button>
+
+                          {youtubePublishResult && (
+                            <div className="mt-3 p-3 bg-emerald-900/30 border border-emerald-500/50 rounded-lg">
+                              <div className="flex items-start space-x-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="text-emerald-300 font-medium">
+                                    Pubblicato su YouTube!
+                                  </div>
+                                  <div className="text-purple-300 text-xs mt-1">
+                                    {youtubePublishResult.youtubeTitle}
+                                  </div>
+                                  {youtubePublishResult.videoUrl && (
+                                    <a
+                                      href={youtubePublishResult.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-400 hover:text-blue-300 underline mt-1 inline-block"
+                                    >
+                                      Vedi su YouTube →
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
                         <div className="mt-2 text-xs text-purple-300 text-center">
                           Generato con Veo 3.1 (Google AI)

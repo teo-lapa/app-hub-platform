@@ -512,16 +512,66 @@ ${translatedRecipe.description.substring(0, 100)}...
     console.log('✅ Social posts generated!');
 
     // ==========================================
-    // FASE 6: RISULTATO
+    // FASE 6: PUBBLICAZIONE SUI SOCIAL MEDIA
     // ==========================================
 
-    console.log('[6/6] Publication completed successfully!');
+    console.log('[6/7] Publishing to social media via publish-to-odoo endpoint...');
+
+    const socialPublishResults: Record<string, any> = {};
+
+    // Pubblica su Odoo usando l'endpoint esistente publish-to-odoo
+    // Nota: publish-to-odoo gestisce automaticamente i 4 social (Facebook, Instagram, LinkedIn, Twitter)
+    for (const lang of languages) {
+      console.log(`  Publishing social post in ${lang.name}...`);
+
+      const socialCaption = socialPosts[lang.code];
+      const recipeImageBase64 = recipeImage.replace(/^data:image\/\w+;base64,/, '');
+
+      try {
+        // Converti immagine ricetta da base64 a data URL per publish-to-odoo
+        const recipeImageDataUrl = `data:image/jpeg;base64,${recipeImageBase64}`;
+
+        // Chiama l'endpoint publish-to-odoo che gestisce la pubblicazione sui 4 social
+        const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/social-ai/publish-to-odoo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            caption: socialCaption,
+            hashtags: [`#RecipesLAPA`, `#ItalianFood`, `#Cucina${translations[lang.code].region}`],
+            cta: `👉 Leggi la ricetta completa su www.lapa.ch`,
+            imageUrl: recipeImageDataUrl,
+            platform: 'instagram', // Placeholder - publish-to-odoo pubblica su tutti i social
+            accountIds: [2, 4, 6, 13] // Facebook, Instagram, LinkedIn, Twitter
+          })
+        });
+
+        const publishData = await publishResponse.json();
+
+        if (publishData.success) {
+          socialPublishResults[lang.code] = publishData;
+          console.log(`  ✅ Social post published for ${lang.name}`);
+        } else {
+          console.warn(`  ⚠️ Failed to publish social for ${lang.name}:`, publishData.error);
+        }
+      } catch (error: any) {
+        console.error(`  ❌ Error publishing social for ${lang.name}:`, error.message);
+      }
+    }
+
+    console.log('✅ Social media publication completed!');
+
+    // ==========================================
+    // FASE 7: RISULTATO FINALE
+    // ==========================================
+
+    console.log('[7/7] Publication completed successfully!');
 
     return NextResponse.json({
       success: true,
       data: {
         blogPosts: blogPostIds,
         socialPosts: socialPosts,
+        socialPublishResults, // Risultati pubblicazione social
         images: {
           productImageId,
           recipeImageId
