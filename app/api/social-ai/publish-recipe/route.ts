@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per pubblicazione completa
@@ -8,6 +9,7 @@ export const maxDuration = 300; // 5 minuti per pubblicazione completa
  * POST /api/social-ai/publish-recipe
  *
  * PUBBLICAZIONE AUTOMATICA RICETTA MULTILINGUA
+ * USA LA SESSIONE DELL'UTENTE LOGGATO (come tutte le altre app)
  *
  * 1. Traduce ricetta in 4 lingue (IT, DE, FR, EN)
  * 2. Carica immagini su Odoo
@@ -43,82 +45,6 @@ interface OdooAttachment {
   res_model: string;
   res_id: number;
   public: boolean;
-}
-
-// ==========================================
-// HELPER: Odoo XML-RPC
-// ==========================================
-
-function buildXMLRPC(methodName: string, params: any[]): string {
-  const paramsXML = params.map(p => valueToXML(p)).join('');
-  return `<?xml version="1.0"?>
-<methodCall>
-  <methodName>${methodName}</methodName>
-  <params>
-    ${paramsXML}
-  </params>
-</methodCall>`;
-}
-
-function valueToXML(value: any): string {
-  if (value === null || value === undefined) {
-    return '<param><value><boolean>0</boolean></value></param>';
-  }
-  if (typeof value === 'boolean') {
-    return `<param><value><boolean>${value ? '1' : '0'}</boolean></value></param>`;
-  }
-  if (typeof value === 'number') {
-    return `<param><value><int>${value}</int></value></param>`;
-  }
-  if (typeof value === 'string') {
-    return `<param><value><string>${escapeXML(value)}</string></value></param>`;
-  }
-  if (Array.isArray(value)) {
-    const arrayData = value.map(v => valueToXMLData(v)).join('');
-    return `<param><value><array><data>${arrayData}</data></array></value></param>`;
-  }
-  if (typeof value === 'object') {
-    const members = Object.entries(value)
-      .map(([k, v]) => `<member><name>${k}</name>${valueToXMLData(v)}</member>`)
-      .join('');
-    return `<param><value><struct>${members}</struct></value></param>`;
-  }
-  return '<param><value><string></string></value></param>';
-}
-
-function valueToXMLData(value: any): string {
-  if (value === null || value === undefined) {
-    return '<value><boolean>0</boolean></value>';
-  }
-  if (typeof value === 'boolean') {
-    return `<value><boolean>${value ? '1' : '0'}</boolean></value>`;
-  }
-  if (typeof value === 'number') {
-    return `<value><int>${value}</int></value>`;
-  }
-  if (typeof value === 'string') {
-    return `<value><string>${escapeXML(value)}</string></value>`;
-  }
-  if (Array.isArray(value)) {
-    const arrayData = value.map(v => valueToXMLData(v)).join('');
-    return `<value><array><data>${arrayData}</data></array></value>`;
-  }
-  if (typeof value === 'object') {
-    const members = Object.entries(value)
-      .map(([k, v]) => `<member><name>${k}</name>${valueToXMLData(v)}</member>`)
-      .join('');
-    return `<value><struct>${members}</struct></value>`;
-  }
-  return '<value><string></string></value>';
-}
-
-function escapeXML(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }
 
 // ==========================================
@@ -167,10 +93,7 @@ Rispondi SOLO con JSON valido (no markdown):`;
 // ==========================================
 
 async function uploadImageToOdoo(
-  odooUrl: string,
-  odooDb: string,
-  uid: number,
-  password: string,
+  odooCookies: string,
   imageBase64: string,
   filename: string
 ): Promise<number> {
@@ -178,10 +101,9 @@ async function uploadImageToOdoo(
   // Rimuovi prefisso data:image se presente
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
-  const createAttachmentBody = buildXMLRPC('execute_kw', [
-    odooDb,
-    uid,
-    password,
+  // Usa callOdoo con sessione utente loggato
+  const attachmentId = await callOdoo(
+    odooCookies,
     'ir.attachment',
     'create',
     [{
@@ -192,22 +114,13 @@ async function uploadImageToOdoo(
       res_model: 'blog.post',
       res_id: 0 // Verrà aggiornato dopo
     }]
-  ]);
+  );
 
-  const response = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml' },
-    body: createAttachmentBody
-  });
-
-  const responseXML = await response.text();
-  const idMatch = responseXML.match(/<int>(\d+)<\/int>/);
-
-  if (!idMatch) {
+  if (!attachmentId) {
     throw new Error('Failed to upload image to Odoo');
   }
 
-  return parseInt(idMatch[1]);
+  return attachmentId;
 }
 
 // ==========================================
@@ -215,26 +128,21 @@ async function uploadImageToOdoo(
 // ==========================================
 
 async function createBlogPost(
-  odooUrl: string,
-  odooDb: string,
-  uid: number,
-  password: string,
+  odooCookies: string,
   recipeData: any,
   productName: string,
   productImageId: number,
   recipeImageId: number,
   langCode: string,
   sources?: { title: string; url: string }[]
-) {
+): Promise<number> {
 
   // Genera HTML contenuto blog
   const htmlContent = generateBlogHTML(recipeData, productName, sources);
 
-  // Crea post blog
-  const createPostBody = buildXMLRPC('execute_kw', [
-    odooDb,
-    uid,
-    password,
+  // Crea post blog usando callOdoo
+  const postId = await callOdoo(
+    odooCookies,
     'blog.post',
     'create',
     [{
@@ -250,38 +158,19 @@ async function createBlogPost(
       }),
       tag_ids: [[6, 0, []]] // Tags vuoti per ora
     }]
-  ]);
+  );
 
-  const response = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml' },
-    body: createPostBody
-  });
-
-  const responseXML = await response.text();
-  const postIdMatch = responseXML.match(/<int>(\d+)<\/int>/);
-
-  if (!postIdMatch) {
+  if (!postId) {
     throw new Error('Failed to create blog post');
   }
 
-  const postId = parseInt(postIdMatch[1]);
-
   // Aggiorna attachment con res_id
-  const updateAttachmentBody = buildXMLRPC('execute_kw', [
-    odooDb,
-    uid,
-    password,
+  await callOdoo(
+    odooCookies,
     'ir.attachment',
     'write',
     [[productImageId, recipeImageId], { res_id: postId }]
-  ]);
-
-  await fetch(`${odooUrl}/xmlrpc/2/object`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml' },
-    body: updateAttachmentBody
-  });
+  );
 
   return postId;
 }
@@ -291,14 +180,11 @@ async function createBlogPost(
 // ==========================================
 
 async function createSocialPost(
-  odooUrl: string,
-  odooDb: string,
-  uid: number,
-  password: string,
+  odooCookies: string,
   message: string,
   accountIds: number[],
   imageId?: number
-) {
+): Promise<number> {
   // Prepara valori del post
   const postValues: Record<string, any> = {
     message: message,
@@ -311,47 +197,26 @@ async function createSocialPost(
     postValues.image_ids = [[6, 0, [imageId]]];
   }
 
-  // Crea social.post
-  const createPostBody = buildXMLRPC('execute_kw', [
-    odooDb,
-    uid,
-    password,
+  // Crea social.post usando callOdoo
+  const postId = await callOdoo(
+    odooCookies,
     'social.post',
     'create',
     [postValues]
-  ]);
+  );
 
-  const response = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml' },
-    body: createPostBody
-  });
-
-  const responseXML = await response.text();
-  const postIdMatch = responseXML.match(/<int>(\d+)<\/int>/);
-
-  if (!postIdMatch) {
+  if (!postId) {
     throw new Error('Failed to create social post');
   }
 
-  const postId = parseInt(postIdMatch[1]);
-
   // Pubblica immediatamente con action_post
   try {
-    const publishBody = buildXMLRPC('execute_kw', [
-      odooDb,
-      uid,
-      password,
+    await callOdoo(
+      odooCookies,
       'social.post',
       'action_post',
       [[postId]]
-    ]);
-
-    await fetch(`${odooUrl}/xmlrpc/2/object`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: publishBody
-    });
+    );
 
     console.log(`  ✅ Social post ${postId} pubblicato`);
   } catch (publishError: any) {
@@ -438,11 +303,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Credenziali (usa variabili Vercel corrette!)
-    const ODOO_URL = process.env.ODOO_URL!;
-    const ODOO_DB = process.env.ODOO_DB!;
-    const ODOO_USERNAME = process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
-    const ODOO_PASSWORD = process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
+    // GEMINI API Key
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
@@ -457,49 +318,48 @@ export async function POST(request: NextRequest) {
     console.log('[Publish Recipe] Starting publication process...');
 
     // ==========================================
-    // FASE 1: AUTENTICAZIONE ODOO
+    // FASE 1: AUTENTICAZIONE ODOO CON UTENTE LOGGATO
     // ==========================================
 
-    console.log('[1/6] Authenticating with Odoo...');
-    const authBody = buildXMLRPC('authenticate', [ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD, {}]);
+    console.log('[1/7] Getting Odoo session from logged-in user...');
 
-    const authResponse = await fetch(`${ODOO_URL}/xmlrpc/2/common`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: authBody
-    });
+    // Estrai cookies dalla request (utente loggato nell'app)
+    const userCookies = request.headers.get('cookie');
 
-    const authXML = await authResponse.text();
-    const uidMatch = authXML.match(/<int>(\d+)<\/int>/);
-
-    if (!uidMatch) {
-      throw new Error('Odoo authentication failed');
+    if (!userCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Devi essere loggato per pubblicare. Effettua il login.'
+      }, { status: 401 });
     }
 
-    const uid = parseInt(uidMatch[1]);
-    console.log(`✅ Authenticated! UID: ${uid}`);
+    // Ottieni sessione Odoo dell'utente loggato
+    const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
+
+    if (!odooCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Sessione Odoo non valida. Effettua nuovamente il login.'
+      }, { status: 401 });
+    }
+
+    console.log(`✅ Odoo session obtained! User UID: ${uid}`);
 
     // ==========================================
     // FASE 2: UPLOAD IMMAGINI
     // ==========================================
 
-    console.log('[2/6] Uploading images to Odoo...');
+    console.log('[2/7] Uploading images to Odoo...');
 
     const productImageId = await uploadImageToOdoo(
-      ODOO_URL,
-      ODOO_DB,
-      uid,
-      ODOO_PASSWORD,
+      odooCookies,
       productImage,
       `${productName}-product.jpg`
     );
     console.log(`✅ Product image uploaded: ${productImageId}`);
 
     const recipeImageId = await uploadImageToOdoo(
-      ODOO_URL,
-      ODOO_DB,
-      uid,
-      ODOO_PASSWORD,
+      odooCookies,
       recipeImage,
       `${recipeData.title}-dish.jpg`
     );
@@ -542,10 +402,7 @@ export async function POST(request: NextRequest) {
       const translatedRecipe = translations[lang.code];
 
       const postId = await createBlogPost(
-        ODOO_URL,
-        ODOO_DB,
-        uid,
-        ODOO_PASSWORD,
+        odooCookies,
         translatedRecipe,
         productName,
         productImageId,
@@ -611,10 +468,7 @@ ${translatedRecipe.description.substring(0, 100)}...
 
       // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
       const postId1 = await createSocialPost(
-        ODOO_URL,
-        ODOO_DB,
-        uid,
-        ODOO_PASSWORD,
+        odooCookies,
         socialCaption,
         OTHER_ACCOUNTS,
         recipeImageId
@@ -630,10 +484,7 @@ ${translatedRecipe.description.substring(0, 100)}...
       }
 
       const postId2 = await createSocialPost(
-        ODOO_URL,
-        ODOO_DB,
-        uid,
-        ODOO_PASSWORD,
+        odooCookies,
         twitterMessage,
         [TWITTER_ID],
         recipeImageId
