@@ -376,30 +376,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Odoo session obtained! User UID: ${uid}`);
 
-    // DEBUG: Verifica quale utente è autenticato e quali gruppi ha
-    try {
-      const userInfo = await callOdoo(
-        odooCookies,
-        'res.users',
-        'read',
-        [[uid], ['name', 'login', 'groups_id']]
-      );
-      console.log(`👤 [DEBUG] Utente autenticato:`, userInfo);
-
-      if (userInfo && userInfo[0] && userInfo[0].groups_id) {
-        const groupIds = userInfo[0].groups_id;
-        const groupsInfo = await callOdoo(
-          odooCookies,
-          'res.groups',
-          'read',
-          [groupIds, ['name']]
-        );
-        console.log(`🔐 [DEBUG] Gruppi utente:`, groupsInfo.map((g: any) => g.name));
-      }
-    } catch (debugError: any) {
-      console.error(`❌ [DEBUG] Errore verifica utente:`, debugError.message);
-    }
-
     // ==========================================
     // FASE 2: UPLOAD IMMAGINI
     // ==========================================
