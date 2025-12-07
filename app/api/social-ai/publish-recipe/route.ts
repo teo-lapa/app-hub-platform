@@ -151,6 +151,7 @@ async function createBlogPost(
       subtitle: recipeData.description,
       content: htmlContent,
       website_published: true,
+      cover_image_id: recipeImageId, // ID immagine cover
       cover_properties: JSON.stringify({
         background_image: `/web/image/${recipeImageId}`,
         opacity: 0.4,
@@ -173,6 +174,36 @@ async function createBlogPost(
   );
 
   return postId;
+}
+
+// ==========================================
+// LEGGI URL BLOG POST DA ODOO
+// ==========================================
+
+async function getBlogPostUrl(
+  odooCookies: string,
+  postId: number
+): Promise<string> {
+  // Leggi il campo website_url dal blog post creato
+  const postData = await callOdoo(
+    odooCookies,
+    'blog.post',
+    'read',
+    [[postId], ['website_url']]
+  );
+
+  if (!postData || !Array.isArray(postData) || postData.length === 0) {
+    throw new Error('Failed to read blog post URL');
+  }
+
+  const websiteUrl = postData[0].website_url;
+
+  if (!websiteUrl) {
+    throw new Error('Blog post has no website_url');
+  }
+
+  // Odoo restituisce URL relativo, aggiungi dominio
+  return `https://www.lapa.ch${websiteUrl}`;
 }
 
 // ==========================================
@@ -396,6 +427,7 @@ export async function POST(request: NextRequest) {
     console.log('[4/6] Creating blog posts...');
 
     const blogPostIds: Record<string, number> = {};
+    const blogPostUrls: Record<string, string> = {};
 
     for (const lang of languages) {
       console.log(`  Creating blog post in ${lang.name}...`);
@@ -413,6 +445,11 @@ export async function POST(request: NextRequest) {
 
       blogPostIds[lang.code] = postId;
       console.log(`  ✅ Blog post created: ${postId}`);
+
+      // Leggi URL reale da Odoo
+      const postUrl = await getBlogPostUrl(odooCookies, postId);
+      blogPostUrls[lang.code] = postUrl;
+      console.log(`  📍 URL: ${postUrl}`);
     }
 
     console.log('✅ All blog posts created!');
@@ -427,7 +464,7 @@ export async function POST(request: NextRequest) {
 
     for (const lang of languages) {
       const translatedRecipe = translations[lang.code];
-      const blogUrl = `https://www.lapa.ch/blog/lapablog/${translatedRecipe.title.toLowerCase().replace(/\s+/g, '-')}`;
+      const blogUrl = blogPostUrls[lang.code]; // USA URL REALE da Odoo!
 
       // Post breve per social
       socialPosts[lang.code] = `${translatedRecipe.title}
