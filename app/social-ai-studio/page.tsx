@@ -79,6 +79,11 @@ export default function SocialAIStudioPage() {
   const [targetCity, setTargetCity] = useState('');
   const [productCategory, setProductCategory] = useState('');
 
+  // Recipe states
+  const [includeRecipe, setIncludeRecipe] = useState(false);
+  const [recipeData, setRecipeData] = useState<any | null>(null);
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string[]>([]);
@@ -286,6 +291,57 @@ export default function SocialAIStudioPage() {
   };
 
   // ==========================================
+  // Genera Ricetta Tradizionale
+  // ==========================================
+  const handleGenerateRecipe = async () => {
+    if (!productName) {
+      toast.error('Inserisci il nome del prodotto prima!');
+      return;
+    }
+
+    setIsGeneratingRecipe(true);
+    setRecipeData(null);
+
+    const loadingToast = toast.loading('Ricerca ricetta tradizionale...');
+
+    try {
+      setGenerationProgress(prev => [...prev, '🔍 Ricerca ricetta tradizionale in corso...']);
+
+      const response = await fetch('/api/social-ai/product-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName,
+          productDescription: productDescription || undefined,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione ricetta');
+      }
+
+      setRecipeData(data.data);
+      setGenerationProgress(prev => [
+        ...prev,
+        '✅ Ricetta tradizionale trovata!',
+        `📍 Regione: ${data.data.recipe.region}`
+      ]);
+
+      toast.success('Ricetta generata con successo!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione ricetta:', error);
+      toast.error(error.message || 'Errore durante generazione ricetta', { id: loadingToast });
+      setGenerationProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
+  // ==========================================
   // Genera Contenuti Marketing
   // ==========================================
   const handleGenerate = async () => {
@@ -297,6 +353,11 @@ export default function SocialAIStudioPage() {
     setIsGenerating(true);
     setGenerationProgress([]);
     setResult(null);
+
+    // Se abilitata, genera anche la ricetta
+    if (includeRecipe && productName) {
+      await handleGenerateRecipe();
+    }
 
     const loadingToast = toast.loading('Avvio agenti AI...');
 
@@ -966,6 +1027,29 @@ export default function SocialAIStudioPage() {
               />
             </div>
 
+            {/* Ricetta Tradizionale */}
+            <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 backdrop-blur-sm rounded-xl border border-amber-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">👨‍🍳</span>
+                  <h3 className="text-lg font-semibold text-amber-300">Ricetta Tradizionale</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeRecipe}
+                    onChange={(e) => setIncludeRecipe(e.target.checked)}
+                    disabled={isGenerating}
+                    className="w-4 h-4 rounded border-amber-500/50 bg-slate-900/50 text-amber-500 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-xs text-amber-300">Crea ricetta</span>
+                </label>
+              </div>
+              <p className="text-xs text-amber-300/70">
+                💡 L'AI cercherà automaticamente ricette tradizionali autentiche del prodotto e genererà un'immagine food photography
+              </p>
+            </div>
+
             {/* Geo-Targeting & RAG */}
             <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -1289,6 +1373,141 @@ export default function SocialAIStudioPage() {
                           ))}
                         </div>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Ricetta Tradizionale */}
+                {recipeData && (
+                  <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 backdrop-blur-sm rounded-xl border border-amber-500/30 p-4 sm:p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="text-2xl">👨‍🍳</div>
+                      <h3 className="text-white font-semibold">Ricetta Tradizionale</h3>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                    </div>
+
+                    {/* Immagine ricetta */}
+                    {recipeData.imageUrl && (
+                      <img
+                        src={recipeData.imageUrl}
+                        alt="Ricetta"
+                        className="w-full h-auto rounded-lg border border-amber-500/50 mb-4"
+                      />
+                    )}
+
+                    {/* Titolo e Descrizione */}
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-amber-200 mb-2">
+                        {recipeData.recipe.title}
+                      </h4>
+                      <p className="text-sm text-amber-300/90 mb-3">
+                        {recipeData.recipe.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          📍 {recipeData.recipe.region}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          ⏱️ Prep: {recipeData.recipe.prepTime}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          🔥 Cook: {recipeData.recipe.cookTime}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          🍽️ {recipeData.recipe.servings}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          📊 {recipeData.recipe.difficulty}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tradizione */}
+                    <div className="mb-4 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                      <p className="text-xs text-amber-300/90">
+                        <strong>Tradizione:</strong> {recipeData.recipe.tradition}
+                      </p>
+                    </div>
+
+                    {/* Ingredienti */}
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-amber-200 mb-2">Ingredienti</div>
+                      <div className="space-y-1.5">
+                        {recipeData.recipe.ingredients.map((ing: any, idx: number) => (
+                          <div key={idx} className="flex items-start space-x-2 text-sm">
+                            <span className="text-amber-400">•</span>
+                            <span className="text-amber-200">
+                              <strong>{ing.quantity}</strong> {ing.item}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Procedimento */}
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-amber-200 mb-2">Procedimento</div>
+                      <div className="space-y-2">
+                        {recipeData.recipe.steps.map((step: string, idx: number) => (
+                          <div key={idx} className="flex items-start space-x-2 text-sm">
+                            <span className="text-amber-400 font-bold min-w-[20px]">{idx + 1}.</span>
+                            <span className="text-amber-200">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tips */}
+                    {recipeData.recipe.tips && recipeData.recipe.tips.length > 0 && (
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-amber-200 mb-2">💡 Consigli</div>
+                        <div className="space-y-1.5">
+                          {recipeData.recipe.tips.map((tip: string, idx: number) => (
+                            <div key={idx} className="flex items-start space-x-2 text-sm">
+                              <span className="text-amber-400">→</span>
+                              <span className="text-amber-200">{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fonti */}
+                    {recipeData.sources && recipeData.sources.length > 0 && (
+                      <details className="mb-4">
+                        <summary className="text-xs text-amber-400 cursor-pointer hover:text-amber-300">
+                          Fonti utilizzate
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {recipeData.sources.map((source: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={source.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-xs text-amber-500 hover:text-amber-400 truncate"
+                            >
+                              → {source.title}
+                            </a>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Pulsante Download */}
+                    {recipeData.imageUrl && (
+                      <button
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = recipeData.imageUrl;
+                          link.download = `ricetta-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                          link.click();
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Download Immagine Ricetta</span>
+                      </button>
                     )}
                   </div>
                 )}

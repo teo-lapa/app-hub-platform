@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS social_posts (
   metadata JSONB DEFAULT '{}'::jsonb, -- Dati extra: device, A/B test variant, etc.
   tags TEXT[], -- Tags per categorizzazione manuale
 
+  -- Recipe Data (ricette tradizionali generate)
+  recipe_data JSONB, -- Dati ricetta: title, ingredients, steps, region, tradition, imageUrl, sources
+
   -- Timestamps
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
