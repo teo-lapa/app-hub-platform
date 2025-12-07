@@ -83,6 +83,8 @@ export default function SocialAIStudioPage() {
   const [includeRecipe, setIncludeRecipe] = useState(false);
   const [recipeData, setRecipeData] = useState<any | null>(null);
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [isPublishingRecipe, setIsPublishingRecipe] = useState(false);
+  const [publishProgress, setPublishProgress] = useState<string[]>([]);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -338,6 +340,65 @@ export default function SocialAIStudioPage() {
       setGenerationProgress(prev => [...prev, '❌ Errore: ' + error.message]);
     } finally {
       setIsGeneratingRecipe(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Ricetta su Blog + Social
+  // ==========================================
+  const handlePublishRecipe = async () => {
+    if (!recipeData || !productName || !productImage || !recipeData.imageUrl) {
+      toast.error('Genera prima la ricetta completa!');
+      return;
+    }
+
+    setIsPublishingRecipe(true);
+    setPublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione in corso...');
+
+    try {
+      setPublishProgress(['🚀 Inizio pubblicazione...']);
+
+      const response = await fetch('/api/social-ai/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeData: recipeData.recipe,
+          productName,
+          productImage,
+          recipeImage: recipeData.imageUrl,
+          sources: recipeData.sources || []
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      setPublishProgress(prev => [
+        ...prev,
+        '✅ Ricetta tradotta in 4 lingue!',
+        '✅ Immagini caricate su Odoo!',
+        '✅ 4 Blog post creati!',
+        '✅ Post social generati!',
+        '🎉 Pubblicazione completata!'
+      ]);
+
+      toast.success('Ricetta pubblicata con successo su Blog e Social!', { id: loadingToast });
+
+      // Mostra risultati
+      console.log('Blog posts creati:', data.data.blogPosts);
+      console.log('Post social:', data.data.socialPosts);
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingRecipe(false);
     }
   };
 
@@ -1494,21 +1555,55 @@ export default function SocialAIStudioPage() {
                       </details>
                     )}
 
-                    {/* Pulsante Download */}
-                    {recipeData.imageUrl && (
+                    {/* Pulsanti Download e Pubblica */}
+                    <div className="space-y-3">
+                      {recipeData.imageUrl && (
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = recipeData.imageUrl;
+                            link.download = `ricetta-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                            link.click();
+                          }}
+                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Immagine Ricetta</span>
+                        </button>
+                      )}
+
+                      {/* Pulsante Pubblica su Blog + Social */}
                       <button
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = recipeData.imageUrl;
-                          link.download = `ricetta-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
-                          link.click();
-                        }}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                        onClick={handlePublishRecipe}
+                        disabled={isPublishingRecipe || !recipeData.imageUrl}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
-                        <Download className="h-4 w-4" />
-                        <span>Download Immagine Ricetta</span>
+                        {isPublishingRecipe ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Pubblicazione in corso...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="h-5 w-5" />
+                            <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
+                          </>
+                        )}
                       </button>
-                    )}
+
+                      {/* Progress Pubblicazione */}
+                      {publishProgress.length > 0 && (
+                        <div className="bg-slate-900/50 rounded-lg p-3 border border-amber-500/30">
+                          <div className="space-y-1">
+                            {publishProgress.map((msg, idx) => (
+                              <div key={idx} className="text-xs text-amber-200">
+                                {msg}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
