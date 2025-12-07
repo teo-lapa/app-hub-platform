@@ -213,18 +213,34 @@ CONTEXT: Traditional ${recipeData.region} cuisine, authentic presentation.`;
       contents: [{ text: imagePrompt }]
     });
 
-    // Estrai immagine generata
+    // Estrai immagine generata - prova diverse strutture (come in generate-marketing)
     let imageDataUrl: string | null = null;
-    for (const part of imageResponse.parts || []) {
+
+    // Struttura 1: response.parts
+    for (const part of (imageResponse as any).parts || []) {
       if (part.inlineData?.data) {
         imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        console.log('[Product Recipe] Image generated successfully');
+        console.log('[Product Recipe] Image generated successfully from parts');
         break;
       }
     }
 
+    // Struttura 2: response.candidates[0].content.parts (struttura standard Gemini API)
     if (!imageDataUrl) {
-      console.warn('[Product Recipe] No image generated');
+      const candidates = (imageResponse as any).candidates || [];
+      if (candidates.length > 0 && candidates[0].content?.parts) {
+        for (const part of candidates[0].content.parts) {
+          if (part.inlineData?.data) {
+            imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            console.log('[Product Recipe] Image found in candidates structure');
+            break;
+          }
+        }
+      }
+    }
+
+    if (!imageDataUrl) {
+      console.warn('[Product Recipe] No image generated in response');
     }
 
     // ==========================================
