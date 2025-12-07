@@ -185,7 +185,12 @@ REGOLE CRITICHE:
     });
 
     // Estrai JSON dalla risposta
-    let responseText = analysisResponse.text.trim();
+    const rawText = analysisResponse.text;
+    if (!rawText) {
+      throw new Error('Risposta vuota da Gemini');
+    }
+
+    let responseText = rawText.trim();
 
     // Rimuovi eventuali markdown code blocks
     responseText = responseText.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
