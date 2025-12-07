@@ -382,20 +382,59 @@ export default function SocialAIStudioPage() {
         throw new Error(data.error || 'Errore durante pubblicazione');
       }
 
-      setPublishProgress(prev => [
-        ...prev,
-        '✅ Ricetta tradotta in 4 lingue!',
-        '✅ Immagini caricate su Odoo!',
-        '✅ 4 Blog post creati!',
-        '✅ Post social generati!',
-        '🎉 Pubblicazione completata!'
-      ]);
+      // Mostra progresso basato su risultati REALI dall'API
+      const progressMessages: string[] = [];
 
-      toast.success('Ricetta pubblicata con successo su Blog e Social!', { id: loadingToast });
+      // Check traduzioni (se ci sono translations nella response)
+      if (data.data?.translations && data.data.translations.length > 0) {
+        progressMessages.push(`✅ Ricetta tradotta in ${data.data.translations.length} lingue!`);
+      }
+
+      // Check immagini (se ci sono image IDs nella response)
+      if (data.data?.images) {
+        progressMessages.push('✅ Immagini caricate su Odoo!');
+      }
+
+      // Check blog posts (se ci sono blog post IDs)
+      if (data.data?.blogPosts && Object.keys(data.data.blogPosts).length > 0) {
+        progressMessages.push(`✅ ${Object.keys(data.data.blogPosts).length} Blog post creati!`);
+      }
+
+      // Check social posts (mostra sia successi che failures)
+      if (data.data?.stats) {
+        const { successfulSocialPublishes, failedSocialPublishes } = data.data.stats;
+
+        if (successfulSocialPublishes > 0) {
+          progressMessages.push(`✅ Post social pubblicati: ${successfulSocialPublishes}/${successfulSocialPublishes + failedSocialPublishes}`);
+        }
+
+        if (failedSocialPublishes > 0) {
+          progressMessages.push(`⚠️ Falliti: ${failedSocialPublishes} pubblicazioni social`);
+
+          // Mostra dettagli failures se disponibili
+          if (data.data?.socialPublishFailures) {
+            data.data.socialPublishFailures.forEach((failure: string) => {
+              progressMessages.push(`  ❌ ${failure}`);
+            });
+          }
+        }
+      }
+
+      // Messaggio finale
+      if (data.success) {
+        progressMessages.push('🎉 Pubblicazione completata con successo!');
+        toast.success('Ricetta pubblicata con successo su Blog e Social!', { id: loadingToast });
+      } else if (data.warning) {
+        progressMessages.push(`⚠️ ${data.warning}`);
+        toast(data.warning, { id: loadingToast, duration: 6000, icon: '⚠️' });
+      }
+
+      setPublishProgress(prev => [...prev, ...progressMessages]);
 
       // Mostra risultati
       console.log('Blog posts creati:', data.data.blogPosts);
       console.log('Post social:', data.data.socialPosts);
+      console.log('Stats:', data.data.stats);
 
     } catch (error: any) {
       console.error('Errore pubblicazione:', error);

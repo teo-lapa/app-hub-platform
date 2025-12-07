@@ -518,6 +518,10 @@ ${translatedRecipe.description.substring(0, 100)}...
     console.log('[6/7] Publishing to social media via publish-to-odoo endpoint...');
 
     const socialPublishResults: Record<string, any> = {};
+    const socialPublishFailures: string[] = [];
+
+    // Estrai cookies dalla request originale per forwardarli a publish-to-odoo
+    const userCookies = request.headers.get('cookie') || '';
 
     // Pubblica su Odoo usando l'endpoint esistente publish-to-odoo
     // Nota: publish-to-odoo gestisce automaticamente i 4 social (Facebook, Instagram, LinkedIn, Twitter)
@@ -534,7 +538,10 @@ ${translatedRecipe.description.substring(0, 100)}...
         // Chiama l'endpoint publish-to-odoo che gestisce la pubblicazione sui 4 social
         const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/social-ai/publish-to-odoo`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'cookie': userCookies  // Forward user cookies for Odoo authentication
+          },
           body: JSON.stringify({
             caption: socialCaption,
             hashtags: [`#RecipesLAPA`, `#ItalianFood`, `#Cucina${translations[lang.code].region}`],
@@ -551,9 +558,13 @@ ${translatedRecipe.description.substring(0, 100)}...
           socialPublishResults[lang.code] = publishData;
           console.log(`  ✅ Social post published for ${lang.name}`);
         } else {
+          const errorMsg = `${lang.name}: ${publishData.error || 'Unknown error'}`;
+          socialPublishFailures.push(errorMsg);
           console.warn(`  ⚠️ Failed to publish social for ${lang.name}:`, publishData.error);
         }
       } catch (error: any) {
+        const errorMsg = `${lang.name}: ${error.message}`;
+        socialPublishFailures.push(errorMsg);
         console.error(`  ❌ Error publishing social for ${lang.name}:`, error.message);
       }
     }
@@ -566,18 +577,29 @@ ${translatedRecipe.description.substring(0, 100)}...
 
     console.log('[7/7] Publication completed successfully!');
 
+    // Determina successo globale: successo completo solo se non ci sono failures
+    const hasFailures = socialPublishFailures.length > 0;
+    const isFullSuccess = !hasFailures;
+
     return NextResponse.json({
-      success: true,
+      success: isFullSuccess,
       data: {
         blogPosts: blogPostIds,
         socialPosts: socialPosts,
         socialPublishResults, // Risultati pubblicazione social
+        socialPublishFailures: hasFailures ? socialPublishFailures : undefined, // Include failures se presenti
         images: {
           productImageId,
           recipeImageId
         },
-        translations: Object.keys(translations)
-      }
+        translations: Object.keys(translations),
+        stats: {
+          totalLanguages: languages.length,
+          successfulSocialPublishes: Object.keys(socialPublishResults).length,
+          failedSocialPublishes: socialPublishFailures.length
+        }
+      },
+      warning: hasFailures ? 'Blog posts creati ma alcune pubblicazioni social sono fallite' : undefined
     });
 
   } catch (error: any) {
