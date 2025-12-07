@@ -438,11 +438,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Credenziali
+    // Credenziali (usa variabili Vercel corrette!)
     const ODOO_URL = process.env.ODOO_URL!;
     const ODOO_DB = process.env.ODOO_DB!;
-    const ODOO_USERNAME = process.env.ODOO_USERNAME || 'apphubplatform@lapa.ch';
-    const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'apphubplatform2025';
+    const ODOO_USERNAME = process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
+    const ODOO_PASSWORD = process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
