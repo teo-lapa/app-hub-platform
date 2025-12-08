@@ -195,7 +195,44 @@ REGOLE CRITICHE:
     // Rimuovi eventuali markdown code blocks
     responseText = responseText.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
 
-    const recipeData: RecipeData = JSON.parse(responseText);
+    // Pulizia JSON robusta
+    // 1. Rimuovi caratteri di controllo problematici
+    responseText = responseText.replace(/[\x00-\x1F\x7F]/g, ' ');
+    // 2. Rimuovi virgole trailing prima di ] o }
+    responseText = responseText.replace(/,\s*([}\]])/g, '$1');
+    // 3. Rimuovi newlines dentro le stringhe (causa errori JSON)
+    responseText = responseText.replace(/:\s*"([^"]*)\n([^"]*)"/g, ': "$1 $2"');
+
+    let recipeData: RecipeData;
+    try {
+      recipeData = JSON.parse(responseText);
+    } catch (parseError: any) {
+      console.error('[Product Recipe] JSON parse failed, attempting repair...');
+      console.error('[Product Recipe] Raw response (first 500 chars):', responseText.substring(0, 500));
+
+      // Tentativo di riparazione più aggressivo
+      try {
+        // Trova l'inizio e la fine del JSON object
+        const jsonStart = responseText.indexOf('{');
+        const jsonEnd = responseText.lastIndexOf('}');
+
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          let cleanJson = responseText.substring(jsonStart, jsonEnd + 1);
+          // Rimuovi eventuali commenti
+          cleanJson = cleanJson.replace(/\/\/[^\n]*/g, '');
+          // Fix virgolette non escapate
+          cleanJson = cleanJson.replace(/(?<!\\)"\s*\n/g, '",\n');
+
+          recipeData = JSON.parse(cleanJson);
+          console.log('[Product Recipe] JSON repaired successfully!');
+        } else {
+          throw new Error('Cannot find valid JSON structure');
+        }
+      } catch (repairError) {
+        console.error('[Product Recipe] JSON repair failed:', repairError);
+        throw new Error(`JSON non valido da Gemini: ${parseError.message}. Riprova.`);
+      }
+    }
 
     console.log(`[Product Recipe] Recipe created: ${recipeData.title}`);
 
