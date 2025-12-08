@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
-import { sql } from '@vercel/postgres';
+import { db } from '@vercel/postgres';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -381,22 +381,24 @@ ${productDetailsHtml}
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
     // 8. MARK ASSIGNMENTS AS ORDERED (instead of deleting them)
+    // IMPORTANTE: Usa una connessione dedicata per garantire che l'UPDATE funzioni
     let markingSucceeded = false;
     let markingError: string | null = null;
+    let totalMarked = 0;
 
+    const client = await db.connect();
     try {
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        console.log(`\n✅ Marking assignments for ${productIds.length} products as ordered...`);
+        console.log(`\n🔄 Marking assignments for ${productIds.length} products as ordered...`);
 
-        let totalMarked = 0;
         for (const productId of productIds) {
           // Find the corresponding sale and purchase order IDs for this product
           const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
           const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
 
-          const result = await sql`
+          const result = await client.sql`
             UPDATE preorder_customer_assignments
             SET is_ordered = TRUE,
                 ordered_at = NOW(),
@@ -406,9 +408,22 @@ ${productDetailsHtml}
             AND (is_ordered = FALSE OR is_ordered IS NULL)
           `;
           totalMarked += result.rowCount || 0;
+          console.log(`  📝 Product ${productId}: marked ${result.rowCount || 0} assignments`);
         }
 
-        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
+        // Verifica che i record siano stati aggiornati
+        const verifyResult = await client.sql`
+          SELECT COUNT(*) as remaining FROM preorder_customer_assignments
+          WHERE product_id = ANY(${productIds}::int[])
+          AND (is_ordered = FALSE OR is_ordered IS NULL)
+        `;
+        const remaining = parseInt(verifyResult.rows[0]?.remaining || '0');
+
+        if (remaining > 0) {
+          console.warn(`⚠️ ATTENZIONE: ${remaining} assegnazioni NON sono state marcate come ordinate!`);
+        }
+
+        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered (${remaining} remaining)`);
         markingSucceeded = true;
       } else {
         markingSucceeded = true; // No products to mark, consider it success
@@ -416,6 +431,8 @@ ${productDetailsHtml}
     } catch (dbError: any) {
       console.error('❌ CRITICAL: Failed to mark assignments as ordered:', dbError);
       markingError = dbError.message || 'Database update failed';
+    } finally {
+      client.release();
     }
 
     // 9. Return summary with marking status
@@ -423,6 +440,7 @@ ${productDetailsHtml}
       success: true,
       markingSucceeded, // Track if marking as ordered worked
       markingError,     // Include error details if marking failed
+      totalMarked,      // How many assignments were marked as ordered
       customerQuotesCreated: createdSaleOrders.length,
       supplierQuotesCreated: createdPurchaseOrders.length,
       created: {
@@ -434,7 +452,8 @@ ${productDetailsHtml}
         totalPurchaseOrders: createdPurchaseOrders.length,
         totalProducts: productAssignments.length,
         totalCustomers: customerOrders.size,
-        totalSuppliers: supplierOrders.size
+        totalSuppliers: supplierOrders.size,
+        assignmentsMarked: totalMarked
       }
     };
 
