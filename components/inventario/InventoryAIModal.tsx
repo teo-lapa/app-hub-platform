@@ -50,6 +50,14 @@ type ModalState = 'recording' | 'processing' | 'results';
 
 type MatchStatus = 'match' | 'difference' | 'not_found' | 'new';
 
+interface ExtractedProduct {
+  productName: string;
+  quantity: number;
+  uom: string;
+  confidence: number;
+  observations?: string;
+}
+
 interface AIResult {
   productId: number;
   quantId?: number;
@@ -84,6 +92,8 @@ export function InventoryAIModal({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [results, setResults] = useState<AIResult[]>([]);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([]);
+  const [showDebug, setShowDebug] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -224,6 +234,12 @@ export function InventoryAIModal({
       }
 
       setProcessingProgress(100);
+
+      // Save extracted products for debugging
+      if (data.analysis.debug?.extractedProducts) {
+        setExtractedProducts(data.analysis.debug.extractedProducts);
+        console.log('🔍 Gemini extracted products:', data.analysis.debug.extractedProducts);
+      }
 
       // 3. Transform API results to our format
       const aiResults: AIResult[] = data.analysis.matches.map((match: any) => {
@@ -598,13 +614,51 @@ export function InventoryAIModal({
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="glass p-2 rounded-lg hover:bg-white/20 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowDebug(!showDebug)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                      showDebug ? 'bg-purple-600 text-white' : 'glass hover:bg-white/10'
+                    }`}
+                  >
+                    🔍 Debug ({extractedProducts.length})
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="glass p-2 rounded-lg hover:bg-white/20 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Debug Section - What Gemini Extracted */}
+              {showDebug && extractedProducts.length > 0 && (
+                <div className="p-4 bg-purple-900/30 border-b border-purple-500/30">
+                  <h4 className="text-sm font-semibold text-purple-300 mb-2">
+                    🤖 Cosa ha estratto Gemini dal video:
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {extractedProducts.map((ep, idx) => (
+                      <div key={idx} className="text-xs text-gray-300 bg-black/30 rounded px-2 py-1">
+                        <span className="font-medium text-white">{ep.productName}</span>
+                        {' - '}
+                        <span className="text-green-400">{ep.quantity} {ep.uom}</span>
+                        {' '}
+                        <span className="text-gray-500">(conf: {(ep.confidence * 100).toFixed(0)}%)</span>
+                        {ep.observations && (
+                          <span className="text-yellow-400 ml-2">📝 {ep.observations}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {extractedProducts.length === 0 && (
+                    <p className="text-xs text-red-400">
+                      ⚠️ Gemini non ha estratto nessun prodotto dal video. Controlla la qualità del video e le etichette.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Results List */}
               <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
