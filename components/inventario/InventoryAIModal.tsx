@@ -378,6 +378,35 @@ export function InventoryAIModal({
     });
   };
 
+  // Conferma e salva UN SINGOLO prodotto
+  const handleConfirmSingle = (index: number) => {
+    const result = results[index];
+
+    console.log('✅ [InventoryAIModal] Conferma singolo prodotto:', result.name, 'qty:', result.videoQuantity);
+
+    // Salva questo singolo prodotto
+    onConfirmResults([{
+      productId: result.productId,
+      quantId: result.quantId,
+      newQuantity: result.videoQuantity,
+      lotName: result.lotName,
+      expiryDate: result.expiryDate,
+      action: 'update'
+    }]);
+
+    // Marca come salvato (cambia stato a 'match' e action a 'skip')
+    setResults(prev => {
+      const newResults = [...prev];
+      newResults[index] = {
+        ...newResults[index],
+        status: 'match',
+        action: 'skip',
+        odooQuantity: result.videoQuantity // Aggiorna anche la quantità Odoo visualizzata
+      };
+      return newResults;
+    });
+  };
+
   const handleConfirmAll = () => {
     const confirmedResults = results
       .filter(r => r.action !== 'skip')
@@ -708,15 +737,16 @@ export function InventoryAIModal({
                           {/* Action Buttons */}
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleUpdateResult(index, { action: 'update' })}
+                              onClick={() => handleConfirmSingle(index)}
+                              disabled={result.action === 'skip' && result.status === 'match'}
                               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
-                                result.action === 'update'
-                                  ? 'bg-green-600 text-white shadow-lg'
-                                  : 'glass-weak hover:bg-white/10'
+                                result.action === 'skip' && result.status === 'match'
+                                  ? 'bg-green-800 text-green-200 cursor-not-allowed'
+                                  : 'bg-green-600 hover:bg-green-700 text-white shadow-lg'
                               }`}
                             >
                               <Check className="w-4 h-4" />
-                              Conferma
+                              {result.action === 'skip' && result.status === 'match' ? 'Salvato ✓' : 'Conferma'}
                             </button>
                             <button
                               onClick={() => {
