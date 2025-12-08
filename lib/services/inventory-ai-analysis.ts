@@ -378,7 +378,7 @@ async function agent2NormalizeProducts(
 
   console.log(`[Agent 2] Sending to Claude Haiku...`);
   const message = await client.messages.create({
-    model: "claude-3-haiku-20240307",
+    model: "claude-3-5-haiku-latest",
     max_tokens: 4096,
     messages: [
       {
@@ -543,9 +543,9 @@ async function agent3MatchProducts(
   const client = getAnthropic();
   const prompt = buildMatchingPrompt(normalizedProducts, expectedProducts);
 
-  console.log(`[Agent 3] Sending to Claude Sonnet 3.5...`);
+  console.log(`[Agent 3] Sending to Claude Sonnet...`);
   const message = await client.messages.create({
-    model: "claude-3-5-sonnet-20241022",
+    model: "claude-sonnet-4-20250514",
     max_tokens: 8192,
     messages: [
       {
