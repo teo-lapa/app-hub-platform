@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Search, Package, MapPin, Calculator, RotateCcw } from 'lucide-react';
+import { Camera, Search, Package, MapPin, Calculator, RotateCcw, Video, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
@@ -15,6 +15,7 @@ import { ProductList } from '@/components/inventario/ProductList';
 import { ProductEditModal } from '@/components/inventario/ProductEditModal';
 import { ConnectionStatus } from '@/components/inventario/ConnectionStatus';
 import { VerificationListModal } from '@/components/inventario/VerificationListModal';
+import { InventoryAIModal } from '@/components/inventario/InventoryAIModal';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
 import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
 import toast from 'react-hot-toast';
@@ -66,6 +67,9 @@ export default function InventarioPage() {
   const [showVerificationList, setShowVerificationList] = useState(false);
   const [verificationRequestsCount, setVerificationRequestsCount] = useState(0);
   const [verificationRequests, setVerificationRequests] = useState<any[]>([]);
+
+  // Stati per Inventario AI
+  const [showInventoryAIModal, setShowInventoryAIModal] = useState(false);
 
   // Form fields
   const [locationCode, setLocationCode] = useState('');
@@ -623,12 +627,27 @@ export default function InventarioPage() {
             animate={{ opacity: 1, y: 0 }}
             className="glass-strong rounded-xl p-6 mb-6 border-l-4 border-blue-500"
           >
-            <h3 className="font-semibold text-lg mb-2">
-              {appState.currentLocation.complete_name || appState.currentLocation.name}
-            </h3>
-            <p className="text-muted-foreground">
-              Codice: {appState.currentLocation.barcode || appState.currentLocation.name}
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  {appState.currentLocation.complete_name || appState.currentLocation.name}
+                </h3>
+                <p className="text-muted-foreground">
+                  Codice: {appState.currentLocation.barcode || appState.currentLocation.name}
+                </p>
+              </div>
+              {/* Pulsante Inventario AI */}
+              {locationProducts.length > 0 && (
+                <button
+                  onClick={() => setShowInventoryAIModal(true)}
+                  className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-purple-500/25"
+                >
+                  <Video className="w-5 h-5" />
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden sm:inline">Inventario AI</span>
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -970,6 +989,78 @@ export default function InventarioPage() {
         requests={verificationRequests}
         onRefresh={loadVerificationRequests}
       />
+
+      {/* Modal Inventario AI */}
+      {appState.currentLocation && (
+        <InventoryAIModal
+          isOpen={showInventoryAIModal}
+          onClose={() => setShowInventoryAIModal(false)}
+          locationId={appState.currentLocation.id}
+          locationName={appState.currentLocation.complete_name || appState.currentLocation.name}
+          products={locationProducts.map(p => ({
+            id: p.id,
+            quant_id: p.quant_id,
+            name: p.name,
+            code: p.code,
+            quantity: p.stockQuantity || p.quantity || 0,
+            uom: p.uom,
+            lot_id: p.lot?.id,
+            lot_name: p.lot?.name,
+            lot_expiration_date: p.lot?.expiration_date,
+            image: p.image
+          }))}
+          onConfirmResults={async (results) => {
+            // Aggiorna i prodotti con i risultati AI
+            for (const result of results) {
+              if (result.action === 'skip') continue;
+
+              try {
+                // Salva su Odoo
+                const saveResponse = await fetch('/api/inventory/update-quantity', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    productId: result.productId,
+                    locationId: appState.currentLocation!.id,
+                    quantId: result.quantId,
+                    quantity: result.newQuantity,
+                    lotName: result.lotName,
+                    expiryDate: result.expiryDate
+                  })
+                });
+
+                const saveData = await saveResponse.json();
+                if (!saveData.success) {
+                  console.error('❌ Errore salvataggio:', saveData.error);
+                  continue;
+                }
+
+                // Aggiorna stato locale
+                if (result.action === 'update') {
+                  setLocationProducts(prev => prev.map(p => {
+                    if (result.quantId ? p.quant_id === result.quantId : p.id === result.productId) {
+                      return {
+                        ...p,
+                        countedQuantity: result.newQuantity,
+                        difference: result.newQuantity - (p.stockQuantity || 0),
+                        isCountedNow: true,
+                        inventory_date: new Date().toISOString()
+                      };
+                    }
+                    return p;
+                  }));
+                }
+
+              } catch (error: any) {
+                console.error('❌ Errore aggiornamento prodotto:', error);
+              }
+            }
+
+            toast.success(`✅ Inventario AI completato! ${results.filter(r => r.action !== 'skip').length} prodotti aggiornati`);
+          }}
+        />
+      )}
     </div>
   );
 } 
