@@ -2075,271 +2075,6 @@ export default function SocialAIStudioPage() {
                   </div>
                 )}
 
-                {/* Storia del Prodotto */}
-                {storyData && (
-                  <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <BookOpen className="h-6 w-6 text-emerald-400" />
-                      <h3 className="text-white font-semibold">Storia del Prodotto</h3>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
-                    </div>
-
-                    {/* Immagine storia */}
-                    {storyData.imageUrl && (
-                      <img
-                        src={storyData.imageUrl}
-                        alt="Storia prodotto"
-                        className="w-full h-auto rounded-lg border border-emerald-500/50 mb-4"
-                      />
-                    )}
-
-                    {/* Titolo e Introduzione */}
-                    <div className="mb-4">
-                      <h4 className="text-xl font-bold text-emerald-200 mb-2">
-                        {storyData.story.title}
-                      </h4>
-                      <p className="text-sm text-emerald-300/90 italic mb-3">
-                        {storyData.story.subtitle}
-                      </p>
-                      <p className="text-sm text-emerald-300/90">
-                        {storyData.story.introduction}
-                      </p>
-                    </div>
-
-                    {/* Origine */}
-                    <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
-                      <div className="text-sm font-semibold text-emerald-200 mb-2">📍 Origine</div>
-                      <p className="text-xs text-emerald-300/90 mb-1">
-                        <strong>Regione:</strong> {storyData.story.origin?.region}
-                      </p>
-                      <p className="text-xs text-emerald-300/90">
-                        {storyData.story.origin?.history}
-                      </p>
-                      {storyData.story.origin?.year && (
-                        <p className="text-xs text-emerald-400 mt-1">
-                          📅 {storyData.story.origin.year}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Tradizione */}
-                    <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
-                      <div className="text-sm font-semibold text-emerald-200 mb-2">🏛️ Tradizione</div>
-                      <p className="text-xs text-emerald-300/90 mb-2">
-                        {storyData.story.tradition?.description}
-                      </p>
-                      <p className="text-xs text-emerald-300/90">
-                        <strong>Significato culturale:</strong> {storyData.story.tradition?.culturalSignificance}
-                      </p>
-                    </div>
-
-                    {/* Certificazione */}
-                    {storyData.story.certification && storyData.story.certification.type !== 'Nessuna' && (
-                      <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-                        <div className="text-sm font-semibold text-yellow-200 mb-2">
-                          🏅 Certificazione {storyData.story.certification.type}
-                        </div>
-                        <p className="text-xs text-yellow-300/90">
-                          {storyData.story.certification.description}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Curiosità */}
-                    {storyData.story.curiosities && storyData.story.curiosities.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-sm font-semibold text-emerald-200 mb-2">💡 Curiosità</div>
-                        <div className="space-y-1.5">
-                          {storyData.story.curiosities.map((curiosity: string, idx: number) => (
-                            <div key={idx} className="flex items-start space-x-2 text-sm">
-                              <span className="text-emerald-400">•</span>
-                              <span className="text-emerald-200">{curiosity}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Abbinamenti */}
-                    {storyData.story.pairings && storyData.story.pairings.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-sm font-semibold text-emerald-200 mb-2">🍷 Abbinamenti</div>
-                        <div className="flex flex-wrap gap-2">
-                          {storyData.story.pairings.map((pairing: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-emerald-900/40 border border-emerald-500/30 rounded-full text-xs text-emerald-300">
-                              {pairing}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Quote */}
-                    {storyData.story.quote && (
-                      <div className="mb-4 p-3 bg-emerald-900/30 border-l-4 border-emerald-500 rounded-r-lg italic">
-                        <p className="text-sm text-emerald-200">
-                          "{storyData.story.quote}"
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Pulsanti */}
-                    <div className="space-y-3">
-                      {storyData.imageUrl && (
-                        <button
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = storyData.imageUrl;
-                            link.download = `storia-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
-                            link.click();
-                          }}
-                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Download Immagine Storia</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={handlePublishStory}
-                        disabled={isPublishingStory}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                      >
-                        {isPublishingStory ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span>Pubblicazione in corso...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Share2 className="h-5 w-5" />
-                            <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
-                          </>
-                        )}
-                      </button>
-
-                      {storyPublishProgress.length > 0 && (
-                        <div className="bg-slate-900/50 rounded-lg p-3 border border-emerald-500/30">
-                          <div className="space-y-1">
-                            {storyPublishProgress.map((msg, idx) => (
-                              <div key={idx} className="text-xs text-emerald-200">
-                                {msg}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Curiosità Food - Lista risultati */}
-                {curiositiesList.length > 0 && (
-                  <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Lightbulb className="h-6 w-6 text-rose-400" />
-                      <h3 className="text-white font-semibold">Curiosità Food Trovate</h3>
-                      <span className="ml-auto text-xs text-rose-300 bg-rose-900/40 px-2 py-1 rounded-full">
-                        {curiositiesList.length} risultati
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-rose-300/70 mb-4">
-                      Seleziona una curiosità da pubblicare sui social:
-                    </p>
-
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {curiositiesList.map((curiosity, idx) => (
-                        <div
-                          key={curiosity.id || idx}
-                          onClick={() => setSelectedCuriosity(curiosity)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all ${
-                            selectedCuriosity?.id === curiosity.id
-                              ? 'bg-rose-500/30 border-2 border-rose-400'
-                              : 'bg-slate-900/50 border border-rose-500/30 hover:border-rose-400'
-                          }`}
-                        >
-                          <h4 className="text-sm font-semibold text-rose-200 mb-1">
-                            {curiosity.title}
-                          </h4>
-                          <p className="text-xs text-rose-300/80 mb-2">
-                            {curiosity.summary}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {curiosity.tags?.slice(0, 3).map((tag: string, tagIdx: number) => (
-                              <span key={tagIdx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                          {curiosity.source && (
-                            <p className="text-xs text-rose-400 mt-2">
-                              📚 {curiosity.source}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Dettagli curiosità selezionata */}
-                    {selectedCuriosity && (
-                      <div className="mt-4 p-4 bg-rose-900/30 border border-rose-500/50 rounded-lg">
-                        <h4 className="text-sm font-bold text-rose-200 mb-2">
-                          ✨ {selectedCuriosity.title}
-                        </h4>
-                        <p className="text-sm text-rose-300/90 mb-3">
-                          {selectedCuriosity.fullContent}
-                        </p>
-
-                        <div className="mb-3">
-                          <div className="text-xs text-rose-300 mb-1">Caption Social:</div>
-                          <p className="text-xs text-white bg-slate-900/50 p-2 rounded">
-                            {selectedCuriosity.socialCaption}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {selectedCuriosity.hashtags?.map((tag: string, idx: number) => (
-                            <span key={idx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-
-                        <button
-                          onClick={handlePublishCuriosity}
-                          disabled={isPublishingCuriosity}
-                          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        >
-                          {isPublishingCuriosity ? (
-                            <>
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                              <span>Pubblicazione in corso...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="h-5 w-5" />
-                              <span>Pubblica Curiosità sui Social</span>
-                            </>
-                          )}
-                        </button>
-
-                        {curiosityPublishProgress.length > 0 && (
-                          <div className="mt-3 bg-slate-900/50 rounded-lg p-3 border border-rose-500/30">
-                            <div className="space-y-1">
-                              {curiosityPublishProgress.map((msg, idx) => (
-                                <div key={idx} className="text-xs text-rose-200">
-                                  {msg}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Immagine */}
                 {result.image && (
                   <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
@@ -2468,7 +2203,7 @@ export default function SocialAIStudioPage() {
             )}
 
             {/* Placeholder quando non ci sono risultati */}
-            {!result && !isGenerating && (
+            {!result && !isGenerating && !storyData && curiositiesList.length === 0 && (
               <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-12 text-center">
                 <Sparkles className="h-16 w-16 text-purple-500/30 mx-auto mb-4" />
                 <div className="text-purple-400 font-medium">
@@ -2477,6 +2212,275 @@ export default function SocialAIStudioPage() {
                 <div className="text-purple-500/50 text-sm mt-2">
                   Carica una foto e clicca "Genera"
                 </div>
+              </div>
+            )}
+
+            {/* ========================================== */}
+            {/* SEZIONI INDIPENDENTI (fuori da result) */}
+            {/* ========================================== */}
+
+            {/* Storia del Prodotto - Mostrata indipendentemente */}
+            {storyData && (
+              <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <BookOpen className="h-6 w-6 text-emerald-400" />
+                  <h3 className="text-white font-semibold">Storia del Prodotto</h3>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                </div>
+
+                {/* Immagine storia */}
+                {storyData.imageUrl && (
+                  <img
+                    src={storyData.imageUrl}
+                    alt="Storia prodotto"
+                    className="w-full h-auto rounded-lg border border-emerald-500/50 mb-4"
+                  />
+                )}
+
+                {/* Titolo e Introduzione */}
+                <div className="mb-4">
+                  <h4 className="text-xl font-bold text-emerald-200 mb-2">
+                    {storyData.story.title}
+                  </h4>
+                  <p className="text-sm text-emerald-300/90 italic mb-3">
+                    {storyData.story.subtitle}
+                  </p>
+                  <p className="text-sm text-emerald-300/90">
+                    {storyData.story.introduction}
+                  </p>
+                </div>
+
+                {/* Origine */}
+                <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-emerald-200 mb-2">📍 Origine</div>
+                  <p className="text-xs text-emerald-300/90 mb-1">
+                    <strong>Regione:</strong> {storyData.story.origin?.region}
+                  </p>
+                  <p className="text-xs text-emerald-300/90">
+                    {storyData.story.origin?.history}
+                  </p>
+                  {storyData.story.origin?.year && (
+                    <p className="text-xs text-emerald-400 mt-1">
+                      📅 {storyData.story.origin.year}
+                    </p>
+                  )}
+                </div>
+
+                {/* Tradizione */}
+                <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-emerald-200 mb-2">🏛️ Tradizione</div>
+                  <p className="text-xs text-emerald-300/90 mb-2">
+                    {storyData.story.tradition?.description}
+                  </p>
+                  <p className="text-xs text-emerald-300/90">
+                    <strong>Significato culturale:</strong> {storyData.story.tradition?.culturalSignificance}
+                  </p>
+                </div>
+
+                {/* Certificazione */}
+                {storyData.story.certification && storyData.story.certification.type !== 'Nessuna' && (
+                  <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                    <div className="text-sm font-semibold text-yellow-200 mb-2">
+                      🏅 Certificazione {storyData.story.certification.type}
+                    </div>
+                    <p className="text-xs text-yellow-300/90">
+                      {storyData.story.certification.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Curiosità */}
+                {storyData.story.curiosities && storyData.story.curiosities.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-emerald-200 mb-2">💡 Curiosità</div>
+                    <div className="space-y-1.5">
+                      {storyData.story.curiosities.map((curiosity: string, idx: number) => (
+                        <div key={idx} className="flex items-start space-x-2 text-sm">
+                          <span className="text-emerald-400">•</span>
+                          <span className="text-emerald-200">{curiosity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Abbinamenti */}
+                {storyData.story.pairings && storyData.story.pairings.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-emerald-200 mb-2">🍷 Abbinamenti</div>
+                    <div className="flex flex-wrap gap-2">
+                      {storyData.story.pairings.map((pairing: string, idx: number) => (
+                        <span key={idx} className="px-2 py-1 bg-emerald-900/40 border border-emerald-500/30 rounded-full text-xs text-emerald-300">
+                          {pairing}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quote */}
+                {storyData.story.quote && (
+                  <div className="mb-4 p-3 bg-emerald-900/30 border-l-4 border-emerald-500 rounded-r-lg italic">
+                    <p className="text-sm text-emerald-200">
+                      "{storyData.story.quote}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Pulsanti */}
+                <div className="space-y-3">
+                  {storyData.imageUrl && (
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = storyData.imageUrl;
+                        link.download = `storia-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                        link.click();
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download Immagine Storia</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handlePublishStory}
+                    disabled={isPublishingStory}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    {isPublishingStory ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Pubblicazione in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-5 w-5" />
+                        <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
+                      </>
+                    )}
+                  </button>
+
+                  {storyPublishProgress.length > 0 && (
+                    <div className="bg-slate-900/50 rounded-lg p-3 border border-emerald-500/30">
+                      <div className="space-y-1">
+                        {storyPublishProgress.map((msg, idx) => (
+                          <div key={idx} className="text-xs text-emerald-200">
+                            {msg}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Curiosità Food - Lista risultati - Mostrata indipendentemente */}
+            {curiositiesList.length > 0 && (
+              <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Lightbulb className="h-6 w-6 text-rose-400" />
+                  <h3 className="text-white font-semibold">Curiosità Food Trovate</h3>
+                  <span className="ml-auto text-xs text-rose-300 bg-rose-900/40 px-2 py-1 rounded-full">
+                    {curiositiesList.length} risultati
+                  </span>
+                </div>
+
+                <p className="text-xs text-rose-300/70 mb-4">
+                  Seleziona una curiosità da pubblicare sui social:
+                </p>
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {curiositiesList.map((curiosity, idx) => (
+                    <div
+                      key={curiosity.id || idx}
+                      onClick={() => setSelectedCuriosity(curiosity)}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
+                        selectedCuriosity?.id === curiosity.id
+                          ? 'bg-rose-500/30 border-2 border-rose-400'
+                          : 'bg-slate-900/50 border border-rose-500/30 hover:border-rose-400'
+                      }`}
+                    >
+                      <h4 className="text-sm font-semibold text-rose-200 mb-1">
+                        {curiosity.title}
+                      </h4>
+                      <p className="text-xs text-rose-300/80 mb-2">
+                        {curiosity.summary}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {curiosity.tags?.slice(0, 3).map((tag: string, tagIdx: number) => (
+                          <span key={tagIdx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      {curiosity.source && (
+                        <p className="text-xs text-rose-400 mt-2">
+                          📚 {curiosity.source}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dettagli curiosità selezionata */}
+                {selectedCuriosity && (
+                  <div className="mt-4 p-4 bg-rose-900/30 border border-rose-500/50 rounded-lg">
+                    <h4 className="text-sm font-bold text-rose-200 mb-2">
+                      ✨ {selectedCuriosity.title}
+                    </h4>
+                    <p className="text-sm text-rose-300/90 mb-3">
+                      {selectedCuriosity.fullContent}
+                    </p>
+
+                    <div className="mb-3">
+                      <div className="text-xs text-rose-300 mb-1">Caption Social:</div>
+                      <p className="text-xs text-white bg-slate-900/50 p-2 rounded">
+                        {selectedCuriosity.socialCaption}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {selectedCuriosity.hashtags?.map((tag: string, idx: number) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handlePublishCuriosity}
+                      disabled={isPublishingCuriosity}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                      {isPublishingCuriosity ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Pubblicazione in corso...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-5 w-5" />
+                          <span>Pubblica Curiosità sui Social</span>
+                        </>
+                      )}
+                    </button>
+
+                    {curiosityPublishProgress.length > 0 && (
+                      <div className="mt-3 bg-slate-900/50 rounded-lg p-3 border border-rose-500/30">
+                        <div className="space-y-1">
+                          {curiosityPublishProgress.map((msg, idx) => (
+                            <div key={idx} className="text-xs text-rose-200">
+                              {msg}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
