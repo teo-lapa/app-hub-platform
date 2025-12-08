@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per upload video
@@ -8,6 +9,7 @@ export const maxDuration = 300; // 5 minuti per upload video
  * POST /api/social-ai/publish-youtube
  *
  * PUBBLICAZIONE AUTOMATICA VIDEO SU YOUTUBE
+ * USA LA SESSIONE DELL'UTENTE LOGGATO (come tutte le altre app)
  *
  * Carica video generato su YouTube tramite Odoo con:
  * - Titolo ottimizzato automaticamente
@@ -41,82 +43,6 @@ interface PublishYouTubeResult {
   error?: string;
 }
 
-// ==========================================
-// ODOO XML-RPC HELPERS
-// ==========================================
-
-function buildXMLRPC(methodName: string, params: any[]): string {
-  const paramsXML = params.map(p => valueToXML(p)).join('');
-  return `<?xml version="1.0"?>
-<methodCall>
-  <methodName>${methodName}</methodName>
-  <params>
-    ${paramsXML}
-  </params>
-</methodCall>`;
-}
-
-function valueToXML(value: any): string {
-  if (value === null || value === undefined) {
-    return '<param><value><boolean>0</boolean></value></param>';
-  }
-  if (typeof value === 'boolean') {
-    return `<param><value><boolean>${value ? '1' : '0'}</boolean></value></param>`;
-  }
-  if (typeof value === 'number') {
-    return `<param><value><int>${value}</int></value></param>`;
-  }
-  if (typeof value === 'string') {
-    return `<param><value><string>${escapeXML(value)}</string></value></param>`;
-  }
-  if (Array.isArray(value)) {
-    const arrayData = value.map(v => valueToXMLData(v)).join('');
-    return `<param><value><array><data>${arrayData}</data></array></value></param>`;
-  }
-  if (typeof value === 'object') {
-    const members = Object.entries(value)
-      .map(([k, v]) => `<member><name>${k}</name>${valueToXMLData(v)}</member>`)
-      .join('');
-    return `<param><value><struct>${members}</struct></value></param>`;
-  }
-  return '<param><value><string></string></value></param>';
-}
-
-function valueToXMLData(value: any): string {
-  if (value === null || value === undefined) {
-    return '<value><boolean>0</boolean></value>';
-  }
-  if (typeof value === 'boolean') {
-    return `<value><boolean>${value ? '1' : '0'}</boolean></value>`;
-  }
-  if (typeof value === 'number') {
-    return `<value><int>${value}</int></value>`;
-  }
-  if (typeof value === 'string') {
-    return `<value><string>${escapeXML(value)}</string></value>`;
-  }
-  if (Array.isArray(value)) {
-    const arrayData = value.map(v => valueToXMLData(v)).join('');
-    return `<value><array><data>${arrayData}</data></array></value>`;
-  }
-  if (typeof value === 'object') {
-    const members = Object.entries(value)
-      .map(([k, v]) => `<member><name>${k}</name>${valueToXMLData(v)}</member>`)
-      .join('');
-    return `<value><struct>${members}</struct></value>`;
-  }
-  return '<value><string></string></value>';
-}
-
-function escapeXML(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse<PublishYouTubeResult>> {
   try {
     const {
@@ -142,19 +68,35 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
       );
     }
 
-    const odooUrl = process.env.ODOO_URL;
-    const odooDb = process.env.ODOO_DB;
-    const odooUsername = process.env.ODOO_USERNAME;
-    const odooPassword = process.env.ODOO_PASSWORD;
+    console.log(`[Publish YouTube] Starting for product: ${productName}`);
 
-    if (!odooUrl || !odooDb || !odooUsername || !odooPassword) {
-      return NextResponse.json(
-        { success: false, error: 'Credenziali Odoo non configurate' },
-        { status: 500 }
-      );
+    // ==========================================
+    // FASE 0: AUTENTICAZIONE ODOO CON UTENTE LOGGATO
+    // ==========================================
+
+    console.log('[Publish YouTube] Getting Odoo session from logged-in user...');
+
+    // Estrai cookies dalla request (utente loggato nell'app)
+    const userCookies = request.headers.get('cookie');
+
+    if (!userCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Devi essere loggato per pubblicare. Effettua il login.'
+      }, { status: 401 });
     }
 
-    console.log(`[Publish YouTube] Starting for product: ${productName}`);
+    // Ottieni sessione Odoo dell'utente loggato
+    const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
+
+    if (!odooCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Sessione Odoo non valida. Effettua nuovamente il login.'
+      }, { status: 401 });
+    }
+
+    console.log(`[Publish YouTube] Odoo session obtained! User UID: ${uid}`);
 
     const ai = new GoogleGenAI({ apiKey });
 
@@ -261,36 +203,7 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     console.log(`[Publish YouTube] Description generated (${youtubeDescription.length} chars)`);
 
     // ==========================================
-    // FASE 3: AUTENTICAZIONE ODOO
-    // ==========================================
-
-    console.log('[Publish YouTube] Authenticating with Odoo...');
-
-    const authBody = buildXMLRPC('authenticate', [
-      odooDb,
-      odooUsername,
-      odooPassword,
-      {}
-    ]);
-
-    const authResponse = await fetch(`${odooUrl}/xmlrpc/2/common`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: authBody
-    });
-
-    const authXML = await authResponse.text();
-    const uidMatch = authXML.match(/<int>(\d+)<\/int>/);
-
-    if (!uidMatch) {
-      throw new Error('Autenticazione Odoo fallita');
-    }
-
-    const uid = parseInt(uidMatch[1]);
-    console.log(`[Publish YouTube] Authenticated! UID: ${uid}`);
-
-    // ==========================================
-    // FASE 4: UPLOAD VIDEO SU ODOO
+    // FASE 3: UPLOAD VIDEO SU ODOO
     // ==========================================
 
     console.log('[Publish YouTube] Uploading video to Odoo...');
@@ -306,10 +219,8 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     // Crea attachment video
     const videoFilename = `${productName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
 
-    const createVideoAttachmentBody = buildXMLRPC('execute_kw', [
-      odooDb,
-      uid,
-      odooPassword,
+    const videoAttachmentId = await callOdoo(
+      odooCookies,
       'ir.attachment',
       'create',
       [{
@@ -320,27 +231,16 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         mimetype: 'video/mp4',
         public: true
       }]
-    ]);
+    );
 
-    const videoAttachmentResponse = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: createVideoAttachmentBody
-    });
-
-    const videoAttachmentXML = await videoAttachmentResponse.text();
-    const videoAttachmentIdMatch = videoAttachmentXML.match(/<int>(\d+)<\/int>/);
-
-    if (!videoAttachmentIdMatch) {
-      console.error('Video upload failed:', videoAttachmentXML);
+    if (!videoAttachmentId) {
       throw new Error('Upload video fallito');
     }
 
-    const videoAttachmentId = parseInt(videoAttachmentIdMatch[1]);
     console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
 
     // ==========================================
-    // FASE 5: CREA SOCIAL.POST YOUTUBE
+    // FASE 4: CREA SOCIAL.POST YOUTUBE
     // ==========================================
 
     console.log('[Publish YouTube] Creating YouTube post...');
@@ -348,10 +248,8 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     // Account YouTube LAPA (ID: 7)
     const youtubeAccountId = 7;
 
-    const createPostBody = buildXMLRPC('execute_kw', [
-      odooDb,
-      uid,
-      odooPassword,
+    const postId = await callOdoo(
+      odooCookies,
       'social.post',
       'create',
       [{
@@ -360,57 +258,34 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         youtube_title: youtubeTitle,
         youtube_description: youtubeDescription,
         // Link video attachment
-        // NOTA: Odoo potrebbe usare campi diversi per il video
-        // Verifica documentazione Odoo Social per campo corretto
+        image_ids: [[6, 0, [videoAttachmentId]]]
       }]
-    ]);
+    );
 
-    const postResponse = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: createPostBody
-    });
-
-    const postXML = await postResponse.text();
-    const postIdMatch = postXML.match(/<int>(\d+)<\/int>/);
-
-    if (!postIdMatch) {
-      console.error('Post creation failed:', postXML);
+    if (!postId) {
       throw new Error('Creazione post YouTube fallita');
     }
 
-    const postId = parseInt(postIdMatch[1]);
     console.log(`[Publish YouTube] Post created! ID: ${postId}`);
 
     // ==========================================
-    // FASE 6: PUBBLICA POST (trigger upload YouTube)
+    // FASE 5: PUBBLICA POST (trigger upload YouTube)
     // ==========================================
 
     console.log('[Publish YouTube] Publishing to YouTube...');
 
-    // Chiama il metodo action_post() su social.post per pubblicare
-    const publishBody = buildXMLRPC('execute_kw', [
-      odooDb,
-      uid,
-      odooPassword,
-      'social.post',
-      'action_post',
-      [[postId]]
-    ]);
-
-    const publishResponse = await fetch(`${odooUrl}/xmlrpc/2/object`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml' },
-      body: publishBody
-    });
-
-    const publishXML = await publishResponse.text();
-
-    if (publishXML.includes('faultString')) {
-      console.warn('[Publish YouTube] Auto-publish might have failed, check Odoo UI');
-      // Non bloccare - potrebbe richiedere pubblicazione manuale
-    } else {
+    try {
+      // Chiama il metodo action_post() su social.post per pubblicare
+      await callOdoo(
+        odooCookies,
+        'social.post',
+        'action_post',
+        [[postId]]
+      );
       console.log('[Publish YouTube] Published successfully!');
+    } catch (publishError: any) {
+      console.warn('[Publish YouTube] Auto-publish might have failed:', publishError.message);
+      // Non bloccare - potrebbe richiedere pubblicazione manuale
     }
 
     // ==========================================

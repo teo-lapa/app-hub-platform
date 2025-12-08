@@ -6,7 +6,7 @@ import {
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
-  AlertCircle, Zap, Youtube
+  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -90,6 +90,23 @@ export default function SocialAIStudioPage() {
   // YouTube publishing states
   const [isPublishingYouTube, setIsPublishingYouTube] = useState(false);
   const [youtubePublishResult, setYoutubePublishResult] = useState<any | null>(null);
+
+  // Product Story states
+  const [includeProductStory, setIncludeProductStory] = useState(false);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [storyData, setStoryData] = useState<any | null>(null);
+  const [isPublishingStory, setIsPublishingStory] = useState(false);
+  const [storyPublishProgress, setStoryPublishProgress] = useState<string[]>([]);
+
+  // Food Curiosity states
+  const [includeFoodCuriosity, setIncludeFoodCuriosity] = useState(false);
+  const [curiosityTopic, setCuriosityTopic] = useState('');
+  const [curiosityCategory, setCuriosityCategory] = useState('');
+  const [isSearchingCuriosities, setIsSearchingCuriosities] = useState(false);
+  const [curiositiesList, setCuriositiesList] = useState<any[]>([]);
+  const [selectedCuriosity, setSelectedCuriosity] = useState<any | null>(null);
+  const [isPublishingCuriosity, setIsPublishingCuriosity] = useState(false);
+  const [curiosityPublishProgress, setCuriosityPublishProgress] = useState<string[]>([]);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -445,6 +462,203 @@ export default function SocialAIStudioPage() {
       setPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
     } finally {
       setIsPublishingRecipe(false);
+    }
+  };
+
+  // ==========================================
+  // Genera Storia Prodotto
+  // ==========================================
+  const handleGenerateStory = async () => {
+    if (!productName) {
+      toast.error('Inserisci il nome del prodotto prima!');
+      return;
+    }
+
+    setIsGeneratingStory(true);
+    setStoryData(null);
+
+    const loadingToast = toast.loading('Ricerca storia e origine prodotto...');
+
+    try {
+      const response = await fetch('/api/social-ai/product-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName,
+          productDescription: productDescription || undefined,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione storia');
+      }
+
+      setStoryData(data.data);
+      toast.success('Storia prodotto generata!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione storia:', error);
+      toast.error(error.message || 'Errore durante generazione storia', { id: loadingToast });
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Storia Prodotto su Blog + Social
+  // ==========================================
+  const handlePublishStory = async () => {
+    if (!storyData || !productName) {
+      toast.error('Genera prima la storia del prodotto!');
+      return;
+    }
+
+    setIsPublishingStory(true);
+    setStoryPublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione storia in corso...');
+
+    try {
+      setStoryPublishProgress(['🚀 Inizio pubblicazione storia...']);
+
+      const response = await fetch('/api/social-ai/publish-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storyData: storyData.story,
+          productName,
+          productImage: productImage || undefined,
+          storyImage: storyData.imageUrl || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      const progressMessages: string[] = [];
+
+      if (data.data?.translations) {
+        progressMessages.push(`✅ Storia tradotta in ${data.data.translations.length} lingue!`);
+      }
+
+      if (data.data?.blogPostId) {
+        progressMessages.push('✅ Blog post creato!');
+      }
+
+      if (data.data?.socialPosts) {
+        progressMessages.push('✅ Post social pubblicati!');
+      }
+
+      progressMessages.push('🎉 Pubblicazione storia completata!');
+      setStoryPublishProgress(prev => [...prev, ...progressMessages]);
+
+      toast.success('Storia pubblicata su Blog e Social!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione storia:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setStoryPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingStory(false);
+    }
+  };
+
+  // ==========================================
+  // Cerca Curiosità Food
+  // ==========================================
+  const handleSearchCuriosities = async () => {
+    setIsSearchingCuriosities(true);
+    setCuriositiesList([]);
+    setSelectedCuriosity(null);
+
+    const loadingToast = toast.loading('Ricerca curiosità food in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/food-curiosity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: curiosityTopic || undefined,
+          category: curiosityCategory || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante ricerca curiosità');
+      }
+
+      setCuriositiesList(data.data.curiosities || []);
+      toast.success(`Trovate ${data.data.curiosities.length} curiosità!`, { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore ricerca curiosità:', error);
+      toast.error(error.message || 'Errore durante ricerca', { id: loadingToast });
+    } finally {
+      setIsSearchingCuriosities(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Curiosità sui Social
+  // ==========================================
+  const handlePublishCuriosity = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    setIsPublishingCuriosity(true);
+    setCuriosityPublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione curiosità sui social...');
+
+    try {
+      setCuriosityPublishProgress(['🚀 Inizio pubblicazione curiosità...']);
+
+      const response = await fetch('/api/social-ai/publish-curiosity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          curiosity: selectedCuriosity,
+          generateImage: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      const progressMessages: string[] = [];
+
+      if (data.data?.imageId) {
+        progressMessages.push('✅ Immagine AI generata!');
+      }
+
+      if (data.data?.socialPostIds?.length > 0) {
+        progressMessages.push(`✅ Pubblicato su ${data.data.platforms.join(', ')}!`);
+      }
+
+      progressMessages.push('🎉 Curiosità pubblicata con successo!');
+      setCuriosityPublishProgress(prev => [...prev, ...progressMessages]);
+
+      toast.success('Curiosità pubblicata sui social!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione curiosità:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setCuriosityPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingCuriosity(false);
     }
   };
 
@@ -1237,6 +1451,134 @@ export default function SocialAIStudioPage() {
               )}
             </div>
 
+            {/* Storia del Prodotto */}
+            <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-6 w-6 text-emerald-400" />
+                  <h3 className="text-lg font-semibold text-emerald-300">Storia del Prodotto</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeProductStory}
+                    onChange={(e) => setIncludeProductStory(e.target.checked)}
+                    disabled={isGenerating || isGeneratingStory}
+                    className="w-4 h-4 rounded border-emerald-500/50 bg-slate-900/50 text-emerald-500 focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-emerald-300">Genera storia</span>
+                </label>
+              </div>
+              <p className="text-xs text-emerald-300/70 mb-3">
+                📚 Ricerca origine, tradizione, certificazioni DOP/IGP e curiosità storiche del prodotto → Blog + Social
+              </p>
+
+              {includeProductStory && (
+                <div className="mt-3">
+                  <button
+                    onClick={handleGenerateStory}
+                    disabled={isGeneratingStory || !productName}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingStory ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Ricerca in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-5 w-5" />
+                        <span>Cerca Storia Prodotto</span>
+                      </>
+                    )}
+                  </button>
+                  {!productName && (
+                    <p className="text-xs text-red-400 mt-2">
+                      ⚠️ Inserisci prima il nome del prodotto
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Curiosità Food */}
+            <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-6 w-6 text-rose-400" />
+                  <h3 className="text-lg font-semibold text-rose-300">Curiosità Food</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeFoodCuriosity}
+                    onChange={(e) => setIncludeFoodCuriosity(e.target.checked)}
+                    disabled={isGenerating || isSearchingCuriosities}
+                    className="w-4 h-4 rounded border-rose-500/50 bg-slate-900/50 text-rose-500 focus:ring-2 focus:ring-rose-500"
+                  />
+                  <span className="text-xs text-rose-300">Cerca curiosità</span>
+                </label>
+              </div>
+              <p className="text-xs text-rose-300/70 mb-3">
+                💡 Cerca news, trend e curiosità dal mondo del food mediterraneo → Scegli e pubblica sui Social
+              </p>
+
+              {includeFoodCuriosity && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-rose-300 mb-2">
+                      Argomento (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      value={curiosityTopic}
+                      onChange={(e) => setCuriosityTopic(e.target.value)}
+                      placeholder="Es: olio d'oliva, vino italiano, formaggi..."
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-rose-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white placeholder:text-slate-500 text-sm"
+                      disabled={isSearchingCuriosities}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-rose-300 mb-2">
+                      Categoria
+                    </label>
+                    <select
+                      value={curiosityCategory}
+                      onChange={(e) => setCuriosityCategory(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-rose-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white text-sm"
+                      disabled={isSearchingCuriosities}
+                    >
+                      <option value="">Tutte le categorie</option>
+                      <option value="news">📰 News recenti</option>
+                      <option value="tradizione">🏛️ Tradizione e storia</option>
+                      <option value="innovazione">🚀 Innovazione e futuro</option>
+                      <option value="sostenibilità">🌿 Sostenibilità</option>
+                      <option value="salute">❤️ Salute e benefici</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleSearchCuriosities}
+                    disabled={isSearchingCuriosities}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSearchingCuriosities ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Ricerca in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-5 w-5" />
+                        <span>Cerca Curiosità</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Geo-Targeting & RAG */}
             <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -1730,6 +2072,271 @@ export default function SocialAIStudioPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Storia del Prodotto */}
+                {storyData && (
+                  <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <BookOpen className="h-6 w-6 text-emerald-400" />
+                      <h3 className="text-white font-semibold">Storia del Prodotto</h3>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                    </div>
+
+                    {/* Immagine storia */}
+                    {storyData.imageUrl && (
+                      <img
+                        src={storyData.imageUrl}
+                        alt="Storia prodotto"
+                        className="w-full h-auto rounded-lg border border-emerald-500/50 mb-4"
+                      />
+                    )}
+
+                    {/* Titolo e Introduzione */}
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-emerald-200 mb-2">
+                        {storyData.story.title}
+                      </h4>
+                      <p className="text-sm text-emerald-300/90 italic mb-3">
+                        {storyData.story.subtitle}
+                      </p>
+                      <p className="text-sm text-emerald-300/90">
+                        {storyData.story.introduction}
+                      </p>
+                    </div>
+
+                    {/* Origine */}
+                    <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                      <div className="text-sm font-semibold text-emerald-200 mb-2">📍 Origine</div>
+                      <p className="text-xs text-emerald-300/90 mb-1">
+                        <strong>Regione:</strong> {storyData.story.origin?.region}
+                      </p>
+                      <p className="text-xs text-emerald-300/90">
+                        {storyData.story.origin?.history}
+                      </p>
+                      {storyData.story.origin?.year && (
+                        <p className="text-xs text-emerald-400 mt-1">
+                          📅 {storyData.story.origin.year}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Tradizione */}
+                    <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                      <div className="text-sm font-semibold text-emerald-200 mb-2">🏛️ Tradizione</div>
+                      <p className="text-xs text-emerald-300/90 mb-2">
+                        {storyData.story.tradition?.description}
+                      </p>
+                      <p className="text-xs text-emerald-300/90">
+                        <strong>Significato culturale:</strong> {storyData.story.tradition?.culturalSignificance}
+                      </p>
+                    </div>
+
+                    {/* Certificazione */}
+                    {storyData.story.certification && storyData.story.certification.type !== 'Nessuna' && (
+                      <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                        <div className="text-sm font-semibold text-yellow-200 mb-2">
+                          🏅 Certificazione {storyData.story.certification.type}
+                        </div>
+                        <p className="text-xs text-yellow-300/90">
+                          {storyData.story.certification.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Curiosità */}
+                    {storyData.story.curiosities && storyData.story.curiosities.length > 0 && (
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-emerald-200 mb-2">💡 Curiosità</div>
+                        <div className="space-y-1.5">
+                          {storyData.story.curiosities.map((curiosity: string, idx: number) => (
+                            <div key={idx} className="flex items-start space-x-2 text-sm">
+                              <span className="text-emerald-400">•</span>
+                              <span className="text-emerald-200">{curiosity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Abbinamenti */}
+                    {storyData.story.pairings && storyData.story.pairings.length > 0 && (
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-emerald-200 mb-2">🍷 Abbinamenti</div>
+                        <div className="flex flex-wrap gap-2">
+                          {storyData.story.pairings.map((pairing: string, idx: number) => (
+                            <span key={idx} className="px-2 py-1 bg-emerald-900/40 border border-emerald-500/30 rounded-full text-xs text-emerald-300">
+                              {pairing}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quote */}
+                    {storyData.story.quote && (
+                      <div className="mb-4 p-3 bg-emerald-900/30 border-l-4 border-emerald-500 rounded-r-lg italic">
+                        <p className="text-sm text-emerald-200">
+                          "{storyData.story.quote}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Pulsanti */}
+                    <div className="space-y-3">
+                      {storyData.imageUrl && (
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = storyData.imageUrl;
+                            link.download = `storia-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                            link.click();
+                          }}
+                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Immagine Storia</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handlePublishStory}
+                        disabled={isPublishingStory}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      >
+                        {isPublishingStory ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Pubblicazione in corso...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="h-5 w-5" />
+                            <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
+                          </>
+                        )}
+                      </button>
+
+                      {storyPublishProgress.length > 0 && (
+                        <div className="bg-slate-900/50 rounded-lg p-3 border border-emerald-500/30">
+                          <div className="space-y-1">
+                            {storyPublishProgress.map((msg, idx) => (
+                              <div key={idx} className="text-xs text-emerald-200">
+                                {msg}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Curiosità Food - Lista risultati */}
+                {curiositiesList.length > 0 && (
+                  <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Lightbulb className="h-6 w-6 text-rose-400" />
+                      <h3 className="text-white font-semibold">Curiosità Food Trovate</h3>
+                      <span className="ml-auto text-xs text-rose-300 bg-rose-900/40 px-2 py-1 rounded-full">
+                        {curiositiesList.length} risultati
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-rose-300/70 mb-4">
+                      Seleziona una curiosità da pubblicare sui social:
+                    </p>
+
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {curiositiesList.map((curiosity, idx) => (
+                        <div
+                          key={curiosity.id || idx}
+                          onClick={() => setSelectedCuriosity(curiosity)}
+                          className={`p-3 rounded-lg cursor-pointer transition-all ${
+                            selectedCuriosity?.id === curiosity.id
+                              ? 'bg-rose-500/30 border-2 border-rose-400'
+                              : 'bg-slate-900/50 border border-rose-500/30 hover:border-rose-400'
+                          }`}
+                        >
+                          <h4 className="text-sm font-semibold text-rose-200 mb-1">
+                            {curiosity.title}
+                          </h4>
+                          <p className="text-xs text-rose-300/80 mb-2">
+                            {curiosity.summary}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {curiosity.tags?.slice(0, 3).map((tag: string, tagIdx: number) => (
+                              <span key={tagIdx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          {curiosity.source && (
+                            <p className="text-xs text-rose-400 mt-2">
+                              📚 {curiosity.source}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Dettagli curiosità selezionata */}
+                    {selectedCuriosity && (
+                      <div className="mt-4 p-4 bg-rose-900/30 border border-rose-500/50 rounded-lg">
+                        <h4 className="text-sm font-bold text-rose-200 mb-2">
+                          ✨ {selectedCuriosity.title}
+                        </h4>
+                        <p className="text-sm text-rose-300/90 mb-3">
+                          {selectedCuriosity.fullContent}
+                        </p>
+
+                        <div className="mb-3">
+                          <div className="text-xs text-rose-300 mb-1">Caption Social:</div>
+                          <p className="text-xs text-white bg-slate-900/50 p-2 rounded">
+                            {selectedCuriosity.socialCaption}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1 mb-4">
+                          {selectedCuriosity.hashtags?.map((tag: string, idx: number) => (
+                            <span key={idx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={handlePublishCuriosity}
+                          disabled={isPublishingCuriosity}
+                          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        >
+                          {isPublishingCuriosity ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              <span>Pubblicazione in corso...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="h-5 w-5" />
+                              <span>Pubblica Curiosità sui Social</span>
+                            </>
+                          )}
+                        </button>
+
+                        {curiosityPublishProgress.length > 0 && (
+                          <div className="mt-3 bg-slate-900/50 rounded-lg p-3 border border-rose-500/30">
+                            <div className="space-y-1">
+                              {curiosityPublishProgress.map((msg, idx) => (
+                                <div key={idx} className="text-xs text-rose-200">
+                                  {msg}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

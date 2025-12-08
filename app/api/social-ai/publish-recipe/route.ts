@@ -35,7 +35,7 @@ interface PublishRecipeRequest {
   productName: string;
   productImage: string; // base64
   recipeImage: string; // base64
-  sources?: { title: string; url: string }[];
+  // sources rimosso - Google Search restituisce risultati non pertinenti (cataloghi, volantini)
 }
 
 interface OdooAttachment {
@@ -131,13 +131,12 @@ async function createBlogPostWithTranslations(
   odooCookies: string,
   translations: Record<string, any>,
   productName: string,
-  recipeImageId: number,
-  sources?: { title: string; url: string }[]
+  recipeImageId: number
 ): Promise<number> {
 
   // Usa la versione italiana come base
   const italianRecipe = translations['it_IT'];
-  const htmlContentIT = generateBlogHTML(italianRecipe, productName, sources);
+  const htmlContentIT = generateBlogHTML(italianRecipe, productName);
 
   // Crea post blog in italiano (lingua base)
   const postId = await callOdoo(
@@ -188,7 +187,7 @@ async function createBlogPostWithTranslations(
     const translatedRecipe = translations[langCode];
     if (!translatedRecipe) continue;
 
-    const htmlContentTranslated = generateBlogHTML(translatedRecipe, productName, sources);
+    const htmlContentTranslated = generateBlogHTML(translatedRecipe, productName);
 
     try {
       // Odoo 17: usa write con context lang per salvare traduzioni
@@ -223,12 +222,15 @@ async function getBlogPostUrl(
   odooCookies: string,
   postId: number
 ): Promise<string> {
+  // Aspetta un momento per permettere a Odoo di generare l'URL SEO
+  await delay(1000);
+
   // Leggi il campo website_url dal blog post creato
   const postData = await callOdoo(
     odooCookies,
     'blog.post',
     'read',
-    [[postId], ['website_url']]
+    [[postId], ['website_url', 'name']]
   );
 
   if (!postData || !Array.isArray(postData) || postData.length === 0) {
@@ -236,13 +238,22 @@ async function getBlogPostUrl(
   }
 
   const websiteUrl = postData[0].website_url;
+  const postName = postData[0].name;
+
+  console.log(`  📎 Blog post "${postName}" (ID: ${postId})`);
+  console.log(`  📎 website_url from Odoo: ${websiteUrl}`);
 
   if (!websiteUrl) {
-    throw new Error('Blog post has no website_url');
+    // Fallback: costruisci URL manualmente se Odoo non lo ha generato
+    console.warn('  ⚠️ No website_url, using fallback with post ID');
+    return `https://www.lapa.ch/blog/lapablog-4/${postId}`;
   }
 
   // Odoo restituisce URL relativo, aggiungi dominio
-  return `https://www.lapa.ch${websiteUrl}`;
+  const fullUrl = `https://www.lapa.ch${websiteUrl}`;
+  console.log(`  📎 Full URL: ${fullUrl}`);
+
+  return fullUrl;
 }
 
 // ==========================================
@@ -332,7 +343,10 @@ async function createSocialPost(
 // GENERA HTML BLOG
 // ==========================================
 
-function generateBlogHTML(recipeData: any, productName: string, sources?: { title: string; url: string }[]): string {
+function generateBlogHTML(recipeData: any, productName: string): string {
+  // NOTA: sources rimosso - Google Search restituisce risultati non pertinenti
+  // (cataloghi, volantini) invece di siti di ricette vere.
+
   const ingredientsList = recipeData.ingredients
     .map((ing: any) => `<li><strong>${ing.quantity}</strong> ${ing.item}</li>`)
     .join('');
@@ -343,10 +357,6 @@ function generateBlogHTML(recipeData: any, productName: string, sources?: { titl
 
   const tipsList = recipeData.tips && recipeData.tips.length > 0
     ? `<h3>💡 Consigli dello Chef</h3><ul>${recipeData.tips.map((tip: string) => `<li>${tip}</li>`).join('')}</ul>`
-    : '';
-
-  const sourcesList = sources && sources.length > 0
-    ? `<h3>📚 Fonti</h3><ul>${sources.map(s => `<li><a href="${s.url}" target="_blank">${s.title}</a></li>`).join('')}</ul>`
     : '';
 
   return `
@@ -378,8 +388,6 @@ function generateBlogHTML(recipeData: any, productName: string, sources?: { titl
 
 ${tipsList}
 
-${sourcesList}
-
 <div class="product-cta" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-top: 40px;">
   <h3>🛍️ Ordina ${productName}</h3>
   <p>Questo prodotto è disponibile nel nostro catalogo!</p>
@@ -394,7 +402,7 @@ ${sourcesList}
 
 export async function POST(request: NextRequest) {
   try {
-    const { recipeData, productName, productImage, recipeImage, sources } = await request.json() as PublishRecipeRequest;
+    const { recipeData, productName, productImage, recipeImage } = await request.json() as PublishRecipeRequest;
 
     // Validazione
     if (!recipeData || !productName || !productImage || !recipeImage) {
@@ -501,8 +509,7 @@ export async function POST(request: NextRequest) {
       odooCookies,
       translations,
       productName,
-      recipeImageId,
-      sources
+      recipeImageId
     );
 
     // Leggi URL reale da Odoo
@@ -590,11 +597,26 @@ ${translatedRecipe.description.substring(0, 100)}...
       console.log('  ⏳ Waiting 3s for image to be ready...');
       await delay(3000);
 
-      // POST 2: Instagram (separato, con retry automatico nella funzione)
+      // POST 2: Instagram (messaggio specifico senza link - non cliccabile su IG)
       console.log('  📸 Publishing to Instagram...');
+      const igRecipe = translations['it_IT'];
+
+      // Instagram: messaggio ottimizzato senza link (non cliccabili su IG)
+      const instagramMessage = `${igRecipe.title}
+
+${igRecipe.description}
+
+📍 ${igRecipe.region}
+⏱️ Prep: ${igRecipe.prepTime} | 🔥 Cottura: ${igRecipe.cookTime}
+🍽️ ${igRecipe.servings} | 📊 ${igRecipe.difficulty}
+
+🔗 Ricetta completa in bio!
+
+#RecipesLAPA #ItalianFood #Cucina${igRecipe.region.replace(/[^a-zA-Z]/g, '')} #RicetteItaliane #TradizioneItaliana #FoodPhotography #Foodie #InstaFood #CucinaItaliana`;
+
       const postId2 = await createSocialPost(
         odooCookies,
-        socialCaption,
+        instagramMessage,
         [INSTAGRAM_ID],
         recipeImageId
       );
@@ -603,9 +625,31 @@ ${translatedRecipe.description.substring(0, 100)}...
 
       // POST 3: Twitter (messaggio abbreviato max 280 caratteri)
       console.log('  🐦 Publishing to Twitter...');
-      let twitterMessage = socialCaption;
+
+      // Crea messaggio Twitter specifico con URL blog reale
+      const blogUrl = blogPostUrls['it_IT'];
+      const twitterRecipe = translations['it_IT'];
+
+      // Twitter: formato compatto che preserva URL blog
+      let twitterMessage = `${twitterRecipe.title}
+
+${twitterRecipe.description.substring(0, 80)}...
+
+📍 ${twitterRecipe.region} | ⏱️ ${twitterRecipe.prepTime}
+
+👉 ${blogUrl}
+
+#RecipesLAPA #ItalianFood`;
+
+      // Se ancora troppo lungo, accorcia solo la descrizione
       if (twitterMessage.length > 280) {
-        twitterMessage = twitterMessage.substring(0, 250) + '... 👉 www.lapa.ch';
+        twitterMessage = `${twitterRecipe.title}
+
+📍 ${twitterRecipe.region} | ⏱️ ${twitterRecipe.prepTime}
+
+👉 ${blogUrl}
+
+#RecipesLAPA`;
       }
 
       const postId3 = await createSocialPost(
