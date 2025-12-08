@@ -107,6 +107,8 @@ export default function SocialAIStudioPage() {
   const [selectedCuriosity, setSelectedCuriosity] = useState<any | null>(null);
   const [isPublishingCuriosity, setIsPublishingCuriosity] = useState(false);
   const [curiosityPublishProgress, setCuriosityPublishProgress] = useState<string[]>([]);
+  const [isGeneratingCuriosityImage, setIsGeneratingCuriosityImage] = useState(false);
+  const [curiosityPreviewImage, setCuriosityPreviewImage] = useState<string | null>(null);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -607,11 +609,57 @@ export default function SocialAIStudioPage() {
   };
 
   // ==========================================
+  // Genera Anteprima Immagine Curiosità
+  // ==========================================
+  const handleGenerateCuriosityPreview = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    setIsGeneratingCuriosityImage(true);
+    setCuriosityPreviewImage(null);
+
+    const loadingToast = toast.loading('Generazione immagine AI in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/generate-curiosity-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imagePrompt: selectedCuriosity.imagePrompt,
+          title: selectedCuriosity.title
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione immagine');
+      }
+
+      setCuriosityPreviewImage(data.data.imageUrl);
+      toast.success('Immagine generata! Ora puoi pubblicare.', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione immagine:', error);
+      toast.error(error.message || 'Errore durante generazione', { id: loadingToast });
+    } finally {
+      setIsGeneratingCuriosityImage(false);
+    }
+  };
+
+  // ==========================================
   // Pubblica Curiosità sui Social
   // ==========================================
   const handlePublishCuriosity = async () => {
     if (!selectedCuriosity) {
       toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    if (!curiosityPreviewImage) {
+      toast.error('Genera prima l\'anteprima dell\'immagine!');
       return;
     }
 
@@ -628,7 +676,8 @@ export default function SocialAIStudioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           curiosity: selectedCuriosity,
-          generateImage: true
+          generateImage: false, // Immagine già generata
+          customImage: curiosityPreviewImage // Usa l'immagine già generata
         })
       });
 
@@ -641,7 +690,7 @@ export default function SocialAIStudioPage() {
       const progressMessages: string[] = [];
 
       if (data.data?.imageId) {
-        progressMessages.push('✅ Immagine AI generata!');
+        progressMessages.push('✅ Immagine caricata!');
       }
 
       if (data.data?.socialPostIds?.length > 0) {
@@ -2396,7 +2445,10 @@ export default function SocialAIStudioPage() {
                   {curiositiesList.map((curiosity, idx) => (
                     <div
                       key={curiosity.id || idx}
-                      onClick={() => setSelectedCuriosity(curiosity)}
+                      onClick={() => {
+                        setSelectedCuriosity(curiosity);
+                        setCuriosityPreviewImage(null); // Reset immagine quando cambi curiosità
+                      }}
                       className={`p-3 rounded-lg cursor-pointer transition-all ${
                         selectedCuriosity?.id === curiosity.id
                           ? 'bg-rose-500/30 border-2 border-rose-400'
@@ -2450,10 +2502,60 @@ export default function SocialAIStudioPage() {
                       ))}
                     </div>
 
+                    {/* Anteprima Immagine */}
+                    {curiosityPreviewImage && (
+                      <div className="mb-4">
+                        <div className="text-xs text-rose-300 mb-2">Anteprima Immagine:</div>
+                        <img
+                          src={curiosityPreviewImage}
+                          alt="Anteprima curiosità"
+                          className="w-full h-auto rounded-lg border border-rose-500/50"
+                        />
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = curiosityPreviewImage;
+                            link.download = `curiosity-${selectedCuriosity.id}-${Date.now()}.png`;
+                            link.click();
+                          }}
+                          className="mt-2 w-full flex items-center justify-center space-x-2 px-3 py-2 bg-rose-500/30 hover:bg-rose-500/40 text-rose-200 text-sm rounded-lg transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Immagine</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Pulsante Genera Anteprima */}
+                    {!curiosityPreviewImage && (
+                      <button
+                        onClick={handleGenerateCuriosityPreview}
+                        disabled={isGeneratingCuriosityImage}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mb-3"
+                      >
+                        {isGeneratingCuriosityImage ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Generazione immagine AI...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="h-5 w-5" />
+                            <span>Genera Anteprima Immagine</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Pulsante Pubblica (solo se immagine già generata) */}
                     <button
                       onClick={handlePublishCuriosity}
-                      disabled={isPublishingCuriosity}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      disabled={isPublishingCuriosity || !curiosityPreviewImage}
+                      className={`w-full flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                        curiosityPreviewImage
+                          ? 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700'
+                          : 'bg-gray-600 cursor-not-allowed'
+                      }`}
                     >
                       {isPublishingCuriosity ? (
                         <>
@@ -2463,7 +2565,7 @@ export default function SocialAIStudioPage() {
                       ) : (
                         <>
                           <Share2 className="h-5 w-5" />
-                          <span>Pubblica Curiosità sui Social</span>
+                          <span>{curiosityPreviewImage ? 'Pubblica Curiosità sui Social' : 'Prima genera l\'anteprima'}</span>
                         </>
                       )}
                     </button>
