@@ -81,6 +81,7 @@ export default function SocialAIStudioPage() {
 
   // Recipe states
   const [includeRecipe, setIncludeRecipe] = useState(false);
+  const [recipeSuggestion, setRecipeSuggestion] = useState(''); // Suggerimento ricetta opzionale
   const [recipeData, setRecipeData] = useState<any | null>(null);
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
   const [isPublishingRecipe, setIsPublishingRecipe] = useState(false);
@@ -319,7 +320,8 @@ export default function SocialAIStudioPage() {
         body: JSON.stringify({
           productName,
           productDescription: productDescription || undefined,
-          productImage: productImage || undefined
+          productImage: productImage || undefined,
+          recipeSuggestion: recipeSuggestion || undefined // Suggerimento opzionale
         })
       });
 
@@ -1210,9 +1212,29 @@ export default function SocialAIStudioPage() {
                   <span className="text-xs text-amber-300">Crea ricetta</span>
                 </label>
               </div>
-              <p className="text-xs text-amber-300/70">
+              <p className="text-xs text-amber-300/70 mb-3">
                 💡 L'AI cercherà automaticamente ricette tradizionali autentiche del prodotto e genererà un'immagine food photography
               </p>
+
+              {/* Campo suggerimento ricetta - visibile solo se includeRecipe è attivo */}
+              {includeRecipe && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-amber-300 mb-2">
+                    Suggerisci una ricetta (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={recipeSuggestion}
+                    onChange={(e) => setRecipeSuggestion(e.target.value)}
+                    placeholder="Es: Carbonara, Amatriciana, Cacio e pepe..."
+                    className="w-full px-4 py-2 bg-slate-900/50 border border-amber-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder:text-slate-500 text-sm"
+                    disabled={isGenerating}
+                  />
+                  <p className="text-xs text-amber-300/50 mt-1">
+                    Se lasci vuoto, l'AI sceglierà la ricetta più adatta al prodotto
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Geo-Targeting & RAG */}

@@ -22,6 +22,7 @@ interface ProductRecipeRequest {
   productName: string;
   productDescription?: string;
   productImage?: string;
+  recipeSuggestion?: string; // Suggerimento ricetta opzionale (es: "Carbonara", "Amatriciana")
 }
 
 interface RecipeData {
@@ -57,7 +58,7 @@ interface RecipeResult {
 
 export async function POST(request: NextRequest): Promise<NextResponse<RecipeResult>> {
   try {
-    const { productName, productDescription, productImage } = await request.json() as ProductRecipeRequest;
+    const { productName, productDescription, productImage, recipeSuggestion } = await request.json() as ProductRecipeRequest;
 
     if (!productName) {
       return NextResponse.json(
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RecipeRes
 
     const ai = new GoogleGenAI({ apiKey });
 
-    console.log(`[Product Recipe] Searching for: ${productName}`);
+    console.log(`[Product Recipe] Searching for: ${productName}${recipeSuggestion ? ` (suggerimento: ${recipeSuggestion})` : ''}`);
 
     // ==========================================
     // FASE 1: RICERCA WEB RICETTE TRADIZIONALI
@@ -91,7 +92,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<RecipeRes
 
     if (searchApiKey && searchEngineId) {
       try {
-        const searchQuery = `ricetta tradizionale ${productName} italiana autentica`;
+        // Se c'è un suggerimento, cercalo specificamente
+        const searchQuery = recipeSuggestion
+          ? `ricetta ${recipeSuggestion} tradizionale italiana ${productName}`
+          : `ricetta tradizionale ${productName} italiana autentica`;
         const searchUrl = new URL('https://www.googleapis.com/customsearch/v1');
         searchUrl.searchParams.append('key', searchApiKey);
         searchUrl.searchParams.append('cx', searchEngineId);
@@ -129,11 +133,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<RecipeRes
 
 PRODOTTO: ${productName}
 ${productDescription ? `DESCRIZIONE: ${productDescription}` : ''}
+${recipeSuggestion ? `RICETTA RICHIESTA: ${recipeSuggestion} (l'utente vuole specificamente questa ricetta!)` : ''}
 
 ${webContext ? `CONTESTO DA WEB (ricette trovate online):\n${webContext}\n` : ''}
 
 COMPITO:
-Crea una ricetta tradizionale AUTENTICA e REALE per questo prodotto.
+${recipeSuggestion
+  ? `Crea la ricetta "${recipeSuggestion}" usando "${productName}" come ingrediente principale.`
+  : 'Crea una ricetta tradizionale AUTENTICA e REALE per questo prodotto.'}
 ${webContext ? 'Basati principalmente sulle informazioni trovate nel web context.' : 'Usa le tue conoscenze di ricette tradizionali italiane consolidate.'}
 
 REQUISITI:
