@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
-import { sql } from '@vercel/postgres';
+import { db } from '@vercel/postgres';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -380,49 +380,46 @@ ${productDetailsHtml}
 
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
-    // 8. MARK ASSIGNMENTS AS ORDERED (instead of deleting them)
-    let markingSucceeded = false;
-    let markingError: string | null = null;
+    // 8. DELETE ASSIGNMENTS dopo aver creato gli ordini
+    // Il tracciamento è già in Odoo, non serve tenerlo nel DB
+    let deletionSucceeded = false;
+    let deletionError: string | null = null;
+    let totalDeleted = 0;
 
+    const client = await db.connect();
     try {
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        console.log(`\n✅ Marking assignments for ${productIds.length} products as ordered...`);
+        console.log(`\n🗑️ Eliminazione assegnazioni per ${productIds.length} prodotti...`);
 
-        let totalMarked = 0;
         for (const productId of productIds) {
-          // Find the corresponding sale and purchase order IDs for this product
-          const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
-          const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
-
-          const result = await sql`
-            UPDATE preorder_customer_assignments
-            SET is_ordered = TRUE,
-                ordered_at = NOW(),
-                sale_order_id = ${saleOrderId},
-                purchase_order_id = ${purchaseOrderId}
+          const result = await client.sql`
+            DELETE FROM preorder_customer_assignments
             WHERE product_id = ${productId}
-            AND (is_ordered = FALSE OR is_ordered IS NULL)
           `;
-          totalMarked += result.rowCount || 0;
+          totalDeleted += result.rowCount || 0;
+          console.log(`  🗑️ Prodotto ${productId}: eliminate ${result.rowCount || 0} assegnazioni`);
         }
 
-        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
-        markingSucceeded = true;
+        console.log(`✅ Eliminate ${totalDeleted} assegnazioni dal database`);
+        deletionSucceeded = true;
       } else {
-        markingSucceeded = true; // No products to mark, consider it success
+        deletionSucceeded = true;
       }
     } catch (dbError: any) {
-      console.error('❌ CRITICAL: Failed to mark assignments as ordered:', dbError);
-      markingError = dbError.message || 'Database update failed';
+      console.error('❌ CRITICAL: Errore eliminazione assegnazioni:', dbError);
+      deletionError = dbError.message || 'Database delete failed';
+    } finally {
+      client.release();
     }
 
-    // 9. Return summary with marking status
+    // 9. Return summary
     const summary = {
       success: true,
-      markingSucceeded, // Track if marking as ordered worked
-      markingError,     // Include error details if marking failed
+      deletionSucceeded,
+      deletionError,
+      totalDeleted,
       customerQuotesCreated: createdSaleOrders.length,
       supplierQuotesCreated: createdPurchaseOrders.length,
       created: {
@@ -434,7 +431,8 @@ ${productDetailsHtml}
         totalPurchaseOrders: createdPurchaseOrders.length,
         totalProducts: productAssignments.length,
         totalCustomers: customerOrders.size,
-        totalSuppliers: supplierOrders.size
+        totalSuppliers: supplierOrders.size,
+        assignmentsDeleted: totalDeleted
       }
     };
 

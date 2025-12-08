@@ -6,7 +6,8 @@ import {
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
-  AlertCircle, Zap
+  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe,
+  Calendar, Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -78,6 +79,48 @@ export default function SocialAIStudioPage() {
   const [targetCanton, setTargetCanton] = useState('');
   const [targetCity, setTargetCity] = useState('');
   const [productCategory, setProductCategory] = useState('');
+
+  // Recipe states
+  const [includeRecipe, setIncludeRecipe] = useState(false);
+  const [recipeSuggestion, setRecipeSuggestion] = useState(''); // Suggerimento ricetta opzionale
+  const [recipeData, setRecipeData] = useState<any | null>(null);
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [isPublishingRecipe, setIsPublishingRecipe] = useState(false);
+  const [publishProgress, setPublishProgress] = useState<string[]>([]);
+
+  // YouTube publishing states
+  const [isPublishingYouTube, setIsPublishingYouTube] = useState(false);
+  const [youtubePublishResult, setYoutubePublishResult] = useState<any | null>(null);
+
+  // Product Story states
+  const [includeProductStory, setIncludeProductStory] = useState(false);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [storyData, setStoryData] = useState<any | null>(null);
+  const [isPublishingStory, setIsPublishingStory] = useState(false);
+  const [storyPublishProgress, setStoryPublishProgress] = useState<string[]>([]);
+
+  // Food Curiosity states
+  const [includeFoodCuriosity, setIncludeFoodCuriosity] = useState(false);
+  const [curiosityTopic, setCuriosityTopic] = useState('');
+  const [curiosityCategory, setCuriosityCategory] = useState('');
+  const [isSearchingCuriosities, setIsSearchingCuriosities] = useState(false);
+  const [curiositiesList, setCuriositiesList] = useState<any[]>([]);
+  const [selectedCuriosity, setSelectedCuriosity] = useState<any | null>(null);
+  const [isPublishingCuriosity, setIsPublishingCuriosity] = useState(false);
+  const [curiosityPublishProgress, setCuriosityPublishProgress] = useState<string[]>([]);
+
+  // Language selection for publishing
+  const [publishLanguage, setPublishLanguage] = useState<'it' | 'de' | 'fr' | 'en'>('it');
+  const [isTranslatingCuriosity, setIsTranslatingCuriosity] = useState(false);
+  const [translatedCuriosity, setTranslatedCuriosity] = useState<any | null>(null);
+  const [isGeneratingCuriosityImage, setIsGeneratingCuriosityImage] = useState(false);
+  const [curiosityPreviewImage, setCuriosityPreviewImage] = useState<string | null>(null);
+
+  // Scheduling states
+  const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [isScheduling, setIsScheduling] = useState(false);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -286,6 +329,602 @@ export default function SocialAIStudioPage() {
   };
 
   // ==========================================
+  // Genera Ricetta Tradizionale
+  // ==========================================
+  const handleGenerateRecipe = async () => {
+    if (!productName) {
+      toast.error('Inserisci il nome del prodotto prima!');
+      return;
+    }
+
+    setIsGeneratingRecipe(true);
+    setRecipeData(null);
+
+    const loadingToast = toast.loading('Ricerca ricetta tradizionale...');
+
+    try {
+      setGenerationProgress(prev => [...prev, '🔍 Ricerca ricetta tradizionale in corso...']);
+
+      const response = await fetch('/api/social-ai/product-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName,
+          productDescription: productDescription || undefined,
+          productImage: productImage || undefined,
+          recipeSuggestion: recipeSuggestion || undefined // Suggerimento opzionale
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione ricetta');
+      }
+
+      setRecipeData(data.data);
+      setGenerationProgress(prev => [
+        ...prev,
+        '✅ Ricetta tradizionale trovata!',
+        `📍 Regione: ${data.data.recipe.region}`
+      ]);
+
+      toast.success('Ricetta generata con successo!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione ricetta:', error);
+      toast.error(error.message || 'Errore durante generazione ricetta', { id: loadingToast });
+      setGenerationProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Ricetta su Blog + Social
+  // ==========================================
+  const handlePublishRecipe = async () => {
+    if (!recipeData || !productName || !productImage || !recipeData.imageUrl) {
+      toast.error('Genera prima la ricetta completa!');
+      return;
+    }
+
+    setIsPublishingRecipe(true);
+    setPublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione in corso...');
+
+    try {
+      setPublishProgress(['🚀 Inizio pubblicazione...']);
+
+      const response = await fetch('/api/social-ai/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeData: recipeData.recipe,
+          productName,
+          productImage,
+          recipeImage: recipeData.imageUrl,
+          sources: recipeData.sources || []
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      // Mostra progresso basato su risultati REALI dall'API
+      const progressMessages: string[] = [];
+
+      // Check traduzioni (se ci sono translations nella response)
+      if (data.data?.translations && data.data.translations.length > 0) {
+        progressMessages.push(`✅ Ricetta tradotta in ${data.data.translations.length} lingue!`);
+      }
+
+      // Check immagini (se ci sono image IDs nella response)
+      if (data.data?.images) {
+        progressMessages.push('✅ Immagini caricate su Odoo!');
+      }
+
+      // Check blog posts (se ci sono blog post IDs)
+      if (data.data?.blogPosts && Object.keys(data.data.blogPosts).length > 0) {
+        progressMessages.push(`✅ ${Object.keys(data.data.blogPosts).length} Blog post creati!`);
+      }
+
+      // Check social posts
+      if (data.data?.stats) {
+        const { successfulSocialPublishes, failedSocialPublishes } = data.data.stats;
+
+        if (successfulSocialPublishes > 0) {
+          // 1 post pubblicato sui 4 account
+          progressMessages.push('✅ Post social pubblicato su Facebook, Instagram, LinkedIn, Twitter');
+        }
+
+        if (failedSocialPublishes > 0) {
+          progressMessages.push('❌ Pubblicazione social fallita');
+
+          // Mostra dettagli failures se disponibili
+          if (data.data?.socialPublishFailures) {
+            data.data.socialPublishFailures.forEach((failure: string) => {
+              progressMessages.push(`  ${failure}`);
+            });
+          }
+        }
+      }
+
+      // Messaggio finale
+      if (data.success) {
+        progressMessages.push('🎉 Pubblicazione completata con successo!');
+        toast.success('Ricetta pubblicata con successo su Blog e Social!', { id: loadingToast });
+      } else if (data.warning) {
+        progressMessages.push(`⚠️ ${data.warning}`);
+        toast(data.warning, { id: loadingToast, duration: 6000, icon: '⚠️' });
+      }
+
+      setPublishProgress(prev => [...prev, ...progressMessages]);
+
+      // Mostra risultati
+      console.log('Blog posts creati:', data.data.blogPosts);
+      console.log('Post social:', data.data.socialPosts);
+      console.log('Stats:', data.data.stats);
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingRecipe(false);
+    }
+  };
+
+  // ==========================================
+  // Genera Storia Prodotto
+  // ==========================================
+  const handleGenerateStory = async () => {
+    if (!productName) {
+      toast.error('Inserisci il nome del prodotto prima!');
+      return;
+    }
+
+    setIsGeneratingStory(true);
+    setStoryData(null);
+
+    const loadingToast = toast.loading('Ricerca storia e origine prodotto...');
+
+    try {
+      const response = await fetch('/api/social-ai/product-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName,
+          productDescription: productDescription || undefined,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione storia');
+      }
+
+      setStoryData(data.data);
+      toast.success('Storia prodotto generata!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione storia:', error);
+      toast.error(error.message || 'Errore durante generazione storia', { id: loadingToast });
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Storia Prodotto su Blog + Social
+  // ==========================================
+  const handlePublishStory = async () => {
+    if (!storyData || !productName) {
+      toast.error('Genera prima la storia del prodotto!');
+      return;
+    }
+
+    if (!storyData.story) {
+      toast.error('Dati storia non trovati! Rigenera la storia.');
+      return;
+    }
+
+    if (!productImage) {
+      toast.error('Carica prima l\'immagine del prodotto!');
+      return;
+    }
+
+    if (!storyData.imageUrl) {
+      toast.error('Immagine storia non generata! Rigenera la storia.');
+      return;
+    }
+
+    setIsPublishingStory(true);
+    setStoryPublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione storia in corso...');
+
+    try {
+      setStoryPublishProgress(['🚀 Inizio pubblicazione storia...']);
+
+      const response = await fetch('/api/social-ai/publish-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storyData: storyData.story,
+          productName,
+          productImage: productImage,
+          storyImage: storyData.imageUrl
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      const progressMessages: string[] = [];
+
+      if (data.data?.translations) {
+        progressMessages.push(`✅ Storia tradotta in ${data.data.translations.length} lingue!`);
+      }
+
+      if (data.data?.blogPostId) {
+        progressMessages.push('✅ Blog post creato!');
+      }
+
+      if (data.data?.socialPosts) {
+        progressMessages.push('✅ Post social pubblicati!');
+      }
+
+      progressMessages.push('🎉 Pubblicazione storia completata!');
+      setStoryPublishProgress(prev => [...prev, ...progressMessages]);
+
+      toast.success('Storia pubblicata su Blog e Social!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione storia:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setStoryPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingStory(false);
+    }
+  };
+
+  // ==========================================
+  // Cerca Curiosità Food
+  // ==========================================
+  const handleSearchCuriosities = async () => {
+    setIsSearchingCuriosities(true);
+    setCuriositiesList([]);
+    setSelectedCuriosity(null);
+
+    const loadingToast = toast.loading('Ricerca curiosità food in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/food-curiosity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: curiosityTopic || undefined,
+          category: curiosityCategory || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante ricerca curiosità');
+      }
+
+      setCuriositiesList(data.data.curiosities || []);
+      toast.success(`Trovate ${data.data.curiosities.length} curiosità!`, { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore ricerca curiosità:', error);
+      toast.error(error.message || 'Errore durante ricerca', { id: loadingToast });
+    } finally {
+      setIsSearchingCuriosities(false);
+    }
+  };
+
+  // ==========================================
+  // Genera Anteprima Immagine Curiosità
+  // ==========================================
+  const handleGenerateCuriosityPreview = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    setIsGeneratingCuriosityImage(true);
+    setCuriosityPreviewImage(null);
+
+    const loadingToast = toast.loading('Generazione immagine AI in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/generate-curiosity-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imagePrompt: selectedCuriosity.imagePrompt,
+          title: selectedCuriosity.title
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione immagine');
+      }
+
+      setCuriosityPreviewImage(data.data.imageUrl);
+      toast.success('Immagine generata! Ora puoi pubblicare.', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione immagine:', error);
+      toast.error(error.message || 'Errore durante generazione', { id: loadingToast });
+    } finally {
+      setIsGeneratingCuriosityImage(false);
+    }
+  };
+
+  // ==========================================
+  // Traduci Curiosità
+  // ==========================================
+  const handleTranslateCuriosity = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    if (publishLanguage === 'it') {
+      // Se italiano, usa il contenuto originale
+      setTranslatedCuriosity(null);
+      return;
+    }
+
+    setIsTranslatingCuriosity(true);
+    const loadingToast = toast.loading('Traduzione in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: {
+            title: selectedCuriosity.title,
+            fullContent: selectedCuriosity.fullContent,
+            socialCaption: selectedCuriosity.socialCaption,
+            hashtags: selectedCuriosity.hashtags
+          },
+          targetLanguage: publishLanguage
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante traduzione');
+      }
+
+      setTranslatedCuriosity(data.data);
+      toast.success('Contenuto tradotto!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore traduzione:', error);
+      toast.error(error.message || 'Errore durante traduzione', { id: loadingToast });
+    } finally {
+      setIsTranslatingCuriosity(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Curiosità sui Social
+  // ==========================================
+  const handlePublishCuriosity = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    if (!curiosityPreviewImage) {
+      toast.error('Genera prima l\'anteprima dell\'immagine!');
+      return;
+    }
+
+    // Se lingua non è italiano e non c'è traduzione, avvisa l'utente
+    if (publishLanguage !== 'it' && !translatedCuriosity) {
+      toast.error('Traduci prima il contenuto nella lingua selezionata!');
+      return;
+    }
+
+    setIsPublishingCuriosity(true);
+    setCuriosityPublishProgress([]);
+
+    const langNames: Record<string, string> = {
+      it: 'italiano',
+      de: 'tedesco',
+      fr: 'francese',
+      en: 'inglese'
+    };
+
+    const loadingToast = toast.loading(`Pubblicazione in ${langNames[publishLanguage]}...`);
+
+    try {
+      setCuriosityPublishProgress([`🚀 Pubblicazione curiosità in ${langNames[publishLanguage]}...`]);
+
+      // Usa contenuto tradotto se disponibile, altrimenti originale
+      const curiosityToPublish = translatedCuriosity ? {
+        ...selectedCuriosity,
+        title: translatedCuriosity.title,
+        fullContent: translatedCuriosity.fullContent,
+        socialCaption: translatedCuriosity.socialCaption,
+        hashtags: translatedCuriosity.hashtags
+      } : selectedCuriosity;
+
+      const response = await fetch('/api/social-ai/publish-curiosity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          curiosity: curiosityToPublish,
+          generateImage: false, // Immagine già generata
+          customImage: curiosityPreviewImage // Usa l'immagine già generata
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      const progressMessages: string[] = [];
+
+      if (data.data?.imageId) {
+        progressMessages.push('✅ Immagine caricata!');
+      }
+
+      if (data.data?.socialPostIds?.length > 0) {
+        progressMessages.push(`✅ Pubblicato su ${data.data.platforms.join(', ')}!`);
+      }
+
+      progressMessages.push('🎉 Curiosità pubblicata con successo!');
+      setCuriosityPublishProgress(prev => [...prev, ...progressMessages]);
+
+      toast.success('Curiosità pubblicata sui social!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione curiosità:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setCuriosityPublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingCuriosity(false);
+    }
+  };
+
+  // ==========================================
+  // Programmazione Post sui Social
+  // ==========================================
+  const handleSchedulePost = async (type: 'curiosity' | 'story' | 'recipe') => {
+    if (!scheduledDate || !scheduledTime) {
+      toast.error('Seleziona data e ora per la programmazione!');
+      return;
+    }
+
+    // Combina data e ora in formato ISO
+    const scheduledDateTime = `${scheduledDate} ${scheduledTime}:00`;
+
+    setIsScheduling(true);
+    const loadingToast = toast.loading('Programmazione post in corso...');
+
+    try {
+      let response;
+      let endpoint;
+      let body;
+
+      if (type === 'curiosity') {
+        if (!selectedCuriosity || !curiosityPreviewImage) {
+          toast.error('Seleziona una curiosità e genera l\'anteprima prima!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        // Usa contenuto tradotto se disponibile
+        const curiosityToPublish = translatedCuriosity ? {
+          ...selectedCuriosity,
+          title: translatedCuriosity.title,
+          fullContent: translatedCuriosity.fullContent,
+          socialCaption: translatedCuriosity.socialCaption,
+          hashtags: translatedCuriosity.hashtags
+        } : selectedCuriosity;
+
+        endpoint = '/api/social-ai/publish-curiosity';
+        body = {
+          curiosity: curiosityToPublish,
+          generateImage: false,
+          customImage: curiosityPreviewImage,
+          scheduledDate: scheduledDateTime
+        };
+      } else if (type === 'story') {
+        if (!storyData?.story || !productImage || !storyData?.imageUrl) {
+          toast.error('Genera prima la storia del prodotto!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        endpoint = '/api/social-ai/publish-story';
+        body = {
+          storyData: storyData.story,
+          productName,
+          productImage,
+          storyImage: storyData.imageUrl,
+          scheduledDate: scheduledDateTime
+        };
+      } else if (type === 'recipe') {
+        if (!recipeData || !productName || !productImage || !recipeData.imageUrl) {
+          toast.error('Genera prima la ricetta completa!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        endpoint = '/api/social-ai/publish-recipe';
+        body = {
+          recipeData: recipeData.recipe,
+          productName,
+          productImage,
+          recipeImage: recipeData.imageUrl,
+          sources: recipeData.sources || [],
+          scheduledDate: scheduledDateTime
+        };
+      }
+
+      response = await fetch(endpoint!, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante programmazione');
+      }
+
+      toast.success(`Post programmato per ${scheduledDate} alle ${scheduledTime}!`, { id: loadingToast });
+      setShowScheduleModal(null);
+      setScheduledDate('');
+      setScheduledTime('');
+
+    } catch (error: any) {
+      console.error('Errore programmazione:', error);
+      toast.error(error.message || 'Errore durante programmazione', { id: loadingToast });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  // Helper per aprire il modal di scheduling
+  const openScheduleModal = (type: 'curiosity' | 'story' | 'recipe') => {
+    // Imposta data/ora di default: domani alle 10:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setScheduledDate(tomorrow.toISOString().split('T')[0]);
+    setScheduledTime('10:00');
+    setShowScheduleModal(type);
+  };
+
+  // ==========================================
   // Genera Contenuti Marketing
   // ==========================================
   const handleGenerate = async () => {
@@ -297,6 +936,11 @@ export default function SocialAIStudioPage() {
     setIsGenerating(true);
     setGenerationProgress([]);
     setResult(null);
+
+    // Se abilitata, genera anche la ricetta
+    if (includeRecipe && productName) {
+      await handleGenerateRecipe();
+    }
 
     const loadingToast = toast.loading('Avvio agenti AI...');
 
@@ -459,6 +1103,66 @@ export default function SocialAIStudioPage() {
     link.download = `marketing-${socialPlatform}-${Date.now()}.mp4`;
     link.click();
     toast.success('Download video avviato!');
+  };
+
+  // ==========================================
+  // Pubblica Video su YouTube
+  // ==========================================
+  const handlePublishYouTube = async () => {
+    if (!result?.video?.dataUrl || !result?.copywriting) {
+      toast.error('Video o copywriting non disponibili');
+      return;
+    }
+
+    if (!productName) {
+      toast.error('Nome prodotto richiesto');
+      return;
+    }
+
+    setIsPublishingYouTube(true);
+    const loadingToast = toast.loading('Pubblicazione su YouTube in corso...');
+
+    try {
+      console.log('[YouTube] Starting publication...');
+
+      const response = await fetch('/api/social-ai/publish-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoDataUrl: result.video.dataUrl,
+          productName,
+          productDescription: productDescription || undefined,
+          caption: result.copywriting.caption,
+          hashtags: result.copywriting.hashtags
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione YouTube');
+      }
+
+      setYoutubePublishResult(data.data);
+
+      toast.success(
+        <div>
+          <div className="font-bold">Video pubblicato su YouTube! 🎉</div>
+          <div className="text-sm mt-1">{data.data.youtubeTitle}</div>
+        </div>,
+        { id: loadingToast, duration: 6000 }
+      );
+
+      console.log('[YouTube] Published successfully:', data.data);
+
+    } catch (error: any) {
+      console.error('[YouTube] Publish error:', error);
+      toast.error(error.message || 'Errore durante pubblicazione YouTube', {
+        id: loadingToast
+      });
+    } finally {
+      setIsPublishingYouTube(false);
+    }
   };
 
   // ==========================================
@@ -966,6 +1670,177 @@ export default function SocialAIStudioPage() {
               />
             </div>
 
+            {/* Ricetta Tradizionale */}
+            <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 backdrop-blur-sm rounded-xl border border-amber-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">👨‍🍳</span>
+                  <h3 className="text-lg font-semibold text-amber-300">Ricetta Tradizionale</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeRecipe}
+                    onChange={(e) => setIncludeRecipe(e.target.checked)}
+                    disabled={isGenerating}
+                    className="w-4 h-4 rounded border-amber-500/50 bg-slate-900/50 text-amber-500 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-xs text-amber-300">Crea ricetta</span>
+                </label>
+              </div>
+              <p className="text-xs text-amber-300/70 mb-3">
+                💡 L'AI cercherà automaticamente ricette tradizionali autentiche del prodotto e genererà un'immagine food photography
+              </p>
+
+              {/* Campo suggerimento ricetta - visibile solo se includeRecipe è attivo */}
+              {includeRecipe && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-amber-300 mb-2">
+                    Suggerisci una ricetta (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={recipeSuggestion}
+                    onChange={(e) => setRecipeSuggestion(e.target.value)}
+                    placeholder="Es: Carbonara, Amatriciana, Cacio e pepe..."
+                    className="w-full px-4 py-2 bg-slate-900/50 border border-amber-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder:text-slate-500 text-sm"
+                    disabled={isGenerating}
+                  />
+                  <p className="text-xs text-amber-300/50 mt-1">
+                    Se lasci vuoto, l'AI sceglierà la ricetta più adatta al prodotto
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Storia del Prodotto */}
+            <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-6 w-6 text-emerald-400" />
+                  <h3 className="text-lg font-semibold text-emerald-300">Storia del Prodotto</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeProductStory}
+                    onChange={(e) => setIncludeProductStory(e.target.checked)}
+                    disabled={isGenerating || isGeneratingStory}
+                    className="w-4 h-4 rounded border-emerald-500/50 bg-slate-900/50 text-emerald-500 focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-emerald-300">Genera storia</span>
+                </label>
+              </div>
+              <p className="text-xs text-emerald-300/70 mb-3">
+                📚 Ricerca origine, tradizione, certificazioni DOP/IGP e curiosità storiche del prodotto → Blog + Social
+              </p>
+
+              {includeProductStory && (
+                <div className="mt-3">
+                  <button
+                    onClick={handleGenerateStory}
+                    disabled={isGeneratingStory || !productName}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingStory ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Ricerca in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-5 w-5" />
+                        <span>Cerca Storia Prodotto</span>
+                      </>
+                    )}
+                  </button>
+                  {!productName && (
+                    <p className="text-xs text-red-400 mt-2">
+                      ⚠️ Inserisci prima il nome del prodotto
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Curiosità Food */}
+            <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-6 w-6 text-rose-400" />
+                  <h3 className="text-lg font-semibold text-rose-300">Curiosità Food</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeFoodCuriosity}
+                    onChange={(e) => setIncludeFoodCuriosity(e.target.checked)}
+                    disabled={isGenerating || isSearchingCuriosities}
+                    className="w-4 h-4 rounded border-rose-500/50 bg-slate-900/50 text-rose-500 focus:ring-2 focus:ring-rose-500"
+                  />
+                  <span className="text-xs text-rose-300">Cerca curiosità</span>
+                </label>
+              </div>
+              <p className="text-xs text-rose-300/70 mb-3">
+                💡 Cerca news, trend e curiosità dal mondo del food mediterraneo → Scegli e pubblica sui Social
+              </p>
+
+              {includeFoodCuriosity && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-rose-300 mb-2">
+                      Argomento (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      value={curiosityTopic}
+                      onChange={(e) => setCuriosityTopic(e.target.value)}
+                      placeholder="Es: olio d'oliva, vino italiano, formaggi..."
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-rose-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white placeholder:text-slate-500 text-sm"
+                      disabled={isSearchingCuriosities}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-rose-300 mb-2">
+                      Categoria
+                    </label>
+                    <select
+                      value={curiosityCategory}
+                      onChange={(e) => setCuriosityCategory(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-rose-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white text-sm"
+                      disabled={isSearchingCuriosities}
+                    >
+                      <option value="">Tutte le categorie</option>
+                      <option value="news">📰 News recenti</option>
+                      <option value="tradizione">🏛️ Tradizione e storia</option>
+                      <option value="innovazione">🚀 Innovazione e futuro</option>
+                      <option value="sostenibilità">🌿 Sostenibilità</option>
+                      <option value="salute">❤️ Salute e benefici</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleSearchCuriosities}
+                    disabled={isSearchingCuriosities}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSearchingCuriosities ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Ricerca in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-5 w-5" />
+                        <span>Cerca Curiosità</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Geo-Targeting & RAG */}
             <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -1293,6 +2168,186 @@ export default function SocialAIStudioPage() {
                   </div>
                 )}
 
+                {/* Ricetta Tradizionale */}
+                {recipeData && (
+                  <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 backdrop-blur-sm rounded-xl border border-amber-500/30 p-4 sm:p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="text-2xl">👨‍🍳</div>
+                      <h3 className="text-white font-semibold">Ricetta Tradizionale</h3>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                    </div>
+
+                    {/* Immagine ricetta */}
+                    {recipeData.imageUrl && (
+                      <img
+                        src={recipeData.imageUrl}
+                        alt="Ricetta"
+                        className="w-full h-auto rounded-lg border border-amber-500/50 mb-4"
+                      />
+                    )}
+
+                    {/* Titolo e Descrizione */}
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-amber-200 mb-2">
+                        {recipeData.recipe.title}
+                      </h4>
+                      <p className="text-sm text-amber-300/90 mb-3">
+                        {recipeData.recipe.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          📍 {recipeData.recipe.region}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          ⏱️ Prep: {recipeData.recipe.prepTime}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          🔥 Cook: {recipeData.recipe.cookTime}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          🍽️ {recipeData.recipe.servings}
+                        </span>
+                        <span className="px-2 py-1 bg-amber-900/40 border border-amber-500/30 rounded-full text-amber-300">
+                          📊 {recipeData.recipe.difficulty}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tradizione */}
+                    <div className="mb-4 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                      <p className="text-xs text-amber-300/90">
+                        <strong>Tradizione:</strong> {recipeData.recipe.tradition}
+                      </p>
+                    </div>
+
+                    {/* Ingredienti */}
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-amber-200 mb-2">Ingredienti</div>
+                      <div className="space-y-1.5">
+                        {recipeData.recipe.ingredients.map((ing: any, idx: number) => (
+                          <div key={idx} className="flex items-start space-x-2 text-sm">
+                            <span className="text-amber-400">•</span>
+                            <span className="text-amber-200">
+                              <strong>{ing.quantity}</strong> {ing.item}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Procedimento */}
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-amber-200 mb-2">Procedimento</div>
+                      <div className="space-y-2">
+                        {recipeData.recipe.steps.map((step: string, idx: number) => (
+                          <div key={idx} className="flex items-start space-x-2 text-sm">
+                            <span className="text-amber-400 font-bold min-w-[20px]">{idx + 1}.</span>
+                            <span className="text-amber-200">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tips */}
+                    {recipeData.recipe.tips && recipeData.recipe.tips.length > 0 && (
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-amber-200 mb-2">💡 Consigli</div>
+                        <div className="space-y-1.5">
+                          {recipeData.recipe.tips.map((tip: string, idx: number) => (
+                            <div key={idx} className="flex items-start space-x-2 text-sm">
+                              <span className="text-amber-400">→</span>
+                              <span className="text-amber-200">{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fonti */}
+                    {recipeData.sources && recipeData.sources.length > 0 && (
+                      <details className="mb-4">
+                        <summary className="text-xs text-amber-400 cursor-pointer hover:text-amber-300">
+                          Fonti utilizzate
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {recipeData.sources.map((source: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={source.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-xs text-amber-500 hover:text-amber-400 truncate"
+                            >
+                              → {source.title}
+                            </a>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Pulsanti Download e Pubblica */}
+                    <div className="space-y-3">
+                      {recipeData.imageUrl && (
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = recipeData.imageUrl;
+                            link.download = `ricetta-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                            link.click();
+                          }}
+                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Immagine Ricetta</span>
+                        </button>
+                      )}
+
+                      {/* Pulsanti Pubblica e Programma */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handlePublishRecipe}
+                          disabled={isPublishingRecipe || !recipeData.imageUrl}
+                          className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        >
+                          {isPublishingRecipe ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              <span>Pubblicazione...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="h-5 w-5" />
+                              <span>Pubblica Subito</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => openScheduleModal('recipe')}
+                          disabled={!recipeData.imageUrl}
+                          className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                          title="Programma pubblicazione"
+                        >
+                          <Calendar className="h-5 w-5" />
+                          <span>Programma</span>
+                        </button>
+                      </div>
+
+                      {/* Progress Pubblicazione */}
+                      {publishProgress.length > 0 && (
+                        <div className="bg-slate-900/50 rounded-lg p-3 border border-amber-500/30">
+                          <div className="space-y-1">
+                            {publishProgress.map((msg, idx) => (
+                              <div key={idx} className="text-xs text-amber-200">
+                                {msg}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Immagine */}
                 {result.image && (
                   <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6">
@@ -1356,13 +2411,59 @@ export default function SocialAIStudioPage() {
                           className="w-full h-auto rounded-lg border border-purple-500/50 mb-3"
                         />
 
-                        <button
-                          onClick={handleDownloadVideo}
-                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Download Video</span>
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={handleDownloadVideo}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            <span>Download Video</span>
+                          </button>
+
+                          <button
+                            onClick={handlePublishYouTube}
+                            disabled={isPublishingYouTube}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                          >
+                            {isPublishingYouTube ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Pubblicazione in corso...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Youtube className="h-4 w-4" />
+                                <span>Pubblica su YouTube</span>
+                              </>
+                            )}
+                          </button>
+
+                          {youtubePublishResult && (
+                            <div className="mt-3 p-3 bg-emerald-900/30 border border-emerald-500/50 rounded-lg">
+                              <div className="flex items-start space-x-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="text-emerald-300 font-medium">
+                                    Pubblicato su YouTube!
+                                  </div>
+                                  <div className="text-purple-300 text-xs mt-1">
+                                    {youtubePublishResult.youtubeTitle}
+                                  </div>
+                                  {youtubePublishResult.videoUrl && (
+                                    <a
+                                      href={youtubePublishResult.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-400 hover:text-blue-300 underline mt-1 inline-block"
+                                    >
+                                      Vedi su YouTube →
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
                         <div className="mt-2 text-xs text-purple-300 text-center">
                           Generato con Veo 3.1 (Google AI)
@@ -1375,7 +2476,7 @@ export default function SocialAIStudioPage() {
             )}
 
             {/* Placeholder quando non ci sono risultati */}
-            {!result && !isGenerating && (
+            {!result && !isGenerating && !storyData && curiositiesList.length === 0 && (
               <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-12 text-center">
                 <Sparkles className="h-16 w-16 text-purple-500/30 mx-auto mb-4" />
                 <div className="text-purple-400 font-medium">
@@ -1384,6 +2485,448 @@ export default function SocialAIStudioPage() {
                 <div className="text-purple-500/50 text-sm mt-2">
                   Carica una foto e clicca "Genera"
                 </div>
+              </div>
+            )}
+
+            {/* ========================================== */}
+            {/* SEZIONI INDIPENDENTI (fuori da result) */}
+            {/* ========================================== */}
+
+            {/* Storia del Prodotto - Mostrata indipendentemente */}
+            {storyData && (
+              <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <BookOpen className="h-6 w-6 text-emerald-400" />
+                  <h3 className="text-white font-semibold">Storia del Prodotto</h3>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                </div>
+
+                {/* Immagine storia */}
+                {storyData.imageUrl && (
+                  <img
+                    src={storyData.imageUrl}
+                    alt="Storia prodotto"
+                    className="w-full h-auto rounded-lg border border-emerald-500/50 mb-4"
+                  />
+                )}
+
+                {/* Titolo e Introduzione */}
+                <div className="mb-4">
+                  <h4 className="text-xl font-bold text-emerald-200 mb-2">
+                    {storyData.story.title}
+                  </h4>
+                  <p className="text-sm text-emerald-300/90 italic mb-3">
+                    {storyData.story.subtitle}
+                  </p>
+                  <p className="text-sm text-emerald-300/90">
+                    {storyData.story.introduction}
+                  </p>
+                </div>
+
+                {/* Origine */}
+                <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-emerald-200 mb-2">📍 Origine</div>
+                  <p className="text-xs text-emerald-300/90 mb-1">
+                    <strong>Regione:</strong> {storyData.story.origin?.region}
+                  </p>
+                  <p className="text-xs text-emerald-300/90">
+                    {storyData.story.origin?.history}
+                  </p>
+                  {storyData.story.origin?.year && (
+                    <p className="text-xs text-emerald-400 mt-1">
+                      📅 {storyData.story.origin.year}
+                    </p>
+                  )}
+                </div>
+
+                {/* Tradizione */}
+                <div className="mb-4 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-emerald-200 mb-2">🏛️ Tradizione</div>
+                  <p className="text-xs text-emerald-300/90 mb-2">
+                    {storyData.story.tradition?.description}
+                  </p>
+                  <p className="text-xs text-emerald-300/90">
+                    <strong>Significato culturale:</strong> {storyData.story.tradition?.culturalSignificance}
+                  </p>
+                </div>
+
+                {/* Certificazione */}
+                {storyData.story.certification && storyData.story.certification.type !== 'Nessuna' && (
+                  <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                    <div className="text-sm font-semibold text-yellow-200 mb-2">
+                      🏅 Certificazione {storyData.story.certification.type}
+                    </div>
+                    <p className="text-xs text-yellow-300/90">
+                      {storyData.story.certification.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Curiosità */}
+                {storyData.story.curiosities && storyData.story.curiosities.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-emerald-200 mb-2">💡 Curiosità</div>
+                    <div className="space-y-1.5">
+                      {storyData.story.curiosities.map((curiosity: string, idx: number) => (
+                        <div key={idx} className="flex items-start space-x-2 text-sm">
+                          <span className="text-emerald-400">•</span>
+                          <span className="text-emerald-200">{curiosity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Abbinamenti */}
+                {storyData.story.pairings && storyData.story.pairings.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-emerald-200 mb-2">🍷 Abbinamenti</div>
+                    <div className="flex flex-wrap gap-2">
+                      {storyData.story.pairings.map((pairing: string, idx: number) => (
+                        <span key={idx} className="px-2 py-1 bg-emerald-900/40 border border-emerald-500/30 rounded-full text-xs text-emerald-300">
+                          {pairing}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quote */}
+                {storyData.story.quote && (
+                  <div className="mb-4 p-3 bg-emerald-900/30 border-l-4 border-emerald-500 rounded-r-lg italic">
+                    <p className="text-sm text-emerald-200">
+                      "{storyData.story.quote}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Pulsanti */}
+                <div className="space-y-3">
+                  {storyData.imageUrl && (
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = storyData.imageUrl;
+                        link.download = `storia-${productName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+                        link.click();
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download Immagine Storia</span>
+                    </button>
+                  )}
+
+                  {/* Pulsanti Pubblica e Programma */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handlePublishStory}
+                      disabled={isPublishingStory}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                      {isPublishingStory ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Pubblicazione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-5 w-5" />
+                          <span>Pubblica Subito</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openScheduleModal('story')}
+                      disabled={!storyData?.imageUrl}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      title="Programma pubblicazione"
+                    >
+                      <Calendar className="h-5 w-5" />
+                      <span>Programma</span>
+                    </button>
+                  </div>
+
+                  {storyPublishProgress.length > 0 && (
+                    <div className="bg-slate-900/50 rounded-lg p-3 border border-emerald-500/30">
+                      <div className="space-y-1">
+                        {storyPublishProgress.map((msg, idx) => (
+                          <div key={idx} className="text-xs text-emerald-200">
+                            {msg}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Curiosità Food - Lista risultati - Mostrata indipendentemente */}
+            {curiositiesList.length > 0 && (
+              <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 backdrop-blur-sm rounded-xl border border-rose-500/30 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Lightbulb className="h-6 w-6 text-rose-400" />
+                  <h3 className="text-white font-semibold">Curiosità Food Trovate</h3>
+                  <span className="ml-auto text-xs text-rose-300 bg-rose-900/40 px-2 py-1 rounded-full">
+                    {curiositiesList.length} risultati
+                  </span>
+                </div>
+
+                <p className="text-xs text-rose-300/70 mb-4">
+                  Seleziona una curiosità da pubblicare sui social:
+                </p>
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {curiositiesList.map((curiosity, idx) => (
+                    <div
+                      key={curiosity.id || idx}
+                      onClick={() => {
+                        setSelectedCuriosity(curiosity);
+                        setCuriosityPreviewImage(null); // Reset immagine quando cambi curiosità
+                        setTranslatedCuriosity(null); // Reset traduzione quando cambi curiosità
+                      }}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
+                        selectedCuriosity?.id === curiosity.id
+                          ? 'bg-rose-500/30 border-2 border-rose-400'
+                          : 'bg-slate-900/50 border border-rose-500/30 hover:border-rose-400'
+                      }`}
+                    >
+                      <h4 className="text-sm font-semibold text-rose-200 mb-1">
+                        {curiosity.title}
+                      </h4>
+                      <p className="text-xs text-rose-300/80 mb-2">
+                        {curiosity.summary}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {curiosity.tags?.slice(0, 3).map((tag: string, tagIdx: number) => (
+                          <span key={tagIdx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      {curiosity.source && (
+                        <p className="text-xs text-rose-400 mt-2">
+                          📚 {curiosity.source}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dettagli curiosità selezionata */}
+                {selectedCuriosity && (
+                  <div className="mt-4 p-4 bg-rose-900/30 border border-rose-500/50 rounded-lg">
+                    <h4 className="text-sm font-bold text-rose-200 mb-2">
+                      ✨ {selectedCuriosity.title}
+                    </h4>
+                    <p className="text-sm text-rose-300/90 mb-3">
+                      {selectedCuriosity.fullContent}
+                    </p>
+
+                    <div className="mb-3">
+                      <div className="text-xs text-rose-300 mb-1">Caption Social:</div>
+                      <p className="text-xs text-white bg-slate-900/50 p-2 rounded">
+                        {selectedCuriosity.socialCaption}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {selectedCuriosity.hashtags?.map((tag: string, idx: number) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-rose-900/40 text-rose-300 text-xs rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Sezione Traduzione */}
+                    <div className="mb-4 p-3 bg-slate-900/50 border border-rose-500/30 rounded-lg">
+                      <div className="text-xs text-rose-300 mb-2 flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        Lingua di pubblicazione:
+                      </div>
+                      <div className="flex gap-2 mb-3">
+                        {[
+                          { code: 'it', label: '🇮🇹 IT', name: 'Italiano' },
+                          { code: 'de', label: '🇨🇭 DE', name: 'Tedesco' },
+                          { code: 'fr', label: '🇨🇭 FR', name: 'Francese' },
+                          { code: 'en', label: '🇬🇧 EN', name: 'Inglese' }
+                        ].map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setPublishLanguage(lang.code as 'it' | 'de' | 'fr' | 'en');
+                              setTranslatedCuriosity(null); // Reset traduzione quando cambi lingua
+                            }}
+                            className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
+                              publishLanguage === lang.code
+                                ? 'bg-rose-500 text-white'
+                                : 'bg-slate-800 text-rose-300 hover:bg-slate-700'
+                            }`}
+                            title={lang.name}
+                          >
+                            {lang.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Pulsante Traduci */}
+                      {publishLanguage !== 'it' && !translatedCuriosity && (
+                        <button
+                          onClick={handleTranslateCuriosity}
+                          disabled={isTranslatingCuriosity}
+                          className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
+                        >
+                          {isTranslatingCuriosity ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Traduzione in corso...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="h-4 w-4" />
+                              <span>Traduci in {publishLanguage === 'de' ? 'Tedesco' : publishLanguage === 'fr' ? 'Francese' : 'Inglese'}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Anteprima Contenuto Tradotto */}
+                      {translatedCuriosity && (
+                        <div className="mt-3 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg">
+                          <div className="text-xs text-blue-300 mb-2 font-semibold">
+                            ✅ Contenuto tradotto in {publishLanguage === 'de' ? 'Tedesco' : publishLanguage === 'fr' ? 'Francese' : 'Inglese'}:
+                          </div>
+                          <h5 className="text-sm font-bold text-blue-200 mb-2">
+                            {translatedCuriosity.title}
+                          </h5>
+                          <p className="text-xs text-blue-300/90 mb-2">
+                            {translatedCuriosity.fullContent}
+                          </p>
+                          <div className="text-xs text-blue-300 mb-1">Caption:</div>
+                          <p className="text-xs text-white bg-slate-900/50 p-2 rounded mb-2">
+                            {translatedCuriosity.socialCaption}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {translatedCuriosity.hashtags?.map((tag: string, idx: number) => (
+                              <span key={idx} className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-xs rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setTranslatedCuriosity(null)}
+                            className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+                          >
+                            ✖ Rimuovi traduzione
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Info se italiano selezionato */}
+                      {publishLanguage === 'it' && (
+                        <div className="text-xs text-rose-400/70 italic">
+                          Pubblicazione in italiano (contenuto originale)
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Anteprima Immagine */}
+                    {curiosityPreviewImage && (
+                      <div className="mb-4">
+                        <div className="text-xs text-rose-300 mb-2">Anteprima Immagine:</div>
+                        <img
+                          src={curiosityPreviewImage}
+                          alt="Anteprima curiosità"
+                          className="w-full h-auto rounded-lg border border-rose-500/50"
+                        />
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = curiosityPreviewImage;
+                            link.download = `curiosity-${selectedCuriosity.id}-${Date.now()}.png`;
+                            link.click();
+                          }}
+                          className="mt-2 w-full flex items-center justify-center space-x-2 px-3 py-2 bg-rose-500/30 hover:bg-rose-500/40 text-rose-200 text-sm rounded-lg transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Immagine</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Pulsante Genera Anteprima */}
+                    {!curiosityPreviewImage && (
+                      <button
+                        onClick={handleGenerateCuriosityPreview}
+                        disabled={isGeneratingCuriosityImage}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mb-3"
+                      >
+                        {isGeneratingCuriosityImage ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Generazione immagine AI...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="h-5 w-5" />
+                            <span>Genera Anteprima Immagine</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Pulsanti Pubblica e Programma (solo se immagine già generata) */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handlePublishCuriosity}
+                        disabled={isPublishingCuriosity || !curiosityPreviewImage}
+                        className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                          curiosityPreviewImage
+                            ? 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700'
+                            : 'bg-gray-600 cursor-not-allowed'
+                        }`}
+                      >
+                        {isPublishingCuriosity ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Pubblicazione...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="h-5 w-5" />
+                            <span>{curiosityPreviewImage ? 'Pubblica Subito' : 'Prima genera anteprima'}</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => openScheduleModal('curiosity')}
+                        disabled={!curiosityPreviewImage}
+                        className={`flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                          curiosityPreviewImage
+                            ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                            : 'bg-gray-600 cursor-not-allowed'
+                        }`}
+                        title="Programma pubblicazione"
+                      >
+                        <Calendar className="h-5 w-5" />
+                        <span>Programma</span>
+                      </button>
+                    </div>
+
+                    {curiosityPublishProgress.length > 0 && (
+                      <div className="mt-3 bg-slate-900/50 rounded-lg p-3 border border-rose-500/30">
+                        <div className="space-y-1">
+                          {curiosityPublishProgress.map((msg, idx) => (
+                            <div key={idx} className="text-xs text-rose-200">
+                              {msg}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1408,6 +2951,102 @@ export default function SocialAIStudioPage() {
           videoUrl={result.video?.dataUrl}
           platform={socialPlatform}
         />
+      )}
+
+      {/* Modal Programmazione */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-6 w-6 text-amber-400" />
+                <h3 className="text-xl font-bold text-white">Programma Pubblicazione</h3>
+              </div>
+              <button
+                onClick={() => setShowScheduleModal(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-400 mb-6">
+              Il post verrà salvato in Odoo e pubblicato automaticamente alla data e ora selezionate.
+            </p>
+
+            <div className="space-y-4">
+              {/* Data */}
+              <div>
+                <label className="block text-sm font-medium text-amber-300 mb-2">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Data di pubblicazione
+                </label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 bg-slate-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Ora */}
+              <div>
+                <label className="block text-sm font-medium text-amber-300 mb-2">
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Ora di pubblicazione
+                </label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Riepilogo */}
+              {scheduledDate && scheduledTime && (
+                <div className="bg-amber-900/30 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-sm text-amber-200">
+                    Il post verrà pubblicato il{' '}
+                    <span className="font-semibold text-amber-100">
+                      {new Date(scheduledDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>{' '}
+                    alle{' '}
+                    <span className="font-semibold text-amber-100">{scheduledTime}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Pulsanti */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowScheduleModal(null)}
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => handleSchedulePost(showScheduleModal)}
+                disabled={isScheduling || !scheduledDate || !scheduledTime}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isScheduling ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Programmazione...</span>
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-5 w-5" />
+                    <span>Conferma</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -163,14 +163,9 @@ export async function GET(request: NextRequest) {
           // Carica tutte le assegnazioni per questi prodotti/varianti
           const placeholders = productIdsArray.map((_, i) => `$${i + 1}`).join(',');
           const queryText = `
-            SELECT
-              product_id,
-              customer_id,
-              quantity,
-              notes
+            SELECT product_id, customer_id, quantity, notes
             FROM preorder_customer_assignments
             WHERE product_id IN (${placeholders})
-            AND (is_ordered = FALSE OR is_ordered IS NULL)
             ORDER BY created_at DESC
           `;
 
@@ -192,9 +187,14 @@ export async function GET(request: NextRequest) {
         }
 
         console.log(`✅ Caricate assegnazioni per ${assignmentsByProduct.size} prodotti/varianti`);
+
+        // DEBUG: Log dettagliato delle assegnazioni trovate
+        for (const [productId, assignments] of Array.from(assignmentsByProduct.entries())) {
+          console.log(`  📋 Product ${productId}: ${assignments.length} assegnazioni`);
+        }
       }
     } catch (error) {
-      console.warn('⚠️ Errore caricamento assegnazioni (tabella potrebbe non esistere):', error);
+      console.error('❌ Errore caricamento assegnazioni:', error);
       // Non bloccare la risposta se la tabella non esiste ancora
     }
 
@@ -242,10 +242,22 @@ export async function GET(request: NextRequest) {
         };
       });
 
+    // 6. Ordina: prodotti con assegnazioni PRIMA, poi gli altri
+    const sortedProducts = formattedProducts.sort((a, b) => {
+      const aHasAssignments = a.assigned_customers.length > 0 ||
+        a.variants.some((v: any) => v.assigned_customers?.length > 0);
+      const bHasAssignments = b.assigned_customers.length > 0 ||
+        b.variants.some((v: any) => v.assigned_customers?.length > 0);
+
+      if (aHasAssignments && !bHasAssignments) return -1;
+      if (!aHasAssignments && bHasAssignments) return 1;
+      return 0;
+    });
+
     return NextResponse.json({
       success: true,
-      products: formattedProducts,
-      totalCount: formattedProducts.length
+      products: sortedProducts,
+      totalCount: sortedProducts.length
     });
 
   } catch (error: any) {
