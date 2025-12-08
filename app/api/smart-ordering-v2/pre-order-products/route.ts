@@ -192,9 +192,14 @@ export async function GET(request: NextRequest) {
         }
 
         console.log(`✅ Caricate assegnazioni per ${assignmentsByProduct.size} prodotti/varianti`);
+
+        // DEBUG: Log dettagliato delle assegnazioni trovate
+        for (const [productId, assignments] of Array.from(assignmentsByProduct.entries())) {
+          console.log(`  📋 Product ${productId}: ${assignments.length} assegnazioni`);
+        }
       }
     } catch (error) {
-      console.warn('⚠️ Errore caricamento assegnazioni (tabella potrebbe non esistere):', error);
+      console.error('❌ Errore caricamento assegnazioni:', error);
       // Non bloccare la risposta se la tabella non esiste ancora
     }
 
