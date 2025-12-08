@@ -249,11 +249,15 @@ async function getBlogPostUrl(
 // CREA SOCIAL POST SU ODOO
 // ==========================================
 
+// Helper per delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function createSocialPost(
   odooCookies: string,
   message: string,
   accountIds: number[],
-  imageId?: number
+  imageId?: number,
+  retryCount: number = 0
 ): Promise<number> {
   // Prepara valori del post
   const postValues: Record<string, any> = {
@@ -279,7 +283,7 @@ async function createSocialPost(
     throw new Error('Failed to create social post');
   }
 
-  // Pubblica immediatamente con action_post
+  // Pubblica immediatamente con action_post (con retry per Instagram)
   try {
     await callOdoo(
       odooCookies,
@@ -290,7 +294,34 @@ async function createSocialPost(
 
     console.log(`  ✅ Social post ${postId} pubblicato`);
   } catch (publishError: any) {
-    console.warn(`  ⚠️ action_post fallito per ${postId}:`, publishError.message);
+    const errorMsg = publishError.message || '';
+
+    // Se è errore Instagram "Media ID not available", riprova dopo delay
+    if (errorMsg.includes('Media ID') || errorMsg.includes('media') || errorMsg.includes('Instagram')) {
+      if (retryCount < 3) {
+        const waitTime = (retryCount + 1) * 5000; // 5s, 10s, 15s
+        console.warn(`  ⚠️ Instagram error, waiting ${waitTime/1000}s before retry ${retryCount + 1}/3...`);
+        await delay(waitTime);
+
+        // Riprova action_post
+        try {
+          await callOdoo(
+            odooCookies,
+            'social.post',
+            'action_post',
+            [[postId]]
+          );
+          console.log(`  ✅ Social post ${postId} pubblicato dopo retry`);
+        } catch (retryError: any) {
+          console.warn(`  ⚠️ Retry ${retryCount + 1} fallito:`, retryError.message);
+          // Continua comunque, il post è creato
+        }
+      } else {
+        console.warn(`  ⚠️ action_post fallito per ${postId} dopo 3 retry:`, errorMsg);
+      }
+    } else {
+      console.warn(`  ⚠️ action_post fallito per ${postId}:`, errorMsg);
+    }
     // Il post è comunque creato, solo non pubblicato automaticamente
   }
 
@@ -535,50 +566,77 @@ ${translatedRecipe.description.substring(0, 100)}...
     const INSTAGRAM_ID = 4;
     const LINKEDIN_ID = 6;
     const TWITTER_ID = 13;
-    const OTHER_ACCOUNTS = [FACEBOOK_ID, INSTAGRAM_ID, LINKEDIN_ID]; // FB, IG, LI insieme
 
-    // Usa il post ITALIANO per i social (UN SOLO POST sui 4 account!)
+    // Usa il post ITALIANO per i social
     const socialCaption = socialPosts['it_IT'];
+    const publishedPostIds: number[] = [];
+
+    // STRATEGIA: Pubblica separatamente per evitare errori Instagram
+    // Instagram ha bisogno di più tempo per processare le immagini
 
     try {
-      console.log('  Creating social post for 4 accounts (FB, IG, LI, Twitter)...');
-
-      // POST 1: Facebook, Instagram, LinkedIn (messaggio completo)
+      // POST 1: Facebook e LinkedIn (veloci, raramente falliscono)
+      console.log('  📘 Publishing to Facebook & LinkedIn...');
       const postId1 = await createSocialPost(
         odooCookies,
         socialCaption,
-        OTHER_ACCOUNTS,
+        [FACEBOOK_ID, LINKEDIN_ID],
         recipeImageId
       );
+      publishedPostIds.push(postId1);
+      console.log(`  ✅ Facebook/LinkedIn: post ${postId1}`);
 
-      console.log(`  ✅ Social post ${postId1} created for Facebook/Instagram/LinkedIn`);
+      // Aspetta 3 secondi prima di Instagram (l'immagine deve essere "calda")
+      console.log('  ⏳ Waiting 3s for image to be ready...');
+      await delay(3000);
 
-      // POST 2: Twitter (messaggio abbreviato max 280 caratteri)
+      // POST 2: Instagram (separato, con retry automatico nella funzione)
+      console.log('  📸 Publishing to Instagram...');
+      const postId2 = await createSocialPost(
+        odooCookies,
+        socialCaption,
+        [INSTAGRAM_ID],
+        recipeImageId
+      );
+      publishedPostIds.push(postId2);
+      console.log(`  ✅ Instagram: post ${postId2}`);
+
+      // POST 3: Twitter (messaggio abbreviato max 280 caratteri)
+      console.log('  🐦 Publishing to Twitter...');
       let twitterMessage = socialCaption;
       if (twitterMessage.length > 280) {
-        // Abbrevia per Twitter
         twitterMessage = twitterMessage.substring(0, 250) + '... 👉 www.lapa.ch';
       }
 
-      const postId2 = await createSocialPost(
+      const postId3 = await createSocialPost(
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
         recipeImageId
       );
-
-      console.log(`  ✅ Social post ${postId2} created for Twitter`);
+      publishedPostIds.push(postId3);
+      console.log(`  ✅ Twitter: post ${postId3}`);
 
       socialPublishResults = {
         success: true,
-        postIds: [postId1, postId2],
-        accounts: ['Facebook', 'Instagram', 'LinkedIn', 'Twitter']
+        postIds: publishedPostIds,
+        accounts: ['Facebook', 'LinkedIn', 'Instagram', 'Twitter']
       };
 
     } catch (error: any) {
       const errorMsg = `Social publishing failed: ${error.message}`;
       socialPublishFailures.push(errorMsg);
       console.error(`  ❌ Error publishing social posts:`, error.message);
+
+      // Se abbiamo pubblicato qualcosa, consideralo parzialmente riuscito
+      if (publishedPostIds.length > 0) {
+        socialPublishResults = {
+          success: false,
+          partial: true,
+          postIds: publishedPostIds,
+          accounts: publishedPostIds.length >= 1 ? ['Facebook', 'LinkedIn'] : []
+        };
+      }
     }
 
     console.log('✅ Social media publication completed!');
