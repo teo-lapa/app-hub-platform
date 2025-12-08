@@ -411,19 +411,7 @@ ${productDetailsHtml}
           console.log(`  📝 Product ${productId}: marked ${result.rowCount || 0} assignments`);
         }
 
-        // Verifica che i record siano stati aggiornati
-        const verifyResult = await client.sql`
-          SELECT COUNT(*) as remaining FROM preorder_customer_assignments
-          WHERE product_id = ANY(${productIds}::int[])
-          AND (is_ordered = FALSE OR is_ordered IS NULL)
-        `;
-        const remaining = parseInt(verifyResult.rows[0]?.remaining || '0');
-
-        if (remaining > 0) {
-          console.warn(`⚠️ ATTENZIONE: ${remaining} assegnazioni NON sono state marcate come ordinate!`);
-        }
-
-        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered (${remaining} remaining)`);
+        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
         markingSucceeded = true;
       } else {
         markingSucceeded = true; // No products to mark, consider it success
