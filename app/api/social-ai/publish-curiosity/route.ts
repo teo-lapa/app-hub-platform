@@ -33,6 +33,7 @@ interface PublishCuriosityRequest {
   curiosity: CuriosityItem;
   generateImage: boolean;
   customImage?: string;
+  scheduledDate?: string; // Formato: "YYYY-MM-DD HH:MM:SS"
 }
 
 // Helper per delay
@@ -84,13 +85,21 @@ async function createSocialPost(
   message: string,
   accountIds: number[],
   imageId?: number,
+  scheduledDate?: string,
   retryCount: number = 0
 ): Promise<number> {
   const postValues: Record<string, any> = {
     message: message,
     account_ids: [[6, 0, accountIds]],
-    post_method: 'now'
   };
+
+  // Se è programmato, usa 'scheduled', altrimenti 'now'
+  if (scheduledDate) {
+    postValues.post_method = 'scheduled';
+    postValues.scheduled_date = scheduledDate;
+  } else {
+    postValues.post_method = 'now';
+  }
 
   if (imageId) {
     postValues.image_ids = [[6, 0, [imageId]]];
@@ -107,6 +116,13 @@ async function createSocialPost(
     throw new Error('Failed to create social post');
   }
 
+  // Se è programmato, non pubblicare subito (Odoo lo farà alla data programmata)
+  if (scheduledDate) {
+    console.log(`  📅 Social post ${postId} programmato per ${scheduledDate}`);
+    return postId;
+  }
+
+  // Pubblica subito se non è programmato
   try {
     await callOdoo(
       odooCookies,
@@ -150,7 +166,7 @@ async function createSocialPost(
 
 export async function POST(request: NextRequest) {
   try {
-    const { curiosity, generateImage, customImage } = await request.json() as PublishCuriosityRequest;
+    const { curiosity, generateImage, customImage, scheduledDate } = await request.json() as PublishCuriosityRequest;
 
     if (!curiosity) {
       return NextResponse.json(
@@ -159,7 +175,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Publish Curiosity] Publishing: ${curiosity.title}`);
+    const isScheduled = !!scheduledDate;
+    console.log(`[Publish Curiosity] ${isScheduled ? 'Scheduling' : 'Publishing'}: ${curiosity.title}${isScheduled ? ` for ${scheduledDate}` : ''}`);
 
     // AUTENTICAZIONE ODOO
     const userCookies = request.headers.get('cookie');
@@ -301,34 +318,37 @@ ${curiosity.hashtags.slice(0, 2).join(' ')}`;
 
     try {
       // POST 1: Facebook e LinkedIn
-      console.log('  📘 Publishing to Facebook & LinkedIn...');
+      console.log(`  📘 ${isScheduled ? 'Scheduling' : 'Publishing'} to Facebook & LinkedIn...`);
       const postId1 = await createSocialPost(
         odooCookies,
         fbLinkedinMessage,
         [FACEBOOK_ID, LINKEDIN_ID],
-        imageId
+        imageId,
+        scheduledDate
       );
       publishedPostIds.push(postId1);
 
       await delay(3000);
 
       // POST 2: Instagram
-      console.log('  📸 Publishing to Instagram...');
+      console.log(`  📸 ${isScheduled ? 'Scheduling' : 'Publishing'} to Instagram...`);
       const postId2 = await createSocialPost(
         odooCookies,
         instagramMessage,
         [INSTAGRAM_ID],
-        imageId
+        imageId,
+        scheduledDate
       );
       publishedPostIds.push(postId2);
 
       // POST 3: Twitter
-      console.log('  🐦 Publishing to Twitter...');
+      console.log(`  🐦 ${isScheduled ? 'Scheduling' : 'Publishing'} to Twitter...`);
       const postId3 = await createSocialPost(
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
-        imageId
+        imageId,
+        scheduledDate
       );
       publishedPostIds.push(postId3);
 
@@ -336,7 +356,7 @@ ${curiosity.hashtags.slice(0, 2).join(' ')}`;
       console.error('Social publishing error:', error.message);
     }
 
-    console.log('✅ Publication completed!');
+    console.log(`✅ ${isScheduled ? 'Scheduling' : 'Publication'} completed!`);
 
     return NextResponse.json({
       success: true,
@@ -344,7 +364,9 @@ ${curiosity.hashtags.slice(0, 2).join(' ')}`;
         curiosityId: curiosity.id,
         socialPostIds: publishedPostIds,
         imageId,
-        platforms: ['Facebook', 'LinkedIn', 'Instagram', 'Twitter']
+        platforms: ['Facebook', 'LinkedIn', 'Instagram', 'Twitter'],
+        scheduled: isScheduled,
+        scheduledDate: scheduledDate || null
       }
     });
 

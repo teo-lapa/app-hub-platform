@@ -6,7 +6,8 @@ import {
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
-  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe
+  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe,
+  Calendar, Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -114,6 +115,12 @@ export default function SocialAIStudioPage() {
   const [translatedCuriosity, setTranslatedCuriosity] = useState<any | null>(null);
   const [isGeneratingCuriosityImage, setIsGeneratingCuriosityImage] = useState(false);
   const [curiosityPreviewImage, setCuriosityPreviewImage] = useState<string | null>(null);
+
+  // Scheduling states
+  const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [isScheduling, setIsScheduling] = useState(false);
 
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -801,6 +808,120 @@ export default function SocialAIStudioPage() {
     } finally {
       setIsPublishingCuriosity(false);
     }
+  };
+
+  // ==========================================
+  // Programmazione Post sui Social
+  // ==========================================
+  const handleSchedulePost = async (type: 'curiosity' | 'story' | 'recipe') => {
+    if (!scheduledDate || !scheduledTime) {
+      toast.error('Seleziona data e ora per la programmazione!');
+      return;
+    }
+
+    // Combina data e ora in formato ISO
+    const scheduledDateTime = `${scheduledDate} ${scheduledTime}:00`;
+
+    setIsScheduling(true);
+    const loadingToast = toast.loading('Programmazione post in corso...');
+
+    try {
+      let response;
+      let endpoint;
+      let body;
+
+      if (type === 'curiosity') {
+        if (!selectedCuriosity || !curiosityPreviewImage) {
+          toast.error('Seleziona una curiosità e genera l\'anteprima prima!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        // Usa contenuto tradotto se disponibile
+        const curiosityToPublish = translatedCuriosity ? {
+          ...selectedCuriosity,
+          title: translatedCuriosity.title,
+          fullContent: translatedCuriosity.fullContent,
+          socialCaption: translatedCuriosity.socialCaption,
+          hashtags: translatedCuriosity.hashtags
+        } : selectedCuriosity;
+
+        endpoint = '/api/social-ai/publish-curiosity';
+        body = {
+          curiosity: curiosityToPublish,
+          generateImage: false,
+          customImage: curiosityPreviewImage,
+          scheduledDate: scheduledDateTime
+        };
+      } else if (type === 'story') {
+        if (!storyData?.story || !productImage || !storyData?.imageUrl) {
+          toast.error('Genera prima la storia del prodotto!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        endpoint = '/api/social-ai/publish-story';
+        body = {
+          storyData: storyData.story,
+          productName,
+          productImage,
+          storyImage: storyData.imageUrl,
+          scheduledDate: scheduledDateTime
+        };
+      } else if (type === 'recipe') {
+        if (!recipeData || !productName || !productImage || !recipeData.imageUrl) {
+          toast.error('Genera prima la ricetta completa!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        endpoint = '/api/social-ai/publish-recipe';
+        body = {
+          recipeData: recipeData.recipe,
+          productName,
+          productImage,
+          recipeImage: recipeData.imageUrl,
+          sources: recipeData.sources || [],
+          scheduledDate: scheduledDateTime
+        };
+      }
+
+      response = await fetch(endpoint!, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante programmazione');
+      }
+
+      toast.success(`Post programmato per ${scheduledDate} alle ${scheduledTime}!`, { id: loadingToast });
+      setShowScheduleModal(null);
+      setScheduledDate('');
+      setScheduledTime('');
+
+    } catch (error: any) {
+      console.error('Errore programmazione:', error);
+      toast.error(error.message || 'Errore durante programmazione', { id: loadingToast });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  // Helper per aprire il modal di scheduling
+  const openScheduleModal = (type: 'curiosity' | 'story' | 'recipe') => {
+    // Imposta data/ora di default: domani alle 10:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setScheduledDate(tomorrow.toISOString().split('T')[0]);
+    setScheduledTime('10:00');
+    setShowScheduleModal(type);
   };
 
   // ==========================================
@@ -2181,24 +2302,35 @@ export default function SocialAIStudioPage() {
                         </button>
                       )}
 
-                      {/* Pulsante Pubblica su Blog + Social */}
-                      <button
-                        onClick={handlePublishRecipe}
-                        disabled={isPublishingRecipe || !recipeData.imageUrl}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                      >
-                        {isPublishingRecipe ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span>Pubblicazione in corso...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Share2 className="h-5 w-5" />
-                            <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
-                          </>
-                        )}
-                      </button>
+                      {/* Pulsanti Pubblica e Programma */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handlePublishRecipe}
+                          disabled={isPublishingRecipe || !recipeData.imageUrl}
+                          className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        >
+                          {isPublishingRecipe ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              <span>Pubblicazione...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="h-5 w-5" />
+                              <span>Pubblica Subito</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => openScheduleModal('recipe')}
+                          disabled={!recipeData.imageUrl}
+                          className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                          title="Programma pubblicazione"
+                        >
+                          <Calendar className="h-5 w-5" />
+                          <span>Programma</span>
+                        </button>
+                      </div>
 
                       {/* Progress Pubblicazione */}
                       {publishProgress.length > 0 && (
@@ -2485,23 +2617,35 @@ export default function SocialAIStudioPage() {
                     </button>
                   )}
 
-                  <button
-                    onClick={handlePublishStory}
-                    disabled={isPublishingStory}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                  >
-                    {isPublishingStory ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Pubblicazione in corso...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="h-5 w-5" />
-                        <span>Pubblica su Blog + Social (IT/DE/FR/EN)</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Pulsanti Pubblica e Programma */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handlePublishStory}
+                      disabled={isPublishingStory}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                      {isPublishingStory ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Pubblicazione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-5 w-5" />
+                          <span>Pubblica Subito</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openScheduleModal('story')}
+                      disabled={!storyData?.imageUrl}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      title="Programma pubblicazione"
+                    >
+                      <Calendar className="h-5 w-5" />
+                      <span>Programma</span>
+                    </button>
+                  </div>
 
                   {storyPublishProgress.length > 0 && (
                     <div className="bg-slate-900/50 rounded-lg p-3 border border-emerald-500/30">
@@ -2732,28 +2876,43 @@ export default function SocialAIStudioPage() {
                       </button>
                     )}
 
-                    {/* Pulsante Pubblica (solo se immagine già generata) */}
-                    <button
-                      onClick={handlePublishCuriosity}
-                      disabled={isPublishingCuriosity || !curiosityPreviewImage}
-                      className={`w-full flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
-                        curiosityPreviewImage
-                          ? 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700'
-                          : 'bg-gray-600 cursor-not-allowed'
-                      }`}
-                    >
-                      {isPublishingCuriosity ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Pubblicazione in corso...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Share2 className="h-5 w-5" />
-                          <span>{curiosityPreviewImage ? 'Pubblica Curiosità sui Social' : 'Prima genera l\'anteprima'}</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Pulsanti Pubblica e Programma (solo se immagine già generata) */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handlePublishCuriosity}
+                        disabled={isPublishingCuriosity || !curiosityPreviewImage}
+                        className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                          curiosityPreviewImage
+                            ? 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700'
+                            : 'bg-gray-600 cursor-not-allowed'
+                        }`}
+                      >
+                        {isPublishingCuriosity ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Pubblicazione...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="h-5 w-5" />
+                            <span>{curiosityPreviewImage ? 'Pubblica Subito' : 'Prima genera anteprima'}</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => openScheduleModal('curiosity')}
+                        disabled={!curiosityPreviewImage}
+                        className={`flex items-center justify-center space-x-2 px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                          curiosityPreviewImage
+                            ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                            : 'bg-gray-600 cursor-not-allowed'
+                        }`}
+                        title="Programma pubblicazione"
+                      >
+                        <Calendar className="h-5 w-5" />
+                        <span>Programma</span>
+                      </button>
+                    </div>
 
                     {curiosityPublishProgress.length > 0 && (
                       <div className="mt-3 bg-slate-900/50 rounded-lg p-3 border border-rose-500/30">
@@ -2792,6 +2951,102 @@ export default function SocialAIStudioPage() {
           videoUrl={result.video?.dataUrl}
           platform={socialPlatform}
         />
+      )}
+
+      {/* Modal Programmazione */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-6 w-6 text-amber-400" />
+                <h3 className="text-xl font-bold text-white">Programma Pubblicazione</h3>
+              </div>
+              <button
+                onClick={() => setShowScheduleModal(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-400 mb-6">
+              Il post verrà salvato in Odoo e pubblicato automaticamente alla data e ora selezionate.
+            </p>
+
+            <div className="space-y-4">
+              {/* Data */}
+              <div>
+                <label className="block text-sm font-medium text-amber-300 mb-2">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Data di pubblicazione
+                </label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 bg-slate-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Ora */}
+              <div>
+                <label className="block text-sm font-medium text-amber-300 mb-2">
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Ora di pubblicazione
+                </label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Riepilogo */}
+              {scheduledDate && scheduledTime && (
+                <div className="bg-amber-900/30 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-sm text-amber-200">
+                    Il post verrà pubblicato il{' '}
+                    <span className="font-semibold text-amber-100">
+                      {new Date(scheduledDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>{' '}
+                    alle{' '}
+                    <span className="font-semibold text-amber-100">{scheduledTime}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Pulsanti */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowScheduleModal(null)}
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => handleSchedulePost(showScheduleModal)}
+                disabled={isScheduling || !scheduledDate || !scheduledTime}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isScheduling ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Programmazione...</span>
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-5 w-5" />
+                    <span>Conferma</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

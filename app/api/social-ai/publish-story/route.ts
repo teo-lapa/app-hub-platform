@@ -49,6 +49,7 @@ interface PublishStoryRequest {
   productName: string;
   productImage: string; // base64
   storyImage: string; // base64
+  scheduledDate?: string; // Formato: "YYYY-MM-DD HH:MM:SS"
 }
 
 // Helper per delay
@@ -330,13 +331,21 @@ async function createSocialPost(
   odooCookies: string,
   message: string,
   accountIds: number[],
-  imageId?: number
+  imageId?: number,
+  scheduledDate?: string
 ): Promise<number> {
   const postValues: Record<string, any> = {
     message: message,
     account_ids: [[6, 0, accountIds]],
-    post_method: 'now'
   };
+
+  // Se è programmato, usa 'scheduled', altrimenti 'now'
+  if (scheduledDate) {
+    postValues.post_method = 'scheduled';
+    postValues.scheduled_date = scheduledDate;
+  } else {
+    postValues.post_method = 'now';
+  }
 
   if (imageId) {
     postValues.image_ids = [[6, 0, [imageId]]];
@@ -353,6 +362,13 @@ async function createSocialPost(
     throw new Error('Failed to create social post');
   }
 
+  // Se è programmato, non pubblicare subito
+  if (scheduledDate) {
+    console.log(`  📅 Social post ${postId} programmato per ${scheduledDate}`);
+    return postId;
+  }
+
+  // Pubblica subito se non è programmato
   try {
     await callOdoo(
       odooCookies,
@@ -374,7 +390,7 @@ async function createSocialPost(
 
 export async function POST(request: NextRequest) {
   try {
-    const { storyData, productName, productImage, storyImage } = await request.json() as PublishStoryRequest;
+    const { storyData, productName, productImage, storyImage, scheduledDate } = await request.json() as PublishStoryRequest;
 
     if (!storyData || !productName || !productImage || !storyImage) {
       return NextResponse.json(
@@ -392,8 +408,9 @@ export async function POST(request: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const isScheduled = !!scheduledDate;
 
-    console.log('[Publish Story] Starting publication process...');
+    console.log(`[Publish Story] Starting ${isScheduled ? 'scheduling' : 'publication'} process...${isScheduled ? ` for ${scheduledDate}` : ''}`);
 
     // AUTENTICAZIONE ODOO
     const userCookies = request.headers.get('cookie');
@@ -504,7 +521,7 @@ ${story.certification?.type && story.certification.type !== 'Nessuna' ? `🏅 ${
     }
 
     // PUBBLICAZIONE SOCIAL
-    console.log('[6/6] Publishing to social media...');
+    console.log(`[6/6] ${isScheduled ? 'Scheduling' : 'Publishing'} to social media...`);
 
     const FACEBOOK_ID = 2;
     const INSTAGRAM_ID = 4;
@@ -516,12 +533,13 @@ ${story.certification?.type && story.certification.type !== 'Nessuna' ? `🏅 ${
 
     try {
       // Facebook e LinkedIn
-      console.log('  📘 Publishing to Facebook & LinkedIn...');
+      console.log(`  📘 ${isScheduled ? 'Scheduling' : 'Publishing'} to Facebook & LinkedIn...`);
       const postId1 = await createSocialPost(
         odooCookies,
         socialCaption,
         [FACEBOOK_ID, LINKEDIN_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId1);
       console.log(`  ✅ Facebook/LinkedIn: post ${postId1}`);
@@ -529,7 +547,7 @@ ${story.certification?.type && story.certification.type !== 'Nessuna' ? `🏅 ${
       await delay(3000);
 
       // Instagram (senza link)
-      console.log('  📸 Publishing to Instagram...');
+      console.log(`  📸 ${isScheduled ? 'Scheduling' : 'Publishing'} to Instagram...`);
       const igStory = translations['it_IT'];
       const instagramMessage = `${igStory.title}
 
@@ -546,13 +564,14 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
         odooCookies,
         instagramMessage,
         [INSTAGRAM_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId2);
       console.log(`  ✅ Instagram: post ${postId2}`);
 
       // Twitter
-      console.log('  🐦 Publishing to Twitter...');
+      console.log(`  🐦 ${isScheduled ? 'Scheduling' : 'Publishing'} to Twitter...`);
       const blogUrl = blogPostUrls['it_IT'];
       let twitterMessage = `${igStory.title}
 
@@ -574,7 +593,8 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId3);
       console.log(`  ✅ Twitter: post ${postId3}`);
@@ -583,7 +603,7 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
       console.error('Social publishing error:', error.message);
     }
 
-    console.log('✅ Publication completed!');
+    console.log(`✅ ${isScheduled ? 'Scheduling' : 'Publication'} completed!`);
 
     return NextResponse.json({
       success: true,
@@ -591,7 +611,9 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
         blogPostId: postId,
         blogPostUrl,
         socialPostIds: publishedPostIds,
-        translations: Object.keys(translations)
+        translations: Object.keys(translations),
+        scheduled: isScheduled,
+        scheduledDate: scheduledDate || null
       }
     });
 

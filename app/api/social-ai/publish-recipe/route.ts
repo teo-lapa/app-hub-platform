@@ -35,6 +35,7 @@ interface PublishRecipeRequest {
   productName: string;
   productImage: string; // base64
   recipeImage: string; // base64
+  scheduledDate?: string; // Formato: "YYYY-MM-DD HH:MM:SS"
   // sources rimosso - Google Search restituisce risultati non pertinenti (cataloghi, volantini)
 }
 
@@ -273,14 +274,22 @@ async function createSocialPost(
   message: string,
   accountIds: number[],
   imageId?: number,
+  scheduledDate?: string,
   retryCount: number = 0
 ): Promise<number> {
   // Prepara valori del post
   const postValues: Record<string, any> = {
     message: message,
     account_ids: [[6, 0, accountIds]],
-    post_method: 'now' // Pubblica immediatamente
   };
+
+  // Se è programmato, usa 'scheduled', altrimenti 'now'
+  if (scheduledDate) {
+    postValues.post_method = 'scheduled';
+    postValues.scheduled_date = scheduledDate;
+  } else {
+    postValues.post_method = 'now';
+  }
 
   // Aggiungi immagine se presente
   if (imageId) {
@@ -297,6 +306,12 @@ async function createSocialPost(
 
   if (!postId) {
     throw new Error('Failed to create social post');
+  }
+
+  // Se è programmato, non pubblicare subito
+  if (scheduledDate) {
+    console.log(`  📅 Social post ${postId} programmato per ${scheduledDate}`);
+    return postId;
   }
 
   // Pubblica immediatamente con action_post (con retry per Instagram)
@@ -407,7 +422,7 @@ ${tipsList}
 
 export async function POST(request: NextRequest) {
   try {
-    const { recipeData, productName, productImage, recipeImage } = await request.json() as PublishRecipeRequest;
+    const { recipeData, productName, productImage, recipeImage, scheduledDate } = await request.json() as PublishRecipeRequest;
 
     // Validazione
     if (!recipeData || !productName || !productImage || !recipeImage) {
@@ -428,8 +443,9 @@ export async function POST(request: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const isScheduled = !!scheduledDate;
 
-    console.log('[Publish Recipe] Starting publication process...');
+    console.log(`[Publish Recipe] Starting ${isScheduled ? 'scheduling' : 'publication'} process...${isScheduled ? ` for ${scheduledDate}` : ''}`);
 
     // ==========================================
     // FASE 1: AUTENTICAZIONE ODOO CON UTENTE LOGGATO
@@ -579,7 +595,7 @@ ${translatedRecipe.description.substring(0, 100)}...
     // FASE 6: PUBBLICAZIONE SUI SOCIAL MEDIA
     // ==========================================
 
-    console.log('[6/7] Publishing to social media directly via XML-RPC...');
+    console.log(`[6/7] ${isScheduled ? 'Scheduling' : 'Publishing'} to social media directly via XML-RPC...`);
 
     let socialPublishResults: any = null;
     const socialPublishFailures: string[] = [];
@@ -599,12 +615,13 @@ ${translatedRecipe.description.substring(0, 100)}...
 
     try {
       // POST 1: Facebook e LinkedIn (veloci, raramente falliscono)
-      console.log('  📘 Publishing to Facebook & LinkedIn...');
+      console.log(`  📘 ${isScheduled ? 'Scheduling' : 'Publishing'} to Facebook & LinkedIn...`);
       const postId1 = await createSocialPost(
         odooCookies,
         socialCaption,
         [FACEBOOK_ID, LINKEDIN_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId1);
       console.log(`  ✅ Facebook/LinkedIn: post ${postId1}`);
@@ -614,7 +631,7 @@ ${translatedRecipe.description.substring(0, 100)}...
       await delay(3000);
 
       // POST 2: Instagram (messaggio specifico senza link - non cliccabile su IG)
-      console.log('  📸 Publishing to Instagram...');
+      console.log(`  📸 ${isScheduled ? 'Scheduling' : 'Publishing'} to Instagram...`);
       const igRecipe = translations['it_IT'];
 
       // Instagram: messaggio ottimizzato senza link (non cliccabili su IG)
@@ -634,13 +651,14 @@ ${igRecipe.description}
         odooCookies,
         instagramMessage,
         [INSTAGRAM_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId2);
       console.log(`  ✅ Instagram: post ${postId2}`);
 
       // POST 3: Twitter (messaggio abbreviato max 280 caratteri)
-      console.log('  🐦 Publishing to Twitter...');
+      console.log(`  🐦 ${isScheduled ? 'Scheduling' : 'Publishing'} to Twitter...`);
 
       // Crea messaggio Twitter specifico con URL blog reale
       const blogUrl = blogPostUrls['it_IT'];
@@ -672,7 +690,8 @@ ${twitterRecipe.description.substring(0, 80)}...
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
-        socialImageId
+        socialImageId,
+        scheduledDate
       );
       publishedPostIds.push(postId3);
       console.log(`  ✅ Twitter: post ${postId3}`);
@@ -680,7 +699,9 @@ ${twitterRecipe.description.substring(0, 80)}...
       socialPublishResults = {
         success: true,
         postIds: publishedPostIds,
-        accounts: ['Facebook', 'LinkedIn', 'Instagram', 'Twitter']
+        accounts: ['Facebook', 'LinkedIn', 'Instagram', 'Twitter'],
+        scheduled: isScheduled,
+        scheduledDate: scheduledDate || null
       };
 
     } catch (error: any) {
@@ -699,13 +720,13 @@ ${twitterRecipe.description.substring(0, 80)}...
       }
     }
 
-    console.log('✅ Social media publication completed!');
+    console.log(`✅ Social media ${isScheduled ? 'scheduling' : 'publication'} completed!`);
 
     // ==========================================
     // FASE 7: RISULTATO FINALE
     // ==========================================
 
-    console.log('[7/7] Publication completed successfully!');
+    console.log(`[7/7] ${isScheduled ? 'Scheduling' : 'Publication'} completed successfully!`);
 
     // Determina successo globale: successo completo solo se non ci sono failures
     const hasFailures = socialPublishFailures.length > 0;
@@ -727,7 +748,9 @@ ${twitterRecipe.description.substring(0, 80)}...
           totalLanguages: languages.length,
           successfulSocialPublishes: socialPublishResults ? 1 : 0, // 1 post social pubblicato (su 4 account)
           failedSocialPublishes: socialPublishFailures.length
-        }
+        },
+        scheduled: isScheduled,
+        scheduledDate: scheduledDate || null
       },
       warning: hasFailures ? 'Blog posts creati ma alcune pubblicazioni social sono fallite' : undefined
     });
