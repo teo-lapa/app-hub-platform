@@ -257,39 +257,42 @@ CONTEXT: Traditional ${recipeData.region} cuisine, authentic presentation.`;
 
     console.log('[Product Recipe] Generating food image...');
 
-    const imageResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: [{ text: imagePrompt }]
-    });
-
-    // Estrai immagine generata - prova diverse strutture (come in generate-marketing)
     let imageDataUrl: string | null = null;
 
-    // Struttura 1: response.parts
-    for (const part of (imageResponse as any).parts || []) {
-      if (part.inlineData?.data) {
-        imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        console.log('[Product Recipe] Image generated successfully from parts');
-        break;
-      }
-    }
+    try {
+      const imageResponse = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp-image-generation',
+        contents: [{ text: imagePrompt }],
+        config: {
+          responseModalities: ['Text', 'Image']
+        }
+      });
 
-    // Struttura 2: response.candidates[0].content.parts (struttura standard Gemini API)
-    if (!imageDataUrl) {
-      const candidates = (imageResponse as any).candidates || [];
-      if (candidates.length > 0 && candidates[0].content?.parts) {
-        for (const part of candidates[0].content.parts) {
+      // Estrai immagine dalla struttura candidates (formato standard)
+      for (const part of (imageResponse as any).candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData?.data) {
+          imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          console.log('[Product Recipe] Image generated successfully!');
+          break;
+        }
+      }
+
+      // Fallback: prova struttura alternativa .parts
+      if (!imageDataUrl) {
+        for (const part of (imageResponse as any).parts || []) {
           if (part.inlineData?.data) {
             imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            console.log('[Product Recipe] Image found in candidates structure');
+            console.log('[Product Recipe] Image found in parts structure');
             break;
           }
         }
       }
+    } catch (imageError: any) {
+      console.error('[Product Recipe] Image generation failed:', imageError.message);
     }
 
     if (!imageDataUrl) {
-      console.warn('[Product Recipe] No image generated in response');
+      console.error('[Product Recipe] No image generated - this will cause publish to fail');
     }
 
     // ==========================================

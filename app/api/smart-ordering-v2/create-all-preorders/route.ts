@@ -380,8 +380,8 @@ ${productDetailsHtml}
 
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
-    // 8. MARK ASSIGNMENTS AS ORDERED (instead of deleting them)
-    // IMPORTANTE: Usa una connessione dedicata per garantire che l'UPDATE funzioni
+    // 8. MARK ASSIGNMENTS AS ORDERED or DELETE them (depending on DB schema)
+    // IMPORTANTE: Usa una connessione dedicata per garantire che l'UPDATE/DELETE funzioni
     let markingSucceeded = false;
     let markingError: string | null = null;
     let totalMarked = 0;
@@ -391,34 +391,59 @@ ${productDetailsHtml}
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        console.log(`\n🔄 Marking assignments for ${productIds.length} products as ordered...`);
+        // Verifica se la colonna is_ordered esiste
+        const columnCheck = await client.sql`
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_name = 'preorder_customer_assignments'
+          AND column_name = 'is_ordered'
+        `;
+        const hasIsOrderedColumn = columnCheck.rows.length > 0;
+        console.log(`🔍 Colonna is_ordered esiste: ${hasIsOrderedColumn}`);
 
-        for (const productId of productIds) {
-          // Find the corresponding sale and purchase order IDs for this product
-          const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
-          const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
+        if (hasIsOrderedColumn) {
+          // Se la colonna esiste, marca come ordinato
+          console.log(`\n🔄 Marking assignments for ${productIds.length} products as ordered...`);
 
-          const result = await client.sql`
-            UPDATE preorder_customer_assignments
-            SET is_ordered = TRUE,
-                ordered_at = NOW(),
-                sale_order_id = ${saleOrderId},
-                purchase_order_id = ${purchaseOrderId}
-            WHERE product_id = ${productId}
-            AND (is_ordered = FALSE OR is_ordered IS NULL)
-          `;
-          totalMarked += result.rowCount || 0;
-          console.log(`  📝 Product ${productId}: marked ${result.rowCount || 0} assignments`);
+          for (const productId of productIds) {
+            const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
+            const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
+
+            const result = await client.sql`
+              UPDATE preorder_customer_assignments
+              SET is_ordered = TRUE,
+                  ordered_at = NOW(),
+                  sale_order_id = ${saleOrderId},
+                  purchase_order_id = ${purchaseOrderId}
+              WHERE product_id = ${productId}
+              AND (is_ordered = FALSE OR is_ordered IS NULL)
+            `;
+            totalMarked += result.rowCount || 0;
+            console.log(`  📝 Product ${productId}: marked ${result.rowCount || 0} assignments`);
+          }
+          console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
+        } else {
+          // Se la colonna NON esiste, elimina le assegnazioni (comportamento precedente)
+          console.log(`\n🗑️ Deleting assignments for ${productIds.length} products (is_ordered column not found)...`);
+
+          for (const productId of productIds) {
+            const result = await client.sql`
+              DELETE FROM preorder_customer_assignments
+              WHERE product_id = ${productId}
+            `;
+            totalMarked += result.rowCount || 0;
+            console.log(`  🗑️ Product ${productId}: deleted ${result.rowCount || 0} assignments`);
+          }
+          console.log(`✅ Successfully deleted ${totalMarked} assignment records`);
         }
 
-        console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
         markingSucceeded = true;
       } else {
         markingSucceeded = true; // No products to mark, consider it success
       }
     } catch (dbError: any) {
-      console.error('❌ CRITICAL: Failed to mark assignments as ordered:', dbError);
-      markingError = dbError.message || 'Database update failed';
+      console.error('❌ CRITICAL: Failed to process assignments:', dbError);
+      markingError = dbError.message || 'Database operation failed';
     } finally {
       client.release();
     }

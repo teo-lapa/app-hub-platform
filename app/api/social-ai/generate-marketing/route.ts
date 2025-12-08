@@ -683,10 +683,13 @@ COMPOSITION:
     // Aggiungi prompt
     contents.push({ text: fullPrompt });
 
-    // NUOVO SDK - usa generateContent() con gemini-2.5-flash-image
+    // NUOVO SDK - usa generateContent() con gemini-2.0-flash-exp-image-generation
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents
+      model: 'gemini-2.0-flash-exp-image-generation',
+      contents,
+      config: {
+        responseModalities: ['Text', 'Image']
+      }
     });
 
     if (isDev) {

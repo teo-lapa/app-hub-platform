@@ -205,27 +205,29 @@ MOOD: Engaging, informative, social media friendly.`;
 
         try {
           const imageResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: [{ text: imagePrompt }]
+            model: 'gemini-2.0-flash-exp-image-generation',
+            contents: [{ text: imagePrompt }],
+            config: {
+              responseModalities: ['Text', 'Image']
+            }
           });
 
           let imageDataUrl: string | null = null;
 
-          for (const part of (imageResponse as any).parts || []) {
+          // Estrai immagine dalla struttura candidates (formato standard)
+          for (const part of (imageResponse as any).candidates?.[0]?.content?.parts || []) {
             if (part.inlineData?.data) {
               imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
               break;
             }
           }
 
+          // Fallback: prova struttura alternativa .parts
           if (!imageDataUrl) {
-            const candidates = (imageResponse as any).candidates || [];
-            if (candidates.length > 0 && candidates[0].content?.parts) {
-              for (const part of candidates[0].content.parts) {
-                if (part.inlineData?.data) {
-                  imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                  break;
-                }
+            for (const part of (imageResponse as any).parts || []) {
+              if (part.inlineData?.data) {
+                imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                break;
               }
             }
           }

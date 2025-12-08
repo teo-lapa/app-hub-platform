@@ -6,7 +6,7 @@ import {
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
-  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb
+  AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -107,6 +107,11 @@ export default function SocialAIStudioPage() {
   const [selectedCuriosity, setSelectedCuriosity] = useState<any | null>(null);
   const [isPublishingCuriosity, setIsPublishingCuriosity] = useState(false);
   const [curiosityPublishProgress, setCuriosityPublishProgress] = useState<string[]>([]);
+
+  // Language selection for publishing
+  const [publishLanguage, setPublishLanguage] = useState<'it' | 'de' | 'fr' | 'en'>('it');
+  const [isTranslatingCuriosity, setIsTranslatingCuriosity] = useState(false);
+  const [translatedCuriosity, setTranslatedCuriosity] = useState<any | null>(null);
   const [isGeneratingCuriosityImage, setIsGeneratingCuriosityImage] = useState(false);
   const [curiosityPreviewImage, setCuriosityPreviewImage] = useState<string | null>(null);
 
@@ -518,6 +523,21 @@ export default function SocialAIStudioPage() {
       return;
     }
 
+    if (!storyData.story) {
+      toast.error('Dati storia non trovati! Rigenera la storia.');
+      return;
+    }
+
+    if (!productImage) {
+      toast.error('Carica prima l\'immagine del prodotto!');
+      return;
+    }
+
+    if (!storyData.imageUrl) {
+      toast.error('Immagine storia non generata! Rigenera la storia.');
+      return;
+    }
+
     setIsPublishingStory(true);
     setStoryPublishProgress([]);
 
@@ -532,8 +552,8 @@ export default function SocialAIStudioPage() {
         body: JSON.stringify({
           storyData: storyData.story,
           productName,
-          productImage: productImage || undefined,
-          storyImage: storyData.imageUrl || undefined
+          productImage: productImage,
+          storyImage: storyData.imageUrl
         })
       });
 
@@ -650,6 +670,56 @@ export default function SocialAIStudioPage() {
   };
 
   // ==========================================
+  // Traduci Curiosità
+  // ==========================================
+  const handleTranslateCuriosity = async () => {
+    if (!selectedCuriosity) {
+      toast.error('Seleziona una curiosità prima!');
+      return;
+    }
+
+    if (publishLanguage === 'it') {
+      // Se italiano, usa il contenuto originale
+      setTranslatedCuriosity(null);
+      return;
+    }
+
+    setIsTranslatingCuriosity(true);
+    const loadingToast = toast.loading('Traduzione in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: {
+            title: selectedCuriosity.title,
+            fullContent: selectedCuriosity.fullContent,
+            socialCaption: selectedCuriosity.socialCaption,
+            hashtags: selectedCuriosity.hashtags
+          },
+          targetLanguage: publishLanguage
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante traduzione');
+      }
+
+      setTranslatedCuriosity(data.data);
+      toast.success('Contenuto tradotto!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore traduzione:', error);
+      toast.error(error.message || 'Errore durante traduzione', { id: loadingToast });
+    } finally {
+      setIsTranslatingCuriosity(false);
+    }
+  };
+
+  // ==========================================
   // Pubblica Curiosità sui Social
   // ==========================================
   const handlePublishCuriosity = async () => {
@@ -663,19 +733,41 @@ export default function SocialAIStudioPage() {
       return;
     }
 
+    // Se lingua non è italiano e non c'è traduzione, avvisa l'utente
+    if (publishLanguage !== 'it' && !translatedCuriosity) {
+      toast.error('Traduci prima il contenuto nella lingua selezionata!');
+      return;
+    }
+
     setIsPublishingCuriosity(true);
     setCuriosityPublishProgress([]);
 
-    const loadingToast = toast.loading('Pubblicazione curiosità sui social...');
+    const langNames: Record<string, string> = {
+      it: 'italiano',
+      de: 'tedesco',
+      fr: 'francese',
+      en: 'inglese'
+    };
+
+    const loadingToast = toast.loading(`Pubblicazione in ${langNames[publishLanguage]}...`);
 
     try {
-      setCuriosityPublishProgress(['🚀 Inizio pubblicazione curiosità...']);
+      setCuriosityPublishProgress([`🚀 Pubblicazione curiosità in ${langNames[publishLanguage]}...`]);
+
+      // Usa contenuto tradotto se disponibile, altrimenti originale
+      const curiosityToPublish = translatedCuriosity ? {
+        ...selectedCuriosity,
+        title: translatedCuriosity.title,
+        fullContent: translatedCuriosity.fullContent,
+        socialCaption: translatedCuriosity.socialCaption,
+        hashtags: translatedCuriosity.hashtags
+      } : selectedCuriosity;
 
       const response = await fetch('/api/social-ai/publish-curiosity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          curiosity: selectedCuriosity,
+          curiosity: curiosityToPublish,
           generateImage: false, // Immagine già generata
           customImage: curiosityPreviewImage // Usa l'immagine già generata
         })
@@ -2448,6 +2540,7 @@ export default function SocialAIStudioPage() {
                       onClick={() => {
                         setSelectedCuriosity(curiosity);
                         setCuriosityPreviewImage(null); // Reset immagine quando cambi curiosità
+                        setTranslatedCuriosity(null); // Reset traduzione quando cambi curiosità
                       }}
                       className={`p-3 rounded-lg cursor-pointer transition-all ${
                         selectedCuriosity?.id === curiosity.id
@@ -2500,6 +2593,98 @@ export default function SocialAIStudioPage() {
                           {tag}
                         </span>
                       ))}
+                    </div>
+
+                    {/* Sezione Traduzione */}
+                    <div className="mb-4 p-3 bg-slate-900/50 border border-rose-500/30 rounded-lg">
+                      <div className="text-xs text-rose-300 mb-2 flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        Lingua di pubblicazione:
+                      </div>
+                      <div className="flex gap-2 mb-3">
+                        {[
+                          { code: 'it', label: '🇮🇹 IT', name: 'Italiano' },
+                          { code: 'de', label: '🇨🇭 DE', name: 'Tedesco' },
+                          { code: 'fr', label: '🇨🇭 FR', name: 'Francese' },
+                          { code: 'en', label: '🇬🇧 EN', name: 'Inglese' }
+                        ].map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setPublishLanguage(lang.code as 'it' | 'de' | 'fr' | 'en');
+                              setTranslatedCuriosity(null); // Reset traduzione quando cambi lingua
+                            }}
+                            className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
+                              publishLanguage === lang.code
+                                ? 'bg-rose-500 text-white'
+                                : 'bg-slate-800 text-rose-300 hover:bg-slate-700'
+                            }`}
+                            title={lang.name}
+                          >
+                            {lang.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Pulsante Traduci */}
+                      {publishLanguage !== 'it' && !translatedCuriosity && (
+                        <button
+                          onClick={handleTranslateCuriosity}
+                          disabled={isTranslatingCuriosity}
+                          className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
+                        >
+                          {isTranslatingCuriosity ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Traduzione in corso...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="h-4 w-4" />
+                              <span>Traduci in {publishLanguage === 'de' ? 'Tedesco' : publishLanguage === 'fr' ? 'Francese' : 'Inglese'}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Anteprima Contenuto Tradotto */}
+                      {translatedCuriosity && (
+                        <div className="mt-3 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg">
+                          <div className="text-xs text-blue-300 mb-2 font-semibold">
+                            ✅ Contenuto tradotto in {publishLanguage === 'de' ? 'Tedesco' : publishLanguage === 'fr' ? 'Francese' : 'Inglese'}:
+                          </div>
+                          <h5 className="text-sm font-bold text-blue-200 mb-2">
+                            {translatedCuriosity.title}
+                          </h5>
+                          <p className="text-xs text-blue-300/90 mb-2">
+                            {translatedCuriosity.fullContent}
+                          </p>
+                          <div className="text-xs text-blue-300 mb-1">Caption:</div>
+                          <p className="text-xs text-white bg-slate-900/50 p-2 rounded mb-2">
+                            {translatedCuriosity.socialCaption}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {translatedCuriosity.hashtags?.map((tag: string, idx: number) => (
+                              <span key={idx} className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-xs rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setTranslatedCuriosity(null)}
+                            className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+                          >
+                            ✖ Rimuovi traduzione
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Info se italiano selezionato */}
+                      {publishLanguage === 'it' && (
+                        <div className="text-xs text-rose-400/70 italic">
+                          Pubblicazione in italiano (contenuto originale)
+                        </div>
+                      )}
                     </div>
 
                     {/* Anteprima Immagine */}

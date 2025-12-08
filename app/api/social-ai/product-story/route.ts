@@ -265,37 +265,38 @@ CONTEXT: Traditional Italian food heritage, authentic presentation, storytelling
 
     try {
       const imageResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: [{ text: imagePrompt }]
+        model: 'gemini-2.0-flash-exp-image-generation',
+        contents: [{ text: imagePrompt }],
+        config: {
+          responseModalities: ['Text', 'Image']
+        }
       });
 
-      // Estrai immagine generata
-      for (const part of (imageResponse as any).parts || []) {
+      // Estrai immagine dalla struttura candidates (formato standard)
+      for (const part of (imageResponse as any).candidates?.[0]?.content?.parts || []) {
         if (part.inlineData?.data) {
           imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-          console.log('[Product Story] Image generated successfully from parts');
+          console.log('[Product Story] Image generated successfully!');
           break;
         }
       }
 
+      // Fallback: prova struttura alternativa .parts
       if (!imageDataUrl) {
-        const candidates = (imageResponse as any).candidates || [];
-        if (candidates.length > 0 && candidates[0].content?.parts) {
-          for (const part of candidates[0].content.parts) {
-            if (part.inlineData?.data) {
-              imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-              console.log('[Product Story] Image found in candidates structure');
-              break;
-            }
+        for (const part of (imageResponse as any).parts || []) {
+          if (part.inlineData?.data) {
+            imageDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            console.log('[Product Story] Image found in parts structure');
+            break;
           }
         }
       }
     } catch (imageError: any) {
-      console.warn('[Product Story] Image generation failed:', imageError.message);
+      console.error('[Product Story] Image generation failed:', imageError.message);
     }
 
     if (!imageDataUrl) {
-      console.warn('[Product Story] No image generated in response');
+      console.error('[Product Story] No image generated - this will cause publish to fail');
     }
 
     // ==========================================
