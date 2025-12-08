@@ -150,12 +150,14 @@ async function createBlogPostWithTranslations(
       subtitle: italianRecipe.description,
       content: htmlContentIT,
       website_published: true,
-      // Cover image - usa cover_properties con background_image
+      // Cover image - formato corretto Odoo 17 (background-image con trattino e url())
       cover_properties: JSON.stringify({
-        background_image: `/web/image/${recipeImageId}`,
-        background_color_class: 'o_cc3',
-        opacity: '0.4',
-        resize_class: 'cover_auto'
+        'background-image': `url(/web/image/${recipeImageId})`,
+        'background_color_class': 'o_cc3 o_cc',
+        'background_color_style': '',
+        'opacity': '0.2',
+        'resize_class': 'o_half_screen_height o_record_has_cover',
+        'text_align_class': ''
       }),
       tag_ids: [[6, 0, []]]
     }]
@@ -179,7 +181,7 @@ async function createBlogPostWithTranslations(
     }]
   );
 
-  // Aggiungi traduzioni per le altre lingue
+  // Aggiungi traduzioni per le altre lingue usando write con context lang
   const langCodes = ['de_CH', 'fr_CH', 'en_US'];
 
   for (const langCode of langCodes) {
@@ -189,52 +191,24 @@ async function createBlogPostWithTranslations(
     const htmlContentTranslated = generateBlogHTML(translatedRecipe, productName, sources);
 
     try {
-      // Usa update_field_translations per aggiungere traduzioni
-      // Metodo 1: Prova con update_field_translations
+      // Odoo 17: usa write con context lang per salvare traduzioni
       await callOdoo(
         odooCookies,
         'blog.post',
-        'update_field_translations',
+        'write',
         [
           [postId],
           {
-            name: { [langCode]: translatedRecipe.title },
-            subtitle: { [langCode]: translatedRecipe.description },
-            content: { [langCode]: htmlContentTranslated }
+            name: translatedRecipe.title,
+            subtitle: translatedRecipe.description,
+            content: htmlContentTranslated
           }
-        ]
+        ],
+        { context: { lang: langCode } }
       );
       console.log(`  ✅ Traduzione ${langCode} aggiunta`);
     } catch (translationError: any) {
-      console.warn(`  ⚠️ update_field_translations fallito per ${langCode}, provo con write_with_context...`);
-
-      // Metodo 2: Fallback - usa write con context lang
-      try {
-        await callOdoo(
-          odooCookies,
-          'blog.post',
-          'with_context',
-          [{ lang: langCode }],
-          {}
-        );
-        await callOdoo(
-          odooCookies,
-          'blog.post',
-          'write',
-          [
-            [postId],
-            {
-              name: translatedRecipe.title,
-              subtitle: translatedRecipe.description,
-              content: htmlContentTranslated
-            }
-          ],
-          { context: { lang: langCode } }
-        );
-        console.log(`  ✅ Traduzione ${langCode} aggiunta (via context)`);
-      } catch (fallbackError: any) {
-        console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, fallbackError.message);
-      }
+      console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, translationError.message);
     }
   }
 
