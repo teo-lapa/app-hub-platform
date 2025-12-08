@@ -269,7 +269,7 @@ export function InventoryAIModal({
         };
       });
 
-      // Add products not found in video
+      // Add products not found in video (default to SKIP - don't update to 0!)
       products.forEach(product => {
         const found = aiResults.some(r => r.productId === product.id);
         if (!found) {
@@ -285,24 +285,15 @@ export function InventoryAIModal({
             status: 'not_found',
             lotName: product.lot_name,
             expiryDate: product.lot_expiration_date,
-            action: 'update'
+            action: 'skip'  // NON aggiornare automaticamente a 0 i prodotti non visti
           });
         }
       });
 
-      // Add additional products found in video but not in Odoo
-      if (data.analysis.additionalProductsSeen) {
-        data.analysis.additionalProductsSeen.forEach((productName: string, idx: number) => {
-          aiResults.push({
-            productId: -1 * (idx + 1), // Negative ID for new products
-            name: productName,
-            odooQuantity: 0,
-            videoQuantity: 1, // Unknown quantity
-            uom: 'PZ',
-            status: 'new',
-            action: 'add'
-          });
-        });
+      // NOTE: Non aggiungiamo prodotti "nuovi" - solo match con prodotti esistenti
+      // I prodotti extra visti nel video vengono ignorati per l'inventario
+      if (data.analysis.additionalProductsSeen && data.analysis.additionalProductsSeen.length > 0) {
+        console.log('⚠️ Prodotti extra visti nel video (ignorati):', data.analysis.additionalProductsSeen);
       }
 
       setResults(aiResults);
@@ -367,20 +358,7 @@ export function InventoryAIModal({
       };
     });
 
-    // Add a mock "new" product
-    if (Math.random() > 0.5) {
-      mockResults.push({
-        productId: 999999,
-        name: 'Prodotto Nuovo da Video',
-        code: 'NEW001',
-        odooQuantity: 0,
-        videoQuantity: 5,
-        uom: 'PZ',
-        status: 'new',
-        action: 'add'
-      });
-    }
-
+    // Non aggiungiamo più prodotti "nuovi" mock
     setResults(mockResults);
   };
 
@@ -411,6 +389,10 @@ export function InventoryAIModal({
         expiryDate: r.expiryDate,
         action: r.action
       }));
+
+    console.log('🚀 [InventoryAIModal] Conferma Tutti - Risultati da salvare:', confirmedResults);
+    console.log('🚀 [InventoryAIModal] Totale risultati:', results.length);
+    console.log('🚀 [InventoryAIModal] Da aggiornare:', confirmedResults.length);
 
     onConfirmResults(confirmedResults);
     onClose();
