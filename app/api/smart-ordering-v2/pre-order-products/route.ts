@@ -161,37 +161,13 @@ export async function GET(request: NextRequest) {
           const productIdsArray = Array.from(allProductIds);
 
           // Carica tutte le assegnazioni per questi prodotti/varianti
-          // Prima verifichiamo se la colonna is_ordered esiste
-          const columnCheck = await sql`
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name = 'preorder_customer_assignments'
-            AND column_name = 'is_ordered'
-          `;
-          const hasIsOrderedColumn = columnCheck.rows.length > 0;
-          console.log(`🔍 Colonna is_ordered esiste: ${hasIsOrderedColumn}`);
-
           const placeholders = productIdsArray.map((_, i) => `$${i + 1}`).join(',');
-
-          // Query diversa in base alla presenza della colonna is_ordered
-          let queryText: string;
-          if (hasIsOrderedColumn) {
-            queryText = `
-              SELECT product_id, customer_id, quantity, notes
-              FROM preorder_customer_assignments
-              WHERE product_id IN (${placeholders})
-              AND (is_ordered = FALSE OR is_ordered IS NULL)
-              ORDER BY created_at DESC
-            `;
-          } else {
-            // Se la colonna non esiste, carica tutte le assegnazioni
-            queryText = `
-              SELECT product_id, customer_id, quantity, notes
-              FROM preorder_customer_assignments
-              WHERE product_id IN (${placeholders})
-              ORDER BY created_at DESC
-            `;
-          }
+          const queryText = `
+            SELECT product_id, customer_id, quantity, notes
+            FROM preorder_customer_assignments
+            WHERE product_id IN (${placeholders})
+            ORDER BY created_at DESC
+          `;
 
           const assignmentsResult = await sql.query(queryText, productIdsArray);
 

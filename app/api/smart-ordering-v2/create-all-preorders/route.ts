@@ -380,80 +380,46 @@ ${productDetailsHtml}
 
     console.log(`\n✅ Created ${createdPurchaseOrders.length} purchase orders`);
 
-    // 8. MARK ASSIGNMENTS AS ORDERED or DELETE them (depending on DB schema)
-    // IMPORTANTE: Usa una connessione dedicata per garantire che l'UPDATE/DELETE funzioni
-    let markingSucceeded = false;
-    let markingError: string | null = null;
-    let totalMarked = 0;
+    // 8. DELETE ASSIGNMENTS dopo aver creato gli ordini
+    // Il tracciamento è già in Odoo, non serve tenerlo nel DB
+    let deletionSucceeded = false;
+    let deletionError: string | null = null;
+    let totalDeleted = 0;
 
     const client = await db.connect();
     try {
       const productIds = productAssignments.map(pa => pa.productId);
 
       if (productIds.length > 0) {
-        // Verifica se la colonna is_ordered esiste
-        const columnCheck = await client.sql`
-          SELECT column_name
-          FROM information_schema.columns
-          WHERE table_name = 'preorder_customer_assignments'
-          AND column_name = 'is_ordered'
-        `;
-        const hasIsOrderedColumn = columnCheck.rows.length > 0;
-        console.log(`🔍 Colonna is_ordered esiste: ${hasIsOrderedColumn}`);
+        console.log(`\n🗑️ Eliminazione assegnazioni per ${productIds.length} prodotti...`);
 
-        if (hasIsOrderedColumn) {
-          // Se la colonna esiste, marca come ordinato
-          console.log(`\n🔄 Marking assignments for ${productIds.length} products as ordered...`);
-
-          for (const productId of productIds) {
-            const saleOrderId = createdSaleOrders.length > 0 ? createdSaleOrders[0].orderId : null;
-            const purchaseOrderId = createdPurchaseOrders.length > 0 ? createdPurchaseOrders[0].orderId : null;
-
-            const result = await client.sql`
-              UPDATE preorder_customer_assignments
-              SET is_ordered = TRUE,
-                  ordered_at = NOW(),
-                  sale_order_id = ${saleOrderId},
-                  purchase_order_id = ${purchaseOrderId}
-              WHERE product_id = ${productId}
-              AND (is_ordered = FALSE OR is_ordered IS NULL)
-            `;
-            totalMarked += result.rowCount || 0;
-            console.log(`  📝 Product ${productId}: marked ${result.rowCount || 0} assignments`);
-          }
-          console.log(`✅ Successfully marked ${totalMarked} assignment records as ordered`);
-        } else {
-          // Se la colonna NON esiste, elimina le assegnazioni (comportamento precedente)
-          console.log(`\n🗑️ Deleting assignments for ${productIds.length} products (is_ordered column not found)...`);
-
-          for (const productId of productIds) {
-            const result = await client.sql`
-              DELETE FROM preorder_customer_assignments
-              WHERE product_id = ${productId}
-            `;
-            totalMarked += result.rowCount || 0;
-            console.log(`  🗑️ Product ${productId}: deleted ${result.rowCount || 0} assignments`);
-          }
-          console.log(`✅ Successfully deleted ${totalMarked} assignment records`);
+        for (const productId of productIds) {
+          const result = await client.sql`
+            DELETE FROM preorder_customer_assignments
+            WHERE product_id = ${productId}
+          `;
+          totalDeleted += result.rowCount || 0;
+          console.log(`  🗑️ Prodotto ${productId}: eliminate ${result.rowCount || 0} assegnazioni`);
         }
 
-        markingSucceeded = true;
+        console.log(`✅ Eliminate ${totalDeleted} assegnazioni dal database`);
+        deletionSucceeded = true;
       } else {
-        markingSucceeded = true; // No products to mark, consider it success
+        deletionSucceeded = true;
       }
     } catch (dbError: any) {
-      console.error('❌ CRITICAL: Failed to process assignments:', dbError);
-      markingError = dbError.message || 'Database operation failed';
+      console.error('❌ CRITICAL: Errore eliminazione assegnazioni:', dbError);
+      deletionError = dbError.message || 'Database delete failed';
     } finally {
       client.release();
     }
 
-    // 9. Return summary with marking status
+    // 9. Return summary
     const summary = {
       success: true,
-      markingSucceeded, // Track if marking as ordered worked
-      markingError,     // Include error details if marking failed
-      totalMarked,      // How many assignments were marked as ordered
+      deletionSucceeded,
+      deletionError,
+      totalDeleted,
       customerQuotesCreated: createdSaleOrders.length,
       supplierQuotesCreated: createdPurchaseOrders.length,
       created: {
@@ -466,7 +432,7 @@ ${productDetailsHtml}
         totalProducts: productAssignments.length,
         totalCustomers: customerOrders.size,
         totalSuppliers: supplierOrders.size,
-        assignmentsMarked: totalMarked
+        assignmentsDeleted: totalDeleted
       }
     };
 

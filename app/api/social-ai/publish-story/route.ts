@@ -102,8 +102,13 @@ Rispondi SOLO con JSON valido (no markdown):`;
 async function uploadImageToOdoo(
   odooCookies: string,
   imageBase64: string,
-  filename: string
+  filename: string,
+  forSocial: boolean = false
 ): Promise<number> {
+  // Estrai mimetype dal data URL
+  const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
+
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   const attachmentId = await callOdoo(
@@ -114,8 +119,9 @@ async function uploadImageToOdoo(
       name: filename,
       type: 'binary',
       datas: cleanBase64,
+      mimetype: mimetype,
       public: true,
-      res_model: 'blog.post',
+      res_model: forSocial ? 'social.post' : 'blog.post',
       res_id: 0
     }]
   );
@@ -414,16 +420,26 @@ export async function POST(request: NextRequest) {
     const productImageId = await uploadImageToOdoo(
       odooCookies,
       productImage,
-      `${productName}-product.jpg`
+      `${productName}-product.jpg`,
+      false // per blog
     );
 
     const storyImageId = await uploadImageToOdoo(
       odooCookies,
       storyImage,
-      `${storyData.title}-story.jpg`
+      `${storyData.title}-story.jpg`,
+      false // per blog
     );
 
-    console.log(`✅ Images uploaded: product=${productImageId}, story=${storyImageId}`);
+    // Carica immagine separata per i social (con mimetype corretto per Instagram)
+    const socialImageId = await uploadImageToOdoo(
+      odooCookies,
+      storyImage,
+      `${storyData.title}-social.jpg`,
+      true // per social
+    );
+
+    console.log(`✅ Images uploaded: product=${productImageId}, story=${storyImageId}, social=${socialImageId}`);
 
     // TRADUZIONI
     console.log('[3/6] Translating story to 4 languages...');
@@ -500,17 +516,20 @@ ${story.certification?.type && story.certification.type !== 'Nessuna' ? `🏅 ${
 
     try {
       // Facebook e LinkedIn
+      console.log('  📘 Publishing to Facebook & LinkedIn...');
       const postId1 = await createSocialPost(
         odooCookies,
         socialCaption,
         [FACEBOOK_ID, LINKEDIN_ID],
-        storyImageId
+        socialImageId
       );
       publishedPostIds.push(postId1);
+      console.log(`  ✅ Facebook/LinkedIn: post ${postId1}`);
 
       await delay(3000);
 
       // Instagram (senza link)
+      console.log('  📸 Publishing to Instagram...');
       const igStory = translations['it_IT'];
       const instagramMessage = `${igStory.title}
 
@@ -527,11 +546,13 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
         odooCookies,
         instagramMessage,
         [INSTAGRAM_ID],
-        storyImageId
+        socialImageId
       );
       publishedPostIds.push(postId2);
+      console.log(`  ✅ Instagram: post ${postId2}`);
 
       // Twitter
+      console.log('  🐦 Publishing to Twitter...');
       const blogUrl = blogPostUrls['it_IT'];
       let twitterMessage = `${igStory.title}
 
@@ -553,9 +574,10 @@ ${igStory.certification?.type && igStory.certification.type !== 'Nessuna' ? `�
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
-        storyImageId
+        socialImageId
       );
       publishedPostIds.push(postId3);
+      console.log(`  ✅ Twitter: post ${postId3}`);
 
     } catch (error: any) {
       console.error('Social publishing error:', error.message);
