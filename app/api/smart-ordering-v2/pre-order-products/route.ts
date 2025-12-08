@@ -242,10 +242,22 @@ export async function GET(request: NextRequest) {
         };
       });
 
+    // 6. Ordina: prodotti con assegnazioni PRIMA, poi gli altri
+    const sortedProducts = formattedProducts.sort((a, b) => {
+      const aHasAssignments = a.assigned_customers.length > 0 ||
+        a.variants.some((v: any) => v.assigned_customers?.length > 0);
+      const bHasAssignments = b.assigned_customers.length > 0 ||
+        b.variants.some((v: any) => v.assigned_customers?.length > 0);
+
+      if (aHasAssignments && !bHasAssignments) return -1;
+      if (!aHasAssignments && bHasAssignments) return 1;
+      return 0;
+    });
+
     return NextResponse.json({
       success: true,
-      products: formattedProducts,
-      totalCount: formattedProducts.length
+      products: sortedProducts,
+      totalCount: sortedProducts.length
     });
 
   } catch (error: any) {

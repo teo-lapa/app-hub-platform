@@ -47,6 +47,10 @@ async function uploadImageToOdoo(
   imageBase64: string,
   filename: string
 ): Promise<number> {
+  // Estrai mimetype dal data URL
+  const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
+
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   const attachmentId = await callOdoo(
@@ -57,6 +61,7 @@ async function uploadImageToOdoo(
       name: filename,
       type: 'binary',
       datas: cleanBase64,
+      mimetype: mimetype,
       public: true,
       res_model: 'social.post',
       res_id: 0

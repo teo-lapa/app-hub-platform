@@ -95,8 +95,12 @@ Rispondi SOLO con JSON valido (no markdown):`;
 async function uploadImageToOdoo(
   odooCookies: string,
   imageBase64: string,
-  filename: string
+  filename: string,
+  forSocial: boolean = false
 ): Promise<number> {
+  // Estrai mimetype dal data URL
+  const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
   // Rimuovi prefisso data:image se presente
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -110,8 +114,9 @@ async function uploadImageToOdoo(
       name: filename,
       type: 'binary',
       datas: cleanBase64,
+      mimetype: mimetype,
       public: true,
-      res_model: 'blog.post',
+      res_model: forSocial ? 'social.post' : 'blog.post',
       res_id: 0 // Verrà aggiornato dopo
     }]
   );
@@ -463,16 +468,27 @@ export async function POST(request: NextRequest) {
     const productImageId = await uploadImageToOdoo(
       odooCookies,
       productImage,
-      `${productName}-product.jpg`
+      `${productName}-product.jpg`,
+      false // per blog
     );
     console.log(`✅ Product image uploaded: ${productImageId}`);
 
     const recipeImageId = await uploadImageToOdoo(
       odooCookies,
       recipeImage,
-      `${recipeData.title}-dish.jpg`
+      `${recipeData.title}-dish.jpg`,
+      false // per blog
     );
     console.log(`✅ Recipe image uploaded: ${recipeImageId}`);
+
+    // Carica immagine separata per i social (con mimetype corretto per Instagram)
+    const socialImageId = await uploadImageToOdoo(
+      odooCookies,
+      recipeImage,
+      `${recipeData.title}-social.jpg`,
+      true // per social
+    );
+    console.log(`✅ Social image uploaded: ${socialImageId}`);
 
     // ==========================================
     // FASE 3: TRADUZIONI
@@ -588,7 +604,7 @@ ${translatedRecipe.description.substring(0, 100)}...
         odooCookies,
         socialCaption,
         [FACEBOOK_ID, LINKEDIN_ID],
-        recipeImageId
+        socialImageId
       );
       publishedPostIds.push(postId1);
       console.log(`  ✅ Facebook/LinkedIn: post ${postId1}`);
@@ -618,7 +634,7 @@ ${igRecipe.description}
         odooCookies,
         instagramMessage,
         [INSTAGRAM_ID],
-        recipeImageId
+        socialImageId
       );
       publishedPostIds.push(postId2);
       console.log(`  ✅ Instagram: post ${postId2}`);
@@ -656,7 +672,7 @@ ${twitterRecipe.description.substring(0, 80)}...
         odooCookies,
         twitterMessage,
         [TWITTER_ID],
-        recipeImageId
+        socialImageId
       );
       publishedPostIds.push(postId3);
       console.log(`  ✅ Twitter: post ${postId3}`);
