@@ -124,40 +124,40 @@ async function uploadImageToOdoo(
 }
 
 // ==========================================
-// CREA BLOG POST SU ODOO
+// CREA BLOG POST SU ODOO (con traduzioni)
 // ==========================================
 
-async function createBlogPost(
+async function createBlogPostWithTranslations(
   odooCookies: string,
-  recipeData: any,
+  translations: Record<string, any>,
   productName: string,
-  productImageId: number,
   recipeImageId: number,
-  langCode: string,
   sources?: { title: string; url: string }[]
 ): Promise<number> {
 
-  // Genera HTML contenuto blog
-  const htmlContent = generateBlogHTML(recipeData, productName, sources);
+  // Usa la versione italiana come base
+  const italianRecipe = translations['it_IT'];
+  const htmlContentIT = generateBlogHTML(italianRecipe, productName, sources);
 
-  // Crea post blog usando callOdoo
+  // Crea post blog in italiano (lingua base)
   const postId = await callOdoo(
     odooCookies,
     'blog.post',
     'create',
     [{
-      name: recipeData.title,
+      name: italianRecipe.title,
       blog_id: 4, // LAPABlog
-      subtitle: recipeData.description,
-      content: htmlContent,
+      subtitle: italianRecipe.description,
+      content: htmlContentIT,
       website_published: true,
-      // cover_image_id rimosso - può richiedere permessi speciali
+      // Cover image - usa cover_properties con background_image
       cover_properties: JSON.stringify({
         background_image: `/web/image/${recipeImageId}`,
-        opacity: 0.4,
-        resize_class: 'cover'
+        background_color_class: 'o_cc3',
+        opacity: '0.4',
+        resize_class: 'cover_auto'
       }),
-      tag_ids: [[6, 0, []]] // Tags vuoti per ora
+      tag_ids: [[6, 0, []]]
     }]
   );
 
@@ -165,13 +165,78 @@ async function createBlogPost(
     throw new Error('Failed to create blog post');
   }
 
-  // Aggiorna attachment con res_id
+  console.log(`  ✅ Blog post base creato (IT): ${postId}`);
+
+  // Aggiorna attachment con res_id e res_model corretti
   await callOdoo(
     odooCookies,
     'ir.attachment',
     'write',
-    [[productImageId, recipeImageId], { res_id: postId }]
+    [[recipeImageId], {
+      res_id: postId,
+      res_model: 'blog.post',
+      public: true
+    }]
   );
+
+  // Aggiungi traduzioni per le altre lingue
+  const langCodes = ['de_CH', 'fr_CH', 'en_US'];
+
+  for (const langCode of langCodes) {
+    const translatedRecipe = translations[langCode];
+    if (!translatedRecipe) continue;
+
+    const htmlContentTranslated = generateBlogHTML(translatedRecipe, productName, sources);
+
+    try {
+      // Usa update_field_translations per aggiungere traduzioni
+      // Metodo 1: Prova con update_field_translations
+      await callOdoo(
+        odooCookies,
+        'blog.post',
+        'update_field_translations',
+        [
+          [postId],
+          {
+            name: { [langCode]: translatedRecipe.title },
+            subtitle: { [langCode]: translatedRecipe.description },
+            content: { [langCode]: htmlContentTranslated }
+          }
+        ]
+      );
+      console.log(`  ✅ Traduzione ${langCode} aggiunta`);
+    } catch (translationError: any) {
+      console.warn(`  ⚠️ update_field_translations fallito per ${langCode}, provo con write_with_context...`);
+
+      // Metodo 2: Fallback - usa write con context lang
+      try {
+        await callOdoo(
+          odooCookies,
+          'blog.post',
+          'with_context',
+          [{ lang: langCode }],
+          {}
+        );
+        await callOdoo(
+          odooCookies,
+          'blog.post',
+          'write',
+          [
+            [postId],
+            {
+              name: translatedRecipe.title,
+              subtitle: translatedRecipe.description,
+              content: htmlContentTranslated
+            }
+          ],
+          { context: { lang: langCode } }
+        );
+        console.log(`  ✅ Traduzione ${langCode} aggiunta (via context)`);
+      } catch (fallbackError: any) {
+        console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, fallbackError.message);
+      }
+    }
+  }
 
   return postId;
 }
@@ -421,38 +486,39 @@ export async function POST(request: NextRequest) {
     console.log('✅ All translations completed!');
 
     // ==========================================
-    // FASE 4: CREAZIONE BLOG POSTS
+    // FASE 4: CREAZIONE BLOG POST (singolo con traduzioni)
     // ==========================================
 
-    console.log('[4/6] Creating blog posts...');
+    console.log('[4/6] Creating blog post with translations...');
 
-    const blogPostIds: Record<string, number> = {};
-    const blogPostUrls: Record<string, string> = {};
+    // Crea UN SOLO blog post con traduzioni integrate
+    const postId = await createBlogPostWithTranslations(
+      odooCookies,
+      translations,
+      productName,
+      recipeImageId,
+      sources
+    );
 
-    for (const lang of languages) {
-      console.log(`  Creating blog post in ${lang.name}...`);
-      const translatedRecipe = translations[lang.code];
+    // Leggi URL reale da Odoo
+    const blogPostUrl = await getBlogPostUrl(odooCookies, postId);
+    console.log(`  📍 URL: ${blogPostUrl}`);
 
-      const postId = await createBlogPost(
-        odooCookies,
-        translatedRecipe,
-        productName,
-        productImageId,
-        recipeImageId,
-        lang.code,
-        sources
-      );
+    // Per compatibilità con il resto del codice
+    const blogPostIds: Record<string, number> = {
+      'it_IT': postId,
+      'de_CH': postId,
+      'fr_CH': postId,
+      'en_US': postId
+    };
+    const blogPostUrls: Record<string, string> = {
+      'it_IT': blogPostUrl,
+      'de_CH': blogPostUrl.replace('/blog/', '/de_CH/blog/'),
+      'fr_CH': blogPostUrl.replace('/blog/', '/fr_CH/blog/'),
+      'en_US': blogPostUrl.replace('/blog/', '/en_US/blog/')
+    };
 
-      blogPostIds[lang.code] = postId;
-      console.log(`  ✅ Blog post created: ${postId}`);
-
-      // Leggi URL reale da Odoo
-      const postUrl = await getBlogPostUrl(odooCookies, postId);
-      blogPostUrls[lang.code] = postUrl;
-      console.log(`  📍 URL: ${postUrl}`);
-    }
-
-    console.log('✅ All blog posts created!');
+    console.log('✅ Blog post created with all translations!');
 
     // ==========================================
     // FASE 5: POST SOCIAL ABBREVIATI
