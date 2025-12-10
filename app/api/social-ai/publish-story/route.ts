@@ -605,7 +605,10 @@ export async function POST(request: NextRequest) {
 
     // AUTENTICAZIONE ODOO
     const userCookies = request.headers.get('cookie');
+    console.log(`[Publish Story] 🔐 Cookies ricevuti: ${userCookies ? 'SI (' + userCookies.substring(0, 100) + '...)' : 'NO'}`);
+
     if (!userCookies) {
+      console.error('[Publish Story] ❌ Nessun cookie ricevuto dalla richiesta!');
       return NextResponse.json({
         success: false,
         error: 'Devi essere loggato per pubblicare. Effettua il login.'
@@ -613,6 +616,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
+    console.log(`[Publish Story] 🔐 Odoo cookies ottenuti: ${odooCookies ? 'SI' : 'NO'}, UID: ${uid}`);
+
     if (!odooCookies) {
       return NextResponse.json({
         success: false,
