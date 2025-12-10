@@ -27,6 +27,7 @@ interface DepositRequest {
   amount: number;
   banknotes: BanknoteCount[];
   coins: CoinCount[];
+  photo_base64?: string; // Foto di conferma (selfie) in base64
 }
 
 /**
@@ -296,6 +297,48 @@ export async function POST(request: NextRequest) {
         } catch (pickingNoteError) {
           console.warn(`⚠️ Errore nota picking ${pickingId}:`, pickingNoteError);
         }
+      }
+    }
+
+    // Salva la foto di conferma come allegato sul move contabile
+    let attachmentId: number | null = null;
+    if (body.photo_base64 && moveId) {
+      try {
+        // Rimuovi il prefisso data:image/... se presente
+        const base64Data = body.photo_base64.replace(/^data:image\/\w+;base64,/, '');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `versamento_${body.employee_name.replace(/\s+/g, '_')}_${timestamp}.jpg`;
+
+        attachmentId = await sessionManager.callKw(
+          'ir.attachment',
+          'create',
+          [{
+            name: filename,
+            type: 'binary',
+            datas: base64Data,
+            res_model: 'account.move',
+            res_id: moveId,
+            mimetype: 'image/jpeg',
+            description: `Foto conferma versamento - ${body.employee_name} - CHF ${body.amount.toFixed(2)}`,
+          }]
+        );
+        console.log(`📸 Foto allegata: ${attachmentId} (${filename})`);
+
+        // Aggiungi anche un messaggio nel chatter con la foto
+        await sessionManager.callKw(
+          'mail.message',
+          'create',
+          [{
+            body: `<p>📸 <strong>Foto di conferma versamento</strong></p>`,
+            model: 'account.move',
+            res_id: moveId,
+            message_type: 'comment',
+            subtype_id: 2,
+            attachment_ids: [[6, 0, [attachmentId]]],
+          }]
+        );
+      } catch (photoError) {
+        console.warn('⚠️ Errore salvataggio foto:', photoError);
       }
     }
 

@@ -21,8 +21,6 @@ import {
   UserCheck,
   Users,
   Receipt,
-  Video,
-  VideoOff,
   X,
   ChevronRight,
   Scan,
@@ -394,8 +392,13 @@ export default function RegistroCassafortePage() {
 
   // App State
   const [step, setStep] = useState<
-    'idle' | 'face_scan' | 'enrollment' | 'face_enroll' | 'welcome' | 'select_type' | 'select_pickings' | 'extra_input' | 'counting' | 'banknote_scan' | 'confirm' | 'success'
+    'idle' | 'face_scan' | 'enrollment' | 'face_enroll' | 'welcome' | 'select_type' | 'select_pickings' | 'extra_input' | 'counting' | 'banknote_scan' | 'photo_capture' | 'confirm' | 'success'
   >('idle');
+
+  // Photo confirmation state
+  const [confirmationPhoto, setConfirmationPhoto] = useState<string | null>(null);
+  const [showPhotoCamera, setShowPhotoCamera] = useState(false);
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
 
   // Employee State
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -420,7 +423,6 @@ export default function RegistroCassafortePage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoSessionId, setVideoSessionId] = useState<string | null>(null);
   const [depositType, setDepositType] = useState<'from_delivery' | 'extra'>('from_delivery');
 
   // Camera Scanner State
@@ -558,46 +560,6 @@ export default function RegistroCassafortePage() {
       toast.error('Errore nel caricamento degli incassi');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const startVideoRecording = async () => {
-    try {
-      const response = await fetch('/api/registro-cassaforte/video/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employee_id: currentEmployee?.id,
-          employee_name: currentEmployee?.name,
-          deposit_type: depositType,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setVideoSessionId(data.session_id);
-        if (!data.camera_offline) {
-          toast.success('Registrazione video avviata');
-        }
-      }
-    } catch (e) {
-      console.error('Error starting video:', e);
-    }
-  };
-
-  const stopVideoRecording = async () => {
-    if (!videoSessionId) return;
-
-    try {
-      await fetch('/api/registro-cassaforte/video/stop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: videoSessionId,
-        }),
-      });
-    } catch (e) {
-      console.error('Error stopping video:', e);
     }
   };
 
@@ -865,9 +827,10 @@ export default function RegistroCassafortePage() {
         amount: total,
         banknotes: banknotes.filter(b => b.count > 0),
         coins: coins.filter(c => c.count > 0),
+        photo_base64: confirmationPhoto || undefined,
       };
 
-      console.log('🔵 confirmDeposit - sending request:', JSON.stringify(requestBody));
+      console.log('🔵 confirmDeposit - sending request with photo:', !!confirmationPhoto);
 
       const response = await fetch('/api/registro-cassaforte/confirm-deposit', {
         method: 'POST',
@@ -876,9 +839,6 @@ export default function RegistroCassafortePage() {
       });
 
       console.log('🔵 confirmDeposit - response status:', response.status);
-
-      // Stop video recording
-      await stopVideoRecording();
 
       if (response.ok) {
         const data = await response.json();
@@ -929,8 +889,9 @@ export default function RegistroCassafortePage() {
     setCoins(COIN_DENOMINATIONS.map(d => ({ denomination: d, count: 0 })));
     setDepositType('from_delivery');
     setError(null);
-    setVideoSessionId(null);
     setLastScanResult(undefined);
+    setConfirmationPhoto(null);
+    setShowPhotoCamera(false);
   };
 
   const updateCoinCount = (denomination: number, delta: number) => {
@@ -986,26 +947,30 @@ export default function RegistroCassafortePage() {
     }
   };
 
-  const handleProceedToCounting = async () => {
+  const handleProceedToCounting = () => {
     if (depositType === 'extra' && !extraCustomerName.trim()) {
       toast.error('Inserisci il nome del cliente');
       return;
     }
-    // Show loading state while starting video recording
-    setIsLoading(true);
-    try {
-      // Start video recording
-      await startVideoRecording();
-      setStep('counting');
-    } catch (error) {
-      console.error('Errore avvio registrazione:', error);
-      toast.error('Errore durante l\'avvio della registrazione');
-    } finally {
-      setIsLoading(false);
-    }
+    setStep('counting');
   };
 
   const handleConfirm = () => {
+    // Prima cattura la foto di conferma, poi vai alla schermata di conferma
+    setConfirmationPhoto(null);
+    setShowPhotoCamera(true);
+  };
+
+  // Callback quando la foto è stata catturata
+  const handlePhotoCaptured = (photoBase64: string) => {
+    setConfirmationPhoto(photoBase64);
+    setShowPhotoCamera(false);
+    setStep('confirm');
+  };
+
+  // Skip foto e vai direttamente alla conferma
+  const handleSkipPhoto = () => {
+    setShowPhotoCamera(false);
     setStep('confirm');
   };
 
@@ -1502,14 +1467,6 @@ export default function RegistroCassafortePage() {
             </p>
           </div>
         </div>
-
-        {/* Video Recording Indicator */}
-        {videoSessionId && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 rounded-full">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-red-400 text-sm font-medium">REC</span>
-          </div>
-        )}
       </div>
 
       <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1828,6 +1785,36 @@ export default function RegistroCassafortePage() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Capture Overlay - for confirmation selfie */}
+      {showPhotoCamera && (
+        <div className="fixed inset-0 z-50 bg-black">
+          <CameraScanner
+            mode="face"
+            onCapture={handlePhotoCaptured}
+            onClose={handleSkipPhoto}
+            isProcessing={isCapturingPhoto}
+            lastResult="Scatta una foto di conferma"
+          />
+          {/* Header with instructions */}
+          <div className="absolute top-8 left-0 right-0 flex flex-col items-center z-10">
+            <div className="px-6 py-3 bg-black/70 backdrop-blur rounded-xl text-center">
+              <Camera className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+              <p className="text-white font-semibold">Foto di Conferma</p>
+              <p className="text-white/70 text-sm">Scatta un selfie per confermare il versamento</p>
+            </div>
+          </div>
+          {/* Skip button */}
+          <div className="absolute bottom-24 left-0 right-0 flex justify-center z-10">
+            <button
+              onClick={handleSkipPhoto}
+              className="px-6 py-3 bg-white/20 backdrop-blur rounded-xl text-white font-medium"
+            >
+              Salta foto
+            </button>
           </div>
         </div>
       )}
