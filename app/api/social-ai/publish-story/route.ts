@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import sharp from 'sharp';
+
+// Dynamic import per sharp - evita errori su Vercel se non disponibile
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sharpFn: ((input: Buffer) => any) | null = null;
+let sharpLoaded = false;
+async function getSharp(): Promise<((input: Buffer) => any) | null> {
+  if (!sharpLoaded) {
+    sharpLoaded = true;
+    try {
+      const sharpModule = await import('sharp');
+      // ESM import restituisce { default: sharpFn }
+      sharpFn = sharpModule.default || sharpModule;
+    } catch {
+      console.warn('Sharp not available, image conversion disabled');
+      sharpFn = null;
+    }
+  }
+  return sharpFn;
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per pubblicazione completa
@@ -114,27 +132,33 @@ async function uploadImageToOdoo(
   let cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg REALE
-  // Converte effettivamente l'immagine in JPEG usando sharp
+  // Converte effettivamente l'immagine in JPEG usando sharp (dynamic import)
   if (forSocial && mimetype !== 'image/jpeg') {
     console.log(`  🔄 Converting image from ${mimetype} to real JPEG for Instagram...`);
     try {
-      // Decodifica base64 in buffer
-      const inputBuffer = Buffer.from(cleanBase64, 'base64');
+      const sharp = await getSharp();
+      if (sharp) {
+        // Decodifica base64 in buffer
+        const inputBuffer = Buffer.from(cleanBase64, 'base64');
 
-      // Converti in JPEG con qualità alta (90%)
-      const jpegBuffer = await sharp(inputBuffer)
-        .jpeg({ quality: 90 })
-        .toBuffer();
+        // Converti in JPEG con qualità alta (90%)
+        const jpegBuffer = await sharp(inputBuffer)
+          .jpeg({ quality: 90 })
+          .toBuffer();
 
-      // Ricodifica in base64
-      cleanBase64 = jpegBuffer.toString('base64');
-      mimetype = 'image/jpeg';
-      filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+        // Ricodifica in base64
+        cleanBase64 = jpegBuffer.toString('base64');
+        mimetype = 'image/jpeg';
+        filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
 
-      console.log(`  ✅ Image converted to JPEG successfully (${Math.round(jpegBuffer.length / 1024)}KB)`);
+        console.log(`  ✅ Image converted to JPEG successfully (${Math.round(jpegBuffer.length / 1024)}KB)`);
+      } else {
+        console.warn('  ⚠️ Sharp not available, using JPEG mimetype without conversion');
+        mimetype = 'image/jpeg'; // Fallback: almeno il mimetype
+      }
     } catch (conversionError: any) {
       console.error(`  ❌ Image conversion failed: ${conversionError.message}`);
-      // Fallback: usa il mimetype originale
+      mimetype = 'image/jpeg'; // Fallback: almeno il mimetype
     }
   }
 
