@@ -109,24 +109,11 @@ async function uploadImageToOdoo(
   filename: string,
   forSocial: boolean = false
 ): Promise<number> {
-  // DEBUG: Log immagine ricevuta
-  console.log(`[Upload Image] Received image for ${filename}:`);
-  console.log(`  - Length: ${imageBase64?.length || 0} chars`);
-  console.log(`  - Starts with: ${imageBase64?.substring(0, 50) || 'EMPTY'}...`);
-  console.log(`  - Is valid base64 URL: ${imageBase64?.startsWith('data:image/') ? 'YES' : 'NO'}`);
-
-  // Verifica che l'immagine non sia vuota
-  if (!imageBase64 || imageBase64.length < 100) {
-    throw new Error(`Immagine non valida o vuota per ${filename}. Length: ${imageBase64?.length || 0}`);
-  }
-
-  // Estrai mimetype dal data URL (supporta più formati)
-  const mimeMatch = imageBase64.match(/^data:(image\/[a-zA-Z0-9+-]+);base64,/);
+  // Estrai mimetype dal data URL
+  const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
   let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
-  console.log(`  - Detected mimetype: ${mimetype}`);
 
-  let cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9+-]+;base64,/, '');
-  console.log(`  - Clean base64 length: ${cleanBase64.length} chars`);
+  let cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   // INSTAGRAM FIX: Instagram richiede JPEG
   // Nota: la conversione reale avviene lato client o si usa il mimetype JPEG
@@ -618,10 +605,7 @@ export async function POST(request: NextRequest) {
 
     // AUTENTICAZIONE ODOO
     const userCookies = request.headers.get('cookie');
-    console.log(`[Publish Story] 🔐 Cookies ricevuti: ${userCookies ? 'SI (' + userCookies.substring(0, 100) + '...)' : 'NO'}`);
-
     if (!userCookies) {
-      console.error('[Publish Story] ❌ Nessun cookie ricevuto dalla richiesta!');
       return NextResponse.json({
         success: false,
         error: 'Devi essere loggato per pubblicare. Effettua il login.'
@@ -629,8 +613,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
-    console.log(`[Publish Story] 🔐 Odoo cookies ottenuti: ${odooCookies ? 'SI' : 'NO'}, UID: ${uid}`);
-
     if (!odooCookies) {
       return NextResponse.json({
         success: false,
