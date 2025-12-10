@@ -211,7 +211,7 @@ async function createBlogPostWithTranslations(
         'resize_class': 'o_half_screen_height o_record_has_cover',
         'text_align_class': ''
       }),
-      tag_ids: [[6, 0, []]]
+      tag_ids: [[6, 0, [4]]] // Tag: "Ricetta tradizionale" (ID 4)
     }],
     { context: { lang: 'it_IT' } } // Forza lingua italiana per il contenuto base
   );
