@@ -13,6 +13,7 @@ import { AlertsSection } from '@/components/super-dashboard/AlertsSection';
 import { AIInsightsSection } from '@/components/super-dashboard/AIInsightsSection';
 import { QuickActionsSection } from '@/components/super-dashboard/QuickActionsSection';
 import { SalesOrdersTimelineSection } from '@/components/super-dashboard/SalesOrdersTimelineSection';
+import { WebsiteAnalyticsSection } from '@/components/super-dashboard/WebsiteAnalyticsSection';
 import { RefreshCw, Settings, Download, Calendar, Home, Server } from 'lucide-react';
 import Link from 'next/link';
 
@@ -178,8 +179,11 @@ export default function SuperDashboardPage() {
           <TeamPerformanceSection />
         </div>
 
-        {/* Row 4: Product Intelligence */}
-        <ProductIntelligenceSection />
+        {/* Row 4: Website Analytics + Product Intelligence */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <WebsiteAnalyticsSection />
+          <ProductIntelligenceSection />
+        </div>
 
         {/* Row 5: AI Insights + Quick Actions */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
