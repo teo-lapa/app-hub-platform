@@ -74,7 +74,10 @@ dev.log
 !postcss.config.js
 !vercel.json
 
-# Script backups and outputs
+# Scripts folder - contains local dev scripts with credentials
+/scripts/
+
+# Script backups and outputs (legacy rules)
 /scripts/*.json
 /scripts/backup-*
 /scripts/*-report-*
