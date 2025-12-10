@@ -153,7 +153,13 @@ async function createBlogPostWithTranslations(
   const italianRecipe = translations['it_IT'];
   const htmlContentIT = generateBlogHTML(italianRecipe, productName);
 
+  // Genera meta SEO ottimizzati per geo-targeting (Svizzera + Italia)
+  const seoMetaTitle = `${italianRecipe.title} | Ricetta Tradizionale ${italianRecipe.region}`;
+  const seoMetaDescription = `${italianRecipe.description.substring(0, 140)}... Scopri la ricetta tradizionale con ${productName}. Consegna in Svizzera.`;
+  const seoKeywords = `${productName}, ricetta ${italianRecipe.region}, cucina italiana, ${italianRecipe.title}, LAPA, prodotti italiani Svizzera, gastronomia italiana Zurigo`;
+
   // Crea post blog in italiano (lingua base)
+  // IMPORTANTE: Usare context lang: it_IT per assicurarsi che il contenuto sia salvato in italiano
   const postId = await callOdoo(
     odooCookies,
     'blog.post',
@@ -164,6 +170,21 @@ async function createBlogPostWithTranslations(
       subtitle: italianRecipe.description,
       content: htmlContentIT,
       website_published: true,
+      is_published: true,
+      is_seo_optimized: true, // SEO: flag Odoo per ottimizzazione
+      // SEO Meta Tags per indicizzazione e geo-targeting (Svizzera + Italia)
+      website_meta_title: seoMetaTitle,
+      website_meta_description: seoMetaDescription,
+      website_meta_keywords: seoKeywords,
+      // SEO Name per URL-friendly slug
+      seo_name: italianRecipe.title.toLowerCase()
+        .replace(/[àáâãäå]/g, 'a')
+        .replace(/[èéêë]/g, 'e')
+        .replace(/[ìíîï]/g, 'i')
+        .replace(/[òóôõö]/g, 'o')
+        .replace(/[ùúûü]/g, 'u')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
       // Cover image - formato corretto Odoo 17 (background-image con trattino e url())
       cover_properties: JSON.stringify({
         'background-image': `url(/web/image/${recipeImageId})`,
@@ -174,7 +195,8 @@ async function createBlogPostWithTranslations(
         'text_align_class': ''
       }),
       tag_ids: [[6, 0, []]]
-    }]
+    }],
+    { context: { lang: 'it_IT' } } // Forza lingua italiana per il contenuto base
   );
 
   if (!postId) {
