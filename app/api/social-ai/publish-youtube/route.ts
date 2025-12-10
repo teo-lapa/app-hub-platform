@@ -248,8 +248,10 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     // Account YouTube LAPA (ID: 7)
     const youtubeAccountId = 7;
 
-    // Per YouTube, Odoo usa il campo 'youtube_video' (Many2one to ir.attachment)
-    // invece di image_ids che è solo per immagini
+    // Per YouTube su Odoo Social:
+    // - youtube_video: ID dell'attachment video (Many2one)
+    // - image_ids: deve includere anche il video per il form
+    // - youtube_video_category_id: categoria YouTube (22 = People & Blogs)
     const postId = await callOdoo(
       odooCookies,
       'social.post',
@@ -259,8 +261,10 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         account_ids: [[6, 0, [youtubeAccountId]]], // Link account YouTube
         youtube_title: youtubeTitle,
         youtube_description: youtubeDescription,
-        // YouTube video attachment (Many2one, non Many2many come image_ids)
-        youtube_video: videoAttachmentId
+        youtube_video: videoAttachmentId,
+        youtube_video_category_id: 22, // People & Blogs category
+        youtube_preview_video: videoAttachmentId,
+        image_ids: [[6, 0, [videoAttachmentId]]] // Anche in image_ids per compatibilità
       }]
     );
 
