@@ -831,45 +831,67 @@ export default function RegistroCassafortePage() {
   };
 
   const confirmDeposit = async () => {
-    if (!currentEmployee) return;
+    if (!currentEmployee) {
+      toast.error('Sessione scaduta - riprova');
+      console.error('confirmDeposit called but currentEmployee is null');
+      resetSession();
+      return;
+    }
 
     setIsLoading(true);
     try {
       const total = calculateTotal();
+      console.log('🔵 confirmDeposit - total:', total, 'depositType:', depositType, 'employee:', currentEmployee.name);
+
+      if (total <= 0) {
+        toast.error('Importo non valido - inserisci almeno una banconota o moneta');
+        setIsLoading(false);
+        return;
+      }
+
       const expectedAmount = selectedPayments.length > 0
         ? pendingPayments
             .filter(p => selectedPayments.includes(p.picking_id))
             .reduce((sum, p) => sum + p.amount, 0)
         : undefined;
 
+      const requestBody = {
+        employee_id: currentEmployee.id,
+        employee_name: currentEmployee.name,
+        type: depositType,
+        picking_ids: selectedPayments.length > 0 ? selectedPayments : undefined,
+        customer_name: depositType === 'extra' ? extraCustomerName : undefined,
+        expected_amount: expectedAmount,
+        amount: total,
+        banknotes: banknotes.filter(b => b.count > 0),
+        coins: coins.filter(c => c.count > 0),
+      };
+
+      console.log('🔵 confirmDeposit - sending request:', JSON.stringify(requestBody));
+
       const response = await fetch('/api/registro-cassaforte/confirm-deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employee_id: currentEmployee.id,
-          employee_name: currentEmployee.name,
-          type: depositType,
-          picking_ids: selectedPayments.length > 0 ? selectedPayments : undefined,
-          customer_name: depositType === 'extra' ? extraCustomerName : undefined,
-          expected_amount: expectedAmount,
-          amount: total,
-          banknotes: banknotes.filter(b => b.count > 0),
-          coins: coins.filter(c => c.count > 0),
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('🔵 confirmDeposit - response status:', response.status);
 
       // Stop video recording
       await stopVideoRecording();
 
       if (response.ok) {
+        const data = await response.json();
+        console.log('🟢 confirmDeposit - success:', data);
         setStep('success');
         toast.success('Versamento registrato con successo!');
       } else {
         const data = await response.json();
+        console.error('🔴 confirmDeposit - error response:', data);
         throw new Error(data.error || 'Errore nel salvataggio');
       }
     } catch (e: any) {
-      console.error('Error confirming deposit:', e);
+      console.error('🔴 Error confirming deposit:', e);
       toast.error(e.message || 'Errore nel salvataggio del versamento');
     } finally {
       setIsLoading(false);
