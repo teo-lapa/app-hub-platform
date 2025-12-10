@@ -108,9 +108,18 @@ async function uploadImageToOdoo(
 ): Promise<number> {
   // Estrai mimetype dal data URL
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
+  let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+
+  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg
+  // Se è per social e non è già JPEG, forza il mimetype a JPEG
+  if (forSocial && mimetype !== 'image/jpeg') {
+    console.log(`  ⚠️ Instagram requires JPEG. Converting from ${mimetype} to image/jpeg`);
+    mimetype = 'image/jpeg';
+    // Aggiorna anche il filename per riflettere il formato corretto
+    filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+  }
 
   const attachmentId = await callOdoo(
     odooCookies,
@@ -263,37 +272,194 @@ async function createBlogPostWithTranslations(
     }]
   );
 
-  // Aggiungi traduzioni
+  // ==========================================
+  // TRADUZIONI BLOG - Metodo corretto con segmenti
+  // Odoo usa get_field_translations e update_field_translations
+  // per tradurre i blocchi HTML del contenuto
+  // ==========================================
+
   const langCodes = ['de_CH', 'fr_CH', 'en_US'];
 
   for (const langCode of langCodes) {
     const translatedStory = translations[langCode];
     if (!translatedStory) continue;
 
-    const htmlContentTranslated = generateStoryBlogHTML(translatedStory, productName);
-
     try {
+      // 1. Traduci il titolo (name) con write + context
       await callOdoo(
         odooCookies,
         'blog.post',
         'write',
-        [
-          [postId],
-          {
-            name: translatedStory.title,
-            subtitle: translatedStory.subtitle,
-            content: htmlContentTranslated
-          }
-        ],
+        [[postId], { name: translatedStory.title }],
         { context: { lang: langCode } }
       );
-      console.log(`  ✅ Traduzione ${langCode} aggiunta`);
+
+      // 2. Traduci il sottotitolo (subtitle) con write + context
+      await callOdoo(
+        odooCookies,
+        'blog.post',
+        'write',
+        [[postId], { subtitle: translatedStory.subtitle }],
+        { context: { lang: langCode } }
+      );
+
+      // 3. Per il contenuto (content), usa il sistema di segmenti di Odoo
+      const segmentData = await callOdoo(
+        odooCookies,
+        'blog.post',
+        'get_field_translations',
+        [[postId], 'content']
+      );
+
+      if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
+        const segments = segmentData[0];
+        const sourceTexts = [...new Set(segments.map((s: any) => s.source))];
+        const segmentTranslations: Record<string, string> = {};
+
+        // Mappa i segmenti italiani ai segmenti tradotti
+        for (const srcText of sourceTexts) {
+          const translatedText = findStoryTranslationForSegment(
+            srcText as string,
+            italianStory,
+            translatedStory,
+            productName,
+            langCode
+          );
+
+          if (translatedText && translatedText !== srcText) {
+            segmentTranslations[srcText as string] = translatedText;
+          }
+        }
+
+        // Applica le traduzioni dei segmenti
+        if (Object.keys(segmentTranslations).length > 0) {
+          await callOdoo(
+            odooCookies,
+            'blog.post',
+            'update_field_translations',
+            [[postId], 'content', { [langCode]: segmentTranslations }]
+          );
+          console.log(`  ✅ Traduzione ${langCode}: ${Object.keys(segmentTranslations).length} segmenti tradotti`);
+        } else {
+          console.log(`  ⚠️ Traduzione ${langCode}: nessun segmento da tradurre`);
+        }
+      } else {
+        console.log(`  ⚠️ Traduzione ${langCode}: nessun segmento trovato nel contenuto`);
+      }
+
     } catch (translationError: any) {
       console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, translationError.message);
     }
   }
 
   return postId;
+}
+
+// ==========================================
+// HELPER: Trova traduzione per un segmento (Story)
+// ==========================================
+
+function findStoryTranslationForSegment(
+  italianText: string,
+  italianStory: StoryData,
+  translatedStory: StoryData,
+  productName: string,
+  langCode: string
+): string | null {
+  const cleanText = italianText.trim();
+
+  // Mappa diretta dei campi della storia
+  const directMappings: Record<string, string> = {
+    [italianStory.title]: translatedStory.title,
+    [italianStory.subtitle]: translatedStory.subtitle,
+    [italianStory.introduction]: translatedStory.introduction,
+    [italianStory.origin.history]: translatedStory.origin.history,
+    [italianStory.tradition.description]: translatedStory.tradition.description,
+    [italianStory.tradition.culturalSignificance]: translatedStory.tradition.culturalSignificance,
+    [italianStory.production.method]: translatedStory.production.method,
+  };
+
+  // Controlla mappatura diretta
+  if (directMappings[cleanText]) {
+    return directMappings[cleanText];
+  }
+
+  // Controlla certification
+  if (italianStory.certification && translatedStory.certification) {
+    if (cleanText === italianStory.certification.description) {
+      return translatedStory.certification.description;
+    }
+  }
+
+  // Controlla quote
+  if (italianStory.quote && translatedStory.quote && cleanText === italianStory.quote) {
+    return translatedStory.quote;
+  }
+
+  // Controlla curiosities
+  for (let i = 0; i < (italianStory.curiosities?.length || 0); i++) {
+    if (cleanText === italianStory.curiosities[i] && translatedStory.curiosities?.[i]) {
+      return translatedStory.curiosities[i];
+    }
+  }
+
+  // Controlla pairings
+  for (let i = 0; i < (italianStory.pairings?.length || 0); i++) {
+    if (cleanText === italianStory.pairings[i] && translatedStory.pairings?.[i]) {
+      return translatedStory.pairings[i];
+    }
+  }
+
+  // Controlla uniqueCharacteristics
+  for (let i = 0; i < (italianStory.production.uniqueCharacteristics?.length || 0); i++) {
+    if (cleanText === italianStory.production.uniqueCharacteristics[i] && translatedStory.production.uniqueCharacteristics?.[i]) {
+      return translatedStory.production.uniqueCharacteristics[i];
+    }
+  }
+
+  // Testi statici comuni
+  const staticTranslations: Record<string, Record<string, string>> = {
+    'Origine e Storia': { de_CH: 'Herkunft und Geschichte', fr_CH: 'Origine et Histoire', en_US: 'Origin and History' },
+    '📍 Origine e Storia': { de_CH: '📍 Herkunft und Geschichte', fr_CH: '📍 Origine et Histoire', en_US: '📍 Origin and History' },
+    'Tradizione': { de_CH: 'Tradition', fr_CH: 'Tradition', en_US: 'Tradition' },
+    '🏛️ Tradizione': { de_CH: '🏛️ Tradition', fr_CH: '🏛️ Tradition', en_US: '🏛️ Tradition' },
+    'Produzione': { de_CH: 'Herstellung', fr_CH: 'Production', en_US: 'Production' },
+    '⚙️ Produzione': { de_CH: '⚙️ Herstellung', fr_CH: '⚙️ Production', en_US: '⚙️ Production' },
+    'Caratteristiche Uniche:': { de_CH: 'Einzigartige Eigenschaften:', fr_CH: 'Caractéristiques Uniques:', en_US: 'Unique Characteristics:' },
+    'Lo Sapevi Che...': { de_CH: 'Wussten Sie, dass...', fr_CH: 'Le saviez-vous...', en_US: 'Did You Know...' },
+    '💡 Lo Sapevi Che...': { de_CH: '💡 Wussten Sie, dass...', fr_CH: '💡 Le saviez-vous...', en_US: '💡 Did You Know...' },
+    'Abbinamenti Consigliati': { de_CH: 'Empfohlene Kombinationen', fr_CH: 'Accords Recommandés', en_US: 'Recommended Pairings' },
+    '🍽️ Abbinamenti Consigliati': { de_CH: '🍽️ Empfohlene Kombinationen', fr_CH: '🍽️ Accords Recommandés', en_US: '🍽️ Recommended Pairings' },
+    'Regione:': { de_CH: 'Region:', fr_CH: 'Région:', en_US: 'Region:' },
+    'Periodo:': { de_CH: 'Zeitraum:', fr_CH: 'Période:', en_US: 'Period:' },
+    'Questo prodotto è disponibile nel nostro catalogo!': {
+      de_CH: 'Dieses Produkt ist in unserem Katalog erhältlich!',
+      fr_CH: 'Ce produit est disponible dans notre catalogue!',
+      en_US: 'This product is available in our catalog!'
+    },
+    'Scopri il Catalogo LAPA': {
+      de_CH: 'Entdecken Sie den LAPA Katalog',
+      fr_CH: 'Découvrez le Catalogue LAPA',
+      en_US: 'Discover the LAPA Catalog'
+    },
+  };
+
+  // Controlla testi statici
+  if (staticTranslations[cleanText] && staticTranslations[cleanText][langCode]) {
+    return staticTranslations[cleanText][langCode];
+  }
+
+  // Traduci "Scopri [productName]"
+  if (cleanText.includes('Scopri') && cleanText.includes(productName)) {
+    const discoverTranslations: Record<string, string> = {
+      de_CH: `${productName} entdecken`,
+      fr_CH: `Découvrir ${productName}`,
+      en_US: `Discover ${productName}`
+    };
+    return `🛍️ ${discoverTranslations[langCode] || cleanText}`;
+  }
+
+  return null;
 }
 
 // ==========================================

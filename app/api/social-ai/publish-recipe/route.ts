@@ -101,10 +101,19 @@ async function uploadImageToOdoo(
 ): Promise<number> {
   // Estrai mimetype dal data URL
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
+  let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
   // Rimuovi prefisso data:image se presente
-  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+  let cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+
+  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg
+  // Se è per social e non è già JPEG, forza il mimetype a JPEG
+  if (forSocial && mimetype !== 'image/jpeg') {
+    console.log(`  ⚠️ Instagram requires JPEG. Converting from ${mimetype} to image/jpeg`);
+    mimetype = 'image/jpeg';
+    // Aggiorna anche il filename per riflettere il formato corretto
+    filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+  }
 
   // Usa callOdoo con sessione utente loggato
   const attachmentId = await callOdoo(
@@ -186,38 +195,213 @@ async function createBlogPostWithTranslations(
     }]
   );
 
-  // Aggiungi traduzioni per le altre lingue usando write con context lang
+  // ==========================================
+  // TRADUZIONI BLOG - Metodo corretto con segmenti
+  // Odoo usa get_field_translations e update_field_translations
+  // per tradurre i blocchi HTML del contenuto
+  // ==========================================
+
   const langCodes = ['de_CH', 'fr_CH', 'en_US'];
 
   for (const langCode of langCodes) {
     const translatedRecipe = translations[langCode];
     if (!translatedRecipe) continue;
 
-    const htmlContentTranslated = generateBlogHTML(translatedRecipe, productName);
-
     try {
-      // Odoo 17: usa write con context lang per salvare traduzioni
+      // 1. Traduci il titolo (name) con write + context
       await callOdoo(
         odooCookies,
         'blog.post',
         'write',
-        [
-          [postId],
-          {
-            name: translatedRecipe.title,
-            subtitle: translatedRecipe.description,
-            content: htmlContentTranslated
-          }
-        ],
+        [[postId], { name: translatedRecipe.title }],
         { context: { lang: langCode } }
       );
-      console.log(`  ✅ Traduzione ${langCode} aggiunta`);
+
+      // 2. Traduci il sottotitolo (subtitle) con write + context
+      await callOdoo(
+        odooCookies,
+        'blog.post',
+        'write',
+        [[postId], { subtitle: translatedRecipe.description }],
+        { context: { lang: langCode } }
+      );
+
+      // 3. Per il contenuto (content), usa il sistema di segmenti di Odoo
+      // Leggi i segmenti dal contenuto italiano
+      const segmentData = await callOdoo(
+        odooCookies,
+        'blog.post',
+        'get_field_translations',
+        [[postId], 'content']
+      );
+
+      if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
+        const segments = segmentData[0];
+
+        // Estrai tutti i testi sorgente unici
+        const sourceTexts = [...new Set(segments.map((s: any) => s.source))];
+
+        // Crea la mappa di traduzioni per questo segmento
+        const segmentTranslations: Record<string, string> = {};
+
+        // Genera HTML tradotto per estrarre i testi
+        const translatedHTML = generateBlogHTML(translatedRecipe, productName);
+
+        // Mappa i segmenti italiani ai segmenti tradotti
+        // Usiamo una strategia di matching basata sulla posizione nel contenuto
+        for (const srcText of sourceTexts) {
+          // Cerca la traduzione corrispondente nel contenuto tradotto
+          const translatedText = findTranslationForSegment(
+            srcText as string,
+            italianRecipe,
+            translatedRecipe,
+            productName,
+            langCode
+          );
+
+          if (translatedText && translatedText !== srcText) {
+            segmentTranslations[srcText as string] = translatedText;
+          }
+        }
+
+        // Applica le traduzioni dei segmenti
+        if (Object.keys(segmentTranslations).length > 0) {
+          await callOdoo(
+            odooCookies,
+            'blog.post',
+            'update_field_translations',
+            [[postId], 'content', { [langCode]: segmentTranslations }]
+          );
+          console.log(`  ✅ Traduzione ${langCode}: ${Object.keys(segmentTranslations).length} segmenti tradotti`);
+        } else {
+          console.log(`  ⚠️ Traduzione ${langCode}: nessun segmento da tradurre`);
+        }
+      } else {
+        console.log(`  ⚠️ Traduzione ${langCode}: nessun segmento trovato nel contenuto`);
+      }
+
     } catch (translationError: any) {
       console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, translationError.message);
     }
   }
 
   return postId;
+}
+
+// ==========================================
+// HELPER: Trova traduzione per un segmento
+// ==========================================
+
+function findTranslationForSegment(
+  italianText: string,
+  italianRecipe: any,
+  translatedRecipe: any,
+  productName: string,
+  langCode: string
+): string | null {
+  // Pulisci il testo per il confronto
+  const cleanText = italianText.trim();
+
+  // Mappa diretta dei campi della ricetta
+  const directMappings: Record<string, string> = {
+    [italianRecipe.title]: translatedRecipe.title,
+    [italianRecipe.description]: translatedRecipe.description,
+    [italianRecipe.tradition]: translatedRecipe.tradition,
+  };
+
+  // Controlla mappatura diretta
+  if (directMappings[cleanText]) {
+    return directMappings[cleanText];
+  }
+
+  // Controlla ingredienti
+  for (let i = 0; i < (italianRecipe.ingredients?.length || 0); i++) {
+    const itIng = italianRecipe.ingredients[i];
+    const trIng = translatedRecipe.ingredients?.[i];
+
+    if (itIng && trIng) {
+      if (cleanText === itIng.item) {
+        return trIng.item;
+      }
+      if (cleanText === `${itIng.quantity} ${itIng.item}`) {
+        return `${trIng.quantity} ${trIng.item}`;
+      }
+      // Solo l'item senza quantity
+      if (cleanText.includes(itIng.item)) {
+        return cleanText.replace(itIng.item, trIng.item);
+      }
+    }
+  }
+
+  // Controlla steps
+  for (let i = 0; i < (italianRecipe.steps?.length || 0); i++) {
+    const itStep = italianRecipe.steps[i];
+    const trStep = translatedRecipe.steps?.[i];
+
+    if (itStep && trStep && cleanText === itStep) {
+      return trStep;
+    }
+    // Match parziale per step con prefisso "Passo X:"
+    if (itStep && trStep && cleanText.includes(itStep)) {
+      return cleanText.replace(itStep, trStep);
+    }
+  }
+
+  // Controlla tips
+  for (let i = 0; i < (italianRecipe.tips?.length || 0); i++) {
+    const itTip = italianRecipe.tips[i];
+    const trTip = translatedRecipe.tips?.[i];
+
+    if (itTip && trTip && cleanText === itTip) {
+      return trTip;
+    }
+  }
+
+  // Testi statici comuni con traduzioni per lingua
+  const staticTranslations: Record<string, Record<string, string>> = {
+    'Tradizione': { de_CH: 'Tradition', fr_CH: 'Tradition', en_US: 'Tradition' },
+    '🏛️ Tradizione': { de_CH: '🏛️ Tradition', fr_CH: '🏛️ Tradition', en_US: '🏛️ Tradition' },
+    'Ingredienti': { de_CH: 'Zutaten', fr_CH: 'Ingrédients', en_US: 'Ingredients' },
+    '🛒 Ingredienti': { de_CH: '🛒 Zutaten', fr_CH: '🛒 Ingrédients', en_US: '🛒 Ingredients' },
+    'Procedimento': { de_CH: 'Zubereitung', fr_CH: 'Préparation', en_US: 'Instructions' },
+    '👨‍🍳 Procedimento': { de_CH: '👨‍🍳 Zubereitung', fr_CH: '👨‍🍳 Préparation', en_US: '👨‍🍳 Instructions' },
+    'Consigli dello Chef': { de_CH: 'Tipps vom Chef', fr_CH: 'Conseils du Chef', en_US: "Chef's Tips" },
+    '💡 Consigli dello Chef': { de_CH: '💡 Tipps vom Chef', fr_CH: '💡 Conseils du Chef', en_US: "💡 Chef's Tips" },
+    'Regione:': { de_CH: 'Region:', fr_CH: 'Région:', en_US: 'Region:' },
+    'Preparazione:': { de_CH: 'Vorbereitung:', fr_CH: 'Préparation:', en_US: 'Prep:' },
+    'Cottura:': { de_CH: 'Kochzeit:', fr_CH: 'Cuisson:', en_US: 'Cooking:' },
+    'Porzioni:': { de_CH: 'Portionen:', fr_CH: 'Portions:', en_US: 'Servings:' },
+    'Difficoltà:': { de_CH: 'Schwierigkeit:', fr_CH: 'Difficulté:', en_US: 'Difficulty:' },
+    'Passo': { de_CH: 'Schritt', fr_CH: 'Étape', en_US: 'Step' },
+    'Questo prodotto è disponibile nel nostro catalogo!': {
+      de_CH: 'Dieses Produkt ist in unserem Katalog erhältlich!',
+      fr_CH: 'Ce produit est disponible dans notre catalogue!',
+      en_US: 'This product is available in our catalog!'
+    },
+    'Scopri il Catalogo LAPA': {
+      de_CH: 'Entdecken Sie den LAPA Katalog',
+      fr_CH: 'Découvrez le Catalogue LAPA',
+      en_US: 'Discover the LAPA Catalog'
+    },
+  };
+
+  // Controlla testi statici
+  if (staticTranslations[cleanText] && staticTranslations[cleanText][langCode]) {
+    return staticTranslations[cleanText][langCode];
+  }
+
+  // Traduci "Ordina [productName]"
+  if (cleanText.includes('Ordina') && cleanText.includes(productName)) {
+    const orderTranslations: Record<string, string> = {
+      de_CH: `${productName} bestellen`,
+      fr_CH: `Commander ${productName}`,
+      en_US: `Order ${productName}`
+    };
+    return `🛍️ ${orderTranslations[langCode] || cleanText}`;
+  }
+
+  // Nessuna traduzione trovata
+  return null;
 }
 
 // ==========================================

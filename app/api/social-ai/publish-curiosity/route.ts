@@ -50,9 +50,17 @@ async function uploadImageToOdoo(
 ): Promise<number> {
   // Estrai mimetype dal data URL
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-  const mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
+  let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+
+  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg
+  // Forza il mimetype a JPEG per evitare errori
+  if (mimetype !== 'image/jpeg') {
+    console.log(`  ⚠️ Instagram requires JPEG. Converting from ${mimetype} to image/jpeg`);
+    mimetype = 'image/jpeg';
+    filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+  }
 
   const attachmentId = await callOdoo(
     odooCookies,
