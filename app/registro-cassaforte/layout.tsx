@@ -12,7 +12,6 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',
-  // Non blocchiamo l'orientamento - permette rotazione libera
 };
 
 export default function RegistroCassaforteLayout({
@@ -20,22 +19,5 @@ export default function RegistroCassaforteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      {/* CSS per supportare qualsiasi orientamento */}
-      <style jsx global>{`
-        @media screen and (orientation: portrait) {
-          .registro-cassaforte-container {
-            /* Stili per portrait */
-          }
-        }
-        @media screen and (orientation: landscape) {
-          .registro-cassaforte-container {
-            /* Stili per landscape */
-          }
-        }
-      `}</style>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
