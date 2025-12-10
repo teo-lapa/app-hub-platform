@@ -313,13 +313,13 @@ async function createBlogPostWithTranslations(
 
       if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
         const segments = segmentData[0];
-        const sourceTexts = [...new Set(segments.map((s: any) => s.source))];
+        const sourceTexts = Array.from(new Set(segments.map((s: any) => s.source))) as string[];
         const segmentTranslations: Record<string, string> = {};
 
         // Mappa i segmenti italiani ai segmenti tradotti
         for (const srcText of sourceTexts) {
           const translatedText = findStoryTranslationForSegment(
-            srcText as string,
+            srcText,
             italianStory,
             translatedStory,
             productName,
@@ -327,7 +327,7 @@ async function createBlogPostWithTranslations(
           );
 
           if (translatedText && translatedText !== srcText) {
-            segmentTranslations[srcText as string] = translatedText;
+            segmentTranslations[srcText] = translatedText;
           }
         }
 

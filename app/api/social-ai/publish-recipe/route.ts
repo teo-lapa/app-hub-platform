@@ -239,7 +239,7 @@ async function createBlogPostWithTranslations(
         const segments = segmentData[0];
 
         // Estrai tutti i testi sorgente unici
-        const sourceTexts = [...new Set(segments.map((s: any) => s.source))];
+        const sourceTexts = Array.from(new Set(segments.map((s: any) => s.source))) as string[];
 
         // Crea la mappa di traduzioni per questo segmento
         const segmentTranslations: Record<string, string> = {};
@@ -252,7 +252,7 @@ async function createBlogPostWithTranslations(
         for (const srcText of sourceTexts) {
           // Cerca la traduzione corrispondente nel contenuto tradotto
           const translatedText = findTranslationForSegment(
-            srcText as string,
+            srcText,
             italianRecipe,
             translatedRecipe,
             productName,
@@ -260,7 +260,7 @@ async function createBlogPostWithTranslations(
           );
 
           if (translatedText && translatedText !== srcText) {
-            segmentTranslations[srcText as string] = translatedText;
+            segmentTranslations[srcText] = translatedText;
           }
         }
 
