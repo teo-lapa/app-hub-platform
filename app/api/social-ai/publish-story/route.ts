@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import sharp from 'sharp';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per pubblicazione completa
@@ -110,15 +111,31 @@ async function uploadImageToOdoo(
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
   let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
-  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+  let cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
-  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg
-  // Se è per social e non è già JPEG, forza il mimetype a JPEG
+  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg REALE
+  // Converte effettivamente l'immagine in JPEG usando sharp
   if (forSocial && mimetype !== 'image/jpeg') {
-    console.log(`  ⚠️ Instagram requires JPEG. Converting from ${mimetype} to image/jpeg`);
-    mimetype = 'image/jpeg';
-    // Aggiorna anche il filename per riflettere il formato corretto
-    filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+    console.log(`  🔄 Converting image from ${mimetype} to real JPEG for Instagram...`);
+    try {
+      // Decodifica base64 in buffer
+      const inputBuffer = Buffer.from(cleanBase64, 'base64');
+
+      // Converti in JPEG con qualità alta (90%)
+      const jpegBuffer = await sharp(inputBuffer)
+        .jpeg({ quality: 90 })
+        .toBuffer();
+
+      // Ricodifica in base64
+      cleanBase64 = jpegBuffer.toString('base64');
+      mimetype = 'image/jpeg';
+      filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+
+      console.log(`  ✅ Image converted to JPEG successfully (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    } catch (conversionError: any) {
+      console.error(`  ❌ Image conversion failed: ${conversionError.message}`);
+      // Fallback: usa il mimetype originale
+    }
   }
 
   const attachmentId = await callOdoo(
