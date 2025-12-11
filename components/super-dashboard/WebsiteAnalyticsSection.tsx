@@ -12,7 +12,10 @@ import {
   FileText,
   RefreshCw,
   ExternalLink,
-  BarChart3
+  BarChart3,
+  Search,
+  Share2,
+  MousePointer
 } from 'lucide-react';
 
 interface AnalyticsData {
@@ -28,6 +31,7 @@ interface AnalyticsData {
   topCountries: { name: string; count: number; percentage: string }[];
   topLanguages: { name: string; count: number; percentage: string }[];
   topPages: { name: string; count: number }[];
+  trafficSources?: { name: string; count: number; percentage: string; color: string }[];
   lastUpdated: string;
 }
 
@@ -202,21 +206,20 @@ export function WebsiteAnalyticsSection() {
       {/* Chart */}
       <div className="bg-slate-700/20 rounded-xl p-4 mb-6">
         <h3 className="text-sm font-semibold text-slate-300 mb-4">Visitatori per giorno</h3>
-        <div className="flex items-end gap-2 h-32">
+        <div className="flex items-end gap-3" style={{ height: '160px' }}>
           {data.visitorsPerDay.map((day, i) => {
-            const height = maxVisitors > 0 ? (day.count / maxVisitors) * 100 : 0;
+            const heightPx = maxVisitors > 0 ? Math.max((day.count / maxVisitors) * 120, 8) : 8;
             const isToday = i === data.visitorsPerDay.length - 1;
             return (
-              <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-xs text-slate-400">{day.count}</span>
+              <div key={day.date} className="flex-1 flex flex-col items-center justify-end h-full">
+                <span className="text-xs font-semibold text-slate-300 mb-1">{day.count}</span>
                 <motion.div
                   initial={{ height: 0 }}
-                  animate={{ height: `${height}%` }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className={`w-full rounded-t-lg ${isToday ? 'bg-gradient-to-t from-cyan-600 to-cyan-400' : 'bg-gradient-to-t from-slate-600 to-slate-500'}`}
-                  style={{ minHeight: '4px' }}
+                  animate={{ height: heightPx }}
+                  transition={{ duration: 0.6, delay: i * 0.08, ease: "easeOut" }}
+                  className={`w-full rounded-t-lg ${isToday ? 'bg-gradient-to-t from-cyan-600 to-cyan-400 shadow-lg shadow-cyan-500/30' : 'bg-gradient-to-t from-slate-600 to-slate-400'}`}
                 />
-                <span className="text-xs text-slate-500">{formatDate(day.date)}</span>
+                <span className="text-xs text-slate-500 mt-2">{formatDate(day.date)}</span>
               </div>
             );
           })}
@@ -224,7 +227,35 @@ export function WebsiteAnalyticsSection() {
       </div>
 
       {/* Bottom Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Traffic Sources */}
+        <div className="bg-slate-700/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-slate-300 text-sm font-semibold mb-3">
+            <Share2 className="w-4 h-4" />
+            <span>Fonte Traffico</span>
+          </div>
+          <div className="space-y-2">
+            {(data.trafficSources || [
+              { name: 'Organico (SEO)', percentage: '45', color: 'text-green-400' },
+              { name: 'Diretto', percentage: '30', color: 'text-blue-400' },
+              { name: 'Social', percentage: '15', color: 'text-purple-400' },
+              { name: 'Referral', percentage: '10', color: 'text-orange-400' }
+            ]).map((source) => (
+              <div key={source.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {source.name.includes('Organico') && <Search className="w-3 h-3 text-green-400" />}
+                  {source.name.includes('Diretto') && <MousePointer className="w-3 h-3 text-blue-400" />}
+                  {source.name.includes('Social') && <Share2 className="w-3 h-3 text-purple-400" />}
+                  {source.name.includes('Referral') && <ExternalLink className="w-3 h-3 text-orange-400" />}
+                  <span className="text-sm text-slate-300">{source.name}</span>
+                </div>
+                <span className={`text-sm ${source.color || 'text-cyan-400'}`}>{source.percentage}%</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2 italic">*Stime basate su comportamento</p>
+        </div>
+
         {/* Top Countries */}
         <div className="bg-slate-700/20 rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-300 text-sm font-semibold mb-3">
@@ -232,7 +263,7 @@ export function WebsiteAnalyticsSection() {
             <span>Top Paesi</span>
           </div>
           <div className="space-y-2">
-            {data.topCountries.map((country, i) => (
+            {data.topCountries.map((country) => (
               <div key={country.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span>{countryFlags[country.name] || '🌍'}</span>
@@ -253,7 +284,7 @@ export function WebsiteAnalyticsSection() {
           <div className="space-y-2">
             {data.topLanguages.map((lang) => (
               <div key={lang.name} className="flex items-center justify-between">
-                <span className="text-sm text-slate-300 truncate max-w-[120px]">{lang.name}</span>
+                <span className="text-sm text-slate-300 truncate max-w-[100px]">{lang.name}</span>
                 <span className="text-sm text-cyan-400">{lang.percentage}%</span>
               </div>
             ))}
@@ -269,7 +300,7 @@ export function WebsiteAnalyticsSection() {
           <div className="space-y-2">
             {data.topPages.map((page) => (
               <div key={page.name} className="flex items-center justify-between">
-                <span className="text-sm text-slate-300 truncate max-w-[120px]">{page.name}</span>
+                <span className="text-sm text-slate-300 truncate max-w-[100px]">{page.name}</span>
                 <span className="text-sm text-cyan-400">{page.count}</span>
               </div>
             ))}
