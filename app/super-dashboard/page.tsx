@@ -14,6 +14,7 @@ import { AIInsightsSection } from '@/components/super-dashboard/AIInsightsSectio
 import { QuickActionsSection } from '@/components/super-dashboard/QuickActionsSection';
 import { SalesOrdersTimelineSection } from '@/components/super-dashboard/SalesOrdersTimelineSection';
 import { WebsiteAnalyticsSection } from '@/components/super-dashboard/WebsiteAnalyticsSection';
+import { ContoEconomicoSection } from '@/components/super-dashboard/ContoEconomicoSection';
 import { RefreshCw, Settings, Download, Calendar, Home, Server } from 'lucide-react';
 import Link from 'next/link';
 
@@ -173,7 +174,10 @@ export default function SuperDashboardPage() {
           <DeliverySection />
         </div>
 
-        {/* Row 3: Finance + Team Performance */}
+        {/* Row 3: Conto Economico Reale (NUOVO) */}
+        <ContoEconomicoSection />
+
+        {/* Row 4: Finance + Team Performance */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <FinanceSection period={selectedPeriod} />
           <TeamPerformanceSection />

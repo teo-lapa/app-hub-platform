@@ -11,3 +11,4 @@ export { AIInsightsSection } from './AIInsightsSection';
 export { QuickActionsSection } from './QuickActionsSection';
 export { ProductAnalysisDashboard } from './ProductAnalysisDashboard';
 export { SalesOrdersTimelineSection } from './SalesOrdersTimelineSection';
+export { ContoEconomicoSection } from './ContoEconomicoSection';
