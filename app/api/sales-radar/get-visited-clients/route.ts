@@ -112,18 +112,18 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const DAY_MS = 24 * 60 * 60 * 1000;
 
-    function getVisitColor(lastVisit: Date): 'visit-green' | 'visit-yellow' | 'visit-orange' | 'visit-red' {
+    const getVisitColor = (lastVisit: Date): 'visit-green' | 'visit-yellow' | 'visit-orange' | 'visit-red' => {
       const daysSinceVisit = Math.floor((now.getTime() - lastVisit.getTime()) / DAY_MS);
 
       if (daysSinceVisit <= 7) return 'visit-green';
       if (daysSinceVisit <= 14) return 'visit-yellow';
       if (daysSinceVisit <= 30) return 'visit-orange';
       return 'visit-red';
-    }
+    };
 
-    function getDaysSinceVisit(lastVisit: Date): number {
+    const getDaysSinceVisit = (lastVisit: Date): number => {
       return Math.floor((now.getTime() - lastVisit.getTime()) / DAY_MS);
-    }
+    };
 
     // 5. Combina i risultati
     const visitedClients: any[] = [];
