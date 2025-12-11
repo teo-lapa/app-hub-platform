@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooRPCClient } from '@/lib/odoo/rpcClient';
-import { callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,10 +61,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { record_id, record_type, visitor_location, client_location, client_name } = body;
 
+    console.log('[Check-in] Request:', { record_id, record_type, client_name });
+
     if (!record_id || !record_type) {
       return NextResponse.json({
         success: false,
         error: 'record_id e record_type sono obbligatori'
+      }, { status: 400 });
+    }
+
+    // Validate record_id is a valid number
+    const numericRecordId = parseInt(String(record_id), 10);
+    if (isNaN(numericRecordId) || numericRecordId <= 0) {
+      return NextResponse.json({
+        success: false,
+        error: `record_id non valido: ${record_id}. Deve essere un numero positivo.`
       }, { status: 400 });
     }
 
@@ -76,37 +86,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 3. Get current user info
-    const userInfo = await client.callKw('res.users', 'search_read', [
-      [['id', '=', await client.callKw('res.users', 'search', [[]], { limit: 1 }).then(() => {
-        // Get current user ID from session
-        return client.callKw('res.users', 'search_read', [[]], {
-          fields: ['id', 'name', 'partner_id'],
-          limit: 1
-        });
-      })]],
-    ], { fields: ['id', 'name', 'partner_id'] });
-
-    // Simpler approach: get current user directly
-    const currentUser = await client.searchRead(
-      'res.users',
-      [['id', '!=', 0]],
-      ['id', 'name', 'partner_id'],
-      1
-    );
-
-    // Actually get the logged in user via a known working method
+    // 3. Get current user info using getCurrentUser method
     let vendorName = 'Venditore';
     try {
-      const sessionInfo = await client.callKw('res.users', 'read', [
-        [client.uid || 2],  // fallback to admin if no uid
-        ['name']
-      ]);
-      if (sessionInfo && sessionInfo[0]) {
-        vendorName = sessionInfo[0].name;
+      const currentUser = await client.getCurrentUser();
+      if (currentUser?.name) {
+        vendorName = currentUser.name;
       }
-    } catch {
-      // Keep default vendor name
+    } catch (e) {
+      console.warn('[Check-in] Could not get current user:', e);
     }
 
     // 4. Calculate distance if locations provided
@@ -121,16 +109,18 @@ export async function POST(request: NextRequest) {
       distanceText = ` | 📏 ${formatDistance(distanceMeters)} dal cliente`;
     }
 
-    // 5. Format timestamp
+    // 5. Format timestamp in Zurich timezone
     const now = new Date();
     const dateStr = now.toLocaleDateString('it-CH', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'Europe/Zurich'
     });
     const timeStr = now.toLocaleTimeString('it-CH', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Europe/Zurich'
     });
 
     // 6. Create message text (plain text, no complex HTML)
@@ -140,22 +130,22 @@ export async function POST(request: NextRequest) {
 
     const messageText = `📍 VISITA REGISTRATA | 📅 ${dateStr} ${timeStr} | 👤 ${vendorName}${gpsText}${distanceText}`;
 
-    // 7. Post to chatter
+    // 7. Post to chatter using callKw
     const model = record_type === 'lead' ? 'crm.lead' : 'res.partner';
 
-    // Build cookies string for callOdoo
-    const cookies = `session_id=${sessionId}`;
+    console.log('[Check-in] Posting to chatter:', { model, numericRecordId, messageText });
 
-    const messageId = await callOdoo(
-      cookies,
+    const messageId = await client.callKw(
       model,
       'message_post',
-      [record_id],
+      [numericRecordId],
       {
         body: messageText,
         message_type: 'comment'
       }
     );
+
+    console.log('[Check-in] Success, message_id:', messageId);
 
     return NextResponse.json({
       success: true,
