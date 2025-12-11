@@ -1180,11 +1180,17 @@ export default function SalesRadarPage() {
     if (!place) return;
 
     // Determine record type and ID
+    // Delivery addresses are partners too, just with locationType='delivery'
     const isLead = place.type === 'lead' || (place.isLead && !place.existsInOdoo);
+    const isDelivery = place.locationType === 'delivery';
     const recordType = isLead ? 'lead' : 'partner';
+
+    // For delivery addresses, use place.id directly (it's the res.partner ID of the delivery address)
     const recordId = isLead
       ? (place.leadId || place.id)
-      : (place.odooCustomer?.id || place.id);
+      : isDelivery
+        ? place.id
+        : (place.odooCustomer?.id || place.id);
 
     if (!recordId) {
       alert('Impossibile registrare la visita: ID cliente non trovato');
@@ -1275,9 +1281,14 @@ export default function SalesRadarPage() {
 
     // Build the key based on place type
     const isLead = place.type === 'lead' || (place.isLead && !place.existsInOdoo);
+    const isDelivery = place.locationType === 'delivery';
+
+    // For delivery addresses, use place.id directly
     const recordId = isLead
       ? (place.leadId || place.id)
-      : (place.odooCustomer?.id || place.id);
+      : isDelivery
+        ? place.id
+        : (place.odooCustomer?.id || place.id);
 
     if (!recordId) return null;
 
@@ -2292,8 +2303,8 @@ export default function SalesRadarPage() {
                     </a>
                   )}
 
-                  {/* Check-in Visit Button - only for existing customers (green/purple) and leads (orange) */}
-                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || selectedPlace.color === 'purple' || selectedPlace.type === 'customer' || selectedPlace.isLead || selectedPlace.type === 'lead' || selectedPlace.color === 'orange') && !(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (selectedPlace.odooCustomer?.id || selectedPlace.id || selectedPlace.leadId) && (
+                  {/* Check-in Visit Button - for existing customers, leads, and delivery addresses */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || selectedPlace.color === 'purple' || selectedPlace.type === 'customer' || selectedPlace.isLead || selectedPlace.type === 'lead' || selectedPlace.color === 'orange' || selectedPlace.locationType === 'delivery') && !(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (selectedPlace.odooCustomer?.id || selectedPlace.id || selectedPlace.leadId) && (
                     <button
                       onClick={() => handleCheckIn(selectedPlace)}
                       disabled={isCheckingIn}
