@@ -1519,7 +1519,7 @@ export default function SalesRadarPage() {
                 </div>
               </div>
             </div>
-          )
+          )}
         </div>
       </div>
 
