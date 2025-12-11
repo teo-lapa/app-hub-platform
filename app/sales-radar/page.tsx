@@ -1451,9 +1451,37 @@ export default function SalesRadarPage() {
               </button>
             </div>
 
-            {/* Vendor selector - only visible when visits mode is active */}
-            {showVisitsMode && visitsVendors.length > 0 && (
-              <div className="flex items-center gap-2">
+          </div>
+
+          {/* Stats Header - 4 Colors - Hidden on mobile when visits mode active */}
+          <div className={`flex items-center gap-2 sm:gap-4 text-xs sm:text-sm ${showVisitsMode ? 'hidden sm:flex' : 'flex'}`}>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-500"></span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
+              <span className="text-gray-600 hidden sm:inline">Nuovi</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-orange-500"></span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
+              <span className="text-gray-600 hidden sm:inline">Lead</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500"></span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
+              <span className="text-gray-600 hidden sm:inline">Clienti</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gray-400"></span>
+              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
+              <span className="text-gray-600 hidden sm:inline">Esclusi</span>
+            </div>
+          </div>
+
+          {/* Vendor selector + Visits Legend - only visible when visits mode is active */}
+          {showVisitsMode && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+              {/* Vendor dropdown */}
+              {visitsVendors.length > 0 && (
                 <select
                   value={selectedVendorId || ''}
                   onChange={async (e) => {
@@ -1461,65 +1489,37 @@ export default function SalesRadarPage() {
                     setSelectedVendorId(newVendorId);
                     await loadVisits(newVendorId);
                   }}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 max-w-[140px] sm:max-w-none"
                 >
-                  <option value="">Tutti i venditori</option>
+                  <option value="">Tutti</option>
                   {visitsVendors.map((vendor) => (
                     <option key={vendor.id} value={vendor.id}>
                       {vendor.name} {vendor.id === currentUserId ? '(tu)' : ''}
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Stats Header - 4 Colors */}
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-red-500"></span>
-              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => !p.existsInOdoo && !p.isLead && p.color !== 'green' && p.color !== 'orange' && p.color !== 'grey' && !p.notInTarget).length}</span>
-              <span className="text-gray-600">Nuovi</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.isLead || p.color === 'orange').length}</span>
-              <span className="text-gray-600">Lead</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-green-500"></span>
-              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.existsInOdoo || p.color === 'green').length}</span>
-              <span className="text-gray-600">Clienti</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-              <span className="font-bold text-gray-900">{(mapMode === 'live' ? places : odooPlaces).filter((p: any) => p.notInTarget || p.color === 'grey').length}</span>
-              <span className="text-gray-600">Esclusi</span>
-            </div>
-          </div>
-
-          {/* Visits Legend - only visible when visits mode is active */}
-          {showVisitsMode && (
-            <div className="flex items-center gap-4 text-sm bg-gray-50 px-3 py-2 rounded-lg">
-              <span className="text-gray-600 font-medium">Visite:</span>
-              <div className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-green-500"></span>
-                <span className="text-gray-600">&lt;7gg</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-yellow-500"></span>
-                <span className="text-gray-600">8-14gg</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-red-500"></span>
-                <span className="text-gray-600">&gt;15gg</span>
-              </div>
-              <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-300">
-                <span className="font-bold text-gray-900">{Object.keys(visitsData).length}</span>
-                <span className="text-gray-600">visite totali</span>
+              {/* Visits legend - compact on mobile */}
+              <div className="flex items-center gap-2 sm:gap-3 bg-gray-50 px-2 py-1 sm:px-3 sm:py-2 rounded-lg">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white border-2 sm:border-[3px] border-green-500"></span>
+                  <span className="text-gray-600 hidden sm:inline">&lt;7gg</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white border-2 sm:border-[3px] border-yellow-500"></span>
+                  <span className="text-gray-600 hidden sm:inline">8-14gg</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white border-2 sm:border-[3px] border-red-500"></span>
+                  <span className="text-gray-600 hidden sm:inline">&gt;15gg</span>
+                </div>
+                <div className="flex items-center gap-1 sm:ml-2 sm:pl-2 sm:border-l sm:border-gray-300">
+                  <span className="font-bold text-gray-900">{Object.keys(visitsData).length}</span>
+                </div>
               </div>
             </div>
-          )}
+          )
         </div>
       </div>
 
