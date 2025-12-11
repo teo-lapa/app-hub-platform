@@ -1867,9 +1867,9 @@ export default function SalesRadarPage() {
                   return place.locationType === 'delivery' ? '#059669' : '#FFFFFF';
                 }
                 switch (visitStatus) {
-                  case 'recent': return '#22C55E';  // Verde - ultimi 7 giorni
-                  case 'medium': return '#F59E0B'; // Giallo/Arancio - 8-14 giorni
-                  case 'old': return '#EF4444';    // Rosso - più di 15 giorni
+                  case 'recent': return '#00FF00';  // Verde fosforescente - ultimi 7 giorni
+                  case 'medium': return '#FFD700'; // Giallo oro - 8-14 giorni
+                  case 'old': return '#FF0000';    // Rosso vivo - più di 15 giorni
                   default: return '#FFFFFF';
                 }
               };

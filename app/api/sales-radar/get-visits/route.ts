@@ -126,11 +126,19 @@ export async function GET(request: NextRequest) {
     // Track unique vendors who made visits
     const vendorsMap = new Map<number, string>();
 
+    // Helper function to clean vendor name (remove company prefix like "LAPA - ")
+    const cleanVendorName = (name: string): string => {
+      // Remove patterns like "LAPA - " or "Company - " at the start
+      const cleanedName = name.replace(/^[^-]+ - /, '').trim();
+      return cleanedName || name;
+    };
+
     // Process partner messages
     for (const msg of partnerMessages) {
       const key = `partner_${msg.res_id}`;
       const visitorId = msg.author_id?.[0];
-      const visitorName = msg.author_id?.[1] || 'Sconosciuto';
+      const rawVisitorName = msg.author_id?.[1] || 'Sconosciuto';
+      const visitorName = cleanVendorName(rawVisitorName);
 
       // Track vendor
       if (visitorId) {
@@ -152,7 +160,8 @@ export async function GET(request: NextRequest) {
     for (const msg of leadMessages) {
       const key = `lead_${msg.res_id}`;
       const visitorId = msg.author_id?.[0];
-      const visitorName = msg.author_id?.[1] || 'Sconosciuto';
+      const rawVisitorName = msg.author_id?.[1] || 'Sconosciuto';
+      const visitorName = cleanVendorName(rawVisitorName);
 
       // Track vendor
       if (visitorId) {
