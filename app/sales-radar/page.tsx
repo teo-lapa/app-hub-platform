@@ -348,6 +348,14 @@ export default function SalesRadarPage() {
   // Check-in visit state
   const [isCheckingIn, setIsCheckingIn] = useState(false);
 
+  // Visits tracking state
+  const [showVisitsMode, setShowVisitsMode] = useState(false);
+  const [visitsData, setVisitsData] = useState<Record<string, { lastVisit: string; visitorName: string; visitorId: number; recordType: 'partner' | 'lead' }>>({});
+  const [visitsVendors, setVisitsVendors] = useState<{ id: number; name: string }[]>([]);
+  const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
+  const [loadingVisits, setLoadingVisits] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
@@ -1217,6 +1225,83 @@ export default function SalesRadarPage() {
     }
   };
 
+  // Load visits data
+  const loadVisits = async (vendorId?: number | null) => {
+    setLoadingVisits(true);
+    try {
+      const url = vendorId
+        ? `/api/sales-radar/get-visits?user_id=${vendorId}`
+        : '/api/sales-radar/get-visits';
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        setVisitsData(result.visits);
+        setVisitsVendors(result.vendors);
+        if (result.currentUserId && !selectedVendorId) {
+          setCurrentUserId(result.currentUserId);
+          // Preseleziona l'utente corrente se presente tra i venditori
+          const currentVendor = result.vendors.find((v: any) => v.id === result.currentUserId);
+          if (currentVendor) {
+            setSelectedVendorId(result.currentUserId);
+          }
+        }
+      } else {
+        console.error('Errore caricamento visite:', result.error);
+      }
+    } catch (error) {
+      console.error('Errore caricamento visite:', error);
+    } finally {
+      setLoadingVisits(false);
+    }
+  };
+
+  // Toggle visits mode
+  const toggleVisitsMode = async () => {
+    if (!showVisitsMode) {
+      // Attiva modalità visite
+      setShowVisitsMode(true);
+      await loadVisits(selectedVendorId);
+    } else {
+      // Disattiva modalità visite
+      setShowVisitsMode(false);
+    }
+  };
+
+  // Get visit status for a place (returns 'recent' | 'medium' | 'old' | null)
+  const getVisitStatus = (place: any): 'recent' | 'medium' | 'old' | null => {
+    if (!showVisitsMode) return null;
+
+    // Build the key based on place type
+    const isLead = place.type === 'lead' || (place.isLead && !place.existsInOdoo);
+    const recordId = isLead
+      ? (place.leadId || place.id)
+      : (place.odooCustomer?.id || place.id);
+
+    if (!recordId) return null;
+
+    const key = isLead ? `lead_${recordId}` : `partner_${recordId}`;
+    const visit = visitsData[key];
+
+    if (!visit) return null;
+
+    // Filter by selected vendor if any
+    if (selectedVendorId && visit.visitorId !== selectedVendorId) {
+      return null;
+    }
+
+    // Calculate days since last visit
+    const lastVisitDate = new Date(visit.lastVisit);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - lastVisitDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 7) return 'recent';      // Verde - ultimi 7 giorni
+    if (diffDays <= 14) return 'medium';     // Giallo - 8-14 giorni
+    return 'old';                             // Rosso - più di 15 giorni
+  };
+
   // Analyze client with AI
   const analyzeClient = async (place: any) => {
     if (!place) return;
@@ -1353,7 +1438,40 @@ export default function SalesRadarPage() {
               >
                 {loadingStatic ? '⏳' : '📍'} Odoo
               </button>
+              <button
+                onClick={toggleVisitsMode}
+                disabled={loadingVisits}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  showVisitsMode
+                    ? 'bg-white text-green-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {loadingVisits ? '⏳' : '👁️'} Visite
+              </button>
             </div>
+
+            {/* Vendor selector - only visible when visits mode is active */}
+            {showVisitsMode && visitsVendors.length > 0 && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedVendorId || ''}
+                  onChange={async (e) => {
+                    const newVendorId = e.target.value ? parseInt(e.target.value, 10) : null;
+                    setSelectedVendorId(newVendorId);
+                    await loadVisits(newVendorId);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">Tutti i venditori</option>
+                  {visitsVendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.name} {vendor.id === currentUserId ? '(tu)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Stats Header - 4 Colors */}
@@ -1379,6 +1497,29 @@ export default function SalesRadarPage() {
               <span className="text-gray-600">Esclusi</span>
             </div>
           </div>
+
+          {/* Visits Legend - only visible when visits mode is active */}
+          {showVisitsMode && (
+            <div className="flex items-center gap-4 text-sm bg-gray-50 px-3 py-2 rounded-lg">
+              <span className="text-gray-600 font-medium">Visite:</span>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-green-500"></span>
+                <span className="text-gray-600">&lt;7gg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-yellow-500"></span>
+                <span className="text-gray-600">8-14gg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-white border-[3px] border-red-500"></span>
+                <span className="text-gray-600">&gt;15gg</span>
+              </div>
+              <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-300">
+                <span className="font-bold text-gray-900">{Object.keys(visitsData).length}</span>
+                <span className="text-gray-600">visite totali</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1718,27 +1859,44 @@ export default function SalesRadarPage() {
             )}
 
             {/* Business Markers - conditional based on map mode */}
-            {(mapMode === 'live' ? places : odooPlaces).map((place: any, index: number) => (
-              <Marker
-                key={place.place_id || place.id || index}
-                position={{
-                  lat: place.geometry?.location?.lat || place.latitude || place.lat || place.location?.lat,
-                  lng: place.geometry?.location?.lng || place.longitude || place.lng || place.location?.lng
-                }}
-                onClick={() => setSelectedPlace(place)}
-                icon={{
-                  path: place.locationType === 'delivery'
-                    ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' // Pin icon for delivery
-                    : google.maps.SymbolPath.CIRCLE,
-                  scale: place.locationType === 'delivery' ? 1.5 : 10,
-                  fillColor: getMarkerColor(place),
-                  fillOpacity: getMarkerOpacity(place),
-                  strokeColor: place.locationType === 'delivery' ? '#059669' : '#FFFFFF', // Verde scuro per consegna
-                  strokeWeight: place.locationType === 'delivery' ? 1 : 2,
-                  anchor: place.locationType === 'delivery' ? new google.maps.Point(12, 22) : undefined,
-                }}
-              />
-            ))}
+            {(mapMode === 'live' ? places : odooPlaces).map((place: any, index: number) => {
+              const visitStatus = getVisitStatus(place);
+              // Colore bordo basato sullo stato visita (quando modalità visite è attiva)
+              const getStrokeColor = () => {
+                if (!showVisitsMode || !visitStatus) {
+                  return place.locationType === 'delivery' ? '#059669' : '#FFFFFF';
+                }
+                switch (visitStatus) {
+                  case 'recent': return '#22C55E';  // Verde - ultimi 7 giorni
+                  case 'medium': return '#F59E0B'; // Giallo/Arancio - 8-14 giorni
+                  case 'old': return '#EF4444';    // Rosso - più di 15 giorni
+                  default: return '#FFFFFF';
+                }
+              };
+              const strokeWeight = showVisitsMode && visitStatus ? 4 : (place.locationType === 'delivery' ? 1 : 2);
+
+              return (
+                <Marker
+                  key={place.place_id || place.id || index}
+                  position={{
+                    lat: place.geometry?.location?.lat || place.latitude || place.lat || place.location?.lat,
+                    lng: place.geometry?.location?.lng || place.longitude || place.lng || place.location?.lng
+                  }}
+                  onClick={() => setSelectedPlace(place)}
+                  icon={{
+                    path: place.locationType === 'delivery'
+                      ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' // Pin icon for delivery
+                      : google.maps.SymbolPath.CIRCLE,
+                    scale: place.locationType === 'delivery' ? 1.5 : 10,
+                    fillColor: getMarkerColor(place),
+                    fillOpacity: getMarkerOpacity(place),
+                    strokeColor: getStrokeColor(),
+                    strokeWeight: strokeWeight,
+                    anchor: place.locationType === 'delivery' ? new google.maps.Point(12, 22) : undefined,
+                  }}
+                />
+              );
+            })}
 
             {/* Info window - Mobile Optimized */}
             {selectedPlace && (
