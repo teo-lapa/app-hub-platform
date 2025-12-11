@@ -345,6 +345,9 @@ export default function SalesRadarPage() {
   // Convert lead to contact state
   const [isConvertingLead, setIsConvertingLead] = useState(false);
 
+  // Check-in visit state
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
   // Stats
   const existingCustomers = places.filter(p => p.existsInOdoo).length;
   const newProspects = places.filter(p => !p.existsInOdoo && !p.isChecking).length;
@@ -1161,6 +1164,56 @@ export default function SalesRadarPage() {
       alert('❌ Errore durante la conversione. Riprova più tardi.');
     } finally {
       setIsConvertingLead(false);
+    }
+  };
+
+  // Handle check-in visit
+  const handleCheckIn = async (place: any) => {
+    if (!place) return;
+
+    // Determine record type and ID
+    const isLead = place.type === 'lead' || (place.isLead && !place.existsInOdoo);
+    const recordType = isLead ? 'lead' : 'partner';
+    const recordId = isLead
+      ? (place.leadId || place.id)
+      : (place.odooCustomer?.id || place.id);
+
+    if (!recordId) {
+      alert('Impossibile registrare la visita: ID cliente non trovato');
+      return;
+    }
+
+    // Get client location
+    const clientLat = place.geometry?.location?.lat || place.latitude || place.lat || place.location?.lat;
+    const clientLng = place.geometry?.location?.lng || place.longitude || place.lng || place.location?.lng;
+
+    setIsCheckingIn(true);
+
+    try {
+      const response = await fetch('/api/sales-radar/check-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          record_id: recordId,
+          record_type: recordType,
+          visitor_location: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null,
+          client_location: clientLat && clientLng ? { lat: clientLat, lng: clientLng } : null,
+          client_name: place.name || place.display_name || 'Cliente'
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('✅ Visita registrata!');
+      } else {
+        alert('❌ Errore: ' + (result.error || 'Errore sconosciuto'));
+      }
+    } catch (error) {
+      console.error('Errore check-in:', error);
+      alert('❌ Errore durante la registrazione. Riprova più tardi.');
+    } finally {
+      setIsCheckingIn(false);
     }
   };
 
@@ -2079,6 +2132,26 @@ export default function SalesRadarPage() {
                       <ExternalLink className="h-4 w-4" />
                       Google Maps
                     </a>
+                  )}
+
+                  {/* Check-in Visit Button - only for existing customers (green/purple) and leads (orange) */}
+                  {(selectedPlace.existsInOdoo || selectedPlace.color === 'green' || selectedPlace.color === 'purple' || selectedPlace.type === 'customer' || selectedPlace.isLead || selectedPlace.type === 'lead' || selectedPlace.color === 'orange') && !(selectedPlace.notInTarget || selectedPlace.color === 'grey') && (selectedPlace.odooCustomer?.id || selectedPlace.id || selectedPlace.leadId) && (
+                    <button
+                      onClick={() => handleCheckIn(selectedPlace)}
+                      disabled={isCheckingIn}
+                      className="mt-3 w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCheckingIn ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Registrazione...
+                        </>
+                      ) : (
+                        <>
+                          ✓ Registra Visita
+                        </>
+                      )}
+                    </button>
                   )}
 
                   {/* Activity Button - Opens Activity Modal (show for all EXCEPT grey/excluded) */}
