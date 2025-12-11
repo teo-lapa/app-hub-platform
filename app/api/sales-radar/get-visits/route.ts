@@ -126,10 +126,16 @@ export async function GET(request: NextRequest) {
     // Track unique vendors who made visits
     const vendorsMap = new Map<number, string>();
 
-    // Helper function to clean vendor name (remove company prefix like "LAPA - ")
+    // Helper function to clean vendor name (remove company prefix)
     const cleanVendorName = (name: string): string => {
-      // Remove patterns like "LAPA - " or "Company - " at the start
-      const cleanedName = name.replace(/^[^-]+ - /, '').trim();
+      // Remove patterns like:
+      // "LAPA - Nome Cognome" -> "Nome Cognome"
+      // "finest italian food GmbH, Nome Cognome" -> "Nome Cognome"
+      // "Company Name, Nome Cognome" -> "Nome Cognome"
+      let cleanedName = name
+        .replace(/^[^-]+ - /, '')  // Remove "LAPA - " pattern
+        .replace(/^[^,]+,\s*/, '') // Remove "Company, " pattern
+        .trim();
       return cleanedName || name;
     };
 
