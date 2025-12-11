@@ -4,11 +4,11 @@ import { google } from 'googleapis';
 // Service Account credentials from environment variables
 const SERVICE_ACCOUNT = {
   type: "service_account",
-  project_id: process.env.GOOGLE_PROJECT_ID,
-  private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-  private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  client_email: process.env.GOOGLE_CLIENT_EMAIL,
-  client_id: process.env.GOOGLE_CLIENT_ID,
+  project_id: process.env.GSC_PROJECT_ID,
+  private_key_id: process.env.GSC_PRIVATE_KEY_ID,
+  private_key: process.env.GSC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  client_email: process.env.GSC_CLIENT_EMAIL,
+  client_id: process.env.GSC_CLIENT_ID,
 };
 
 const SITE_URL = process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL || 'https://www.lapa.ch/';
