@@ -67,24 +67,31 @@ async function searchRead<T>(
 }
 
 function classifyProduct(productName: string, categName: string): string {
-  const name = (productName + ' ' + categName).toLowerCase();
+  // Usa la categoria Odoo per classificare
+  const catLower = categName.toLowerCase();
 
-  if (name.includes('surgel') || name.includes('frozen') || name.includes('gelato') ||
-      name.includes('ping') || name.includes('ghiacc')) {
-    return 'PING';
+  // Pingu (surgelati)
+  if (catLower.startsWith('pingu')) {
+    return 'PINGU';
   }
-  if (name.includes('fresco') || name.includes('frigo') || name.includes('latte') ||
-      name.includes('formaggio') || name.includes('mozzarella') || name.includes('burrata') ||
-      name.includes('ricotta') || name.includes('mascarpone') || name.includes('panna') ||
-      name.includes('yogurt') || name.includes('salume') || name.includes('prosciutto') ||
-      name.includes('mortadella') || name.includes('bresaola') || name.includes('speck')) {
+
+  // Frigo
+  if (catLower.startsWith('frigo')) {
     return 'FRIGO';
   }
-  if (name.includes('vino') || name.includes('birra') || name.includes('acqua') ||
-      name.includes('bevand') || name.includes('bottiglia') || name.includes('lattina')) {
-    return 'SECCO_SOTTO';
+
+  // Non Food
+  if (catLower.startsWith('non food') || catLower.startsWith('non in uso')) {
+    return 'NON_FOOD';
   }
-  return 'SECCO_SOPRA';
+
+  // Secco (include Secco e Secco 2)
+  if (catLower.startsWith('secco')) {
+    return 'SECCO';
+  }
+
+  // Default: Secco
+  return 'SECCO';
 }
 
 export async function GET(request: NextRequest) {
@@ -153,10 +160,10 @@ export async function GET(request: NextRequest) {
     }
 
     const magazzino: { [zona: string]: { count: number, qty: number, value: number } } = {
-      'SECCO_SOPRA': { count: 0, qty: 0, value: 0 },
-      'SECCO_SOTTO': { count: 0, qty: 0, value: 0 },
+      'SECCO': { count: 0, qty: 0, value: 0 },
       'FRIGO': { count: 0, qty: 0, value: 0 },
-      'PING': { count: 0, qty: 0, value: 0 }
+      'PINGU': { count: 0, qty: 0, value: 0 },
+      'NON_FOOD': { count: 0, qty: 0, value: 0 }
     };
 
     for (const p of products) {

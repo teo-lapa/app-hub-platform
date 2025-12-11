@@ -74,10 +74,10 @@ export function ContoEconomicoSection() {
   };
 
   const zoneLabels: { [key: string]: { label: string; icon: string; color: string } } = {
-    'SECCO_SOPRA': { label: 'Secco Sopra', icon: '📦', color: 'from-amber-500 to-orange-500' },
-    'SECCO_SOTTO': { label: 'Secco Sotto', icon: '🍷', color: 'from-purple-500 to-indigo-500' },
+    'SECCO': { label: 'Secco', icon: '📦', color: 'from-amber-500 to-orange-500' },
     'FRIGO': { label: 'Frigo', icon: '❄️', color: 'from-cyan-500 to-blue-500' },
-    'PING': { label: 'Ping (Surgelati)', icon: '🧊', color: 'from-blue-500 to-indigo-600' }
+    'PINGU': { label: 'Pingu (Surgelati)', icon: '🧊', color: 'from-blue-500 to-indigo-600' },
+    'NON_FOOD': { label: 'Non Food', icon: '🧹', color: 'from-slate-500 to-slate-600' }
   };
 
   if (loading) {
