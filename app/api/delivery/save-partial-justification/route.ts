@@ -206,9 +206,7 @@ export async function POST(request: NextRequest) {
 
           const prodottiText = prodottiNonConsegnati || 'Nessun prodotto specificato';
 
-          // Crea whatsapp.composer con il template
-          // TEMPORANEO: Usa template "Sale Order Ship IT v2" (ID: 18) già approvato per test
-          // TODO: Cambiare a ID: 29 quando "Notifica Scarico Parziale Venditore" sarà approvato da Meta
+          // Crea whatsapp.composer con il template "Notifica Scarico Parziale Venditore 2" (ID: 30)
           const composerId = await callOdoo(
             cookies,
             'whatsapp.composer',
@@ -216,12 +214,12 @@ export async function POST(request: NextRequest) {
             [{
               res_model: 'stock.picking',
               res_ids: pickingId.toString(),
-              wa_template_id: 18, // Template "Sale Order Ship IT v2" (temporaneo per test)
-              // free_text per questo template ({{1}}=cliente, {{2}}=ordine, {{3}}=azienda, {{4}}=tracking)
+              wa_template_id: 30, // Template "Notifica Scarico Parziale Venditore 2" - Approvato da Meta
+              // free_text per questo template ({{1}}=cliente, {{2}}=ordine, {{3}}=motivazione, {{4}}=prodotti)
               free_text_1: customerName,
               free_text_2: pickingName,
-              free_text_3: 'LAPA - finest italian food GmbH',
-              free_text_4: feedbackText // Usa feedback come tracking
+              free_text_3: feedbackText, // Motivazione autista
+              free_text_4: prodottiText // Prodotti non consegnati
             }]
           );
 
