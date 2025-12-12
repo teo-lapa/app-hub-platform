@@ -249,9 +249,9 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     const youtubeAccountId = 7;
 
     // Per YouTube su Odoo Social:
-    // - youtube_video: ID dell'attachment video (Many2one)
-    // - image_ids: deve includere anche il video per il form
+    // - youtube_video: ID dell'attachment video (Many2one) - campo principale per il video
     // - youtube_video_category_id: categoria YouTube (22 = People & Blogs)
+    // NOTA: NON usare youtube_preview_video - non esiste nel modello social.post
     const postId = await callOdoo(
       odooCookies,
       'social.post',
@@ -262,9 +262,7 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         youtube_title: youtubeTitle,
         youtube_description: youtubeDescription,
         youtube_video: videoAttachmentId,
-        youtube_video_category_id: 22, // People & Blogs category
-        youtube_preview_video: videoAttachmentId,
-        image_ids: [[6, 0, [videoAttachmentId]]] // Anche in image_ids per compatibilità
+        youtube_video_category_id: 22 // People & Blogs category
       }]
     );
 
@@ -280,7 +278,14 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
 
     console.log('[Publish YouTube] Publishing to YouTube...');
 
+    // Delay helper
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     try {
+      // Aspetta che Odoo processi il video prima di pubblicare
+      console.log('[Publish YouTube] Waiting 5s for video processing...');
+      await delay(5000);
+
       // Chiama il metodo action_post() su social.post per pubblicare
       await callOdoo(
         odooCookies,
