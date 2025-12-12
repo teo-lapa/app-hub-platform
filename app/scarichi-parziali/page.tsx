@@ -288,7 +288,7 @@ export default function ScarichiParzialiPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AnimatePresence mode="popLayout">
               {orders.map((order, index) => (
                 <motion.div
@@ -297,10 +297,10 @@ export default function ScarichiParzialiPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Card Header */}
-                  <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 relative">
+                  <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 relative">
                     {/* Pallino verde se transfer creato */}
                     {order.returnCreated && (
                       <div className="absolute top-3 right-3 bg-green-500 rounded-full p-1.5 shadow-lg animate-pulse" title="Transfer già creato">
@@ -308,21 +308,21 @@ export default function ScarichiParzialiPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <Truck className="w-6 h-6 text-white" />
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Truck className="w-5 h-5 text-white" />
                         <div>
                           <button
                             onClick={() => openPickingInOdoo(order.numeroOrdineResiduo)}
-                            className="text-lg font-bold text-white hover:text-orange-100 hover:underline flex items-center space-x-1 transition-colors"
+                            className="text-base font-bold text-white hover:text-orange-100 hover:underline flex items-center space-x-1 transition-colors"
                             title="Apri documento in Odoo"
                           >
                             <span>{order.numeroOrdineResiduo}</span>
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => openSalesOrderInOdoo(order.salesOrder)}
-                            className="text-sm text-orange-100 hover:text-white hover:underline flex items-center space-x-1 transition-colors"
+                            className="text-xs text-orange-100 hover:text-white hover:underline flex items-center space-x-1 transition-colors"
                             title="Apri Sales Order in Odoo"
                           >
                             <span>{order.salesOrder}</span>
@@ -331,8 +331,8 @@ export default function ScarichiParzialiPage() {
                         </div>
                       </div>
                       {order.prodottiNonScaricati && order.prodottiNonScaricati.length > 0 && (
-                        <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                          <span className="text-sm font-semibold text-white">
+                        <div className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-semibold text-white">
                             {order.prodottiNonScaricati.length} prodotti
                           </span>
                         </div>
@@ -341,16 +341,16 @@ export default function ScarichiParzialiPage() {
 
                     {/* Info autista e veicolo */}
                     {(order.autista || order.veicolo) && (
-                      <div className="flex items-center space-x-4 text-sm mt-2">
+                      <div className="flex items-center space-x-2 text-xs mt-1.5">
                         {order.autista && (
-                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                            <User className="w-4 h-4 text-white" />
+                          <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <User className="w-3 h-3 text-white" />
                             <span className="text-white font-medium">{order.autista}</span>
                           </div>
                         )}
                         {order.veicolo && (
-                          <div className="flex items-center space-x-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                            <Car className="w-4 h-4 text-white" />
+                          <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <Car className="w-3 h-3 text-white" />
                             <span className="text-white font-medium">{order.veicolo}</span>
                           </div>
                         )}
@@ -359,10 +359,10 @@ export default function ScarichiParzialiPage() {
                   </div>
 
                   {/* Card Body */}
-                  <div className="px-6 py-4 space-y-4">
+                  <div className="px-4 py-3 space-y-3">
                     {/* Cliente */}
-                    <div className="flex items-start space-x-3">
-                      <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start space-x-2">
+                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Cliente</p>
                         <p className="text-sm font-medium text-gray-900">{order.cliente}</p>
@@ -370,8 +370,8 @@ export default function ScarichiParzialiPage() {
                     </div>
 
                     {/* Data */}
-                    <div className="flex items-start space-x-3">
-                      <Calendar className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Data prevista</p>
                         <p className="text-sm font-medium text-gray-900">
@@ -385,13 +385,13 @@ export default function ScarichiParzialiPage() {
                     </div>
 
                     {/* Motivazione */}
-                    <div className="flex items-start space-x-3">
-                      <FileText className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start space-x-2">
+                      <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
                           Motivazione scarico parziale
                         </p>
-                        <button onClick={() => setSelectedOrderForMotivation(order)} className="w-full text-left text-sm text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 hover:bg-yellow-100 cursor-pointer">
+                        <button onClick={() => setSelectedOrderForMotivation(order)} className="w-full text-left text-xs text-gray-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1.5 hover:bg-yellow-100 cursor-pointer">
                           {getReasonSummary(order)}
                         </button>
                       </div>
@@ -399,14 +399,14 @@ export default function ScarichiParzialiPage() {
 
                     {/* Prodotti non scaricati */}
                     {order.prodottiNonScaricati && order.prodottiNonScaricati.length > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center space-x-2 mb-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center space-x-2 mb-2">
                           <Package className="w-4 h-4 text-blue-600" />
-                          <h4 className="text-sm font-semibold text-blue-900">
+                          <h4 className="text-xs font-semibold text-blue-900">
                             Prodotti nel furgone ({order.prodottiNonScaricati.length})
                           </h4>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {order.prodottiNonScaricati.slice(0, 3).map((prod, idx) => (
                             <div key={idx} className="flex justify-between items-start text-xs">
                               <span className="text-gray-700 flex-1">{prod.nome}</span>
@@ -426,7 +426,7 @@ export default function ScarichiParzialiPage() {
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
                     <button
                       onClick={() => handleCreateReturn(order)}
                       disabled={
@@ -434,16 +434,16 @@ export default function ScarichiParzialiPage() {
                         !order.prodottiNonScaricati ||
                         order.prodottiNonScaricati.length === 0
                       }
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                      className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm"
                     >
                       {creatingTransfer === order.numeroOrdineResiduo ? (
                         <>
-                          <Loader className="w-5 h-5 animate-spin" />
+                          <Loader className="w-4 h-4 animate-spin" />
                           <span>Creazione in corso...</span>
                         </>
                       ) : (
                         <>
-                          <ArrowRight className="w-5 h-5" />
+                          <ArrowRight className="w-4 h-4" />
                           <span>Crea Reso Furgone → Buffer</span>
                         </>
                       )}

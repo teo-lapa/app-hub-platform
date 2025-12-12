@@ -266,8 +266,19 @@ export async function GET(request: NextRequest) {
       // Verifica se il return è già stato creato
       const returnCreated = await checkReturnCreated(sessionId, pickingResiduo.name);
 
+      // Trova prodotti non scaricati PRIMA di decidere se aggiungere l'ordine
+      const prodottiNonScaricati = await getProdottiNonScaricati(sessionId, pickingResiduo.id);
+
+      console.log(`   📦 Prodotti non scaricati: ${prodottiNonScaricati.length}`);
+
+      // ⚠️ FILTRO: Aggiungi solo ordini con almeno 1 prodotto nel furgone
+      if (prodottiNonScaricati.length === 0) {
+        console.log('   ✅ Nessun prodotto nel furgone, skip');
+        continue;
+      }
+
       if (!outCompletato) {
-        console.log('   ⚠️  Nessun OUT completato trovato per questo SO');
+        console.log('   ⚠️  Nessun OUT completato trovato per questo SO (ma ha prodotti nel furgone)');
         ordiniConDettagli.push({
           numeroOrdineResiduo: pickingResiduo.name,
           cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
@@ -275,7 +286,7 @@ export async function GET(request: NextRequest) {
           dataPrevisita: pickingResiduo.scheduled_date,
           salesOrder: salesOrderName,
           outCompletato: null,
-          prodottiNonScaricati: [],
+          prodottiNonScaricati,
           messaggiScaricoParziale: [],
           haScarichiParziali: false,
           autista,
@@ -292,14 +303,10 @@ export async function GET(request: NextRequest) {
 
       console.log(`   📨 Messaggi scarico parziale: ${messaggiScaricoParziale.length}`);
 
-      // Trova prodotti non scaricati (dall'ordine residuo)
-      const prodottiNonScaricati = await getProdottiNonScaricati(sessionId, pickingResiduo.id);
-
-      console.log(`   📦 Prodotti non scaricati: ${prodottiNonScaricati.length}`);
-
       ordiniConDettagli.push({
         numeroOrdineResiduo: pickingResiduo.name,
         cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
+        clienteId: pickingResiduo.partner_id ? pickingResiduo.partner_id[0] : 0,
         dataPrevisita: pickingResiduo.scheduled_date,
         salesOrder: salesOrderName,
         outCompletato: outCompletato.name,
