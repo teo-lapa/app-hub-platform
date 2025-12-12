@@ -571,8 +571,9 @@ async function generateMarketingImage(
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must be indistinguishable from a real professional photograph
 - SHARP DETAILS: Every element crisp and in perfect focus
 - The product in the generated image must look IDENTICAL to the provided reference photo
@@ -603,8 +604,9 @@ TECHNICAL:
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must look like a real lifestyle photograph
 - SHARP DETAILS: Product and key elements in crisp focus
 - The product must look IDENTICAL to the provided reference photo
@@ -635,8 +637,9 @@ TECHNICAL:
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must look like a real photograph, not CGI or illustration
 - SHARP DETAILS: Crisp focus throughout, vibrant without being oversaturated
 - The product must look IDENTICAL to the provided reference photo
@@ -667,8 +670,9 @@ TECHNICAL:
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must be indistinguishable from a $50,000 luxury brand photoshoot
 - SHARP DETAILS: Every texture visible - marble veins, gold reflections, fabric threads
 - The product must look IDENTICAL to the provided reference photo, elevated to luxury context

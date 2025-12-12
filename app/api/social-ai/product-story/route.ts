@@ -253,8 +253,9 @@ REGOLE CRITICHE:
 
     const imagePrompt = `${storyData.imagePrompt}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must look like a real photograph taken by a professional editorial photographer
 - SHARP DETAILS: Every texture must be crisp - wood grain, fabric weave, product surface details
 - CINEMATIC LIGHTING: Golden hour warmth, dramatic but soft shadows, rim lighting on product

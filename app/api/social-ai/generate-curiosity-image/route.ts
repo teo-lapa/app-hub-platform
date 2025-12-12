@@ -55,8 +55,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateI
     // Costruisci prompt completo per immagine evocativa
     const fullPrompt = `${imagePrompt}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must look like a real photograph, not AI-generated or CGI
 - SHARP DETAILS: Crisp focus on main subject, no blur or artifacts
 - PROFESSIONAL LIGHTING: Studio-quality lighting with soft shadows

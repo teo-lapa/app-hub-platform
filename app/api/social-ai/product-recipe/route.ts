@@ -249,8 +249,9 @@ REGOLE CRITICHE:
 
     const imagePrompt = `${recipeData.imagePrompt}
 
-CRITICAL QUALITY REQUIREMENTS:
-- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+CRITICAL REQUIREMENTS:
+- ASPECT RATIO: MUST be EXACTLY 1:1 SQUARE format (1024x1024 pixels) - THIS IS MANDATORY FOR INSTAGRAM
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (1024x1024 pixels minimum)
 - PHOTOREALISTIC: Must look like a real photograph taken by a professional food photographer
 - SHARP DETAILS: Every element must be crisp and in focus, no blur or artifacts
 - PROFESSIONAL LIGHTING: Soft natural daylight from window, subtle fill light, no harsh shadows
