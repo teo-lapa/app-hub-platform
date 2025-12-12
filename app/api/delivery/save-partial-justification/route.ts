@@ -144,6 +144,106 @@ export async function POST(request: NextRequest) {
       console.log('✅ [PARTIAL JUSTIFICATION] Nota testo salvata nel chatter');
     }
 
+    // 🚀 INVIA WHATSAPP AL VENDITORE
+    try {
+      console.log('📱 [WHATSAPP] Invio notifica al venditore...');
+
+      // Recupera il picking per trovare il Sale Order e il venditore
+      const picking = await callOdoo(
+        cookies,
+        'stock.picking',
+        'read',
+        [[parseInt(pickingId as string)]],
+        {
+          fields: ['name', 'partner_id', 'sale_id', 'origin']
+        }
+      );
+
+      if (picking && picking[0] && picking[0].sale_id) {
+        const saleOrderId = picking[0].sale_id[0];
+        const pickingName = picking[0].name;
+        const customerName = picking[0].partner_id ? picking[0].partner_id[1] : 'Cliente sconosciuto';
+
+        // Recupera il venditore dal Sale Order
+        const saleOrder = await callOdoo(
+          cookies,
+          'sale.order',
+          'read',
+          [[saleOrderId]],
+          {
+            fields: ['user_id']
+          }
+        );
+
+        if (saleOrder && saleOrder[0] && saleOrder[0].user_id) {
+          const salespersonId = saleOrder[0].user_id[0];
+          const salespersonName = saleOrder[0].user_id[1];
+
+          console.log(`📞 [WHATSAPP] Venditore trovato: ${salespersonName} (ID: ${salespersonId})`);
+
+          // Prepara il feedback per il template
+          const feedbackText = transcribedText || textNote || 'Nessuna motivazione specificata';
+
+          // Recupera i prodotti non consegnati dal picking
+          const moveLines = await callOdoo(
+            cookies,
+            'stock.move.line',
+            'search_read',
+            [[['picking_id', '=', parseInt(pickingId as string)]]],
+            {
+              fields: ['product_id', 'quantity', 'qty_done']
+            }
+          );
+
+          const prodottiNonConsegnati = moveLines
+            .filter((line: any) => line.qty_done === 0 && line.quantity > 0)
+            .map((line: any) => {
+              const productName = line.product_id ? line.product_id[1] : 'Prodotto sconosciuto';
+              const qty = line.quantity || 0;
+              return `• ${productName} (${qty})`;
+            })
+            .join('\n');
+
+          const prodottiText = prodottiNonConsegnati || 'Nessun prodotto specificato';
+
+          // Crea whatsapp.composer con il template
+          const composerId = await callOdoo(
+            cookies,
+            'whatsapp.composer',
+            'create',
+            [{
+              res_model: 'stock.picking',
+              res_ids: pickingId.toString(),
+              wa_template_id: 29, // ID del template "Notifica Scarico Parziale Venditore"
+              free_text_1: customerName,
+              free_text_2: pickingName,
+              free_text_3: feedbackText,
+              free_text_4: prodottiText
+            }]
+          );
+
+          console.log(`✅ [WHATSAPP] Composer creato (ID: ${composerId})`);
+
+          // Invia il WhatsApp
+          await callOdoo(
+            cookies,
+            'whatsapp.composer',
+            'action_send_whatsapp_template',
+            [[composerId]]
+          );
+
+          console.log(`✅ [WHATSAPP] Messaggio inviato a ${salespersonName}!`);
+        } else {
+          console.log('⚠️ [WHATSAPP] Venditore non trovato per questo ordine');
+        }
+      } else {
+        console.log('⚠️ [WHATSAPP] Sale Order non trovato per questo picking');
+      }
+    } catch (whatsappError: any) {
+      console.error('❌ [WHATSAPP] Errore invio WhatsApp:', whatsappError.message);
+      // Non bloccare il flusso principale se WhatsApp fallisce
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Giustificazione salvata nel chatter'
