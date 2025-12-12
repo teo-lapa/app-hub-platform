@@ -281,6 +281,11 @@ export async function POST(req: NextRequest) {
 
         // Pubblica immediatamente se non programmato
         if (!scheduledDate) {
+          // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
+          // Senza questo delay, Instagram restituisce "Only photo or video can be accepted as media"
+          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting 3s for image processing...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
           // Riprova fino a 3 volte con pausa tra i tentativi
           let published = false;
           for (let attempt = 1; attempt <= 3 && !published; attempt++) {

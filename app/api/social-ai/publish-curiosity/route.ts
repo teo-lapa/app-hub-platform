@@ -130,6 +130,11 @@ async function createSocialPost(
     return postId;
   }
 
+  // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
+  // Senza questo delay, Instagram restituisce "Only photo or video can be accepted as media"
+  console.log(`  ⏳ Waiting 3s for Instagram to process image attachment...`);
+  await delay(3000);
+
   // Pubblica subito se non è programmato
   try {
     await callOdoo(
