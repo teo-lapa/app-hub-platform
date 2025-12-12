@@ -216,9 +216,34 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
 
     const videoBase64 = base64Match[1];
 
-    // Crea attachment video
+    // Crea attachment video con nome file corretto per YouTube
     const videoFilename = `${productName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
 
+    // STEP 1: Crea prima il post (senza video) per avere il res_id
+    console.log('[Publish YouTube] Creating initial post...');
+
+    // Account YouTube LAPA (ID: 7)
+    const youtubeAccountId = 7;
+
+    const postId = await callOdoo(
+      odooCookies,
+      'social.post',
+      'create',
+      [{
+        message: caption,
+        account_ids: [[6, 0, [youtubeAccountId]]],
+        youtube_title: youtubeTitle,
+        youtube_description: youtubeDescription,
+        youtube_video_category_id: 22 // People & Blogs category
+      }]
+    );
+
+    if (!postId) {
+      throw new Error('Creazione post YouTube fallita');
+    }
+    console.log(`[Publish YouTube] Post created! ID: ${postId}`);
+
+    // STEP 2: Crea attachment video linkato al post specifico
     const videoAttachmentId = await callOdoo(
       odooCookies,
       'ir.attachment',
@@ -228,6 +253,7 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         type: 'binary',
         datas: videoBase64,
         res_model: 'social.post',
+        res_id: postId, // Link diretto al post
         mimetype: 'video/mp4',
         public: true
       }]
@@ -236,44 +262,21 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     if (!videoAttachmentId) {
       throw new Error('Upload video fallito');
     }
-
     console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
 
-    // ==========================================
-    // FASE 4: CREA SOCIAL.POST YOUTUBE
-    // ==========================================
-
-    console.log('[Publish YouTube] Creating YouTube post...');
-
-    // Account YouTube LAPA (ID: 7)
-    const youtubeAccountId = 7;
-
-    // Per YouTube su Odoo Social:
-    // - youtube_video: ID dell'attachment video (Many2one) - campo principale per il video
-    // - youtube_video_category_id: categoria YouTube (22 = People & Blogs)
-    // NOTA: NON usare youtube_preview_video - non esiste nel modello social.post
-    const postId = await callOdoo(
+    // STEP 3: Aggiorna il post con il video attachment
+    await callOdoo(
       odooCookies,
       'social.post',
-      'create',
-      [{
-        message: caption,
-        account_ids: [[6, 0, [youtubeAccountId]]], // Link account YouTube
-        youtube_title: youtubeTitle,
-        youtube_description: youtubeDescription,
-        youtube_video: videoAttachmentId,
-        youtube_video_category_id: 22 // People & Blogs category
+      'write',
+      [[postId], {
+        youtube_video: videoAttachmentId
       }]
     );
-
-    if (!postId) {
-      throw new Error('Creazione post YouTube fallita');
-    }
-
-    console.log(`[Publish YouTube] Post created! ID: ${postId}`);
+    console.log(`[Publish YouTube] Video linked to post!`);
 
     // ==========================================
-    // FASE 5: PUBBLICA POST (trigger upload YouTube)
+    // FASE 4: PUBBLICA POST (trigger upload YouTube)
     // ==========================================
 
     console.log('[Publish YouTube] Publishing to YouTube...');
