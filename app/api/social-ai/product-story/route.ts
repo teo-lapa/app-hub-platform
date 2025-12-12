@@ -253,20 +253,73 @@ REGOLE CRITICHE:
 
     const imagePrompt = `${storyData.imagePrompt}
 
-STYLE: Artistic food photography, traditional Italian setting, warm golden lighting, rustic wooden background,
-authentic atmosphere, heritage and tradition feel, magazine quality.
-COMPOSITION: Product as hero, shallow depth of field, warm inviting colors, Italian countryside or traditional kitchen elements.
-QUALITY: High detail, editorial quality photography, suitable for blog and social media marketing.
-CONTEXT: Traditional Italian food heritage, authentic presentation, storytelling mood.`;
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must look like a real photograph taken by a professional editorial photographer
+- SHARP DETAILS: Every texture must be crisp - wood grain, fabric weave, product surface details
+- CINEMATIC LIGHTING: Golden hour warmth, dramatic but soft shadows, rim lighting on product
+
+STYLE:
+- Editorial food photography for luxury magazine (Condé Nast Traveller, Saveur)
+- Traditional Italian artisan setting with authentic heritage elements
+- Warm golden lighting reminiscent of Tuscan sunset
+- Rustic wooden background with visible grain and patina
+- Authentic atmosphere evoking generations of Italian craftsmanship
+- Storytelling composition that conveys tradition and quality
+
+COMPOSITION:
+- Product as hero, positioned using golden ratio
+- Shallow depth of field (f/1.8-2.8) with beautiful bokeh
+- Environmental storytelling elements: aged tools, vintage containers, handwritten labels
+- Italian countryside or traditional kitchen/cellar elements in background
+- Warm color palette: amber, terracotta, olive, cream
+- Natural props: burlap, ceramic, copper, olive branches
+
+TECHNICAL SPECIFICATIONS:
+- National Geographic food story quality
+- Rich, warm color grading (lifted shadows, warm highlights)
+- Film-like grain for authenticity (subtle, not distracting)
+- Cinematic aspect with depth and atmosphere
+- NO artificial looking elements, must feel like real photograph
+- Dust particles in light beams for atmosphere (subtle)
+
+CONTEXT: Traditional Italian food heritage from ${storyData.origin.region}, authentic presentation, storytelling mood that honors centuries of tradition.
+DO NOT include any text, watermarks, or logos in the image.`;
 
     console.log('[Product Story] Generating story image...');
 
     let imageDataUrl: string | null = null;
 
     try {
+      // Prepara contents con immagine prodotto come riferimento (se disponibile)
+      const imageContents: any[] = [];
+
+      // Se abbiamo l'immagine del prodotto, usala come riferimento visivo per qualità migliore
+      if (productImage) {
+        const cleanProductBase64 = productImage.replace(/^data:image\/\w+;base64,/, '');
+        imageContents.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: cleanProductBase64
+          }
+        });
+        console.log('[Product Story] Using product image as visual reference for better quality');
+      }
+
+      // Aggiungi il prompt con istruzioni sul riferimento
+      const enhancedImagePrompt = productImage
+        ? `Use the provided product image as EXACT VISUAL REFERENCE for the product appearance.
+The generated image should feature this EXACT product in a traditional Italian heritage setting.
+Maintain the product's authentic appearance while adding storytelling atmosphere.
+
+${imagePrompt}`
+        : imagePrompt;
+
+      imageContents.push({ text: enhancedImagePrompt });
+
       const imageResponse = await ai.models.generateContent({
         model: 'gemini-2.0-flash-exp-image-generation',
-        contents: [{ text: imagePrompt }],
+        contents: imageContents,
         config: {
           responseModalities: ['Text', 'Image']
         }

@@ -571,72 +571,129 @@ async function generateMarketingImage(
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must be indistinguishable from a real professional photograph
+- SHARP DETAILS: Every element crisp and in perfect focus
+- The product in the generated image must look IDENTICAL to the provided reference photo
+
 STYLE:
-- Professional studio photography
-- Soft, uniform lighting
-- Clean white/gray elegant background
-- Balanced, formal composition
-- High quality, photorealistic
+- Professional studio photography by award-winning commercial photographer
+- Soft, uniform three-point lighting setup
+- Clean white/gray elegant seamless background
+- Balanced, formal composition following golden ratio
+- Ultra high quality, photorealistic rendering
 
 COMPOSITION:
-- Product is the main focus
-- Use provided image as exact reference
-- Corporate, professional environment
-- Sober, refined color palette`,
+- Product is the main focus, perfectly centered or rule-of-thirds positioned
+- Use provided image as EXACT reference - product must look identical
+- Corporate, professional environment suitable for B2B marketing
+- Sober, refined color palette (whites, grays, subtle accent colors)
+- Subtle reflection on surface for depth
+- Negative space for potential text overlay
+
+TECHNICAL:
+- Commercial advertising quality (Apple/Samsung product shot level)
+- Perfect white balance and color accuracy
+- No noise, no artifacts, no blur
+- Professional color grading`,
 
     casual: `Create a CASUAL, NATURAL marketing image for ${params.platform}.
 
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must look like a real lifestyle photograph
+- SHARP DETAILS: Product and key elements in crisp focus
+- The product must look IDENTICAL to the provided reference photo
+
 STYLE:
-- Natural lifestyle photography
-- Soft natural light (daylight style)
-- Everyday, relaxed environment
+- Natural lifestyle photography by professional Instagram photographer
+- Soft natural light streaming through window (golden hour feel)
+- Everyday, relaxed environment that feels authentic
 - Spontaneous yet curated composition
-- Photorealistic with friendly atmosphere
+- Photorealistic with warm, friendly atmosphere
 
 COMPOSITION:
-- Product integrated in real-life context
-- Use provided image as reference
-- Natural elements (wood, fabrics, plants)
-- Warm, welcoming color palette`,
+- Product integrated naturally in real-life context
+- Use provided image as EXACT reference for product appearance
+- Natural elements: wooden surfaces, linen fabrics, green plants
+- Warm, welcoming color palette (earth tones, soft pastels)
+- Lifestyle context that tells a story
+- Subtle depth of field for professional look
+
+TECHNICAL:
+- High-end lifestyle blog quality
+- Natural color grading (warm, inviting)
+- No artificial or CGI appearance
+- Mobile-optimized composition`,
 
     fun: `Create a FUN, COLORFUL marketing image for ${params.platform}.
 
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must look like a real photograph, not CGI or illustration
+- SHARP DETAILS: Crisp focus throughout, vibrant without being oversaturated
+- The product must look IDENTICAL to the provided reference photo
+
 STYLE:
-- Vibrant, playful photography
-- Bright, energetic lighting
-- Vivid, eye-catching POP colors
-- Dynamic, creative composition
-- Young, fun atmosphere
+- Vibrant, playful commercial photography (Coca-Cola/McDonald's campaign level)
+- Bright, energetic studio lighting with colored gels
+- Vivid, eye-catching POP colors that demand attention
+- Dynamic, creative composition with movement feel
+- Young, fun, Gen-Z friendly atmosphere
 
 COMPOSITION:
-- Product as protagonist in playful scene
-- Use provided image as reference
-- Colorful elements, patterns, geometric shapes
-- Bold, festive color palette`,
+- Product as protagonist in playful, energetic scene
+- Use provided image as EXACT reference for product
+- Colorful elements: confetti, geometric shapes, bold patterns
+- Bold, festive color palette (primary colors, neon accents)
+- Dynamic angles that create energy
+- Perfect for social media scroll-stopping
+
+TECHNICAL:
+- High-energy commercial advertising quality
+- Punchy, vibrant color grading
+- Sharp contrast and saturation
+- Clean, professional execution despite playful theme`,
 
     luxury: `Create a LUXURY, EXCLUSIVE marketing image for ${params.platform}.
 
 PRODUCT: ${params.productName}
 ${params.productDescription ? `Description: ${params.productDescription}` : ''}
 
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must be indistinguishable from a $50,000 luxury brand photoshoot
+- SHARP DETAILS: Every texture visible - marble veins, gold reflections, fabric threads
+- The product must look IDENTICAL to the provided reference photo, elevated to luxury context
+
 STYLE:
-- High-end premium magazine photography
-- Dramatic lighting with rim light
-- Elegant background (marble, velvet, gold)
-- Refined, sophisticated composition
-- Maximum quality, ultra-realistic
+- High-end premium magazine photography (Vogue, Harper's Bazaar level)
+- Dramatic Rembrandt lighting with elegant rim light
+- Elegant background: black marble, deep velvet, brushed gold accents
+- Refined, sophisticated composition with perfect balance
+- Maximum quality, hyper-realistic rendering
 
 COMPOSITION:
-- Product as object of desire
-- Use provided image as reference
-- Premium elements (metal, crystal, luxury textures)
-- Rich, precious color palette (black, gold, burgundy)`
+- Product as object of desire, hero positioning
+- Use provided image as EXACT reference - product must be identical
+- Premium elements: brushed metal, crystal, silk, leather
+- Rich, precious color palette: deep black, gold, burgundy, champagne
+- Dramatic shadows for depth and mystery
+- Aspirational lifestyle elements in background
+
+TECHNICAL:
+- Luxury brand advertising quality (Cartier/Louis Vuitton level)
+- Rich, moody color grading with lifted blacks
+- Perfect highlight control on reflective surfaces
+- Cinematic depth of field
+- No imperfections - absolute perfection required`
   };
 
   const basePrompt = tonePrompts[params.tone as keyof typeof tonePrompts] || tonePrompts.professional;

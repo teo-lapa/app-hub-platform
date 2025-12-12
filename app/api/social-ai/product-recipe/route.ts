@@ -249,20 +249,71 @@ REGOLE CRITICHE:
 
     const imagePrompt = `${recipeData.imagePrompt}
 
-STYLE: Professional food photography, appetizing presentation, traditional Italian cuisine aesthetic,
-rustic wooden table, natural lighting, garnished beautifully, restaurant quality plating.
-COMPOSITION: Centered dish with shallow depth of field, warm inviting colors, authentic Italian atmosphere.
-QUALITY: High detail, magazine quality food photography, suitable for social media and marketing.
-CONTEXT: Traditional ${recipeData.region} cuisine, authentic presentation.`;
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must look like a real photograph taken by a professional food photographer
+- SHARP DETAILS: Every element must be crisp and in focus, no blur or artifacts
+- PROFESSIONAL LIGHTING: Soft natural daylight from window, subtle fill light, no harsh shadows
+
+STYLE:
+- Professional food photography by award-winning photographer
+- Michelin-star restaurant quality plating and presentation
+- Traditional Italian cuisine aesthetic with modern styling
+- Rustic wooden table or marble surface with natural textures
+- Natural side lighting creating depth and dimension
+- Garnished beautifully with fresh herbs and authentic ingredients
+
+COMPOSITION:
+- Rule of thirds, dish slightly off-center
+- Shallow depth of field (f/2.8) with creamy bokeh background
+- 45-degree overhead angle (hero shot)
+- Warm, inviting color palette (golden tones, rich reds, fresh greens)
+- Negative space for text overlay if needed
+- Props: vintage utensils, linen napkin, fresh ingredients scattered artistically
+
+TECHNICAL SPECIFICATIONS:
+- Magazine cover quality (Bon Appétit, Food & Wine level)
+- Color grading: warm and appetizing (slightly orange/yellow tones)
+- High dynamic range with detail in highlights and shadows
+- NO artificial looking elements, NO CGI appearance
+- Steam or sauce drizzle for freshness appeal
+
+CONTEXT: Traditional ${recipeData.region} cuisine, authentic Italian home cooking atmosphere.
+DO NOT include any text, watermarks, or logos in the image.`;
 
     console.log('[Product Recipe] Generating food image...');
 
     let imageDataUrl: string | null = null;
 
     try {
+      // Prepara contents con immagine prodotto come riferimento (se disponibile)
+      const imageContents: any[] = [];
+
+      // Se abbiamo l'immagine del prodotto, usala come riferimento visivo per qualità migliore
+      if (productImage) {
+        const cleanProductBase64 = productImage.replace(/^data:image\/\w+;base64,/, '');
+        imageContents.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: cleanProductBase64
+          }
+        });
+        console.log('[Product Recipe] Using product image as visual reference for better quality');
+      }
+
+      // Aggiungi il prompt con istruzioni sul riferimento
+      const enhancedImagePrompt = productImage
+        ? `Use the provided product image as VISUAL REFERENCE for the main ingredient appearance and quality.
+The generated image should feature a finished dish that prominently showcases this ingredient.
+
+${imagePrompt}`
+        : imagePrompt;
+
+      imageContents.push({ text: enhancedImagePrompt });
+
       const imageResponse = await ai.models.generateContent({
         model: 'gemini-2.0-flash-exp-image-generation',
-        contents: [{ text: imagePrompt }],
+        contents: imageContents,
         config: {
           responseModalities: ['Text', 'Image']
         }

@@ -55,10 +55,37 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateI
     // Costruisci prompt completo per immagine evocativa
     const fullPrompt = `${imagePrompt}
 
-STYLE: Modern food photography, vibrant colors, Instagram-worthy, professional quality.
-COMPOSITION: Clean background, good lighting, appetizing presentation.
-MOOD: Engaging, informative, social media friendly.
-FORMAT: Square format (1:1), high resolution, suitable for Instagram/Facebook.`;
+CRITICAL QUALITY REQUIREMENTS:
+- ULTRA HIGH RESOLUTION: Generate at maximum possible resolution (at least 1024x1024 pixels)
+- PHOTOREALISTIC: Must look like a real photograph, not AI-generated or CGI
+- SHARP DETAILS: Crisp focus on main subject, no blur or artifacts
+- PROFESSIONAL LIGHTING: Studio-quality lighting with soft shadows
+
+STYLE:
+- Modern food photography for Instagram/social media
+- Vibrant, saturated colors that pop on mobile screens
+- Clean, minimalist aesthetic with professional quality
+- Trendy food styling (2024 social media trends)
+- Eye-catching composition that stops the scroll
+
+COMPOSITION:
+- Clean, solid color or gradient background (white, marble, or pastel)
+- Dramatic lighting creating depth and dimension
+- Hero angle: 45-degree or flat lay depending on subject
+- Appetizing presentation with garnishes and props
+- Negative space for potential text overlay
+- Rule of thirds positioning
+
+TECHNICAL SPECIFICATIONS:
+- Instagram-optimized square format (1:1 aspect ratio)
+- High contrast, vivid colors (slightly boosted saturation)
+- Sharp focus with subtle depth of field
+- Professional color grading (bright, airy feel)
+- NO artificial or CGI appearance
+- Clean, commercial look suitable for brand marketing
+
+MOOD: Engaging, shareable, scroll-stopping, informative yet appetizing.
+DO NOT include any text, watermarks, logos, or hands in the image.`;
 
     let imageDataUrl: string | null = null;
 
