@@ -271,28 +271,16 @@ export async function GET(request: NextRequest) {
 
       console.log(`   📦 Prodotti non scaricati: ${prodottiNonScaricati.length}`);
 
-      // ⚠️ FILTRO: Aggiungi solo ordini con almeno 1 prodotto nel furgone
+      // ⚠️ FILTRO 1: Aggiungi solo ordini con almeno 1 prodotto nel furgone
       if (prodottiNonScaricati.length === 0) {
         console.log('   ✅ Nessun prodotto nel furgone, skip');
         continue;
       }
 
+      // ⚠️ FILTRO 2: Mostra SOLO ordini con scarico parziale precedente (OUT completato)
+      // Skip ordini al primo tentativo di consegna (senza OUT completato)
       if (!outCompletato) {
-        console.log('   ⚠️  Nessun OUT completato trovato per questo SO (ma ha prodotti nel furgone)');
-        ordiniConDettagli.push({
-          numeroOrdineResiduo: pickingResiduo.name,
-          cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
-          clienteId: pickingResiduo.partner_id ? pickingResiduo.partner_id[0] : 0,
-          dataPrevisita: pickingResiduo.scheduled_date,
-          salesOrder: salesOrderName,
-          outCompletato: null,
-          prodottiNonScaricati,
-          messaggiScaricoParziale: [],
-          haScarichiParziali: false,
-          autista,
-          veicolo,
-          returnCreated
-        });
+        console.log('   ✅ Primo tentativo consegna (no scarico parziale precedente), skip');
         continue;
       }
 
