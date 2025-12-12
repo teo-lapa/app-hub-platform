@@ -207,6 +207,8 @@ export async function POST(request: NextRequest) {
           const prodottiText = prodottiNonConsegnati || 'Nessun prodotto specificato';
 
           // Crea whatsapp.composer con il template
+          // TEMPORANEO: Usa template "Buongiorno" (ID: 2) già approvato per test
+          // TODO: Cambiare a ID: 29 quando "Notifica Scarico Parziale Venditore" sarà approvato da Meta
           const composerId = await callOdoo(
             cookies,
             'whatsapp.composer',
@@ -214,11 +216,8 @@ export async function POST(request: NextRequest) {
             [{
               res_model: 'stock.picking',
               res_ids: pickingId.toString(),
-              wa_template_id: 29, // ID del template "Notifica Scarico Parziale Venditore"
-              free_text_1: customerName,
-              free_text_2: pickingName,
-              free_text_3: feedbackText,
-              free_text_4: prodottiText
+              wa_template_id: 2, // Template "Buongiorno" (temporaneo per test)
+              // Nota: questo template non ha variabili, è solo un messaggio semplice
             }]
           );
 
