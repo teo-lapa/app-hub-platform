@@ -524,9 +524,10 @@ async function createSocialPost(
   }
 
   // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
-  // Senza questo delay, Instagram restituisce "Only photo or video can be accepted as media"
-  console.log(`  ⏳ Waiting 3s for Instagram to process image attachment...`);
-  await delay(3000);
+  // Instagram API richiede ~8 secondi per processare il media prima di poter pubblicare
+  // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
+  console.log(`  ⏳ Waiting 8s for Instagram to process image attachment...`);
+  await delay(8000);
 
   // Pubblica immediatamente con action_post (con retry per Instagram)
   try {

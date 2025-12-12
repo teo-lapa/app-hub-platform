@@ -282,11 +282,15 @@ export async function POST(req: NextRequest) {
         // Pubblica immediatamente se non programmato
         if (!scheduledDate) {
           // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
-          // Senza questo delay, Instagram restituisce "Only photo or video can be accepted as media"
-          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting 3s for image processing...`);
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Instagram API richiede tempo per processare il media prima di poter pubblicare
+          // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
+          const isInstagram = platformLabel.toLowerCase().includes('instagram');
+          const initialDelay = isInstagram ? 8000 : 3000; // 8s per Instagram, 3s per altri
 
-          // Riprova fino a 3 volte con pausa tra i tentativi
+          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${initialDelay/1000}s for image processing...`);
+          await new Promise(resolve => setTimeout(resolve, initialDelay));
+
+          // Riprova fino a 3 volte con pausa crescente tra i tentativi
           let published = false;
           for (let attempt = 1; attempt <= 3 && !published; attempt++) {
             try {
@@ -297,8 +301,10 @@ export async function POST(req: NextRequest) {
             } catch (e: any) {
               console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel} tentativo ${attempt} fallito:`, e.message);
               if (attempt < 3) {
-                // Aspetta 2 secondi prima di riprovare
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Aspetta più tempo per Instagram (5s, 10s) - altri social 2s
+                const retryDelay = isInstagram ? attempt * 5000 : 2000;
+                console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${retryDelay/1000}s before retry...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
               }
             }
           }

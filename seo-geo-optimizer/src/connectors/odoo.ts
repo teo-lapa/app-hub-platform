@@ -262,6 +262,76 @@ export class OdooConnector {
   }
 
   /**
+   * Crea un nuovo articolo del blog
+   */
+  async createBlogPost(
+    data: {
+      name: string;
+      subtitle?: string;
+      content: string;
+      blog_id: number;
+      website_meta_title?: string;
+      website_meta_description?: string;
+      website_meta_keywords?: string;
+      is_published?: boolean;
+    },
+    lang?: string
+  ): Promise<number> {
+    const context: Record<string, any> = {};
+    if (lang) {
+      context.lang = lang;
+    }
+
+    return this.execute<number>(
+      'blog.post',
+      'create',
+      [data],
+      { context }
+    );
+  }
+
+  /**
+   * Aggiorna un articolo del blog (tutti i campi)
+   */
+  async updateBlogPost(
+    postId: number,
+    data: {
+      name?: string;
+      subtitle?: string;
+      content?: string;
+      website_meta_title?: string;
+      website_meta_description?: string;
+      website_meta_keywords?: string;
+      is_published?: boolean;
+    },
+    lang?: string
+  ): Promise<boolean> {
+    const context: Record<string, any> = {};
+    if (lang) {
+      context.lang = lang;
+    }
+
+    return this.execute<boolean>(
+      'blog.post',
+      'write',
+      [[postId], data],
+      { context }
+    );
+  }
+
+  /**
+   * Recupera i blog disponibili
+   */
+  async getBlogs(): Promise<{ id: number; name: string }[]> {
+    return this.execute<{ id: number; name: string }[]>(
+      'blog.blog',
+      'search_read',
+      [[]],
+      { fields: ['id', 'name'] }
+    );
+  }
+
+  /**
    * Aggiorna i meta tag SEO di un prodotto
    */
   async updateProductSEO(
