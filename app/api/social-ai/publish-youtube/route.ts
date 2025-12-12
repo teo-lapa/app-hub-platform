@@ -267,8 +267,9 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     }
     console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
 
-    // STEP 3: Aggiorna il post con youtube_video = ID attachment come STRINGA
-    // IMPORTANTE: youtube_video è un campo CHAR, non Many2one!
+    // STEP 3: Aggiorna il post con youtube_video = FILENAME (non ID!)
+    // IMPORTANTE: youtube_video deve contenere il NOME DEL FILE, non l'ID dell'attachment!
+    // I post funzionanti hanno youtube_video = "nomefile.mp4"
     console.log('[Publish YouTube] Linking video to post...');
 
     await callOdoo(
@@ -276,10 +277,10 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
       'social.post',
       'write',
       [[postId], {
-        youtube_video: String(videoAttachmentId) // DEVE essere stringa!
+        youtube_video: videoFilename // DEVE essere il FILENAME!
       }]
     );
-    console.log(`[Publish YouTube] Video linked! youtube_video = "${videoAttachmentId}"`);
+    console.log(`[Publish YouTube] Video linked! youtube_video = "${videoFilename}"`);
 
     // ==========================================
     // FASE 4: PUBBLICA POST (trigger upload YouTube)
