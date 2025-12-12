@@ -219,8 +219,30 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     // Crea attachment video con nome file corretto per YouTube
     const videoFilename = `${productName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
 
-    // STEP 1: Crea prima il post (senza video) per avere il res_id
-    console.log('[Publish YouTube] Creating initial post...');
+    // STEP 1: Carica video come attachment (come per le foto)
+    console.log('[Publish YouTube] Uploading video attachment...');
+
+    const videoAttachmentId = await callOdoo(
+      odooCookies,
+      'ir.attachment',
+      'create',
+      [{
+        name: videoFilename,
+        type: 'binary',
+        datas: videoBase64,
+        res_model: 'social.post',
+        mimetype: 'video/mp4',
+        public: true
+      }]
+    );
+
+    if (!videoAttachmentId) {
+      throw new Error('Upload video fallito');
+    }
+    console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
+
+    // STEP 2: Crea post YouTube con video in image_ids (come per le foto!)
+    console.log('[Publish YouTube] Creating YouTube post...');
 
     // Account YouTube LAPA (ID: 7)
     const youtubeAccountId = 7;
@@ -232,6 +254,7 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
       [{
         message: caption,
         account_ids: [[6, 0, [youtubeAccountId]]],
+        image_ids: [[6, 0, [videoAttachmentId]]], // Video va in image_ids come le foto!
         youtube_title: youtubeTitle,
         youtube_description: youtubeDescription,
         youtube_video_category_id: 22 // People & Blogs category
@@ -242,38 +265,6 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
       throw new Error('Creazione post YouTube fallita');
     }
     console.log(`[Publish YouTube] Post created! ID: ${postId}`);
-
-    // STEP 2: Crea attachment video linkato al post specifico
-    const videoAttachmentId = await callOdoo(
-      odooCookies,
-      'ir.attachment',
-      'create',
-      [{
-        name: videoFilename,
-        type: 'binary',
-        datas: videoBase64,
-        res_model: 'social.post',
-        res_id: postId, // Link diretto al post
-        mimetype: 'video/mp4',
-        public: true
-      }]
-    );
-
-    if (!videoAttachmentId) {
-      throw new Error('Upload video fallito');
-    }
-    console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
-
-    // STEP 3: Aggiorna il post con il video attachment
-    await callOdoo(
-      odooCookies,
-      'social.post',
-      'write',
-      [[postId], {
-        youtube_video: videoAttachmentId
-      }]
-    );
-    console.log(`[Publish YouTube] Video linked to post!`);
 
     // ==========================================
     // FASE 4: PUBBLICA POST (trigger upload YouTube)
