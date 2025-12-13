@@ -134,3 +134,5 @@ test-output/
 screenshots/
 test-*.html
 .env.vercel-preview
+*.env.local
+.env*.local

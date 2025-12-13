@@ -206,8 +206,35 @@ export async function POST(request: NextRequest) {
 
           const prodottiText = prodottiNonConsegnati || 'Nessun prodotto specificato';
 
+          // 📝 SCRIVI IL FEEDBACK NEL CAMPO "NOTE" DEL PICKING
+          // Questo apparirà nel DDT (Documento di Trasporto) PDF allegato al WhatsApp
+          const noteContent = `<p><strong>⚠️ SCARICO PARZIALE</strong></p>
+<p><strong>🎤 Motivazione autista:</strong><br/>
+${feedbackText}</p>
+<p><strong>📦 Prodotti non consegnati:</strong></p>
+<ul>
+${moveLines
+  .filter((line: any) => line.qty_done === 0 && line.quantity > 0)
+  .map((line: any) => {
+    const productName = line.product_id ? line.product_id[1] : 'Prodotto sconosciuto';
+    const qty = line.quantity || 0;
+    return `<li>${productName} (${qty})</li>`;
+  })
+  .join('\n')}
+</ul>
+<p>Il prodotto è rimasto nel furgone e deve tornare in magazzino.</p>`;
+
+          await callOdoo(
+            cookies,
+            'stock.picking',
+            'write',
+            [[parseInt(pickingId as string)], { note: noteContent }]
+          );
+
+          console.log('✅ [WHATSAPP] Campo note del picking aggiornato - apparirà nel DDT PDF');
+
           // Crea whatsapp.composer con il template "Sale Order Ship IT v2" (ID: 18)
-          // Questo template usa mapping automatici e prende i dati giusti dal picking
+          // Il DDT PDF allegato conterrà il campo "note" con tutto il feedback formattato
           const composerId = await callOdoo(
             cookies,
             'whatsapp.composer',
@@ -215,9 +242,7 @@ export async function POST(request: NextRequest) {
             [{
               res_model: 'stock.picking',
               res_ids: pickingId.toString(),
-              wa_template_id: 18, // Template "Sale Order Ship IT v2" - Approvato da Meta
-              // free_text_4 contiene feedback + prodotti per scarico parziale
-              free_text_4: `⚠️ SCARICO PARZIALE\n\n${feedbackText}\n\nProdotti non consegnati:\n${prodottiText}`
+              wa_template_id: 18 // Template "Sale Order Ship IT v2" - Approvato da Meta
             }]
           );
 
