@@ -137,9 +137,10 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || undefined;
     const allActive = searchParams.get('all_active') === 'true';
     const period = searchParams.get('period') as '1m' | '3m' | '6m' | null;
+    const allLeads = searchParams.get('all_leads') === 'true';
 
-    // Validate required parameters (skip for all_active mode)
-    if (!allActive) {
+    // Validate required parameters (skip for all_active mode OR all_leads mode)
+    if (!allActive && !allLeads) {
       if (isNaN(latitude) || isNaN(longitude)) {
         return NextResponse.json({
           success: false,
@@ -155,8 +156,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Skip filter validation for all_active mode
-    if (!allActive && (!filter || !['all', 'customers', 'leads', 'not_target', 'active_6m'].includes(filter))) {
+    // Skip filter validation for all_active mode OR all_leads mode
+    if (!allActive && !allLeads && (!filter || !['all', 'customers', 'leads', 'not_target', 'active_6m'].includes(filter))) {
       return NextResponse.json({
         success: false,
         error: 'Parametro "filter" deve essere: all, customers, leads, not_target, active_6m'
@@ -400,6 +401,123 @@ export async function GET(request: NextRequest) {
           period: period || '3m'
         }
       });
+    }
+
+    // === SPECIAL MODE: LOAD ALL LEADS (no radius/time limit) ===
+    if (allLeads) {
+      console.log('[LOAD-FROM-ODOO] 🚀 Caricamento TUTTI i lead dal CRM...');
+
+      const leadDomain: any[] = [
+        ['type', '=', 'lead'],
+        '|',
+        ['active', '=', true],
+        ['active', '=', false]  // Include archived leads
+      ];
+
+      try {
+        const leads = await client.searchRead(
+          'crm.lead',
+          leadDomain,
+          [
+            'id', 'name', 'contact_name', 'partner_name',
+            'phone', 'mobile',
+            'street', 'street2', 'zip', 'city',
+            'description', // Contains coordinates
+            'tag_ids',
+            'website',
+            'partner_id' // To check if converted to contact
+          ],
+          0,
+          'name asc'
+        );
+
+        console.log(`[LOAD-FROM-ODOO] Trovati ${leads.length} lead`);
+
+        // Get tag names
+        const leadTagIds = leads
+          .filter((l: any) => l.tag_ids && l.tag_ids.length > 0)
+          .flatMap((l: any) => l.tag_ids);
+
+        let tagMap: Record<number, string> = {};
+        if (leadTagIds.length > 0) {
+          try {
+            const tags = await client.searchRead(
+              'crm.tag',
+              [['id', 'in', Array.from(new Set(leadTagIds))]],
+              ['id', 'name'],
+              0
+            );
+            tagMap = Object.fromEntries(tags.map((t: any) => [t.id, t.name]));
+          } catch (e) {
+            console.warn('[LOAD-FROM-ODOO] Errore caricamento tag lead:', e);
+          }
+        }
+
+        // Process leads
+        for (const lead of leads) {
+          // Skip converted leads
+          if (lead.partner_id) {
+            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - already converted`);
+            continue;
+          }
+
+          // Parse coordinates from description
+          const coords = parseCoordinatesFromDescription(lead.description);
+          if (!coords) continue;
+
+          // Get tag names
+          const tags = lead.tag_ids ?
+            lead.tag_ids.map((tagId: number) => tagMap[tagId]).filter(Boolean) : [];
+
+          const isNotTarget = tags.some((tag: string) =>
+            typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
+              tag.toLowerCase().includes(notTag.toLowerCase())
+            )
+          );
+
+          const color: 'green' | 'orange' | 'grey' = isNotTarget ? 'grey' : 'orange';
+
+          const addressParts = [
+            lead.street,
+            lead.street2,
+            lead.zip,
+            lead.city
+          ].filter(Boolean);
+          const address = addressParts.join(', ') || lead.partner_name || '';
+
+          markers.push({
+            id: lead.id,
+            type: 'lead',
+            name: lead.partner_name || lead.name || lead.contact_name || 'Lead',
+            address,
+            phone: lead.phone || lead.mobile || undefined,
+            website: lead.website || undefined,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            color,
+            tags: tags.length > 0 ? tags : undefined
+          });
+        }
+
+        console.log(`[LOAD-FROM-ODOO] ✅ Totale lead caricati: ${markers.length}`);
+
+        return NextResponse.json({
+          success: true,
+          data: markers,
+          meta: {
+            total: markers.length,
+            mode: 'all_leads'
+          }
+        });
+
+      } catch (error) {
+        console.error('[LOAD-FROM-ODOO] Errore caricamento lead:', error);
+        return NextResponse.json({
+          success: false,
+          error: 'Errore durante il caricamento dei lead',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+      }
     }
 
     // === 1. LOAD CUSTOMERS (res.partner) ===

@@ -306,6 +306,9 @@ export default function SalesRadarPage() {
   const [loadingAllActive, setLoadingAllActive] = useState(false);
   const [activePeriod, setActivePeriod] = useState<'1m' | '3m' | '6m'>('3m');
 
+  // All leads button state
+  const [loadingAllLeads, setLoadingAllLeads] = useState(false);
+
   // Odoo places (from static map)
   const [odooPlaces, setOdooPlaces] = useState<any[]>([]);
 
@@ -727,6 +730,35 @@ export default function SalesRadarPage() {
       alert('❌ Errore nel caricamento dei clienti attivi');
     } finally {
       setLoadingAllActive(false);
+    }
+  };
+
+  // Load ALL leads from CRM (no radius/time limit)
+  const loadAllLeads = async () => {
+    setLoadingAllLeads(true);
+    try {
+      const params = new URLSearchParams({
+        all_leads: 'true'
+      });
+
+      const response = await fetch(`/api/sales-radar/load-from-odoo?${params}`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setOdooPlaces(result.data);
+        console.log(`📍 Caricati ${result.data.length} lead totali`);
+        alert(`✅ Caricati ${result.data.length} lead dal CRM`);
+      } else {
+        console.error('❌ Errore:', result.error);
+        alert(`❌ Errore: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento lead:', error);
+      alert('❌ Errore nel caricamento dei lead');
+    } finally {
+      setLoadingAllLeads(false);
     }
   };
 
@@ -1701,6 +1733,35 @@ export default function SalesRadarPage() {
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Load ALL Leads Button */}
+            {mapMode === 'static' && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                <p className="text-sm font-semibold text-orange-800 mb-3">
+                  🎯 Carica TUTTI i Lead
+                </p>
+                <p className="text-xs text-orange-600 mb-3">
+                  Senza limiti di zona - mostra tutti i lead dal CRM
+                </p>
+                <button
+                  onClick={loadAllLeads}
+                  disabled={loadingAllLeads}
+                  className="w-full px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold text-sm transition-all active:scale-95"
+                >
+                  {loadingAllLeads ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Caricamento...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Carica Tutti i Lead
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
