@@ -8,10 +8,12 @@
 import { sql } from '@vercel/postgres';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_SOCIAL_AI
-});
+// Initialize OpenAI client (conditionally - may not be available during build)
+const openai = (process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_SOCIAL_AI)
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_SOCIAL_AI
+    })
+  : null;
 
 /**
  * Generate embedding for a social post
@@ -23,6 +25,10 @@ export async function generatePostEmbedding(postContent: {
   cta: string;
   productName?: string;
 }): Promise<number[]> {
+  if (!openai) {
+    throw new Error('OpenAI client not initialized - API key missing');
+  }
+
   try {
     // Combine all text elements
     const textToEmbed = [

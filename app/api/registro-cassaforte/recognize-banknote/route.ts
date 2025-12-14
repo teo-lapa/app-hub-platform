@@ -7,10 +7,12 @@ export const dynamic = 'force-dynamic';
 // CHF Banknote denominations
 const VALID_DENOMINATIONS = [10, 20, 50, 100, 200, 1000];
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client (conditionally - may not be available during build)
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null;
 
 /**
  * POST /api/registro-cassaforte/recognize-banknote
@@ -37,6 +39,14 @@ export async function POST(request: NextRequest) {
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
 
     console.log(`📸 Riconoscimento banconota - Size: ${Math.round(arrayBuffer.byteLength / 1024)}KB`);
+
+    // Check if OpenAI is available
+    if (!openai) {
+      return NextResponse.json({
+        success: false,
+        error: 'OpenAI API key non configurata',
+      }, { status: 503 });
+    }
 
     // Use OpenAI GPT-4o-mini for fast and accurate recognition
     try {

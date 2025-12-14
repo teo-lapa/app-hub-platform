@@ -8,10 +8,12 @@
 import { sql } from '@vercel/postgres';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI client (conditionally - may not be available during build)
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    })
+  : null;
 
 /**
  * Generate embedding for an email
@@ -22,6 +24,10 @@ export async function generateEmailEmbedding(emailContent: {
   bodyText: string;
   senderEmail?: string;
 }): Promise<number[]> {
+  if (!openai) {
+    throw new Error('OpenAI client not initialized - API key missing');
+  }
+
   try {
     // Combine subject + body (truncate body a 1500 chars max)
     const bodyPreview = emailContent.bodyText.substring(0, 1500);

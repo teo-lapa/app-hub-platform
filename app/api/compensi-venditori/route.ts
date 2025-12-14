@@ -110,7 +110,7 @@ async function getSalespersonData(
     fields: ['id', 'name', 'partner_id', 'amount_total', 'amount_invoiced', 'commitment_date'],
   });
 
-  const activePartnerIds = [...new Set(monthOrders.map((o: any) => o.partner_id[0]))];
+  const activePartnerIds = Array.from(new Set<number>(monthOrders.map((o: any) => o.partner_id[0])));
 
   if (activePartnerIds.length === 0) {
     return {
@@ -144,7 +144,7 @@ async function getSalespersonData(
   });
 
   // 3. Trova tutti i partner del gruppo
-  const allParentIds = [...new Set(Object.values(partnerToParent))];
+  const allParentIds = Array.from(new Set<number>(Object.values(partnerToParent)));
   const allGroupPartners = await callOdoo(cookies, 'res.partner', 'search_read', [], {
     domain: [
       '|',
