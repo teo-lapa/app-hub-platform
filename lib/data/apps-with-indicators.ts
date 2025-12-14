@@ -777,6 +777,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-11-24'),
     updatedAt: new Date('2025-11-24'),
   },
+  {
+    id: 'compensi1',
+    name: 'Dashboard Compensi Venditori',
+    description: '💰 Sistema compensi venditori live con bonus proporzionale agli incassi. Calcola bonus 8% su clienti qualificati (3-11 mesi), fatturato emesso vs pagato, performance incassi real-time. Navigazione mensile e classificazione clienti automatica.',
+    icon: '💰',
+    badge: 'AZIENDALE',
+    category: 'Vendite',
+    url: '/dashboard-compensi',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-12-14'),
+    updatedAt: new Date('2025-12-14'),
+  },
 ];
 
 // Combina tutte le app
