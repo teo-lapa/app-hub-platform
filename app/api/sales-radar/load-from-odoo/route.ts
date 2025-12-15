@@ -168,6 +168,25 @@ export async function GET(request: NextRequest) {
 
     const markers: MapMarker[] = [];
 
+    // DEBUG: Contatori per tracciare esclusioni
+    const debugStats = {
+      totalCustomersFound: 0,
+      customersNoCoordinates: 0,
+      customersOutOfRadius: 0,
+      customersFilteredByType: 0,
+      customersIncluded: 0,
+      deliveryAddressesFound: 0,
+      deliveryTooCloseToParent: 0,
+      deliveryOutOfRadius: 0,
+      deliveryIncluded: 0,
+      leadsFound: 0,
+      leadsNoCoordinates: 0,
+      leadsAlreadyConverted: 0,
+      leadsDuplicateCustomer: 0,
+      leadsOutOfRadius: 0,
+      leadsIncluded: 0
+    };
+
     // Calculate date 1 month ago
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -573,21 +592,27 @@ export async function GET(request: NextRequest) {
         );
 
         console.log(`[LOAD-FROM-ODOO] Trovati ${customers.length} clienti con coordinate`);
+        debugStats.totalCustomersFound = customers.length;
 
         // Filter customers by distance first to reduce the number of order queries
         const customersInRadius: any[] = [];
         for (const customer of customers) {
           const custLat = customer.partner_latitude;
           const custLng = customer.partner_longitude;
-          if (!custLat || !custLng) continue;
+          if (!custLat || !custLng) {
+            debugStats.customersNoCoordinates++;
+            continue;
+          }
 
           const distance = calculateDistance(latitude, longitude, custLat, custLng);
           if (distance <= radius) {
             customersInRadius.push({ ...customer, _distance: distance });
+          } else {
+            debugStats.customersOutOfRadius++;
           }
         }
 
-        console.log(`[LOAD-FROM-ODOO] ${customersInRadius.length} clienti nel raggio`);
+        console.log(`[LOAD-FROM-ODOO] ${customersInRadius.length} clienti nel raggio (esclusi: ${debugStats.customersOutOfRadius} fuori raggio, ${debugStats.customersNoCoordinates} senza coordinate)`);
 
         // Get sales data for customers in radius (last 3 or 6 months depending on filter)
         const customerIds = customersInRadius.map(c => c.id);
@@ -723,6 +748,7 @@ export async function GET(request: NextRequest) {
             );
 
             console.log(`[LOAD-FROM-ODOO] Trovati ${deliveryAddresses.length} indirizzi di consegna`);
+            debugStats.deliveryAddressesFound = deliveryAddresses.length;
 
             // Crea una mappa dei clienti per accesso rapido
             const customerMap = new Map(customersInRadius.map((c: any) => [c.id, c]));
@@ -744,66 +770,74 @@ export async function GET(request: NextRequest) {
               const distanceFromParent = calculateDistance(parentLat, parentLng, deliveryLat, deliveryLng);
 
               // Se la distanza è > 50m, aggiungi come marker separato
-              if (distanceFromParent > 50) {
-                // Calcola distanza dalla posizione utente
-                const distanceFromUser = calculateDistance(latitude, longitude, deliveryLat, deliveryLng);
-
-                // Includi solo se nel raggio
-                if (distanceFromUser > radius) continue;
-
-                const addressParts = [
-                  delivery.street,
-                  delivery.street2,
-                  delivery.zip,
-                  delivery.city
-                ].filter(Boolean);
-                const address = addressParts.join(', ');
-
-                const parentTags = parentCustomer.category_id ?
-                  (Array.isArray(parentCustomer.category_id) ? parentCustomer.category_id.map((t: any) => t[1] || t) : []) : [];
-                const isNotTarget = parentTags.some((tag: string) =>
-                  typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
-                    tag.toLowerCase().includes(notTag.toLowerCase())
-                  )
-                );
-
-                const parentSalesData = salesDataMap[parentId];
-                const hasOrders = parentSalesData && (parentSalesData.invoiced > 0 || parentSalesData.orderCount > 0);
-
-                let color: 'green' | 'orange' | 'grey' = 'orange';
-                if (isNotTarget) {
-                  color = 'grey';
-                } else if (hasOrders) {
-                  color = 'green';
-                }
-
-                // Applica filtro
-                if (filter === 'customers' && color !== 'green') continue;
-                if (filter === 'active_6m' && color !== 'green') continue;
-                if (filter === 'not_target' && color !== 'grey') continue;
-
-                markers.push({
-                  id: delivery.id,
-                  type: 'customer',
-                  locationType: 'delivery',
-                  parentId: parentId,
-                  parentName: parentName,
-                  name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
-                  address,
-                  phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
-                  website: parentCustomer.website || undefined,
-                  latitude: deliveryLat,
-                  longitude: deliveryLng,
-                  color,
-                  sales_data: hasOrders ? {
-                    invoiced_3_months: Math.round(parentSalesData.invoiced * 100) / 100,
-                    order_count_3_months: parentSalesData.orderCount,
-                    last_order_date: parentSalesData.lastOrderDate || undefined
-                  } : undefined,
-                  tags: parentTags.length > 0 ? parentTags : undefined,
-                  distance: Math.round(distanceFromUser)
-                });
+              if (distanceFromParent <= 50) {
+                debugStats.deliveryTooCloseToParent++;
+                continue;
               }
+
+              // Calcola distanza dalla posizione utente
+              const distanceFromUser = calculateDistance(latitude, longitude, deliveryLat, deliveryLng);
+
+              // Includi solo se nel raggio
+              if (distanceFromUser > radius) {
+                debugStats.deliveryOutOfRadius++;
+                continue;
+              }
+
+              const addressParts = [
+                delivery.street,
+                delivery.street2,
+                delivery.zip,
+                delivery.city
+              ].filter(Boolean);
+              const address = addressParts.join(', ');
+
+              const parentTags = parentCustomer.category_id ?
+                (Array.isArray(parentCustomer.category_id) ? parentCustomer.category_id.map((t: any) => t[1] || t) : []) : [];
+              const isNotTarget = parentTags.some((tag: string) =>
+                typeof tag === 'string' && NOT_TARGET_TAGS.some(notTag =>
+                  tag.toLowerCase().includes(notTag.toLowerCase())
+                )
+              );
+
+              const parentSalesData = salesDataMap[parentId];
+              const hasOrders = parentSalesData && (parentSalesData.invoiced > 0 || parentSalesData.orderCount > 0);
+
+              // FIX: Indirizzi consegna devono seguire la stessa logica dei clienti (default green, non orange)
+              // Orange è SOLO per i lead CRM, non per indirizzi di consegna
+              let color: 'green' | 'orange' | 'grey' = 'green'; // Default green come per i clienti
+              if (isNotTarget) {
+                color = 'grey';
+              }
+              // Se non ha ordini, resta green (frontend mostrerà viola se no sales_data)
+
+              // Applica filtro
+              if (filter === 'customers' && color !== 'green') continue;
+              if (filter === 'active_6m' && color !== 'green') continue;
+              if (filter === 'not_target' && color !== 'grey') continue;
+
+              debugStats.deliveryIncluded++;
+              markers.push({
+                id: delivery.id,
+                type: 'customer',
+                locationType: 'delivery',
+                parentId: parentId,
+                parentName: parentName,
+                name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
+                address,
+                phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
+                website: parentCustomer.website || undefined,
+                latitude: deliveryLat,
+                longitude: deliveryLng,
+                color,
+                sales_data: hasOrders ? {
+                  invoiced_3_months: Math.round(parentSalesData.invoiced * 100) / 100,
+                  order_count_3_months: parentSalesData.orderCount,
+                  last_order_date: parentSalesData.lastOrderDate || undefined
+                } : undefined,
+                tags: parentTags.length > 0 ? parentTags : undefined,
+                distance: Math.round(distanceFromUser)
+              });
             }
 
             console.log(`[LOAD-FROM-ODOO] ✅ Totale marker clienti (sedi + consegne): ${markers.filter(m => m.type === 'customer').length}`);
@@ -864,6 +898,7 @@ export async function GET(request: NextRequest) {
         );
 
         console.log(`[LOAD-FROM-ODOO] Trovati ${leads.length} lead`);
+        debugStats.leadsFound = leads.length;
 
         // Get tag names for leads that have tags
         const leadTagIds = leads
@@ -891,9 +926,10 @@ export async function GET(request: NextRequest) {
 
         for (const marker of markers) {
           if (marker.type === 'customer') {
-            // Create unique key from coordinates (rounded to 4 decimals ~ 10m precision)
-            const lat = Math.round(marker.latitude * 10000) / 10000;
-            const lng = Math.round(marker.longitude * 10000) / 10000;
+            // Create unique key from coordinates (rounded to 3 decimals ~ 100m precision)
+            // FIX: Aumentata tolleranza da 10m a 100m per catturare più duplicati
+            const lat = Math.round(marker.latitude * 1000) / 1000;
+            const lng = Math.round(marker.longitude * 1000) / 1000;
             const coordKey = `${lat},${lng}`;
             existingCustomerKeys.add(coordKey);
 
@@ -909,19 +945,22 @@ export async function GET(request: NextRequest) {
           // CRITICAL: Skip leads that have been converted to contacts (partner_id exists)
           // These leads are archived and linked to a res.partner - we don't want to show them
           if (lead.partner_id) {
-            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - already converted to contact (partner_id: ${lead.partner_id[0]})`);
+            debugStats.leadsAlreadyConverted++;
             continue;
           }
 
           // Parse coordinates from description
           const coords = parseCoordinatesFromDescription(lead.description);
 
-          if (!coords) continue; // Skip leads without coordinates
+          if (!coords) {
+            debugStats.leadsNoCoordinates++;
+            continue; // Skip leads without coordinates
+          }
 
           // CRITICAL: Check if a customer exists at the same location or with same name
-          // Create keys for this lead
-          const leadLat = Math.round(coords.latitude * 10000) / 10000;
-          const leadLng = Math.round(coords.longitude * 10000) / 10000;
+          // Create keys for this lead (usa stessa precisione dei clienti: 3 decimali ~ 100m)
+          const leadLat = Math.round(coords.latitude * 1000) / 1000;
+          const leadLng = Math.round(coords.longitude * 1000) / 1000;
           const leadCoordKey = `${leadLat},${leadLng}`;
 
           const leadName = (lead.partner_name || lead.name || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
@@ -929,12 +968,12 @@ export async function GET(request: NextRequest) {
 
           // Skip this lead if a customer already exists at same coordinates OR with same name
           if (existingCustomerKeys.has(leadCoordKey)) {
-            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - customer exists at same coordinates (${leadCoordKey})`);
+            debugStats.leadsDuplicateCustomer++;
             continue;
           }
 
           if (leadNameKey && existingCustomerKeys.has(leadNameKey)) {
-            console.log(`[LOAD-FROM-ODOO] ⚠️ Skipping lead "${lead.partner_name || lead.name}" - customer exists with same name`);
+            debugStats.leadsDuplicateCustomer++;
             continue;
           }
 
@@ -942,7 +981,10 @@ export async function GET(request: NextRequest) {
           const distance = calculateDistance(latitude, longitude, coords.latitude, coords.longitude);
 
           // Filter by radius
-          if (distance > radius) continue;
+          if (distance > radius) {
+            debugStats.leadsOutOfRadius++;
+            continue;
+          }
 
           // Get tag names
           const tags = lead.tag_ids ?
@@ -992,6 +1034,23 @@ export async function GET(request: NextRequest) {
     // Sort by distance
     markers.sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
+    // Aggiorna stats finali
+    debugStats.customersIncluded = markers.filter(m => m.type === 'customer').length;
+    debugStats.leadsIncluded = markers.filter(m => m.type === 'lead').length;
+
+    console.log(`[LOAD-FROM-ODOO] ========== DEBUG STATS ==========`);
+    console.log(`[LOAD-FROM-ODOO] Clienti: ${debugStats.totalCustomersFound} trovati → ${debugStats.customersIncluded} inclusi`);
+    console.log(`[LOAD-FROM-ODOO]   - Senza coordinate: ${debugStats.customersNoCoordinates}`);
+    console.log(`[LOAD-FROM-ODOO]   - Fuori raggio: ${debugStats.customersOutOfRadius}`);
+    console.log(`[LOAD-FROM-ODOO] Indirizzi consegna: ${debugStats.deliveryAddressesFound} trovati → ${debugStats.deliveryIncluded} inclusi`);
+    console.log(`[LOAD-FROM-ODOO]   - Troppo vicini alla sede: ${debugStats.deliveryTooCloseToParent}`);
+    console.log(`[LOAD-FROM-ODOO]   - Fuori raggio: ${debugStats.deliveryOutOfRadius}`);
+    console.log(`[LOAD-FROM-ODOO] Lead: ${debugStats.leadsFound} trovati → ${debugStats.leadsIncluded} inclusi`);
+    console.log(`[LOAD-FROM-ODOO]   - Senza coordinate: ${debugStats.leadsNoCoordinates}`);
+    console.log(`[LOAD-FROM-ODOO]   - Già convertiti: ${debugStats.leadsAlreadyConverted}`);
+    console.log(`[LOAD-FROM-ODOO]   - Duplicati clienti: ${debugStats.leadsDuplicateCustomer}`);
+    console.log(`[LOAD-FROM-ODOO]   - Fuori raggio: ${debugStats.leadsOutOfRadius}`);
+    console.log(`[LOAD-FROM-ODOO] ================================`);
     console.log(`[LOAD-FROM-ODOO] Totale marker nel raggio: ${markers.length}`);
 
     return NextResponse.json({
@@ -1001,7 +1060,8 @@ export async function GET(request: NextRequest) {
         total: markers.length,
         filter,
         radius,
-        center: { latitude, longitude }
+        center: { latitude, longitude },
+        debug: debugStats // Includi stats per debug frontend
       }
     });
 
