@@ -277,6 +277,7 @@ export default function SalesRadarPage() {
   const [radius, setRadius] = useState<number>(1000); // 1km default
   const [placeType, setPlaceType] = useState<string>(''); // Default: Tutti i tipi
   const [keyword, setKeyword] = useState<string>('');
+  const [markerSearchQuery, setMarkerSearchQuery] = useState<string>(''); // Ricerca marker sulla mappa
 
   // Results
   const [places, setPlaces] = useState<EnrichedPlace[]>([]);
@@ -1600,6 +1601,77 @@ export default function SalesRadarPage() {
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6 space-y-4"
               >
+                {/* Search Marker - Ricerca tra i marker caricati */}
+                {odooPlaces.length > 0 && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      🔍 Cerca sulla Mappa
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={markerSearchQuery}
+                        onChange={(e) => setMarkerSearchQuery(e.target.value)}
+                        placeholder="Nome cliente o lead..."
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-base text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      {markerSearchQuery && (
+                        <button
+                          onClick={() => setMarkerSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    {markerSearchQuery && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500">
+                          {(() => {
+                            const query = markerSearchQuery.toLowerCase();
+                            const matches = odooPlaces.filter((p: any) =>
+                              (p.name || '').toLowerCase().includes(query) ||
+                              (p.address || '').toLowerCase().includes(query)
+                            );
+                            return `${matches.length} risultat${matches.length === 1 ? 'o' : 'i'} su ${odooPlaces.length}`;
+                          })()}
+                        </p>
+                        {/* Lista risultati cliccabili (max 5) */}
+                        {(() => {
+                          const query = markerSearchQuery.toLowerCase();
+                          const matches = odooPlaces.filter((p: any) =>
+                            (p.name || '').toLowerCase().includes(query) ||
+                            (p.address || '').toLowerCase().includes(query)
+                          ).slice(0, 5);
+                          if (matches.length > 0 && matches.length <= 5) {
+                            return (
+                              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                                {matches.map((p: any) => (
+                                  <button
+                                    key={p.id}
+                                    onClick={() => {
+                                      setSelectedPlace(p);
+                                      if (map && p.latitude && p.longitude) {
+                                        map.panTo({ lat: p.latitude, lng: p.longitude });
+                                        map.setZoom(16);
+                                      }
+                                    }}
+                                    className="w-full text-left px-2 py-1.5 text-xs rounded bg-gray-50 hover:bg-blue-50 transition-colors"
+                                  >
+                                    <div className="font-medium text-gray-800 truncate">{p.name}</div>
+                                    {p.address && <div className="text-gray-500 truncate">{p.address}</div>}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Radius */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -1938,8 +2010,9 @@ export default function SalesRadarPage() {
 
             {/* Business Markers - conditional based on map mode */}
             {/* Quando showVisitsMode è attivo, aggiunge i marker visitati che non sono già presenti */}
+            {/* Filtra per markerSearchQuery se presente */}
             {(() => {
-              const basePlaces = mapMode === 'live' ? places : odooPlaces;
+              let basePlaces = mapMode === 'live' ? places : odooPlaces;
 
               // Se modalità visite attiva, aggiungi marker visitati che non sono già presenti
               if (showVisitsMode && visitedMarkers.length > 0) {
@@ -1947,8 +2020,19 @@ export default function SalesRadarPage() {
                 const additionalMarkers = visitedMarkers.filter((vm: any) =>
                   !existingIds.has(`${vm.type}_${vm.id}`)
                 );
-                return [...basePlaces, ...additionalMarkers];
+                basePlaces = [...basePlaces, ...additionalMarkers];
               }
+
+              // Filtra per ricerca se presente
+              if (markerSearchQuery.trim()) {
+                const query = markerSearchQuery.toLowerCase().trim();
+                basePlaces = basePlaces.filter((p: any) =>
+                  (p.name || '').toLowerCase().includes(query) ||
+                  (p.address || '').toLowerCase().includes(query) ||
+                  (p.partner_name || '').toLowerCase().includes(query)
+                );
+              }
+
               return basePlaces;
             })().map((place: any, index: number) => {
               const visitStatus = getVisitStatus(place);
@@ -2467,6 +2551,77 @@ export default function SalesRadarPage() {
               {/* Content */}
               <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(70vh - 130px)' }}>
                 <div className="space-y-3">
+                  {/* Search Marker Mobile */}
+                  {odooPlaces.length > 0 && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        🔍 Cerca sulla Mappa
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={markerSearchQuery}
+                          onChange={(e) => setMarkerSearchQuery(e.target.value)}
+                          placeholder="Nome cliente o lead..."
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-8 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                        />
+                        {markerSearchQuery && (
+                          <button
+                            onClick={() => setMarkerSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {markerSearchQuery && (
+                        <div className="mt-1">
+                          <p className="text-xs text-gray-500">
+                            {(() => {
+                              const query = markerSearchQuery.toLowerCase();
+                              const matches = odooPlaces.filter((p: any) =>
+                                (p.name || '').toLowerCase().includes(query) ||
+                                (p.address || '').toLowerCase().includes(query)
+                              );
+                              return `${matches.length} risultat${matches.length === 1 ? 'o' : 'i'}`;
+                            })()}
+                          </p>
+                          {/* Lista risultati mobile */}
+                          {(() => {
+                            const query = markerSearchQuery.toLowerCase();
+                            const matches = odooPlaces.filter((p: any) =>
+                              (p.name || '').toLowerCase().includes(query) ||
+                              (p.address || '').toLowerCase().includes(query)
+                            ).slice(0, 5);
+                            if (matches.length > 0 && matches.length <= 5) {
+                              return (
+                                <div className="mt-1 space-y-1 max-h-32 overflow-y-auto">
+                                  {matches.map((p: any) => (
+                                    <button
+                                      key={p.id}
+                                      onClick={() => {
+                                        setSelectedPlace(p);
+                                        setShowMobileFilters(false);
+                                        if (map && p.latitude && p.longitude) {
+                                          map.panTo({ lat: p.latitude, lng: p.longitude });
+                                          map.setZoom(16);
+                                        }
+                                      }}
+                                      className="w-full text-left px-2 py-1 text-xs rounded bg-gray-50 hover:bg-blue-50"
+                                    >
+                                      <div className="font-medium text-gray-800 truncate">{p.name}</div>
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Radius */}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
