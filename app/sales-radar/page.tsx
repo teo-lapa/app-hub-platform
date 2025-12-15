@@ -2526,8 +2526,8 @@ export default function SalesRadarPage() {
                 </div>
               </div>
 
-              {/* Footer - Search Button */}
-              <div className="border-t bg-gray-50 px-4 py-3">
+              {/* Footer - Search Button + Load All Buttons */}
+              <div className="border-t bg-gray-50 px-4 py-3 space-y-3">
                 <button
                   onClick={() => {
                     searchPlaces();
@@ -2548,6 +2548,81 @@ export default function SalesRadarPage() {
                     </>
                   )}
                 </button>
+
+                {/* Load ALL Active Customers - Mobile */}
+                {mapMode === 'static' && (
+                  <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                    <p className="text-xs font-semibold text-green-800 mb-2">
+                      🗺️ Carica TUTTI i Clienti Attivi
+                    </p>
+                    <p className="text-xs text-green-600 mb-2">
+                      Senza limiti di zona - mostra tutti i clienti con ordini nel periodo selezionato
+                    </p>
+                    <div className="flex gap-2">
+                      <select
+                        value={activePeriod}
+                        onChange={(e) => setActivePeriod(e.target.value as '1m' | '3m' | '6m')}
+                        className="flex-1 px-2 py-2 text-xs border border-green-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="1m">Ultimo mese</option>
+                        <option value="3m">Ultimi 3 mesi</option>
+                        <option value="6m">Ultimi 6 mesi</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          loadAllActiveCustomers();
+                          setShowMobileFilters(false);
+                        }}
+                        disabled={loadingAllActive}
+                        className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 font-semibold text-xs transition-all active:scale-95"
+                      >
+                        {loadingAllActive ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Carico...
+                          </>
+                        ) : (
+                          <>
+                            <Users className="h-3 w-3" />
+                            Carica Tutti
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Load ALL Leads - Mobile */}
+                {mapMode === 'static' && (
+                  <div className="p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                    <p className="text-xs font-semibold text-orange-800 mb-2">
+                      🎯 Carica TUTTI i Lead
+                    </p>
+                    <p className="text-xs text-orange-600 mb-2">
+                      Senza limiti di zona - mostra tutti i lead dal CRM
+                    </p>
+                    <button
+                      onClick={() => {
+                        loadAllLeads();
+                        setShowMobileFilters(false);
+                      }}
+                      disabled={loadingAllLeads}
+                      className="w-full px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 font-semibold text-xs transition-all active:scale-95"
+                    >
+                      {loadingAllLeads ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Carico...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-3 w-3" />
+                          Carica Tutti i Lead
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>
