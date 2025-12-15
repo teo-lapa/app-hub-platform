@@ -294,31 +294,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<Classific
 
         console.log(`💬 [CLASSIFY-DOCS] Preparando messaggio chatter per P.O. ID: ${purchaseOrderId}`);
 
-        let chatterMessage = `<p><strong>📋 Classificazione Documenti Automatica</strong></p>`;
-        chatterMessage += `<p>Documenti analizzati: ${enrichedDocuments.length}</p>`;
+        // Messaggio in testo semplice (no HTML)
+        let chatterMessage = `📋 Classificazione Documenti Automatica\n`;
+        chatterMessage += `Documenti analizzati: ${enrichedDocuments.length}\n\n`;
 
         if (validDocs.length > 0) {
-          chatterMessage += `<p>✅ <strong>Validi per arrivo:</strong> ${validDocs.length}</p><ul>`;
+          chatterMessage += `✅ Validi per arrivo: ${validDocs.length}\n`;
           for (const doc of validDocs) {
             const typeLabel = getDocumentTypeLabel(doc.document_type);
-            chatterMessage += `<li>${typeLabel}: ${doc.emittente} ${doc.numero_documento ? `(${doc.numero_documento})` : ''}</li>`;
+            chatterMessage += `• ${typeLabel}: ${doc.emittente} ${doc.numero_documento ? `(${doc.numero_documento})` : ''}\n`;
           }
-          chatterMessage += `</ul>`;
+          chatterMessage += `\n`;
         }
 
         if (invalidDocs.length > 0) {
-          chatterMessage += `<p>❌ <strong>Non validi (ignorati):</strong> ${invalidDocs.length}</p><ul>`;
+          chatterMessage += `❌ Non validi (ignorati): ${invalidDocs.length}\n`;
           for (const doc of invalidDocs) {
             const typeLabel = getDocumentTypeLabel(doc.document_type);
-            chatterMessage += `<li>${typeLabel}: ${doc.filename || doc.numero_documento || 'documento'}</li>`;
+            chatterMessage += `• ${typeLabel}: ${doc.filename || doc.numero_documento || 'documento'}\n`;
           }
-          chatterMessage += `</ul>`;
+          chatterMessage += `\n`;
         }
 
         if (!json.has_valid_documents) {
-          chatterMessage += `<p><strong>⚠️ Azione richiesta:</strong> Caricare fattura o DDT di ${supplierName || 'fornitore'}</p>`;
+          chatterMessage += `⚠️ Azione richiesta: Caricare fattura o DDT di ${supplierName || 'fornitore'}`;
         } else {
-          chatterMessage += `<p>→ Pronto per processare l'arrivo</p>`;
+          chatterMessage += `→ Pronto per processare l'arrivo`;
         }
 
         console.log(`💬 [CLASSIFY-DOCS] Chiamando message_post su P.O. ID: ${purchaseOrderId}`);
