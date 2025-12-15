@@ -338,7 +338,7 @@ export default function DashboardCompensi() {
                 <p className="text-2xl font-bold text-slate-900">{person.total_clients}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <p className="text-xs uppercase text-green-700 mb-1">Qualificati (3-11m)</p>
+                <p className="text-xs uppercase text-green-700 mb-1">Qualificati (3-8m)</p>
                 <p className="text-2xl font-bold text-green-900">{person.qualified_clients.count}</p>
                 <p className="text-xs text-green-600 mt-1">
                   {formatCurrency(person.qualified_clients.revenue)} • {person.qualified_clients.percentage}%
@@ -352,7 +352,7 @@ export default function DashboardCompensi() {
                 </p>
               </div>
               <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-                <p className="text-xs uppercase text-slate-600 mb-1">Troppo Vecchi (≥12m)</p>
+                <p className="text-xs uppercase text-slate-600 mb-1">Troppo Vecchi (≥9m)</p>
                 <p className="text-2xl font-bold text-slate-700">{person.too_old_clients.count}</p>
                 <p className="text-xs text-slate-500 mt-1">
                   {formatCurrency(person.too_old_clients.revenue)} • {person.too_old_clients.percentage}%
