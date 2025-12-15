@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 const SALESPERSON_IDS = [249, 121, 14]; // Gregorio, Alessandro, Mihai
-const THRESHOLD = 95000;
+const THRESHOLD = 80000; // Prima soglia (scaglione 1 al 2.5%)
 
 interface ClientInfo {
   id: number;
@@ -288,9 +288,26 @@ async function getSalespersonData(
   const tooNewRevenue = tooNewClients.reduce((sum, c) => sum + c.revenue_current_month, 0);
   const tooOldRevenue = tooOldClients.reduce((sum, c) => sum + c.revenue_current_month, 0);
 
-  // Calcola bonus
-  const bonusBase = Math.min(revenueMonth - THRESHOLD, qualifiedRevenue);
-  const bonusTheoretical = thresholdMet ? bonusBase * 0.08 : 0;
+  // Calcola bonus a scaglioni
+  // SCAGLIONE 1: 80K-95K → 2.5%
+  // SCAGLIONE 2: oltre 95K → 8%
+  let bonusTheoretical = 0;
+
+  if (revenueMonth >= 80000) {
+    // Scaglione 1: da 80K a 95K al 2.5%
+    const tier1Max = 95000;
+    const tier1Base = Math.min(revenueMonth, tier1Max) - 80000; // Quanto fatturato in questo scaglione
+    const tier1Qualified = Math.min(tier1Base, qualifiedRevenue); // Solo fatturato qualificato
+    bonusTheoretical += Math.max(0, tier1Qualified) * 0.025;
+
+    // Scaglione 2: oltre 95K al 8%
+    if (revenueMonth > 95000) {
+      const tier2Base = revenueMonth - 95000;
+      const tier2Qualified = Math.min(tier2Base, Math.max(0, qualifiedRevenue - tier1Qualified));
+      bonusTheoretical += Math.max(0, tier2Qualified) * 0.08;
+    }
+  }
+
   const bonusReal = bonusTheoretical * (paymentPercentage / 100);
 
   return {
