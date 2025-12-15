@@ -15,7 +15,7 @@ interface ClientInfo {
 interface SalespersonData {
   id: number;
   name: string;
-  email: string;
+  email?: string; // Optional - teams don't have emails
   revenue_current_month: number;
   revenue_paid: number;
   payment_percentage: number;
@@ -171,7 +171,7 @@ export default function DashboardCompensi() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                   <span className="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                  Dashboard Compensi Venditori
+                  Dashboard Compensi Team
                 </h1>
                 {data && (
                   <p className="text-sm text-slate-600 mt-1">
@@ -233,17 +233,17 @@ export default function DashboardCompensi() {
         </div>
       </div>
 
-      {/* Filtro Venditori */}
+      {/* Filtro Team */}
       {data && data.salespeople.length > 1 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Filtra per venditore</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Filtra per team</label>
             <select
               value={selectedSalesperson || ''}
               onChange={(e) => setSelectedSalesperson(e.target.value ? parseInt(e.target.value) : null)}
               className="w-full md:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">Tutti i venditori</option>
+              <option value="">Tutti i team</option>
               {data.salespeople.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -263,7 +263,7 @@ export default function DashboardCompensi() {
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">{person.name}</h2>
-                  <p className="text-sm text-slate-600">{person.email}</p>
+                  <p className="text-sm text-slate-600">Team di Vendita</p>
                 </div>
                 <div className="flex gap-6">
                   <div className="text-right">

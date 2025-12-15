@@ -1,20 +1,24 @@
 /**
- * API COMPENSI VENDITORI - DASHBOARD LIVE
+ * API COMPENSI VENDITORI - DASHBOARD LIVE (TEAM-BASED)
  *
- * Restituisce dati real-time sui compensi dei venditori LAPA:
- * - Fatturato mese corrente
- * - Totale clienti attivi
+ * Restituisce dati real-time sui compensi dei TEAM di vendita LAPA:
+ * - Fatturato mese corrente per team
+ * - Totale clienti attivi del team
  * - Clienti qualificati per bonus (3-8 mesi)
  * - Clienti non qualificati (troppo nuovi <3 mesi / troppo vecchi ≥9 mesi)
  *
  * GET /api/compensi-venditori
- * GET /api/compensi-venditori?salespersonId=14 (singolo venditore)
+ * GET /api/compensi-venditori?teamId=5 (singolo team)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
-const SALESPERSON_IDS = [249, 121, 14]; // Gregorio, Alessandro, Mihai
+const SALES_TEAMS = [
+  { id: 5, name: 'La Squadra del Successo' },
+  { id: 9, name: 'I Campioni del Gusto' },
+  { id: 12, name: 'I Custodi della Tradizione' }
+];
 const THRESHOLD_TIER1 = 80000; // Inizio scaglione 1 (2.5%)
 const THRESHOLD = 95000; // Soglia principale - Scaglione 2 (8%)
 
@@ -26,10 +30,9 @@ interface ClientInfo {
   revenue_current_month: number;
 }
 
-interface SalespersonData {
+interface TeamData {
   id: number;
   name: string;
-  email: string;
   revenue_current_month: number;
   revenue_paid: number; // Fatturato pagato
   payment_percentage: number; // Percentuale di pagamento
@@ -91,19 +94,18 @@ function getMonthsSinceFirstOrder(firstOrderDate: string, referenceDate: string)
   return months;
 }
 
-async function getSalespersonData(
+async function getTeamData(
   cookies: string,
-  userId: number,
-  userName: string,
-  userEmail: string,
+  teamId: number,
+  teamName: string,
   startDateStr: string,
   endDateStr: string,
   isCurrentMonth: boolean
-): Promise<SalespersonData> {
-  // 1. Ordini del mese corrente
+): Promise<TeamData> {
+  // 1. Ordini del mese corrente per il team
   const monthOrders = await callOdoo(cookies, 'sale.order', 'search_read', [], {
     domain: [
-      ['user_id', '=', userId],
+      ['team_id', '=', teamId],
       ['state', 'in', ['sale', 'done']],
       ['commitment_date', '>=', startDateStr],
       ['commitment_date', '<=', endDateStr],
@@ -115,9 +117,8 @@ async function getSalespersonData(
 
   if (activePartnerIds.length === 0) {
     return {
-      id: userId,
-      name: userName,
-      email: userEmail,
+      id: teamId,
+      name: teamName,
       revenue_current_month: 0,
       revenue_paid: 0,
       payment_percentage: 0,
@@ -196,13 +197,13 @@ async function getSalespersonData(
 
   const thresholdMet = revenueMonth >= THRESHOLD;
 
-  // 5a. Calcola fatturato PAGATO (da fatture pagate)
+  // 5a. Calcola fatturato PAGATO (da fatture pagate del team)
   let revenuePaid = 0;
 
   try {
     const paidInvoices = await callOdoo(cookies, 'account.move', 'search_read', [], {
       domain: [
-        ['invoice_user_id', '=', userId],
+        ['team_id', '=', teamId],
         ['move_type', '=', 'out_invoice'],
         ['state', '=', 'posted'],
         ['payment_state', 'in', ['paid', 'in_payment']],
@@ -213,9 +214,9 @@ async function getSalespersonData(
     });
 
     revenuePaid = paidInvoices.reduce((sum: number, inv: any) => sum + inv.amount_total, 0);
-    console.log(`💰 ${userName}: Fatturato pagato = ${revenuePaid.toFixed(2)} CHF (da ${paidInvoices.length} fatture)`);
+    console.log(`💰 ${teamName}: Fatturato pagato = ${revenuePaid.toFixed(2)} CHF (da ${paidInvoices.length} fatture)`);
   } catch (error) {
-    console.warn(`⚠️ Impossibile recuperare fatture pagate per ${userName}:`, error);
+    console.warn(`⚠️ Impossibile recuperare fatture pagate per ${teamName}:`, error);
     revenuePaid = 0;
   }
 
@@ -309,9 +310,8 @@ async function getSalespersonData(
   const bonusReal = bonusTheoretical * (paymentPercentage / 100);
 
   return {
-    id: userId,
-    name: userName,
-    email: userEmail,
+    id: teamId,
+    name: teamName,
     revenue_current_month: revenueMonth,
     revenue_paid: revenuePaid,
     payment_percentage: paymentPercentage,
@@ -344,7 +344,7 @@ async function getSalespersonData(
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('📊 [COMPENSI] GET /api/compensi-venditori');
+    console.log('📊 [COMPENSI] GET /api/compensi-venditori (TEAM-BASED)');
 
     // Get Odoo session
     const cookieHeader = request.headers.get('cookie');
@@ -356,7 +356,7 @@ export async function GET(request: NextRequest) {
 
     // Parametri query
     const { searchParams } = new URL(request.url);
-    const salespersonIdParam = searchParams.get('salespersonId');
+    const teamIdParam = searchParams.get('teamId');
     const monthsBackParam = searchParams.get('monthsBack');
     const monthsBack = monthsBackParam ? parseInt(monthsBackParam) : 0;
 
@@ -375,21 +375,18 @@ export async function GET(request: NextRequest) {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    // Recupera info venditori
-    const salespeopleIds = salespersonIdParam ? [parseInt(salespersonIdParam)] : SALESPERSON_IDS;
+    // Seleziona team da elaborare
+    const teamsToProcess = teamIdParam
+      ? SALES_TEAMS.filter(t => t.id === parseInt(teamIdParam))
+      : SALES_TEAMS;
 
-    const users = await callOdoo(cookies, 'res.users', 'search_read', [], {
-      domain: [['id', 'in', salespeopleIds]],
-      fields: ['id', 'name', 'email'],
-    });
-
-    const salespeople: SalespersonData[] = [];
+    const teams: TeamData[] = [];
     const isCurrentMonth = monthsBack === 0;
 
-    for (const user of users) {
-      console.log(`📋 Elaborando ${user.name}...`);
-      const data = await getSalespersonData(cookies, user.id, user.name, user.email, startDateStr, endDateStr, isCurrentMonth);
-      salespeople.push(data);
+    for (const team of teamsToProcess) {
+      console.log(`📋 Elaborando team: ${team.name}...`);
+      const data = await getTeamData(cookies, team.id, team.name, startDateStr, endDateStr, isCurrentMonth);
+      teams.push(data);
     }
 
     const response = {
@@ -400,7 +397,7 @@ export async function GET(request: NextRequest) {
         label: startDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }),
         generated_at: new Date().toISOString(),
       },
-      salespeople,
+      salespeople: teams, // Mantiene nome 'salespeople' per retrocompatibilità frontend
     };
 
     return NextResponse.json(response);
