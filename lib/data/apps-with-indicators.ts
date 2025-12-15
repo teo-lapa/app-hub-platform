@@ -792,6 +792,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-12-14'),
     updatedAt: new Date('2025-12-14'),
   },
+  {
+    id: 'etichette1',
+    name: 'Rigenera Etichette',
+    description: 'Ricrea etichette alimentari da foto. Scatta foto, AI estrae i dati, modifica date scadenza/confezionamento, genera PDF 80mm identico all\'originale per stampa.',
+    icon: '🏷️',
+    badge: 'AZIENDALE',
+    category: 'Magazzino',
+    url: '/rigenera-etichette',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: false,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-12-13'),
+    updatedAt: new Date('2025-12-13'),
+  },
 ];
 
 // Combina tutte le app

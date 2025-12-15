@@ -354,6 +354,7 @@ export default function SalesRadarPage() {
   // Visits tracking state
   const [showVisitsMode, setShowVisitsMode] = useState(false);
   const [visitsData, setVisitsData] = useState<Record<string, { lastVisit: string; visitorName: string; visitorId: number; recordType: 'partner' | 'lead' }>>({});
+  const [visitedMarkers, setVisitedMarkers] = useState<any[]>([]); // Marker completi dei record visitati
   const [visitsVendors, setVisitsVendors] = useState<{ id: number; name: string }[]>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
   const [loadingVisits, setLoadingVisits] = useState(false);
@@ -1264,11 +1265,12 @@ export default function SalesRadarPage() {
   };
 
   // Load visits data
+  // vendorId qui è il partner_id dell'autore (author_id dal messaggio), NON l'user_id
   const loadVisits = async (vendorId?: number | null) => {
     setLoadingVisits(true);
     try {
       const url = vendorId
-        ? `/api/sales-radar/get-visits?user_id=${vendorId}`
+        ? `/api/sales-radar/get-visits?author_partner_id=${vendorId}`
         : '/api/sales-radar/get-visits';
 
       const response = await fetch(url);
@@ -1276,15 +1278,19 @@ export default function SalesRadarPage() {
 
       if (result.success) {
         setVisitsData(result.visits);
+        setVisitedMarkers(result.visitedMarkers || []); // Salva i marker visitati
         setVisitsVendors(result.vendors);
-        if (result.currentUserId && !selectedVendorId) {
-          setCurrentUserId(result.currentUserId);
+        // currentUserPartnerId è il partner_id dell'utente, che corrisponde ai vendor.id nel dropdown
+        const partnerIdForDropdown = result.currentUserPartnerId || result.currentUserId;
+        if (partnerIdForDropdown && !selectedVendorId) {
+          setCurrentUserId(partnerIdForDropdown); // Usa partner_id per match con dropdown
           // Preseleziona l'utente corrente se presente tra i venditori
-          const currentVendor = result.vendors.find((v: any) => v.id === result.currentUserId);
+          const currentVendor = result.vendors.find((v: any) => v.id === partnerIdForDropdown);
           if (currentVendor) {
-            setSelectedVendorId(result.currentUserId);
+            setSelectedVendorId(partnerIdForDropdown);
           }
         }
+        console.log(`[VISITS] Caricati ${Object.keys(result.visits).length} visite, ${(result.visitedMarkers || []).length} marker visitati`);
       } else {
         console.error('Errore caricamento visite:', result.error);
       }
@@ -1931,7 +1937,20 @@ export default function SalesRadarPage() {
             )}
 
             {/* Business Markers - conditional based on map mode */}
-            {(mapMode === 'live' ? places : odooPlaces).map((place: any, index: number) => {
+            {/* Quando showVisitsMode è attivo, aggiunge i marker visitati che non sono già presenti */}
+            {(() => {
+              const basePlaces = mapMode === 'live' ? places : odooPlaces;
+
+              // Se modalità visite attiva, aggiungi marker visitati che non sono già presenti
+              if (showVisitsMode && visitedMarkers.length > 0) {
+                const existingIds = new Set(basePlaces.map((p: any) => `${p.type || 'customer'}_${p.id}`));
+                const additionalMarkers = visitedMarkers.filter((vm: any) =>
+                  !existingIds.has(`${vm.type}_${vm.id}`)
+                );
+                return [...basePlaces, ...additionalMarkers];
+              }
+              return basePlaces;
+            })().map((place: any, index: number) => {
               const visitStatus = getVisitStatus(place);
               // Colore bordo basato sullo stato visita (quando modalità visite è attiva)
               const getStrokeColor = () => {

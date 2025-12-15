@@ -147,6 +147,10 @@ export async function POST(request: NextRequest) {
 
     console.log('[Check-in] Success, message_id:', messageId);
 
+    // NOTE: Non convertiamo automaticamente i lead in opportunità/contatti
+    // Il lead rimane nel CRM finché non viene fatto un primo ordine
+    // Questo evita di sporcare il sistema con contatti che potrebbero essere "no target"
+
     return NextResponse.json({
       success: true,
       message_id: messageId,
