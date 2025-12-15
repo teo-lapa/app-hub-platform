@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildGeminiPrompt } from '@/lib/arrivo-merce/gemini-prompt';
+import { ClassificationResult } from '@/app/gestione-arrivi/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minuti per documenti multipli
@@ -16,6 +17,13 @@ const SUPPORTED_MIMETYPES = [
   'image/gif',
   'image/webp'
 ];
+
+// URL base per chiamate interne
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  return 'http://localhost:3000';
+};
 
 interface ExtractedLine {
   description: string;
@@ -67,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { picking_id, attachment_ids } = body;
+    const { picking_id, attachment_ids, skip_classification } = body;
 
     if (!picking_id && !attachment_ids) {
       return NextResponse.json({
@@ -77,11 +85,75 @@ export async function POST(request: NextRequest) {
 
     console.log(`📖 [READ-DOCS] Inizio lettura documenti...`);
 
-    // Recupera allegati
+    // ===== FASE 1: CLASSIFICAZIONE DOCUMENTI =====
+    // Se non viene passato skip_classification, classifichiamo prima i documenti
+    let validAttachmentIds: number[] = [];
+    let classification: ClassificationResult | null = null;
+
+    if (!skip_classification) {
+      console.log(`🔍 [READ-DOCS] Fase 1: Classificazione documenti...`);
+
+      try {
+        // Importa dinamicamente per evitare circular dependency
+        const { POST: classifyDocuments } = await import('../classify-documents/route');
+
+        // Crea una nuova request per classify-documents
+        const classifyRequest = new NextRequest(
+          new URL('/api/gestione-arrivi/classify-documents', getBaseUrl()),
+          {
+            method: 'POST',
+            headers: request.headers,
+            body: JSON.stringify({ picking_id, attachment_ids })
+          }
+        );
+
+        const classifyResponse = await classifyDocuments(classifyRequest);
+        classification = await classifyResponse.json() as ClassificationResult;
+
+        if (!classification.success) {
+          console.error(`❌ [READ-DOCS] Classificazione fallita: ${classification.error}`);
+          return NextResponse.json({
+            success: false,
+            error: classification.error || 'Errore durante la classificazione',
+            classification
+          }, { status: 400 });
+        }
+
+        // Verifica se ci sono documenti validi
+        if (!classification.has_valid_documents) {
+          console.warn(`⚠️ [READ-DOCS] Nessun documento valido trovato`);
+          return NextResponse.json({
+            success: false,
+            error: 'Nessun documento valido per arrivo merce',
+            error_code: 'NO_VALID_DOCUMENTS',
+            classification,
+            message: classification.summary,
+            documents_found: classification.documents
+          }, { status: 400 });
+        }
+
+        validAttachmentIds = classification.valid_attachment_ids;
+        console.log(`✅ [READ-DOCS] Classificazione completata: ${validAttachmentIds.length} documenti validi`);
+
+      } catch (classifyError: any) {
+        console.error(`❌ [READ-DOCS] Errore classificazione:`, classifyError);
+        // Se la classificazione fallisce, continuiamo con tutti gli allegati (fallback)
+        console.warn(`⚠️ [READ-DOCS] Fallback: processo tutti gli allegati senza classificazione`);
+      }
+    }
+
+    // ===== FASE 2: RECUPERA ALLEGATI =====
     let attachments: any[] = [];
 
-    if (attachment_ids && attachment_ids.length > 0) {
-      // Allegati specifici
+    if (validAttachmentIds.length > 0) {
+      // Usa solo gli allegati validi dalla classificazione
+      attachments = await callOdoo(cookies, 'ir.attachment', 'search_read', [
+        [['id', 'in', validAttachmentIds]],
+        ['id', 'name', 'mimetype', 'datas', 'file_size']
+      ]);
+      console.log(`📎 Usando ${attachments.length} allegati validi dalla classificazione`);
+    } else if (attachment_ids && attachment_ids.length > 0) {
+      // Allegati specifici (skip_classification o fallback)
       attachments = await callOdoo(cookies, 'ir.attachment', 'search_read', [
         [['id', 'in', attachment_ids]],
         ['id', 'name', 'mimetype', 'datas', 'file_size']
@@ -126,7 +198,8 @@ export async function POST(request: NextRequest) {
     if (attachments.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Nessun allegato trovato'
+        error: 'Nessun allegato trovato',
+        classification
       }, { status: 404 });
     }
 
@@ -268,7 +341,9 @@ export async function POST(request: NextRequest) {
       },
       // Aggiungi parsed_products per compatibilità con process-reception
       parsed_products: json.products || [],
-      processing_time_ms: processingTime
+      processing_time_ms: processingTime,
+      // Includi risultato classificazione se disponibile
+      classification: classification || undefined
     });
 
   } catch (error: any) {

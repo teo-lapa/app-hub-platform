@@ -83,18 +83,18 @@ export default function GestioneArriviPage() {
     const state: ArrivalProcessingState = {
       arrival_id: arrival.id,
       arrival_name: arrival.name,
-      status: 'reading_documents',
+      status: 'classifying_documents',
       progress: 0,
-      current_step: 'Lettura documenti...',
+      current_step: 'Classificazione documenti...',
     };
 
     setProcessingArrival(state);
 
     try {
-      // STEP 1: Leggi documenti
-      state.status = 'reading_documents';
-      state.progress = 10;
-      state.current_step = 'Lettura documenti con AI...';
+      // STEP 1: Classifica e leggi documenti
+      state.status = 'classifying_documents';
+      state.progress = 5;
+      state.current_step = 'Classificazione documenti con AI...';
       setProcessingArrival({ ...state });
 
       const readResponse = await fetch('/api/gestione-arrivi/read-documents', {
@@ -107,8 +107,29 @@ export default function GestioneArriviPage() {
       const readData = await readResponse.json();
 
       if (!readResponse.ok) {
+        // Gestisci caso specifico: nessun documento valido
+        if (readData.error_code === 'NO_VALID_DOCUMENTS') {
+          const documentsInfo = readData.documents_found
+            ?.map((d: any) => `${d.filename || d.numero_documento}: ${getDocumentTypeLabel(d.document_type)}`)
+            .join(', ') || 'nessun documento';
+
+          state.status = 'skipped_no_valid_docs';
+          state.progress = 100;
+          state.current_step = 'Manca fattura/DDT';
+          state.error = `Nessun documento valido trovato. Documenti presenti: ${documentsInfo}. ${readData.message || ''}`;
+
+          setProcessingArrival({ ...state });
+          return state;
+        }
+
         throw new Error(readData.error || 'Errore lettura documenti');
       }
+
+      // Documenti classificati e letti con successo
+      state.status = 'reading_documents';
+      state.progress = 20;
+      state.current_step = 'Estrazione dati dai documenti...';
+      setProcessingArrival({ ...state });
 
       state.progress = 40;
       state.current_step = `Estratte ${readData.combined_lines?.length || 0} righe`;
@@ -264,9 +285,24 @@ export default function GestioneArriviPage() {
     switch (status) {
       case 'completed': return 'bg-green-500';
       case 'error': return 'bg-red-500';
+      case 'skipped_no_valid_docs': return 'bg-orange-500';
       case 'pending': return 'bg-gray-400';
       default: return 'bg-blue-500';
     }
+  };
+
+  // Helper per etichette tipo documento
+  const getDocumentTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      'fattura_fornitore': 'Fattura',
+      'ddt_fornitore': 'DDT',
+      'packing_list': 'Packing List',
+      'scontrino': 'Scontrino',
+      'ordine_interno': 'Ordine interno',
+      'conferma_ordine': 'Conferma ordine',
+      'altro': 'Altro'
+    };
+    return labels[type] || type;
   };
 
   const readyArrivals = arrivals.filter(a => a.is_ready && !a.is_completed);
@@ -435,22 +471,38 @@ export default function GestioneArriviPage() {
                     <div
                       key={idx}
                       className={`flex items-center justify-between p-3 rounded-lg ${
-                        result.status === 'completed' ? 'bg-green-50' : 'bg-red-50'
+                        result.status === 'completed'
+                          ? 'bg-green-50'
+                          : result.status === 'skipped_no_valid_docs'
+                            ? 'bg-orange-50'
+                            : 'bg-red-50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         {result.status === 'completed' ? (
                           <CheckCircle className="text-green-600" size={20} />
+                        ) : result.status === 'skipped_no_valid_docs' ? (
+                          <FileText className="text-orange-600" size={20} />
                         ) : (
                           <AlertTriangle className="text-red-600" size={20} />
                         )}
-                        <span className="font-medium">{result.arrival_name}</span>
+                        <div>
+                          <span className="font-medium">{result.arrival_name}</span>
+                          {result.status === 'skipped_no_valid_docs' && (
+                            <p className="text-xs text-orange-600">Manca fattura/DDT</p>
+                          )}
+                        </div>
                       </div>
                       {result.result && (
                         <div className="text-sm text-gray-600">
                           {result.result.invoice_created && (
                             <span className="text-green-600">📄 {result.result.invoice_name}</span>
                           )}
+                        </div>
+                      )}
+                      {result.status === 'skipped_no_valid_docs' && result.error && (
+                        <div className="text-xs text-orange-600 max-w-xs truncate" title={result.error}>
+                          {result.error.substring(0, 50)}...
                         </div>
                       )}
                     </div>
@@ -698,7 +750,14 @@ export default function GestioneArriviPage() {
                 </div>
 
                 {processingArrival.error && (
-                  <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                  <div className={`mb-4 rounded-lg p-3 text-sm ${
+                    processingArrival.status === 'skipped_no_valid_docs'
+                      ? 'bg-orange-50 border border-orange-200 text-orange-700'
+                      : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}>
+                    {processingArrival.status === 'skipped_no_valid_docs' && (
+                      <div className="font-semibold mb-1">📋 Documento mancante</div>
+                    )}
                     {processingArrival.error}
                   </div>
                 )}

@@ -104,6 +104,7 @@ export interface TranscriptionJSON {
 
 export type ProcessingStatus =
   | 'pending'
+  | 'classifying_documents'  // NUOVO: classificazione documenti
   | 'reading_documents'
   | 'transcribing'
   | 'processing_arrival'
@@ -111,6 +112,7 @@ export type ProcessingStatus =
   | 'creating_invoice'
   | 'attaching_documents'
   | 'completed'
+  | 'skipped_no_valid_docs'  // NUOVO: saltato perché manca fattura/DDT
   | 'error';
 
 export interface ArrivalProcessingState {
@@ -146,6 +148,41 @@ export interface BatchProcessingState {
   completed: number;
   current_arrival?: ArrivalProcessingState;
   results: ArrivalProcessingState[];
+}
+
+// === CLASSIFICAZIONE DOCUMENTI ===
+
+export type DocumentClassificationType =
+  | 'fattura_fornitore'
+  | 'ddt_fornitore'
+  | 'packing_list'
+  | 'scontrino'
+  | 'ordine_interno'
+  | 'conferma_ordine'
+  | 'altro';
+
+export interface ClassifiedDocument {
+  document_index: number;
+  document_type: DocumentClassificationType;
+  is_valid_for_arrival: boolean;
+  emittente: string;
+  numero_documento: string;
+  description: string;
+  attachment_id?: number;
+  filename?: string;
+}
+
+export interface ClassificationResult {
+  success: boolean;
+  documents: ClassifiedDocument[];
+  valid_document_indices: number[];
+  valid_attachment_ids: number[];
+  has_valid_documents: boolean;
+  summary: string;
+  purchase_order_id?: number;
+  purchase_order_name?: string;
+  chatter_message_id?: number;
+  error?: string;
 }
 
 // === API RESPONSES ===
