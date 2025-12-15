@@ -324,13 +324,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<Classific
         console.log(`💬 [CLASSIFY-DOCS] Chiamando message_post su P.O. ID: ${purchaseOrderId}`);
         console.log(`💬 [CLASSIFY-DOCS] Messaggio: ${chatterMessage.substring(0, 100)}...`);
 
-        const messageResult = await callOdoo(cookies, 'purchase.order', 'message_post', [
-          [purchaseOrderId],
-          {
+        // IMPORTANTE: callOdoo vuole args e kwargs SEPARATI come 4° e 5° parametro
+        const messageResult = await callOdoo(
+          cookies,
+          'purchase.order',
+          'message_post',
+          [[purchaseOrderId]],  // args: array di IDs
+          {                     // kwargs: parametri del messaggio
             body: chatterMessage,
-            message_type: 'notification'
+            message_type: 'comment',
+            subtype_xmlid: 'mail.mt_note'
           }
-        ]);
+        );
 
         console.log(`💬 [CLASSIFY-DOCS] message_post result: ${JSON.stringify(messageResult)}`);
 
