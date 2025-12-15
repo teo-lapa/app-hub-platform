@@ -289,24 +289,22 @@ async function getSalespersonData(
   const tooNewRevenue = tooNewClients.reduce((sum, c) => sum + c.revenue_current_month, 0);
   const tooOldRevenue = tooOldClients.reduce((sum, c) => sum + c.revenue_current_month, 0);
 
-  // Calcola bonus a scaglioni
-  // SCAGLIONE 1: 80K-95K → 2.5%
-  // SCAGLIONE 2: oltre 95K → 8%
+  // Calcola bonus - scelta scaglione in base al fatturato TOTALE
+  // Se totale >= 95K → 8% su qualificati
+  // Se totale 80K-95K → 2.5% su qualificati
+  // Se totale < 80K → 0%
   let bonusTheoretical = 0;
+  let bonusRate = 0;
 
-  if (revenueMonth >= THRESHOLD_TIER1) {
-    // Scaglione 1: da 80K a 95K al 2.5%
-    const tier1Base = Math.min(revenueMonth, THRESHOLD) - THRESHOLD_TIER1; // Quanto fatturato in questo scaglione
-    const tier1Qualified = Math.min(tier1Base, qualifiedRevenue); // Solo fatturato qualificato
-    bonusTheoretical += Math.max(0, tier1Qualified) * 0.025;
-
-    // Scaglione 2: oltre 95K al 8%
-    if (revenueMonth > THRESHOLD) {
-      const tier2Base = revenueMonth - THRESHOLD;
-      const tier2Qualified = Math.min(tier2Base, Math.max(0, qualifiedRevenue - tier1Qualified));
-      bonusTheoretical += Math.max(0, tier2Qualified) * 0.08;
-    }
+  if (revenueMonth >= THRESHOLD) {
+    // Sopra 95K → 8% su tutto il qualificato
+    bonusRate = 0.08;
+  } else if (revenueMonth >= THRESHOLD_TIER1) {
+    // Tra 80K e 95K → 2.5% su tutto il qualificato
+    bonusRate = 0.025;
   }
+
+  bonusTheoretical = qualifiedRevenue * bonusRate;
 
   const bonusReal = bonusTheoretical * (paymentPercentage / 100);
 
