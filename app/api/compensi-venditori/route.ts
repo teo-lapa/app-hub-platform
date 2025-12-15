@@ -102,18 +102,39 @@ async function getTeamData(
   endDateStr: string,
   isCurrentMonth: boolean
 ): Promise<TeamData> {
-  // 1. Ordini del mese corrente per il team
-  const monthOrders = await callOdoo(cookies, 'sale.order', 'search_read', [], {
-    domain: [
-      ['team_id', '=', teamId],
-      ['state', 'in', ['sale', 'done']],
-      ['commitment_date', '>=', startDateStr],
-      ['commitment_date', '<=', endDateStr],
-    ],
-    fields: ['id', 'name', 'partner_id', 'amount_total', 'amount_invoiced', 'commitment_date'],
-  });
+  let activePartnerIds: number[] = [];
+  let revenueMonth = 0;
+  let monthOrders: any[] = [];
+  let monthInvoices: any[] = [];
 
-  const activePartnerIds = Array.from(new Set<number>(monthOrders.map((o: any) => o.partner_id[0])));
+  if (isCurrentMonth) {
+    // MESE CORRENTE: usa ordini con commitment_date
+    monthOrders = await callOdoo(cookies, 'sale.order', 'search_read', [], {
+      domain: [
+        ['team_id', '=', teamId],
+        ['state', 'in', ['sale', 'done']],
+        ['commitment_date', '>=', startDateStr],
+        ['commitment_date', '<=', endDateStr],
+      ],
+      fields: ['id', 'name', 'partner_id', 'amount_total', 'amount_invoiced', 'commitment_date'],
+    });
+
+    activePartnerIds = Array.from(new Set<number>(monthOrders.map((o: any) => o.partner_id[0])));
+  } else {
+    // MESI PASSATI: usa fatture con invoice_date
+    monthInvoices = await callOdoo(cookies, 'account.move', 'search_read', [], {
+      domain: [
+        ['team_id', '=', teamId],
+        ['move_type', '=', 'out_invoice'],
+        ['state', '=', 'posted'],
+        ['invoice_date', '>=', startDateStr],
+        ['invoice_date', '<=', endDateStr],
+      ],
+      fields: ['id', 'name', 'partner_id', 'amount_total', 'invoice_date'],
+    });
+
+    activePartnerIds = Array.from(new Set<number>(monthInvoices.map((inv: any) => inv.partner_id[0])));
+  }
 
   if (activePartnerIds.length === 0) {
     return {
@@ -162,7 +183,7 @@ async function getTeamData(
 
   const allGroupPartnerIds = allGroupPartners.map((p: any) => p.id);
 
-  // 4. Recupera TUTTI gli ordini dei gruppi (qualsiasi venditore)
+  // 4. Recupera TUTTI gli ordini dei gruppi (per calcolare anzianità cliente)
   const allOrders = await callOdoo(cookies, 'sale.order', 'search_read', [], {
     domain: [
       ['partner_id', 'in', allGroupPartnerIds],
@@ -173,8 +194,6 @@ async function getTeamData(
   });
 
   // 5. Calcola fatturato mese
-  let revenueMonth = 0;
-
   if (isCurrentMonth) {
     // MESE CORRENTE: usa merce consegnata (qty_delivered * price_unit)
     const orderIds = monthOrders.map((o: any) => o.id);
@@ -191,8 +210,8 @@ async function getTeamData(
       }, 0);
     }
   } else {
-    // MESI PASSATI: usa fatture (amount_invoiced)
-    revenueMonth = monthOrders.reduce((sum: number, ord: any) => sum + ord.amount_invoiced, 0);
+    // MESI PASSATI: usa fatture (amount_total dalle invoice)
+    revenueMonth = monthInvoices.reduce((sum: number, inv: any) => sum + inv.amount_total, 0);
   }
 
   const thresholdMet = revenueMonth >= THRESHOLD;
@@ -223,10 +242,11 @@ async function getTeamData(
   // Calcola percentuale di pagamento
   const paymentPercentage = revenueMonth > 0 ? (revenuePaid / revenueMonth) * 100 : 0;
 
-  // 5b. Se mese corrente, recupera tutte le order lines e crea mappa ordine→revenue
-  let orderRevenueMap: Record<number, number> = {};
+  // 5b. Crea mappa per calcolare revenue per cliente
+  let revenueByPartner: Record<number, number> = {};
 
   if (isCurrentMonth) {
+    // MESE CORRENTE: calcola da order lines
     const orderIds = monthOrders.map((o: any) => o.id);
     if (orderIds.length > 0) {
       const orderLines = await callOdoo(cookies, 'sale.order.line', 'search_read', [], {
@@ -235,12 +255,26 @@ async function getTeamData(
       });
 
       // Calcola revenue per ogni ordine
+      const orderRevenueMap: Record<number, number> = {};
       orderLines.forEach((line: any) => {
         const orderId = line.order_id[0];
         const lineRevenue = line.qty_delivered * line.price_unit;
         orderRevenueMap[orderId] = (orderRevenueMap[orderId] || 0) + lineRevenue;
       });
+
+      // Mappa ordini → partner → revenue
+      monthOrders.forEach((order: any) => {
+        const partnerId = order.partner_id[0];
+        const orderRevenue = orderRevenueMap[order.id] || 0;
+        revenueByPartner[partnerId] = (revenueByPartner[partnerId] || 0) + orderRevenue;
+      });
     }
+  } else {
+    // MESI PASSATI: calcola da fatture
+    monthInvoices.forEach((invoice: any) => {
+      const partnerId = invoice.partner_id[0];
+      revenueByPartner[partnerId] = (revenueByPartner[partnerId] || 0) + invoice.amount_total;
+    });
   }
 
   // 6. Classifica clienti per anzianità
@@ -248,20 +282,25 @@ async function getTeamData(
   const tooNewClients: ClientInfo[] = [];
   const tooOldClients: ClientInfo[] = [];
 
+  // Ottieni dettagli partner per i nomi
+  const partnerDetails = await callOdoo(cookies, 'res.partner', 'search_read', [], {
+    domain: [['id', 'in', activePartnerIds]],
+    fields: ['id', 'name'],
+  });
+  const partnerNames: Record<number, string> = {};
+  partnerDetails.forEach((p: any) => {
+    partnerNames[p.id] = p.name;
+  });
+
   activePartnerIds.forEach((partnerId) => {
     const firstOrder = getFirstOrderDate(partnerId, allOrders, partnerToParent);
     if (!firstOrder) return;
 
     const ageMonths = getMonthsSinceFirstOrder(firstOrder, endDateStr);
 
-    const customerMonthOrders = monthOrders.filter((o: any) => o.partner_id[0] === partnerId);
-
-    // Calcola revenue per cliente: usa mappa se mese corrente, altrimenti amount_invoiced
-    const customerRevenue = isCurrentMonth
-      ? customerMonthOrders.reduce((sum: number, o: any) => sum + (orderRevenueMap[o.id] || 0), 0)
-      : customerMonthOrders.reduce((sum: number, o: any) => sum + o.amount_invoiced, 0);
-    const customerName =
-      customerMonthOrders.length > 0 ? customerMonthOrders[0].partner_id[1] : `Cliente ${partnerId}`;
+    // Calcola revenue per cliente dalla mappa
+    const customerRevenue = revenueByPartner[partnerId] || 0;
+    const customerName = partnerNames[partnerId] || `Cliente ${partnerId}`;
 
     const clientInfo: ClientInfo = {
       id: partnerId,
