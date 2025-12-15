@@ -15,7 +15,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 const SALESPERSON_IDS = [249, 121, 14]; // Gregorio, Alessandro, Mihai
-const THRESHOLD = 80000; // Prima soglia (scaglione 1 al 2.5%)
+const THRESHOLD_TIER1 = 80000; // Inizio scaglione 1 (2.5%)
+const THRESHOLD = 95000; // Soglia principale - Scaglione 2 (8%)
 
 interface ClientInfo {
   id: number;
@@ -293,16 +294,15 @@ async function getSalespersonData(
   // SCAGLIONE 2: oltre 95K → 8%
   let bonusTheoretical = 0;
 
-  if (revenueMonth >= 80000) {
+  if (revenueMonth >= THRESHOLD_TIER1) {
     // Scaglione 1: da 80K a 95K al 2.5%
-    const tier1Max = 95000;
-    const tier1Base = Math.min(revenueMonth, tier1Max) - 80000; // Quanto fatturato in questo scaglione
+    const tier1Base = Math.min(revenueMonth, THRESHOLD) - THRESHOLD_TIER1; // Quanto fatturato in questo scaglione
     const tier1Qualified = Math.min(tier1Base, qualifiedRevenue); // Solo fatturato qualificato
     bonusTheoretical += Math.max(0, tier1Qualified) * 0.025;
 
     // Scaglione 2: oltre 95K al 8%
-    if (revenueMonth > 95000) {
-      const tier2Base = revenueMonth - 95000;
+    if (revenueMonth > THRESHOLD) {
+      const tier2Base = revenueMonth - THRESHOLD;
       const tier2Qualified = Math.min(tier2Base, Math.max(0, qualifiedRevenue - tier1Qualified));
       bonusTheoretical += Math.max(0, tier2Qualified) * 0.08;
     }
