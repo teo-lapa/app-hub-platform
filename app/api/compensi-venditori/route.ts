@@ -4,8 +4,8 @@
  * Restituisce dati real-time sui compensi dei venditori LAPA:
  * - Fatturato mese corrente
  * - Totale clienti attivi
- * - Clienti qualificati per bonus (3-11 mesi)
- * - Clienti non qualificati (troppo nuovi/vecchi)
+ * - Clienti qualificati per bonus (3-6 mesi)
+ * - Clienti non qualificati (troppo nuovi <3 mesi / troppo vecchi ≥7 mesi)
  *
  * GET /api/compensi-venditori
  * GET /api/compensi-venditori?salespersonId=14 (singolo venditore)
@@ -269,7 +269,7 @@ async function getSalespersonData(
       revenue_current_month: customerRevenue,
     };
 
-    if (ageMonths >= 12) {
+    if (ageMonths >= 7) {
       tooOldClients.push(clientInfo);
     } else if (ageMonths < 3) {
       tooNewClients.push(clientInfo);
