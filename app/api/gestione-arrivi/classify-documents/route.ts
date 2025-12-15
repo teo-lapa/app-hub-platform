@@ -285,10 +285,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<Classific
     // Salva messaggio nel chatter del P.O.
     let chatterMessageId: number | null = null;
 
+    console.log(`💬 [CLASSIFY-DOCS] purchaseOrderId: ${purchaseOrderId}, skip_chatter: ${skip_chatter}`);
+
     if (purchaseOrderId && !skip_chatter) {
       try {
         const validDocs = enrichedDocuments.filter((d: ClassifiedDocument) => d.is_valid_for_arrival);
         const invalidDocs = enrichedDocuments.filter((d: ClassifiedDocument) => !d.is_valid_for_arrival);
+
+        console.log(`💬 [CLASSIFY-DOCS] Preparando messaggio chatter per P.O. ID: ${purchaseOrderId}`);
 
         let chatterMessage = `<p><strong>📋 Classificazione Documenti Automatica</strong></p>`;
         chatterMessage += `<p>Documenti analizzati: ${enrichedDocuments.length}</p>`;
@@ -317,14 +321,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<Classific
           chatterMessage += `<p>→ Pronto per processare l'arrivo</p>`;
         }
 
+        console.log(`💬 [CLASSIFY-DOCS] Chiamando message_post su P.O. ID: ${purchaseOrderId}`);
+        console.log(`💬 [CLASSIFY-DOCS] Messaggio: ${chatterMessage.substring(0, 100)}...`);
+
         const messageResult = await callOdoo(cookies, 'purchase.order', 'message_post', [
           [purchaseOrderId],
           {
             body: chatterMessage,
-            message_type: 'comment',
-            subtype_xmlid: 'mail.mt_note'
+            message_type: 'notification'
           }
         ]);
+
+        console.log(`💬 [CLASSIFY-DOCS] message_post result: ${JSON.stringify(messageResult)}`);
 
         chatterMessageId = messageResult;
         console.log(`💬 Messaggio salvato nel chatter P.O. (ID: ${chatterMessageId})`);
