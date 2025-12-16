@@ -822,6 +822,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-12-16'),
     updatedAt: new Date('2025-12-16'),
   },
+  {
+    id: 'spese1',
+    name: 'Spese Dipendenti',
+    description: '🧾 Registra spese con foto scontrino! Scatta foto → Gemini AI legge automaticamente negozio, importo, IVA e prodotti → Conferma e invia a Odoo. Supporta carta aziendale e rimborsi. Zero inserimento manuale!',
+    icon: '🧾',
+    badge: 'AZIENDALE',
+    category: 'HR',
+    url: '/spese',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-12-16'),
+    updatedAt: new Date('2025-12-16'),
+  },
 ];
 
 // Combina tutte le app
@@ -839,7 +854,8 @@ export const categories = [
   'Logistica',
   'CRM',
   'Comunicazioni',
-  'Acquisti'
+  'Acquisti',
+  'HR'
 ];
 
 export const getAppsByCategory = (category: string): App[] => {
