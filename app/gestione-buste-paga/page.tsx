@@ -322,7 +322,11 @@ export default function GestioneBustePagaPage() {
   });
 
   // Estrai aziende uniche
-  const companies = [...new Set(employees.filter(e => e.company_id).map(e => e.company_id![1]))];
+  const companies = Array.from(new Set(
+    employees
+      .filter((e): e is Employee & { company_id: [number, string] } => e.company_id !== false)
+      .map(e => e.company_id[1])
+  ));
 
   // Formatta stato busta paga
   const formatState = (state: string) => {
