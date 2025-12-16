@@ -807,6 +807,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-12-13'),
     updatedAt: new Date('2025-12-13'),
   },
+  {
+    id: 'buste-paga1',
+    name: 'Gestione Buste Paga',
+    description: 'Gestisci buste paga e bonus vendite dei dipendenti. Visualizza dettagli, aggiungi bonus, controlla voci stipendio. Collegato direttamente a Odoo HR.',
+    icon: '💵',
+    badge: 'AZIENDALE',
+    category: 'HR',
+    url: '/gestione-buste-paga',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: false,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-12-16'),
+    updatedAt: new Date('2025-12-16'),
+  },
 ];
 
 // Combina tutte le app
