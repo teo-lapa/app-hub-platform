@@ -325,7 +325,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'create-payslip') {
       // Crea una nuova busta paga con netto, bonus opzionale e PDF allegato
-      const { employeeId, month, netAmount, bonusAmount, pdfBase64, pdfFilename } = body;
+      const { employeeId, month, netAmount, bonusAmount, paidDate, closingDate, pdfBase64, pdfFilename } = body;
 
       if (!employeeId || !month || netAmount === undefined) {
         return NextResponse.json({
@@ -372,6 +372,14 @@ export async function POST(request: NextRequest) {
         date_to: dateTo,
         state: 'draft',
       };
+
+      // Aggiungi date opzionali se fornite
+      if (paidDate) {
+        payslipData.paid_date = paidDate;
+      }
+      if (closingDate) {
+        payslipData.date_close = closingDate;
+      }
 
       if (structId) {
         payslipData.struct_id = structId;

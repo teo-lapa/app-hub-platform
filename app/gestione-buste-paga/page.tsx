@@ -84,6 +84,8 @@ export default function GestioneBustePagaPage() {
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [extractedNet, setExtractedNet] = useState<string>('');
   const [bonusAmount, setBonusAmount] = useState<string>('');
+  const [paidDate, setPaidDate] = useState<string>('');
+  const [closingDate, setClosingDate] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -276,6 +278,8 @@ export default function GestioneBustePagaPage() {
           month: selectedMonth,
           netAmount: parseFloat(extractedNet),
           bonusAmount: bonusAmount ? parseFloat(bonusAmount) : 0,
+          paidDate: paidDate || null,
+          closingDate: closingDate || null,
           pdfBase64: pdfBase64,
           pdfFilename: pdfFile?.name
         })
@@ -293,6 +297,8 @@ export default function GestioneBustePagaPage() {
       setPdfPreview(null);
       setExtractedNet('');
       setBonusAmount('');
+      setPaidDate('');
+      setClosingDate('');
 
       // Ricarica buste paga
       loadPayslips(selectedEmployee.id);
@@ -623,6 +629,37 @@ export default function GestioneBustePagaPage() {
                     placeholder="0.00"
                     step="0.01"
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Data Chiusura */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1 text-blue-400" />
+                    Data Chiusura
+                  </label>
+                  <input
+                    type="date"
+                    value={closingDate}
+                    onChange={(e) => setClosingDate(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Data Pagamento */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1 text-purple-400" />
+                    Data Pagamento
+                  </label>
+                  <input
+                    type="date"
+                    value={paidDate}
+                    onChange={(e) => setPaidDate(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
