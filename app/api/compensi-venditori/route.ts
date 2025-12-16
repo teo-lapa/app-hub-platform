@@ -38,6 +38,14 @@ interface TeamData {
   payment_percentage: number; // Percentuale di pagamento
   threshold: number;
   threshold_met: boolean;
+  // Soglie dettagliate
+  threshold_tier1: number;     // 80'000 CHF
+  threshold_tier1_met: boolean;
+  threshold_tier1_rate: number; // 2.5%
+  threshold_tier2: number;     // 95'000 CHF
+  threshold_tier2_met: boolean;
+  threshold_tier2_rate: number; // 8%
+  current_bonus_rate: number;  // Percentuale bonus attuale applicata
   bonus: number; // Bonus reale (per retrocompatibilità)
   bonus_theoretical: number; // Bonus teorico (se tutto fosse pagato)
   bonus_real: number; // Bonus reale (proporzionale al pagato)
@@ -145,6 +153,13 @@ async function getTeamData(
       payment_percentage: 0,
       threshold: THRESHOLD,
       threshold_met: false,
+      threshold_tier1: THRESHOLD_TIER1,
+      threshold_tier1_met: false,
+      threshold_tier1_rate: 2.5,
+      threshold_tier2: THRESHOLD,
+      threshold_tier2_met: false,
+      threshold_tier2_rate: 8,
+      current_bonus_rate: 0,
       bonus: 0,
       bonus_theoretical: 0,
       bonus_real: 0,
@@ -356,6 +371,14 @@ async function getTeamData(
     payment_percentage: paymentPercentage,
     threshold: THRESHOLD,
     threshold_met: thresholdMet,
+    // Soglie dettagliate
+    threshold_tier1: THRESHOLD_TIER1,
+    threshold_tier1_met: revenueMonth >= THRESHOLD_TIER1,
+    threshold_tier1_rate: 2.5,
+    threshold_tier2: THRESHOLD,
+    threshold_tier2_met: revenueMonth >= THRESHOLD,
+    threshold_tier2_rate: 8,
+    current_bonus_rate: bonusRate * 100, // Converti in percentuale
     bonus: bonusReal, // Per retrocompatibilità, bonus = bonus reale
     bonus_theoretical: bonusTheoretical,
     bonus_real: bonusReal,

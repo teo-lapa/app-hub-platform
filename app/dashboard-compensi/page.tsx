@@ -20,6 +20,14 @@ interface SalespersonData {
   payment_percentage: number;
   threshold: number;
   threshold_met: boolean;
+  // Soglie dettagliate
+  threshold_tier1: number;
+  threshold_tier1_met: boolean;
+  threshold_tier1_rate: number;
+  threshold_tier2: number;
+  threshold_tier2_met: boolean;
+  threshold_tier2_rate: number;
+  current_bonus_rate: number;
   bonus: number;
   bonus_theoretical: number;
   bonus_real: number;
@@ -367,12 +375,18 @@ export default function DashboardCompensi() {
               <div className="space-y-4 md:space-y-0 md:flex md:gap-6">
                 <div className="flex-1">
                   <p className="text-xs uppercase text-slate-500 mb-2">Fatturato Emesso</p>
-                  <p className={`text-2xl md:text-3xl font-bold ${person.threshold_met ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`text-2xl md:text-3xl font-bold ${person.threshold_tier2_met ? 'text-green-600' : person.threshold_tier1_met ? 'text-yellow-600' : 'text-red-600'}`}>
                     {formatCurrency(person.revenue_current_month)}
                   </p>
-                  <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs md:text-sm font-medium ${person.threshold_met ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {person.threshold_met ? '✅ Sopra soglia' : '❌ Sotto soglia'} ({formatCurrency(person.threshold)})
-                  </span>
+                  {/* Due soglie */}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${person.threshold_tier1_met ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {person.threshold_tier1_met ? '✅' : '❌'} {formatCurrency(person.threshold_tier1)} → {person.threshold_tier1_rate}%
+                    </span>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${person.threshold_tier2_met ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {person.threshold_tier2_met ? '✅' : '❌'} {formatCurrency(person.threshold_tier2)} → {person.threshold_tier2_rate}%
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex-1 pt-4 md:pt-0 border-t-2 md:border-t-0 md:border-l-2 border-slate-200 md:pl-6">
