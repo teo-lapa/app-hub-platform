@@ -197,6 +197,270 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (action === 'employee-bonus') {
+      // Ottiene il bonus CUMULATIVO disponibile per un dipendente
+      // Somma bonus_real di tutti i mesi precedenti e sottrae i bonus già ritirati
+      const employeeId = searchParams.get('employeeId');
+      const month = searchParams.get('month'); // formato YYYY-MM (mese della busta paga)
+
+      if (!employeeId) {
+        return NextResponse.json({ error: 'employeeId richiesto' }, { status: 400 });
+      }
+
+      // 1. Trova il dipendente e il suo user_id
+      const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['id', '=', parseInt(employeeId)]],
+        fields: ['id', 'name', 'user_id'],
+      });
+
+      if (!employee || employee.length === 0) {
+        return NextResponse.json({ error: 'Dipendente non trovato' }, { status: 404 });
+      }
+
+      const userId = employee[0].user_id ? employee[0].user_id[0] : null;
+
+      if (!userId) {
+        return NextResponse.json({
+          success: true,
+          bonus_available: 0,
+          bonus_withdrawn: 0,
+          bonus_remaining: 0,
+          message: 'Dipendente senza user_id (non è un venditore)',
+        });
+      }
+
+      // 2. Trova il team di vendita del venditore
+      const teamMembers = await callOdoo(cookies, 'crm.team.member', 'search_read', [], {
+        domain: [['user_id', '=', userId]],
+        fields: ['id', 'crm_team_id', 'user_id'],
+      });
+
+      if (!teamMembers || teamMembers.length === 0) {
+        return NextResponse.json({
+          success: true,
+          bonus_available: 0,
+          bonus_withdrawn: 0,
+          bonus_remaining: 0,
+          message: 'Venditore non assegnato a nessun team',
+        });
+      }
+
+      const teamId = teamMembers[0].crm_team_id[0];
+      const teamName = teamMembers[0].crm_team_id[1];
+
+      // 3. Determina il range di mesi da calcolare (da Novembre 2024 al mese precedente alla busta)
+      // Il sistema parte da Novembre 2024
+      const startMonth = new Date(2024, 10, 1); // Novembre 2024 (mese 10 = novembre in JS)
+
+      let endMonth: Date;
+      if (month) {
+        const [year, monthNum] = month.split('-').map(Number);
+        endMonth = new Date(year, monthNum - 2, 1); // Mese precedente alla busta paga
+      } else {
+        const now = new Date();
+        endMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      }
+
+      // 4. Calcola bonus_real totale da tutti i mesi precedenti
+      let totalBonusReal = 0;
+      const monthsDetail: Array<{ month: string; bonus_theoretical: number; bonus_real: number; payment_percentage: number }> = [];
+      const today = new Date();
+
+      let currentMonth = new Date(startMonth);
+      while (currentMonth <= endMonth) {
+        const monthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        const monthsBack = (today.getFullYear() - currentMonth.getFullYear()) * 12 + (today.getMonth() - currentMonth.getMonth());
+
+        try {
+          const compensiUrl = new URL(request.url);
+          compensiUrl.pathname = '/api/compensi-venditori';
+          compensiUrl.searchParams.set('teamId', teamId.toString());
+          compensiUrl.searchParams.set('monthsBack', monthsBack.toString());
+
+          const compensiResponse = await fetch(compensiUrl.toString(), {
+            headers: { 'cookie': request.headers.get('cookie') || '' },
+          });
+
+          if (compensiResponse.ok) {
+            const compensiData = await compensiResponse.json();
+            const teamData = compensiData.teams?.[0];
+
+            if (teamData && teamData.bonus_real > 0) {
+              totalBonusReal += teamData.bonus_real;
+              monthsDetail.push({
+                month: monthStr,
+                bonus_theoretical: teamData.bonus_theoretical || 0,
+                bonus_real: teamData.bonus_real || 0,
+                payment_percentage: teamData.payment_percentage || 0,
+              });
+            }
+          }
+        } catch (e) {
+          console.error(`Errore calcolo bonus per ${monthStr}:`, e);
+        }
+
+        // Passa al mese successivo
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
+
+      // 5. Calcola bonus già ritirati dalle buste paga precedenti
+      // Cerca tutte le buste paga di questo dipendente con linea BONUS_VENDITE
+      const payslips = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+        domain: [
+          ['employee_id', '=', parseInt(employeeId)],
+          ['date_from', '>=', '2024-11-01'], // Dal mese di partenza del sistema
+        ],
+        fields: ['id', 'name', 'date_from'],
+      });
+
+      let totalBonusWithdrawn = 0;
+      for (const payslip of payslips) {
+        const lines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
+          domain: [
+            ['slip_id', '=', payslip.id],
+            ['code', '=', 'BONUS_VENDITE'],
+          ],
+          fields: ['amount'],
+        });
+
+        for (const line of lines) {
+          totalBonusWithdrawn += line.amount || 0;
+        }
+      }
+
+      // 6. Calcola bonus rimanente (disponibile - ritirato)
+      const bonusRemaining = Math.max(0, totalBonusReal - totalBonusWithdrawn);
+
+      // 7. Restituisce il riepilogo completo
+      return NextResponse.json({
+        success: true,
+        employee: {
+          id: employee[0].id,
+          name: employee[0].name,
+          user_id: userId,
+        },
+        team: {
+          id: teamId,
+          name: teamName,
+        },
+        period: {
+          from: '2024-11',
+          to: `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, '0')}`,
+        },
+        bonus_total_real: totalBonusReal,     // Totale bonus maturati
+        bonus_withdrawn: totalBonusWithdrawn,  // Totale già ritirato in buste paga
+        bonus_available: bonusRemaining,       // Disponibile da ritirare (pre-compilato nel campo)
+        months_detail: monthsDetail,           // Dettaglio per mese
+      });
+    }
+
+    if (action === 'team-bonus-withdrawn') {
+      // Ottiene il totale bonus ritirati per un team di vendita
+      // Usato nella Dashboard Compensi per mostrare "Bonus Ritirato"
+      const teamId = searchParams.get('teamId');
+
+      if (!teamId) {
+        return NextResponse.json({ error: 'teamId richiesto' }, { status: 400 });
+      }
+
+      // 1. Trova tutti i membri del team
+      const teamMembers = await callOdoo(cookies, 'crm.team.member', 'search_read', [], {
+        domain: [['crm_team_id', '=', parseInt(teamId)]],
+        fields: ['id', 'user_id'],
+      });
+
+      if (!teamMembers || teamMembers.length === 0) {
+        return NextResponse.json({
+          success: true,
+          team_id: parseInt(teamId),
+          bonus_withdrawn: 0,
+          members_count: 0,
+          message: 'Nessun membro nel team',
+        });
+      }
+
+      // 2. Trova gli employee_id corrispondenti ai user_id
+      const userIds = teamMembers
+        .filter((m: any) => m.user_id)
+        .map((m: any) => m.user_id[0]);
+
+      if (userIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          team_id: parseInt(teamId),
+          bonus_withdrawn: 0,
+          members_count: 0,
+          message: 'Nessun venditore con user_id nel team',
+        });
+      }
+
+      const employees = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['user_id', 'in', userIds]],
+        fields: ['id', 'name', 'user_id'],
+      });
+
+      const employeeIds = employees.map((e: any) => e.id);
+
+      if (employeeIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          team_id: parseInt(teamId),
+          bonus_withdrawn: 0,
+          members_count: 0,
+          message: 'Nessun dipendente HR collegato ai venditori',
+        });
+      }
+
+      // 3. Cerca tutte le buste paga dei dipendenti del team dal 1 Novembre 2024
+      const payslips = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+        domain: [
+          ['employee_id', 'in', employeeIds],
+          ['date_from', '>=', '2024-11-01'],
+        ],
+        fields: ['id', 'name', 'employee_id', 'date_from'],
+      });
+
+      // 4. Somma tutti i bonus BONUS_VENDITE
+      let totalBonusWithdrawn = 0;
+      const withdrawnDetails: Array<{
+        employee: string;
+        payslip: string;
+        date: string;
+        amount: number;
+      }> = [];
+
+      for (const payslip of payslips) {
+        const lines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
+          domain: [
+            ['slip_id', '=', payslip.id],
+            ['code', '=', 'BONUS_VENDITE'],
+          ],
+          fields: ['amount'],
+        });
+
+        for (const line of lines) {
+          if (line.amount > 0) {
+            totalBonusWithdrawn += line.amount;
+            withdrawnDetails.push({
+              employee: payslip.employee_id[1],
+              payslip: payslip.name,
+              date: payslip.date_from,
+              amount: line.amount,
+            });
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        team_id: parseInt(teamId),
+        bonus_withdrawn: totalBonusWithdrawn,
+        members_count: employees.length,
+        payslips_count: payslips.length,
+        details: withdrawnDetails,
+      });
+    }
+
     // Default: mostra info generali
     return NextResponse.json({
       success: true,
@@ -206,6 +470,8 @@ export async function GET(request: NextRequest) {
         'payslips - Lista buste paga',
         'payslip-lines?payslipId=X - Linee di una busta paga',
         'employees - Lista dipendenti',
+        'employee-bonus?employeeId=X&month=YYYY-MM - Bonus disponibile per dipendente',
+        'team-bonus-withdrawn?teamId=X - Bonus ritirati per team',
       ],
     });
 

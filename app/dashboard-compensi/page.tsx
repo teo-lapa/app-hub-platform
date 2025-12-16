@@ -54,6 +54,16 @@ interface DashboardData {
   salespeople: SalespersonData[];
 }
 
+interface BonusWithdrawnData {
+  bonus_withdrawn: number;
+  details?: Array<{
+    employee: string;
+    payslip: string;
+    date: string;
+    amount: number;
+  }>;
+}
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('it-CH', {
     style: 'currency',
@@ -80,10 +90,42 @@ export default function DashboardCompensi() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [showAllClients, setShowAllClients] = useState<Record<string, boolean>>({}); // Traccia quali sezioni mostrano tutti i clienti
   const [monthsBack, setMonthsBack] = useState(0); // 0 = mese corrente, 1 = -1 mese, 2 = -2 mesi
+  const [bonusWithdrawn, setBonusWithdrawn] = useState<Record<number, BonusWithdrawnData>>({}); // Bonus ritirati per team
+  const [loadingBonus, setLoadingBonus] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     loadData();
   }, [monthsBack]); // Ricarica quando cambia monthsBack
+
+  // Carica bonus ritirati per ogni team
+  useEffect(() => {
+    if (data?.salespeople) {
+      data.salespeople.forEach((team) => {
+        loadBonusWithdrawn(team.id);
+      });
+    }
+  }, [data?.salespeople]);
+
+  const loadBonusWithdrawn = async (teamId: number) => {
+    setLoadingBonus((prev) => ({ ...prev, [teamId]: true }));
+    try {
+      const response = await fetch(`/api/hr-payslip?action=team-bonus-withdrawn&teamId=${teamId}`);
+      if (response.ok) {
+        const result = await response.json();
+        setBonusWithdrawn((prev) => ({
+          ...prev,
+          [teamId]: {
+            bonus_withdrawn: result.bonus_withdrawn || 0,
+            details: result.details || [],
+          },
+        }));
+      }
+    } catch (err) {
+      console.error(`Errore caricamento bonus ritirato team ${teamId}:`, err);
+    } finally {
+      setLoadingBonus((prev) => ({ ...prev, [teamId]: false }));
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -365,7 +407,7 @@ export default function DashboardCompensi() {
               </div>
 
               {/* Bonus Section - Ottimizzato Mobile */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 <div className="bg-slate-50 rounded-lg p-3 md:p-4 border-2 border-slate-200">
                   <p className="text-xs uppercase text-slate-500 mb-1">Bonus Teorico (100% pagato)</p>
                   <p className="text-xl md:text-2xl font-bold text-slate-600">
@@ -380,6 +422,36 @@ export default function DashboardCompensi() {
                   <span className={`inline-block mt-2 px-2 md:px-3 py-1 rounded-full text-xs font-medium ${person.bonus_real > 0 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-600'}`}>
                     {person.bonus_real > 0 ? '🎉 Bonus Attivo' : '⏸️ Nessun Bonus'}
                   </span>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 md:p-4 border-2 border-green-300">
+                  <p className="text-xs uppercase text-green-700 mb-1">✅ Bonus Ritirato (Buste Paga)</p>
+                  {loadingBonus[person.id] ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+                      <span className="text-sm text-green-600">Caricamento...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xl md:text-2xl font-bold text-green-600">
+                        {formatCurrency(bonusWithdrawn[person.id]?.bonus_withdrawn || 0)}
+                      </p>
+                      {bonusWithdrawn[person.id]?.details && bonusWithdrawn[person.id].details!.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-green-600 cursor-pointer hover:text-green-800">
+                            {bonusWithdrawn[person.id].details!.length} pagamenti
+                          </summary>
+                          <div className="mt-2 space-y-1 max-h-24 overflow-y-auto text-xs">
+                            {bonusWithdrawn[person.id].details!.map((d, i) => (
+                              <div key={i} className="flex justify-between text-green-700">
+                                <span>{d.employee}</span>
+                                <span>{formatCurrency(d.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

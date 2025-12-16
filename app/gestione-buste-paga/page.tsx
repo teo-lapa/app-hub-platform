@@ -84,10 +84,20 @@ export default function GestioneBustePagaPage() {
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [extractedNet, setExtractedNet] = useState<string>('');
   const [bonusAmount, setBonusAmount] = useState<string>('');
+  const [bonusAvailable, setBonusAvailable] = useState<number>(0);
+  const [bonusInfo, setBonusInfo] = useState<{
+    team?: string;
+    periodFrom?: string;
+    periodTo?: string;
+    totalReal?: number;    // Totale bonus maturati
+    withdrawn?: number;    // Già ritirato
+    monthsDetail?: Array<{ month: string; bonus_real: number; payment_percentage: number }>;
+  } | null>(null);
   const [paidDate, setPaidDate] = useState<string>('');
   const [closingDate, setClosingDate] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoadingBonus, setIsLoadingBonus] = useState(false);
 
   // Filtro mese
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -208,6 +218,49 @@ export default function GestioneBustePagaPage() {
       loadPayslipLines(selectedPayslip.id);
     }
   }, [selectedPayslip, loadPayslipLines]);
+
+  // Carica bonus disponibile quando cambia dipendente o mese
+  const loadEmployeeBonus = useCallback(async (employeeId: number, month: string) => {
+    setIsLoadingBonus(true);
+    setBonusAvailable(0);
+    setBonusInfo(null);
+
+    try {
+      const response = await fetch(
+        `/api/hr-payslip?action=employee-bonus&employeeId=${employeeId}&month=${month}`,
+        { credentials: 'include' }
+      );
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setBonusAvailable(data.bonus_available || 0);
+        setBonusInfo({
+          team: data.team?.name,
+          periodFrom: data.period?.from,
+          periodTo: data.period?.to,
+          totalReal: data.bonus_total_real || 0,
+          withdrawn: data.bonus_withdrawn || 0,
+          monthsDetail: data.months_detail || [],
+        });
+
+        // Pre-compila il campo bonus se c'è bonus disponibile
+        if (data.bonus_available > 0) {
+          setBonusAmount(data.bonus_available.toString());
+        }
+      }
+    } catch (err: any) {
+      console.error('Errore caricamento bonus:', err);
+    } finally {
+      setIsLoadingBonus(false);
+    }
+  }, []);
+
+  // Quando si apre il form nuova busta paga, carica il bonus
+  useEffect(() => {
+    if (showNewPayslipForm && selectedEmployee && selectedMonth) {
+      loadEmployeeBonus(selectedEmployee.id, selectedMonth);
+    }
+  }, [showNewPayslipForm, selectedEmployee, selectedMonth, loadEmployeeBonus]);
 
   // Gestione upload PDF
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -618,8 +671,65 @@ export default function GestioneBustePagaPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   <Award className="w-4 h-4 inline mr-1 text-yellow-400" />
-                  Bonus Vendite (CHF) - opzionale
+                  Bonus Vendite (CHF)
                 </label>
+
+                {/* Info bonus disponibile */}
+                {isLoadingBonus ? (
+                  <div className="flex items-center gap-2 text-yellow-400 mb-2 p-3 bg-yellow-500/10 rounded-lg">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Calcolo bonus cumulativo in corso...</span>
+                  </div>
+                ) : bonusInfo ? (
+                  <div className="mb-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-2">
+                    {/* Header con team e periodo */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-yellow-400/70 text-xs">
+                        Team: {bonusInfo.team || 'N/D'} | Periodo: {bonusInfo.periodFrom} → {bonusInfo.periodTo}
+                      </span>
+                    </div>
+
+                    {/* Riepilogo bonus */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-gray-800/50 rounded p-2">
+                        <p className="text-xs text-gray-400">Maturato</p>
+                        <p className="text-sm font-bold text-white">
+                          CHF {(bonusInfo.totalReal || 0).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-2">
+                        <p className="text-xs text-gray-400">Ritirato</p>
+                        <p className="text-sm font-bold text-red-400">
+                          CHF {(bonusInfo.withdrawn || 0).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="bg-yellow-500/20 rounded p-2">
+                        <p className="text-xs text-yellow-400">Disponibile</p>
+                        <p className="text-sm font-bold text-yellow-400">
+                          CHF {bonusAvailable.toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Dettaglio mesi (collapsible) */}
+                    {bonusInfo.monthsDetail && bonusInfo.monthsDetail.length > 0 && (
+                      <details className="text-xs">
+                        <summary className="text-yellow-400/70 cursor-pointer hover:text-yellow-400">
+                          Dettaglio per mese ({bonusInfo.monthsDetail.length} mesi con bonus)
+                        </summary>
+                        <div className="mt-2 space-y-1 max-h-24 overflow-y-auto">
+                          {bonusInfo.monthsDetail.map((m, i) => (
+                            <div key={i} className="flex justify-between text-gray-400">
+                              <span>{m.month}</span>
+                              <span>CHF {m.bonus_real.toLocaleString('it-CH', { minimumFractionDigits: 2 })} ({m.payment_percentage}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">CHF</span>
                   <input
@@ -631,6 +741,11 @@ export default function GestioneBustePagaPage() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500"
                   />
                 </div>
+                {bonusAvailable > 0 && bonusAmount !== bonusAvailable.toString() && (
+                  <p className="text-xs text-yellow-400/70 mt-1">
+                    Bonus pre-compilato da mese precedente. Modifica se necessario.
+                  </p>
+                )}
               </div>
 
               {/* Date */}
