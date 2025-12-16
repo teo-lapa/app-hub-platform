@@ -338,6 +338,19 @@ export async function POST(request: NextRequest) {
       const dateFrom = new Date(year, monthNum - 1, 1).toISOString().split('T')[0];
       const dateTo = new Date(year, monthNum, 0).toISOString().split('T')[0];
 
+      // Trova il nome del dipendente per creare il nome della busta paga
+      const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['id', '=', employeeId]],
+        fields: ['id', 'name'],
+        limit: 1,
+      });
+      const employeeName = employee[0]?.name || `Dipendente ${employeeId}`;
+
+      // Crea il nome della busta paga
+      const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                         'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+      const payslipName = `Busta Paga ${monthNames[monthNum - 1]} ${year} - ${employeeName}`;
+
       // Trova la struttura stipendio default
       let structId = null;
       try {
@@ -353,6 +366,7 @@ export async function POST(request: NextRequest) {
 
       // Crea la busta paga
       const payslipData: any = {
+        name: payslipName,
         employee_id: employeeId,
         date_from: dateFrom,
         date_to: dateTo,

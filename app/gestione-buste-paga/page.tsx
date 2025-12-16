@@ -164,27 +164,8 @@ export default function GestioneBustePagaPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
-  useEffect(() => {
-    if (selectedEmployee) {
-      loadPayslips(selectedEmployee.id);
-    } else {
-      loadPayslips();
-    }
-  }, [selectedEmployee, selectedMonth, loadPayslips]);
-
-  useEffect(() => {
-    if (selectedPayslip) {
-      loadPayslipLines(selectedPayslip.id);
-    }
-  }, [selectedPayslip, loadPayslipLines]);
-
-  // Crea regola Bonus Vendite
-  const createBonusRule = async () => {
-    setError(null);
+  // Crea regola Bonus Vendite automaticamente se non esiste
+  const ensureBonusRuleExists = useCallback(async () => {
     try {
       const response = await fetch('/api/hr-payslip', {
         method: 'POST',
@@ -199,18 +180,32 @@ export default function GestioneBustePagaPage() {
       });
 
       const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || 'Errore creazione regola');
-
-      setSuccess(data.message || 'Regola Bonus Vendite creata!');
-      loadInitialData();
-
-      setTimeout(() => setSuccess(null), 3000);
-
+      if (response.ok) {
+        console.log('Regola Bonus Vendite:', data.message);
+      }
     } catch (err: any) {
-      setError(err.message);
+      console.error('Errore creazione regola bonus:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadInitialData();
+    ensureBonusRuleExists(); // Crea automaticamente la regola se non esiste
+  }, [loadInitialData, ensureBonusRuleExists]);
+
+  useEffect(() => {
+    if (selectedEmployee) {
+      loadPayslips(selectedEmployee.id);
+    } else {
+      loadPayslips();
+    }
+  }, [selectedEmployee, selectedMonth, loadPayslips]);
+
+  useEffect(() => {
+    if (selectedPayslip) {
+      loadPayslipLines(selectedPayslip.id);
+    }
+  }, [selectedPayslip, loadPayslipLines]);
 
   // Gestione upload PDF
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,9 +305,6 @@ export default function GestioneBustePagaPage() {
       setIsCreating(false);
     }
   };
-
-  // Verifica se esiste la regola Bonus Vendite
-  const hasBonusRule = salaryRules.some(r => r.code === 'BONUS_VENDITE');
 
   // Filtra dipendenti per azienda
   const filteredEmployees = employees.filter(emp => {
@@ -442,27 +434,7 @@ export default function GestioneBustePagaPage() {
         )}
       </AnimatePresence>
 
-      {/* Avviso regola Bonus Vendite */}
-      {!hasBonusRule && (
-        <div className="max-w-7xl mx-auto mb-4">
-          <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-400" />
-              <p className="text-yellow-200">
-                La regola &quot;Bonus Vendite&quot; non esiste ancora.
-              </p>
-            </div>
-            <button
-              onClick={createBonusRule}
-              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Crea Regola
-            </button>
-          </div>
-        </div>
-      )}
-
+      
       {/* Layout principale */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Colonna 1: Dipendenti */}
