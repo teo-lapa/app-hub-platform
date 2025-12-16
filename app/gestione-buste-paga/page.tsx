@@ -635,7 +635,7 @@ export default function GestioneBustePagaPage() {
 
               {/* Date */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Data Chiusura */}
+                {/* Data Chiusura (paid_date in Odoo) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1 text-blue-400" />
@@ -649,11 +649,11 @@ export default function GestioneBustePagaPage() {
                   />
                 </div>
 
-                {/* Data Pagamento */}
+                {/* Data Conto (date in Odoo) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1 text-purple-400" />
-                    Data Pagamento
+                    Data Conto
                   </label>
                   <input
                     type="date"

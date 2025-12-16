@@ -399,13 +399,13 @@ export async function POST(request: NextRequest) {
       };
 
       // Aggiungi date opzionali se fornite
-      // paid_date = Data di pagamento
-      // date_conto = Data Conto (data chiusura contabile)
-      if (paidDate) {
-        payslipData.paid_date = paidDate;
-      }
+      // paid_date = Data Chiusura (Close Date)
+      // date = Data Conto (Date Account)
       if (closingDate) {
-        payslipData.date_conto = closingDate;
+        payslipData.paid_date = closingDate;
+      }
+      if (paidDate) {
+        payslipData.date = paidDate;
       }
 
       if (structId) {
