@@ -785,7 +785,7 @@ export const standaloneApps: App[] = [
     badge: 'AZIENDALE',
     category: 'Vendite',
     url: '/dashboard-compensi',
-    requiredRole: 'admin',
+    requiredRole: 'dipendente',
     isNew: true,
     isPopular: true,
     controlStatus: 'approved',
