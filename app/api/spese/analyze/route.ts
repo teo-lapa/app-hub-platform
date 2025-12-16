@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Chiama Gemini Vision
-    const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+    const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const imagePart = {
       inlineData: {
