@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
 
       const contracts = await callOdoo(cookies, 'hr.contract', 'search_read', [], {
         domain: domain,
-        fields: ['id', 'name', 'employee_id', 'struct_id', 'wage', 'state', 'date_start', 'date_end'],
+        fields: ['id', 'name', 'employee_id', 'wage', 'state', 'date_start', 'date_end'],
         order: 'date_start desc',
       });
 
@@ -338,26 +338,17 @@ export async function POST(request: NextRequest) {
       const dateFrom = new Date(year, monthNum - 1, 1).toISOString().split('T')[0];
       const dateTo = new Date(year, monthNum, 0).toISOString().split('T')[0];
 
-      // Trova il contratto del dipendente per ottenere la struttura
-      const contracts = await callOdoo(cookies, 'hr.contract', 'search_read', [], {
-        domain: [
-          ['employee_id', '=', employeeId],
-          ['state', '=', 'open']
-        ],
-        fields: ['id', 'struct_id'],
-        limit: 1,
-      });
-
-      let structId = contracts[0]?.struct_id?.[0];
-
-      // Se non ha contratto, usa la struttura default
-      if (!structId) {
+      // Trova la struttura stipendio default
+      let structId = null;
+      try {
         const structures = await callOdoo(cookies, 'hr.payroll.structure', 'search_read', [], {
           domain: [],
           fields: ['id'],
           limit: 1,
         });
         structId = structures[0]?.id;
+      } catch (e) {
+        console.log('Strutture payroll non disponibili, continuo senza');
       }
 
       // Crea la busta paga
