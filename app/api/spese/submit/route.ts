@@ -16,16 +16,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
-// Mapping categorie AI → product.product di Odoo
-// Questi ID dovranno essere configurati in base al tuo Odoo
-const CATEGORY_MAPPING: Record<string, string> = {
-  'carburante': 'Carburante',
-  'cibo': 'Pasti',
-  'trasporto': 'Trasporti',
-  'alloggio': 'Alloggio',
-  'materiale': 'Materiale',
-  'altro': 'Spese Varie'
+// Mapping categorie AI → nomi prodotti in Odoo (per LAPA)
+// Le categorie vengono riconosciute da Gemini e mappate ai prodotti Odoo
+const CATEGORY_MAPPING: Record<string, string[]> = {
+  'carburante': ['Carburante Lapa', 'Carburante', 'Gasolio', 'Benzina'],
+  'cibo': ['Pranzo / viaggi Lapa', 'Pranzo', 'Pasti', 'Ristorante'],
+  'trasporto': ['Pranzo / viaggi Lapa', 'Trasporti', 'Viaggi'],
+  'alloggio': ['Pranzo / viaggi Lapa', 'Alloggio', 'Hotel'],
+  'materiale': ['Spese varie Lapa', 'Spese Varie', 'Materiale'],
+  'altro': ['Spese varie Lapa', 'Spese Varie']
 };
+
+// Funzione per trovare la categoria Odoo migliore
+function getCategorySearchTerms(aiCategory: string): string[] {
+  return CATEGORY_MAPPING[aiCategory] || CATEGORY_MAPPING['altro'];
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -208,29 +213,35 @@ export async function POST(request: NextRequest) {
     const companyId = employee.company_id ? employee.company_id[0] : false;
     let productId = categoryId;
 
-    if (!productId && categoryName) {
-      // Cerca per nome nella stessa azienda del dipendente
-      // Usa '|' per cercare sia prodotti della stessa azienda che prodotti senza azienda (condivisi)
-      const products = await callOdoo(cookies, 'product.product', 'search_read', [], {
-        domain: [
-          ['can_be_expensed', '=', true],
-          ['name', 'ilike', categoryName],
-          '|',
-          ['company_id', '=', companyId],
-          ['company_id', '=', false]
-        ],
-        fields: ['id', 'name', 'company_id'],
-        limit: 1
-      });
+    // Ottieni i termini di ricerca basati sulla categoria AI
+    const searchTerms = getCategorySearchTerms(categoryName || 'altro');
+    console.log('🔍 [SPESE-SUBMIT] Categoria AI:', categoryName, '→ Cerco:', searchTerms);
 
-      if (products && products.length > 0) {
-        productId = products[0].id;
-        console.log('✅ [SPESE-SUBMIT] Categoria trovata:', products[0].name, 'company:', products[0].company_id);
+    if (!productId) {
+      // Cerca il prodotto giusto provando ogni termine in ordine di priorità
+      for (const searchTerm of searchTerms) {
+        const products = await callOdoo(cookies, 'product.product', 'search_read', [], {
+          domain: [
+            ['can_be_expensed', '=', true],
+            ['name', 'ilike', searchTerm],
+            '|',
+            ['company_id', '=', companyId],
+            ['company_id', '=', false]
+          ],
+          fields: ['id', 'name', 'company_id'],
+          limit: 1
+        });
+
+        if (products && products.length > 0) {
+          productId = products[0].id;
+          console.log('✅ [SPESE-SUBMIT] Categoria trovata:', products[0].name, '(cercato:', searchTerm, ')');
+          break;
+        }
       }
     }
 
     if (!productId) {
-      // Usa categoria "Spese Varie" come fallback (stessa azienda o condivisa)
+      // Fallback finale: prendi qualsiasi categoria spese disponibile
       const fallbackProducts = await callOdoo(cookies, 'product.product', 'search_read', [], {
         domain: [
           ['can_be_expensed', '=', true],
@@ -244,7 +255,7 @@ export async function POST(request: NextRequest) {
 
       if (fallbackProducts && fallbackProducts.length > 0) {
         productId = fallbackProducts[0].id;
-        console.log('⚠️ [SPESE-SUBMIT] Usando categoria default:', fallbackProducts[0].name);
+        console.log('⚠️ [SPESE-SUBMIT] Usando categoria fallback:', fallbackProducts[0].name);
       } else {
         return NextResponse.json({
           success: false,
