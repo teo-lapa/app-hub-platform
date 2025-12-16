@@ -133,6 +133,31 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (action === 'payslip-fields') {
+      // Ottiene la definizione di tutti i campi del modello hr.payslip
+      const fields = await callOdoo(cookies, 'hr.payslip', 'fields_get', [], {
+        attributes: ['string', 'type', 'required', 'readonly'],
+      });
+
+      // Filtra solo i campi relativi alle date
+      const dateFields = Object.entries(fields)
+        .filter(([key, value]: [string, any]) =>
+          value.type === 'date' || value.type === 'datetime' ||
+          key.includes('date') || key.includes('paid')
+        )
+        .reduce((acc, [key, value]) => {
+          acc[key] = value;
+          return acc;
+        }, {} as Record<string, any>);
+
+      return NextResponse.json({
+        success: true,
+        action: 'payslip-fields',
+        dateFields: dateFields,
+        allFields: fields,
+      });
+    }
+
     if (action === 'contracts') {
       // Lista contratti per vedere la struttura stipendio associata
       const employeeId = searchParams.get('employeeId');
