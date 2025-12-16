@@ -204,30 +204,41 @@ export async function POST(request: NextRequest) {
     console.log('✅ [SPESE-SUBMIT] Dipendente trovato:', employee.name);
 
     // 2. Trova o determina la categoria spesa (product.product)
+    // IMPORTANTE: Filtra per company_id per evitare errori multi-company
+    const companyId = employee.company_id ? employee.company_id[0] : false;
     let productId = categoryId;
 
     if (!productId && categoryName) {
-      // Cerca per nome
+      // Cerca per nome nella stessa azienda del dipendente
+      // Usa '|' per cercare sia prodotti della stessa azienda che prodotti senza azienda (condivisi)
       const products = await callOdoo(cookies, 'product.product', 'search_read', [], {
         domain: [
           ['can_be_expensed', '=', true],
-          ['name', 'ilike', categoryName]
+          ['name', 'ilike', categoryName],
+          '|',
+          ['company_id', '=', companyId],
+          ['company_id', '=', false]
         ],
-        fields: ['id', 'name'],
+        fields: ['id', 'name', 'company_id'],
         limit: 1
       });
 
       if (products && products.length > 0) {
         productId = products[0].id;
-        console.log('✅ [SPESE-SUBMIT] Categoria trovata:', products[0].name);
+        console.log('✅ [SPESE-SUBMIT] Categoria trovata:', products[0].name, 'company:', products[0].company_id);
       }
     }
 
     if (!productId) {
-      // Usa categoria "Spese Varie" come fallback
+      // Usa categoria "Spese Varie" come fallback (stessa azienda o condivisa)
       const fallbackProducts = await callOdoo(cookies, 'product.product', 'search_read', [], {
-        domain: [['can_be_expensed', '=', true]],
-        fields: ['id', 'name'],
+        domain: [
+          ['can_be_expensed', '=', true],
+          '|',
+          ['company_id', '=', companyId],
+          ['company_id', '=', false]
+        ],
+        fields: ['id', 'name', 'company_id'],
         limit: 1
       });
 
@@ -237,10 +248,12 @@ export async function POST(request: NextRequest) {
       } else {
         return NextResponse.json({
           success: false,
-          error: 'Nessuna categoria spese configurata in Odoo'
+          error: `Nessuna categoria spese configurata in Odoo per l'azienda ${employee.company_id ? employee.company_id[1] : 'N/A'}`
         }, { status: 400 });
       }
     }
+
+    console.log('📦 [SPESE-SUBMIT] Usando product_id:', productId, 'per company_id:', companyId);
 
     // 3. Costruisci la descrizione completa
     let fullDescription = storeName || '';
