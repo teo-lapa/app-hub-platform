@@ -100,10 +100,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'employees') {
-      // Lista dipendenti con il loro user_id per mapping con sales team
+      // Lista dipendenti con il loro user_id e company_id per mapping con sales team
       const employees = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
         domain: [['active', '=', true]],
-        fields: ['id', 'name', 'user_id', 'department_id', 'job_title', 'work_email'],
+        fields: ['id', 'name', 'user_id', 'department_id', 'job_title', 'work_email', 'company_id'],
         order: 'name',
       });
 
@@ -112,6 +112,63 @@ export async function GET(request: NextRequest) {
         action: 'employees',
         count: employees.length,
         employees: employees,
+      });
+    }
+
+    if (action === 'payslip-structure') {
+      // Esplora la struttura completa di una busta paga per capire i campi
+      const payslipId = searchParams.get('payslipId');
+
+      if (!payslipId) {
+        return NextResponse.json({ error: 'payslipId richiesto' }, { status: 400 });
+      }
+
+      // Leggi tutti i campi della busta paga
+      const payslip = await callOdoo(cookies, 'hr.payslip', 'read', [[parseInt(payslipId)]]);
+
+      return NextResponse.json({
+        success: true,
+        action: 'payslip-structure',
+        payslip: payslip[0],
+      });
+    }
+
+    if (action === 'contracts') {
+      // Lista contratti per vedere la struttura stipendio associata
+      const employeeId = searchParams.get('employeeId');
+
+      let domain: any[] = [['state', '=', 'open']];
+      if (employeeId) {
+        domain.push(['employee_id', '=', parseInt(employeeId)]);
+      }
+
+      const contracts = await callOdoo(cookies, 'hr.contract', 'search_read', [], {
+        domain: domain,
+        fields: ['id', 'name', 'employee_id', 'struct_id', 'wage', 'state', 'date_start', 'date_end'],
+        order: 'date_start desc',
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: 'contracts',
+        count: contracts.length,
+        contracts: contracts,
+      });
+    }
+
+    if (action === 'structures') {
+      // Lista strutture stipendio disponibili
+      const structures = await callOdoo(cookies, 'hr.payroll.structure', 'search_read', [], {
+        domain: [],
+        fields: ['id', 'name', 'code', 'rule_ids'],
+        order: 'name',
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: 'structures',
+        count: structures.length,
+        structures: structures,
       });
     }
 
@@ -263,6 +320,132 @@ export async function POST(request: NextRequest) {
         lineId: lineId,
         payslipId: payslipId,
         amount: amount,
+      });
+    }
+
+    if (action === 'create-payslip') {
+      // Crea una nuova busta paga con netto, bonus opzionale e PDF allegato
+      const { employeeId, month, netAmount, bonusAmount, pdfBase64, pdfFilename } = body;
+
+      if (!employeeId || !month || netAmount === undefined) {
+        return NextResponse.json({
+          error: 'employeeId, month e netAmount sono richiesti'
+        }, { status: 400 });
+      }
+
+      // Calcola date dal mese (formato YYYY-MM)
+      const [year, monthNum] = month.split('-').map(Number);
+      const dateFrom = new Date(year, monthNum - 1, 1).toISOString().split('T')[0];
+      const dateTo = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+      // Trova il contratto del dipendente per ottenere la struttura
+      const contracts = await callOdoo(cookies, 'hr.contract', 'search_read', [], {
+        domain: [
+          ['employee_id', '=', employeeId],
+          ['state', '=', 'open']
+        ],
+        fields: ['id', 'struct_id'],
+        limit: 1,
+      });
+
+      let structId = contracts[0]?.struct_id?.[0];
+
+      // Se non ha contratto, usa la struttura default
+      if (!structId) {
+        const structures = await callOdoo(cookies, 'hr.payroll.structure', 'search_read', [], {
+          domain: [],
+          fields: ['id'],
+          limit: 1,
+        });
+        structId = structures[0]?.id;
+      }
+
+      // Crea la busta paga
+      const payslipData: any = {
+        employee_id: employeeId,
+        date_from: dateFrom,
+        date_to: dateTo,
+        state: 'draft',
+      };
+
+      if (structId) {
+        payslipData.struct_id = structId;
+      }
+
+      const payslipId = await callOdoo(cookies, 'hr.payslip', 'create', [payslipData]);
+
+      if (!payslipId) {
+        return NextResponse.json({ error: 'Errore creazione busta paga' }, { status: 500 });
+      }
+
+      // Trova la regola NET per aggiungere il netto
+      const netRule = await callOdoo(cookies, 'hr.salary.rule', 'search_read', [], {
+        domain: [['code', '=', 'NET']],
+        fields: ['id', 'name', 'code', 'category_id'],
+        limit: 1,
+      });
+
+      if (netRule && netRule.length > 0) {
+        // Aggiungi linea netto
+        await callOdoo(cookies, 'hr.payslip.line', 'create', [{
+          slip_id: payslipId,
+          name: 'Retribuzione netta',
+          code: 'NET',
+          category_id: netRule[0].category_id[0],
+          salary_rule_id: netRule[0].id,
+          amount: netAmount,
+          quantity: 1,
+          rate: 100,
+          sequence: 99,
+        }]);
+      }
+
+      // Se c'è bonus, aggiungilo
+      if (bonusAmount && bonusAmount > 0) {
+        const bonusRule = await callOdoo(cookies, 'hr.salary.rule', 'search_read', [], {
+          domain: [['code', '=', 'BONUS_VENDITE']],
+          fields: ['id', 'name', 'code', 'category_id'],
+        });
+
+        if (bonusRule && bonusRule.length > 0) {
+          await callOdoo(cookies, 'hr.payslip.line', 'create', [{
+            slip_id: payslipId,
+            name: 'Bonus Vendite',
+            code: 'BONUS_VENDITE',
+            category_id: bonusRule[0].category_id[0],
+            salary_rule_id: bonusRule[0].id,
+            amount: bonusAmount,
+            quantity: 1,
+            rate: 100,
+            sequence: 100,
+          }]);
+        }
+      }
+
+      // Se c'è PDF, allegalo alla busta paga
+      let attachmentId = null;
+      if (pdfBase64) {
+        attachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
+          name: pdfFilename || `Busta_Paga_${month}.pdf`,
+          type: 'binary',
+          datas: pdfBase64,
+          res_model: 'hr.payslip',
+          res_id: payslipId,
+          mimetype: 'application/pdf',
+        }]);
+      }
+
+      // Leggi la busta paga creata
+      const newPayslip = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+        domain: [['id', '=', payslipId]],
+        fields: ['id', 'name', 'employee_id', 'date_from', 'date_to', 'state', 'net_wage'],
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Busta paga creata con successo',
+        payslip: newPayslip[0],
+        attachmentId: attachmentId,
       });
     }
 

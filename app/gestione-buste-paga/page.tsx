@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -15,11 +15,12 @@ import {
   Building,
   Award,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Edit3,
+  Upload,
+  X,
   Save,
-  X
+  Eye,
+  Trash2,
+  FileUp
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -30,6 +31,7 @@ interface Employee {
   department_id: [number, string] | false;
   job_title: string | false;
   work_email: string | false;
+  company_id: [number, string] | false;
 }
 
 interface Payslip {
@@ -60,6 +62,7 @@ interface SalaryRule {
 
 export default function GestioneBustePagaPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Stati principali
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -75,10 +78,14 @@ export default function GestioneBustePagaPage() {
   const [payslipLines, setPayslipLines] = useState<PayslipLine[]>([]);
   const [loadingLines, setLoadingLines] = useState(false);
 
-  // Form bonus
-  const [showBonusForm, setShowBonusForm] = useState(false);
-  const [bonusAmount, setBonusAmount] = useState('');
-  const [savingBonus, setSavingBonus] = useState(false);
+  // Form nuova busta paga
+  const [showNewPayslipForm, setShowNewPayslipForm] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<string | null>(null);
+  const [extractedNet, setExtractedNet] = useState<string>('');
+  const [bonusAmount, setBonusAmount] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Filtro mese
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -86,13 +93,15 @@ export default function GestioneBustePagaPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
+  // Filtro azienda
+  const [companyFilter, setCompanyFilter] = useState<string>('all');
+
   // Carica dati iniziali
   const loadInitialData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Carica dipendenti e regole salariali in parallelo
       const [employeesRes, rulesRes] = await Promise.all([
         fetch('/api/hr-payslip?action=employees', { credentials: 'include' }),
         fetch('/api/hr-payslip?action=salary-rules', { credentials: 'include' })
@@ -106,9 +115,6 @@ export default function GestioneBustePagaPage() {
 
       setEmployees(employeesData.employees || []);
       setSalaryRules(rulesData.rules || []);
-
-      console.log('Dipendenti:', employeesData.employees?.length);
-      console.log('Regole salariali:', rulesData.rules?.length);
 
     } catch (err: any) {
       console.error('Errore:', err);
@@ -135,7 +141,6 @@ export default function GestioneBustePagaPage() {
 
     } catch (err: any) {
       console.error('Errore caricamento payslips:', err);
-      setError(err.message);
     }
   }, [selectedMonth]);
 
@@ -154,7 +159,6 @@ export default function GestioneBustePagaPage() {
 
     } catch (err: any) {
       console.error('Errore:', err);
-      setError(err.message);
     } finally {
       setLoadingLines(false);
     }
@@ -178,7 +182,7 @@ export default function GestioneBustePagaPage() {
     }
   }, [selectedPayslip, loadPayslipLines]);
 
-  // Crea regola Bonus Vendite se non esiste
+  // Crea regola Bonus Vendite
   const createBonusRule = async () => {
     setError(null);
     try {
@@ -190,7 +194,7 @@ export default function GestioneBustePagaPage() {
           action: 'create-salary-rule',
           name: 'Bonus Vendite',
           code: 'BONUS_VENDITE',
-          categoryId: 2 // Allowance
+          categoryId: 2
         })
       });
 
@@ -199,7 +203,7 @@ export default function GestioneBustePagaPage() {
       if (!response.ok) throw new Error(data.error || 'Errore creazione regola');
 
       setSuccess(data.message || 'Regola Bonus Vendite creata!');
-      loadInitialData(); // Ricarica le regole
+      loadInitialData();
 
       setTimeout(() => setSuccess(null), 3000);
 
@@ -208,52 +212,123 @@ export default function GestioneBustePagaPage() {
     }
   };
 
-  // Aggiungi bonus a busta paga
-  const addBonusToPayslip = async () => {
-    if (!selectedPayslip || !bonusAmount) return;
+  // Gestione upload PDF
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    setSavingBonus(true);
+    setPdfFile(file);
+
+    // Crea preview URL
+    const url = URL.createObjectURL(file);
+    setPdfPreview(url);
+
+    // Estrai il netto dal PDF usando AI
+    setIsExtracting(true);
     setError(null);
 
     try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/hr-payslip/extract-pdf', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.netAmount) {
+        setExtractedNet(data.netAmount.toString());
+        setSuccess(`Netto estratto: CHF ${data.netAmount.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
+        setTimeout(() => setSuccess(null), 3000);
+      }
+
+    } catch (err: any) {
+      console.error('Errore estrazione PDF:', err);
+      // Non bloccare - l'utente può inserire manualmente
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // Crea nuova busta paga
+  const createPayslip = async () => {
+    if (!selectedEmployee || !extractedNet) {
+      setError('Seleziona un dipendente e inserisci il netto');
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      // Converti PDF in base64 se presente
+      let pdfBase64 = null;
+      if (pdfFile) {
+        const buffer = await pdfFile.arrayBuffer();
+        pdfBase64 = Buffer.from(buffer).toString('base64');
+      }
+
       const response = await fetch('/api/hr-payslip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          action: 'add-bonus-line',
-          payslipId: selectedPayslip.id,
-          amount: parseFloat(bonusAmount),
-          name: 'Bonus Vendite'
+          action: 'create-payslip',
+          employeeId: selectedEmployee.id,
+          month: selectedMonth,
+          netAmount: parseFloat(extractedNet),
+          bonusAmount: bonusAmount ? parseFloat(bonusAmount) : 0,
+          pdfBase64: pdfBase64,
+          pdfFilename: pdfFile?.name
         })
       });
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.error || 'Errore aggiunta bonus');
+      if (!response.ok) throw new Error(data.error || 'Errore creazione busta paga');
 
-      setSuccess('Bonus aggiunto alla busta paga!');
+      setSuccess('Busta paga creata con successo!');
+
+      // Reset form
+      setShowNewPayslipForm(false);
+      setPdfFile(null);
+      setPdfPreview(null);
+      setExtractedNet('');
       setBonusAmount('');
-      setShowBonusForm(false);
-      loadPayslipLines(selectedPayslip.id); // Ricarica linee
+
+      // Ricarica buste paga
+      loadPayslips(selectedEmployee.id);
 
       setTimeout(() => setSuccess(null), 3000);
 
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setSavingBonus(false);
+      setIsCreating(false);
     }
   };
 
   // Verifica se esiste la regola Bonus Vendite
   const hasBonusRule = salaryRules.some(r => r.code === 'BONUS_VENDITE');
 
+  // Filtra dipendenti per azienda
+  const filteredEmployees = employees.filter(emp => {
+    if (companyFilter === 'all') return true;
+    if (!emp.company_id) return companyFilter === 'none';
+    return emp.company_id[1].toLowerCase().includes(companyFilter.toLowerCase());
+  });
+
+  // Estrai aziende uniche
+  const companies = [...new Set(employees.filter(e => e.company_id).map(e => e.company_id![1]))];
+
   // Formatta stato busta paga
   const formatState = (state: string) => {
     const states: Record<string, { label: string; color: string }> = {
-      draft: { label: 'Bozza', color: 'bg-gray-500' },
-      verify: { label: 'Da verificare', color: 'bg-yellow-500' },
+      draft: { label: 'Bozza', color: 'bg-yellow-500' },
+      verify: { label: 'Da verificare', color: 'bg-orange-500' },
       done: { label: 'Completata', color: 'bg-green-500' },
       cancel: { label: 'Annullata', color: 'bg-red-500' }
     };
@@ -274,8 +349,8 @@ export default function GestioneBustePagaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
@@ -289,12 +364,24 @@ export default function GestioneBustePagaPage() {
                 Gestione Buste Paga
               </h1>
               <p className="text-gray-400 text-sm mt-1">
-                Gestisci buste paga e bonus vendite dei dipendenti
+                Carica PDF, estrai netto, aggiungi bonus
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Filtro azienda */}
+            <select
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              <option value="all">Tutte le aziende</option>
+              {companies.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
             {/* Selettore mese */}
             <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
               <Calendar className="w-4 h-4 text-gray-400" />
@@ -302,7 +389,7 @@ export default function GestioneBustePagaPage() {
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-white border-none outline-none"
+                className="bg-transparent text-white border-none outline-none text-sm"
               />
             </div>
 
@@ -327,7 +414,7 @@ export default function GestioneBustePagaPage() {
             className="max-w-7xl mx-auto mb-4"
           >
             <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <p className="text-red-200">{error}</p>
               <button onClick={() => setError(null)} className="ml-auto">
                 <X className="w-4 h-4 text-red-400" />
@@ -351,14 +438,14 @@ export default function GestioneBustePagaPage() {
         )}
       </AnimatePresence>
 
-      {/* Avviso se manca regola Bonus Vendite */}
+      {/* Avviso regola Bonus Vendite */}
       {!hasBonusRule && (
-        <div className="max-w-7xl mx-auto mb-6">
-          <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto mb-4">
+          <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 text-yellow-400" />
               <p className="text-yellow-200">
-                La regola &quot;Bonus Vendite&quot; non esiste ancora in Odoo.
+                La regola &quot;Bonus Vendite&quot; non esiste ancora.
               </p>
             </div>
             <button
@@ -379,25 +466,39 @@ export default function GestioneBustePagaPage() {
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-400" />
-              Dipendenti ({employees.length})
+              Dipendenti ({filteredEmployees.length})
             </h2>
           </div>
-          <div className="max-h-[600px] overflow-y-auto">
-            {employees.map((emp) => (
+          <div className="max-h-[500px] overflow-y-auto">
+            {filteredEmployees.map((emp) => (
               <button
                 key={emp.id}
                 onClick={() => {
                   setSelectedEmployee(emp);
                   setSelectedPayslip(null);
+                  setShowNewPayslipForm(false);
                 }}
                 className={`w-full p-4 border-b border-gray-700/50 text-left hover:bg-gray-700/30 transition-colors ${
                   selectedEmployee?.id === emp.id ? 'bg-blue-500/20 border-l-4 border-l-blue-500' : ''
                 }`}
               >
-                <p className="font-medium text-white">{emp.name}</p>
-                {emp.job_title && (
-                  <p className="text-sm text-gray-400">{emp.job_title}</p>
-                )}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-white">{emp.name}</p>
+                    {emp.job_title && (
+                      <p className="text-sm text-gray-400">{emp.job_title}</p>
+                    )}
+                  </div>
+                  {emp.company_id && (
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      emp.company_id[1].toLowerCase().includes('time')
+                        ? 'bg-purple-500/20 text-purple-300'
+                        : 'bg-blue-500/20 text-blue-300'
+                    }`}>
+                      {emp.company_id[1].split(' ')[0]}
+                    </span>
+                  )}
+                </div>
                 {emp.department_id && (
                   <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                     <Building className="w-3 h-3" />
@@ -409,147 +510,245 @@ export default function GestioneBustePagaPage() {
           </div>
         </div>
 
-        {/* Colonna 2: Buste Paga */}
+        {/* Colonna 2: Form Nuova Busta Paga / Lista Buste Paga */}
         <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-green-400" />
-              Buste Paga
-              {selectedEmployee && (
-                <span className="text-sm font-normal text-gray-400">
-                  - {selectedEmployee.name}
-                </span>
+              {showNewPayslipForm ? (
+                <>
+                  <FileUp className="w-5 h-5 text-green-400" />
+                  Nuova Busta Paga
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5 text-green-400" />
+                  Buste Paga
+                </>
               )}
             </h2>
-          </div>
-          <div className="max-h-[600px] overflow-y-auto">
-            {payslips.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nessuna busta paga trovata</p>
-                <p className="text-sm mt-1">per {selectedMonth}</p>
-              </div>
-            ) : (
-              payslips.map((slip) => {
-                const state = formatState(slip.state);
-                return (
-                  <button
-                    key={slip.id}
-                    onClick={() => setSelectedPayslip(slip)}
-                    className={`w-full p-4 border-b border-gray-700/50 text-left hover:bg-gray-700/30 transition-colors ${
-                      selectedPayslip?.id === slip.id ? 'bg-green-500/20 border-l-4 border-l-green-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-medium text-white">{slip.name}</p>
-                      <span className={`px-2 py-0.5 rounded text-xs text-white ${state.color}`}>
-                        {state.label}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      {slip.employee_id[1]}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {slip.date_from} - {slip.date_to}
-                    </p>
-                    {slip.net_wage > 0 && (
-                      <p className="text-sm text-green-400 font-medium mt-2">
-                        CHF {slip.net_wage.toLocaleString('it-CH', { minimumFractionDigits: 2 })}
-                      </p>
-                    )}
-                  </button>
-                );
-              })
+            {selectedEmployee && !showNewPayslipForm && (
+              <button
+                onClick={() => setShowNewPayslipForm(true)}
+                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Nuova
+              </button>
+            )}
+            {showNewPayslipForm && (
+              <button
+                onClick={() => {
+                  setShowNewPayslipForm(false);
+                  setPdfFile(null);
+                  setPdfPreview(null);
+                  setExtractedNet('');
+                  setBonusAmount('');
+                }}
+                className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
             )}
           </div>
+
+          {showNewPayslipForm && selectedEmployee ? (
+            // Form nuova busta paga
+            <div className="p-4 space-y-4">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <p className="text-blue-300 font-medium">{selectedEmployee.name}</p>
+                <p className="text-blue-400/70 text-sm">
+                  {selectedMonth} - {selectedEmployee.company_id ? selectedEmployee.company_id[1] : 'N/D'}
+                </p>
+              </div>
+
+              {/* Upload PDF */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Carica PDF Busta Paga
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                {!pdfFile ? (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-green-500 hover:bg-green-500/5 transition-all"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-400">Clicca per caricare il PDF</p>
+                    <p className="text-gray-500 text-sm mt-1">oppure trascina qui</p>
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-between bg-gray-700/50 rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-red-400" />
+                      <div>
+                        <p className="text-white font-medium">{pdfFile.name}</p>
+                        <p className="text-gray-400 text-sm">
+                          {(pdfFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPdfFile(null);
+                        setPdfPreview(null);
+                        setExtractedNet('');
+                      }}
+                      className="p-2 hover:bg-gray-600 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {isExtracting && (
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Estrazione netto in corso...</span>
+                </div>
+              )}
+
+              {/* Netto */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Netto (CHF) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">CHF</span>
+                  <input
+                    type="number"
+                    value={extractedNet}
+                    onChange={(e) => setExtractedNet(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-500 text-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Bonus */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <Award className="w-4 h-4 inline mr-1 text-yellow-400" />
+                  Bonus Vendite (CHF) - opzionale
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">CHF</span>
+                  <input
+                    type="number"
+                    value={bonusAmount}
+                    onChange={(e) => setBonusAmount(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+              </div>
+
+              {/* Pulsante crea */}
+              <button
+                onClick={createPayslip}
+                disabled={!extractedNet || isCreating}
+                className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {isCreating ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    Creazione in corso...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Crea Busta Paga
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            // Lista buste paga
+            <div className="max-h-[500px] overflow-y-auto">
+              {!selectedEmployee ? (
+                <div className="p-8 text-center text-gray-400">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Seleziona un dipendente</p>
+                </div>
+              ) : payslips.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nessuna busta paga per {selectedMonth}</p>
+                  <button
+                    onClick={() => setShowNewPayslipForm(true)}
+                    className="mt-4 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Crea prima busta paga
+                  </button>
+                </div>
+              ) : (
+                payslips.map((slip) => {
+                  const state = formatState(slip.state);
+                  return (
+                    <button
+                      key={slip.id}
+                      onClick={() => setSelectedPayslip(slip)}
+                      className={`w-full p-4 border-b border-gray-700/50 text-left hover:bg-gray-700/30 transition-colors ${
+                        selectedPayslip?.id === slip.id ? 'bg-green-500/20 border-l-4 border-l-green-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-white">{slip.name}</p>
+                        <span className={`px-2 py-0.5 rounded text-xs text-white ${state.color}`}>
+                          {state.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {slip.date_from} - {slip.date_to}
+                      </p>
+                      {slip.net_wage > 0 && (
+                        <p className="text-sm text-green-400 font-medium mt-2">
+                          CHF {slip.net_wage.toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {/* Colonna 3: Dettaglio Busta Paga */}
         <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          <div className="p-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-yellow-400" />
               Dettaglio
             </h2>
-            {selectedPayslip && hasBonusRule && (
-              <button
-                onClick={() => setShowBonusForm(true)}
-                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Bonus
-              </button>
-            )}
           </div>
 
           {!selectedPayslip ? (
             <div className="p-8 text-center text-gray-400">
               <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Seleziona una busta paga</p>
-              <p className="text-sm mt-1">per vedere i dettagli</p>
             </div>
           ) : (
             <div className="p-4">
-              {/* Info busta paga */}
+              {/* Info */}
               <div className="bg-gray-700/30 rounded-lg p-4 mb-4">
                 <p className="font-medium text-white">{selectedPayslip.name}</p>
                 <p className="text-sm text-gray-400">{selectedPayslip.employee_id[1]}</p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Periodo: {selectedPayslip.date_from} - {selectedPayslip.date_to}
+                  {selectedPayslip.date_from} - {selectedPayslip.date_to}
                 </p>
               </div>
 
-              {/* Form aggiunta bonus */}
-              <AnimatePresence>
-                {showBonusForm && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <Award className="w-5 h-5 text-green-400" />
-                      <p className="font-medium text-white">Aggiungi Bonus Vendite</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">CHF</span>
-                        <input
-                          type="number"
-                          value={bonusAmount}
-                          onChange={(e) => setBonusAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
-                        />
-                      </div>
-                      <button
-                        onClick={addBonusToPayslip}
-                        disabled={!bonusAmount || savingBonus}
-                        className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-                      >
-                        {savingBonus ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Save className="w-4 h-4" />
-                        )}
-                        Salva
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowBonusForm(false);
-                          setBonusAmount('');
-                        }}
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                      >
-                        <X className="w-5 h-5 text-gray-400" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Linee busta paga */}
+              {/* Linee */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-400 mb-3">Voci stipendio:</p>
 
@@ -567,22 +766,24 @@ export default function GestioneBustePagaPage() {
                       key={line.id}
                       className={`flex items-center justify-between p-3 rounded-lg ${
                         line.code === 'BONUS_VENDITE'
+                          ? 'bg-yellow-500/20 border border-yellow-500/30'
+                          : line.code === 'NET'
                           ? 'bg-green-500/20 border border-green-500/30'
                           : 'bg-gray-700/30'
                       }`}
                     >
                       <div>
                         <p className={`font-medium ${
-                          line.code === 'BONUS_VENDITE' ? 'text-green-400' : 'text-white'
+                          line.code === 'BONUS_VENDITE' ? 'text-yellow-400' :
+                          line.code === 'NET' ? 'text-green-400' : 'text-white'
                         }`}>
                           {line.name}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {line.code} - {line.category_id[1]}
-                        </p>
+                        <p className="text-xs text-gray-500">{line.code}</p>
                       </div>
                       <p className={`font-bold ${
-                        line.code === 'BONUS_VENDITE' ? 'text-green-400' : 'text-white'
+                        line.code === 'BONUS_VENDITE' ? 'text-yellow-400' :
+                        line.code === 'NET' ? 'text-green-400' : 'text-white'
                       }`}>
                         CHF {line.amount.toLocaleString('it-CH', { minimumFractionDigits: 2 })}
                       </p>
@@ -592,28 +793,15 @@ export default function GestioneBustePagaPage() {
 
                 {/* Totale */}
                 {payslipLines.length > 0 && (
-                  <div className="border-t border-gray-700 pt-3 mt-3">
+                  <div className="border-t border-gray-700 pt-4 mt-4">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-gray-400">Totale Netto</p>
-                      <p className="text-xl font-bold text-white">
+                      <p className="text-lg font-medium text-white">Totale</p>
+                      <p className="text-2xl font-bold text-green-400">
                         CHF {payslipLines
-                          .filter(l => l.category_id[1] === 'Net' || l.category_id[0] === 5)
                           .reduce((sum, l) => sum + l.amount, 0)
                           .toLocaleString('it-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                    {/* Bonus totale */}
-                    {payslipLines.some(l => l.code === 'BONUS_VENDITE') && (
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="font-medium text-green-400">di cui Bonus Vendite</p>
-                        <p className="font-bold text-green-400">
-                          CHF {payslipLines
-                            .filter(l => l.code === 'BONUS_VENDITE')
-                            .reduce((sum, l) => sum + l.amount, 0)
-                            .toLocaleString('it-CH', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
