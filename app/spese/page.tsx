@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera,
@@ -21,6 +21,60 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Funzione per comprimere l'immagine
+const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // Calcola le nuove dimensioni mantenendo l'aspect ratio
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Could not compress image'));
+              return;
+            }
+
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+
+            console.log(`📷 Immagine compressa: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => reject(new Error('Could not load image'));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+};
 
 // Tipi
 interface ReceiptAnalysis {
@@ -119,7 +173,21 @@ export default function SpesePage() {
       return;
     }
 
-    // Crea preview
+    // Comprimi l'immagine se è grande (tipico delle foto da fotocamera)
+    let processedFile = file;
+    if (file.size > 500 * 1024) { // Se > 500KB, comprimi
+      try {
+        toast.loading('Compressione immagine...', { id: 'compress' });
+        processedFile = await compressImage(file, 1200, 0.75);
+        toast.dismiss('compress');
+      } catch (error) {
+        console.warn('Compressione fallita, uso immagine originale:', error);
+        processedFile = file;
+        toast.dismiss('compress');
+      }
+    }
+
+    // Crea preview dall'immagine compressa
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64Full = event.target?.result as string;
@@ -128,12 +196,12 @@ export default function SpesePage() {
       // Estrai solo la parte base64 (senza il prefisso data:image/...;base64,)
       const base64Data = base64Full.split(',')[1];
       setImageBase64(base64Data);
-      setImageMimeType(file.type);
+      setImageMimeType(processedFile.type);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(processedFile);
 
-    // Inizia analisi
-    await analyzeReceipt(file);
+    // Inizia analisi con l'immagine compressa
+    await analyzeReceipt(processedFile);
   };
 
   // Analizza scontrino con Gemini

@@ -9,12 +9,12 @@ export const maxDuration = 300; // 5 minuti per upload video
  * POST /api/social-ai/publish-youtube
  *
  * PUBBLICAZIONE AUTOMATICA VIDEO SU YOUTUBE
- * USA LA SESSIONE DELL'UTENTE LOGGATO (come tutte le altre app)
  *
- * Carica video generato su YouTube tramite Odoo con:
- * - Titolo ottimizzato automaticamente
- * - Descrizione completa con link a www.lapa.ch
- * - Upload automatico su canale LAPA YouTube
+ * COME FUNZIONA (scoperto analizzando post funzionanti):
+ * 1. Il video viene caricato DIRETTAMENTE su YouTube usando l'API YouTube
+ * 2. Il token OAuth viene preso da social.account (account YouTube collegato in Odoo)
+ * 3. Dopo l'upload su YouTube, si crea il post Odoo con youtube_video_id
+ * 4. action_post() finalizza il post (non fa l'upload, registra solo)
  *
  * Body:
  * - videoDataUrl: string - Video MP4 in base64 (data:video/mp4;base64,...)
@@ -38,9 +38,91 @@ interface PublishYouTubeResult {
     youtubeTitle: string;
     youtubeDescription: string;
     videoUrl?: string;
+    youtubeVideoId?: string;
     postId: number;
   };
   error?: string;
+}
+
+/**
+ * Carica un video direttamente su YouTube usando l'API YouTube v3
+ * Questo e' esattamente quello che fa il widget youtube_upload di Odoo!
+ */
+async function uploadToYouTube(
+  accessToken: string,
+  videoBuffer: Buffer,
+  title: string,
+  description: string,
+  categoryId: string = '22',
+  privacy: string = 'public'
+): Promise<string> {
+  console.log('[YouTube API] Starting resumable upload...');
+  console.log('[YouTube API] Video size:', videoBuffer.length, 'bytes');
+
+  // Step 1: Inizia il resumable upload session
+  const metadata = {
+    snippet: {
+      title: title,
+      description: description,
+      categoryId: categoryId,
+      tags: ['LAPA', 'Italian Food', 'Gourmet', 'Made in Italy']
+    },
+    status: {
+      privacyStatus: privacy,
+      selfDeclaredMadeForKids: false
+    }
+  };
+
+  console.log('[YouTube API] Requesting upload URL...');
+
+  const initResponse = await fetch(
+    'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': 'video/mp4',
+        'X-Upload-Content-Length': String(videoBuffer.length)
+      },
+      body: JSON.stringify(metadata)
+    }
+  );
+
+  if (!initResponse.ok) {
+    const errorText = await initResponse.text();
+    console.error('[YouTube API] Init failed:', errorText);
+    throw new Error(`YouTube API init failed: ${initResponse.status} - ${errorText}`);
+  }
+
+  const uploadUrl = initResponse.headers.get('location');
+  if (!uploadUrl) {
+    throw new Error('YouTube API did not return upload URL');
+  }
+
+  console.log('[YouTube API] Got upload URL, uploading video...');
+
+  // Step 2: Carica il video
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'video/mp4',
+      'Content-Length': String(videoBuffer.length)
+    },
+    body: videoBuffer
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.error('[YouTube API] Upload failed:', errorText);
+    throw new Error(`YouTube upload failed: ${uploadResponse.status} - ${errorText}`);
+  }
+
+  const result = await uploadResponse.json() as { id: string; snippet?: { title: string } };
+  console.log('[YouTube API] Upload successful! Video ID:', result.id);
+
+  return result.id;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<PublishYouTubeResult>> {
@@ -71,12 +153,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
     console.log(`[Publish YouTube] Starting for product: ${productName}`);
 
     // ==========================================
-    // FASE 0: AUTENTICAZIONE ODOO CON UTENTE LOGGATO
+    // FASE 0: AUTENTICAZIONE ODOO
     // ==========================================
 
-    console.log('[Publish YouTube] Getting Odoo session from logged-in user...');
+    console.log('[Publish YouTube] Getting Odoo session...');
 
-    // Estrai cookies dalla request (utente loggato nell'app)
     const userCookies = request.headers.get('cookie');
 
     if (!userCookies) {
@@ -86,7 +167,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
       }, { status: 401 });
     }
 
-    // Ottieni sessione Odoo dell'utente loggato
     const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
 
     if (!odooCookies) {
@@ -96,12 +176,38 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
       }, { status: 401 });
     }
 
-    console.log(`[Publish YouTube] Odoo session obtained! User UID: ${uid}`);
+    console.log(`[Publish YouTube] Odoo session OK! UID: ${uid}`);
+
+    // ==========================================
+    // FASE 1: OTTIENI YOUTUBE ACCESS TOKEN DA ODOO
+    // ==========================================
+
+    console.log('[Publish YouTube] Getting YouTube access token from Odoo...');
+
+    // Account YouTube LAPA (ID: 7)
+    const youtubeAccountId = 7;
+
+    const accounts = await callOdoo(
+      odooCookies,
+      'social.account',
+      'search_read',
+      [[['id', '=', youtubeAccountId]], ['youtube_access_token', 'name']]
+    );
+
+    if (!accounts || accounts.length === 0 || !accounts[0].youtube_access_token) {
+      return NextResponse.json({
+        success: false,
+        error: 'Account YouTube non configurato o token mancante. Verifica la connessione YouTube in Odoo.'
+      }, { status: 500 });
+    }
+
+    const youtubeAccessToken = accounts[0].youtube_access_token;
+    console.log(`[Publish YouTube] YouTube access token obtained from account: ${accounts[0].name}`);
 
     const ai = new GoogleGenAI({ apiKey });
 
     // ==========================================
-    // FASE 1: GENERA TITOLO YOUTUBE OTTIMIZZATO
+    // FASE 2: GENERA TITOLO YOUTUBE OTTIMIZZATO
     // ==========================================
 
     console.log('[Publish YouTube] Generating YouTube title...');
@@ -127,9 +233,9 @@ REQUISITI TITOLO:
 - Italiano perfetto
 
 ESEMPI BUONI:
-"🍝 Pappardelle all'Uovo Fatte in Casa - Ricetta Tradizionale Italiana"
-"🧀 Parmigiano Reggiano DOP: Il Re dei Formaggi Italiani"
-"🍅 Pomodoro San Marzano: L'Oro Rosso della Campania"
+"Pappardelle all Uovo Fatte in Casa - Ricetta Tradizionale Italiana"
+"Parmigiano Reggiano DOP: Il Re dei Formaggi Italiani"
+"Pomodoro San Marzano: L Oro Rosso della Campania"
 
 Rispondi SOLO con il titolo (no spiegazioni, no markdown):`;
 
@@ -143,11 +249,11 @@ Rispondi SOLO con il titolo (no spiegazioni, no markdown):`;
       throw new Error('Titolo YouTube non generato');
     }
 
-    const youtubeTitle = rawTitle.trim().replace(/^["']|["']$/g, ''); // Rimuovi quote
+    const youtubeTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
     console.log(`[Publish YouTube] Title: ${youtubeTitle}`);
 
     // ==========================================
-    // FASE 2: GENERA DESCRIZIONE YOUTUBE
+    // FASE 3: GENERA DESCRIZIONE YOUTUBE
     // ==========================================
 
     console.log('[Publish YouTube] Generating YouTube description...');
@@ -165,7 +271,7 @@ Crea una DESCRIZIONE YouTube completa e ottimizzata.
 STRUTTURA OBBLIGATORIA:
 1. Hook iniziale (1-2 righe che catturano attenzione)
 2. Descrizione prodotto e benefici (3-4 righe)
-3. Sezione "Scopri di più" con link a www.lapa.ch
+3. Sezione "Scopri di piu" con link a www.lapa.ch
 4. Call-to-Action (iscriviti al canale)
 5. Hashtags rilevanti (max 5)
 6. Footer con info LAPA
@@ -175,16 +281,16 @@ TEMPLATE:
 
 [Descrizione dettagliata prodotto e benefici]
 
-🌐 Scopri di più su www.lapa.ch
-📦 Ordina ora: www.lapa.ch
+Scopri di piu su www.lapa.ch
+Ordina ora: www.lapa.ch
 
-👉 Iscriviti al canale per scoprire tutti i prodotti italiani autentici!
+Iscriviti al canale per scoprire tutti i prodotti italiani autentici!
 
 ${hashtags.slice(0, 5).join(' ')}
 
 ---
 LAPA - Finest Italian Food
-Portare l'eccellenza italiana nel mondo
+Portare l eccellenza italiana nel mondo
 www.lapa.ch
 
 Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
@@ -203,10 +309,10 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     console.log(`[Publish YouTube] Description generated (${youtubeDescription.length} chars)`);
 
     // ==========================================
-    // FASE 3: UPLOAD VIDEO SU ODOO
+    // FASE 4: UPLOAD VIDEO DIRETTAMENTE SU YOUTUBE
     // ==========================================
 
-    console.log('[Publish YouTube] Uploading video to Odoo...');
+    console.log('[Publish YouTube] Uploading video directly to YouTube API...');
 
     // Estrai base64 dal dataUrl
     const base64Match = videoDataUrl.match(/^data:video\/mp4;base64,(.+)$/);
@@ -215,15 +321,28 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     }
 
     const videoBase64 = base64Match[1];
-
-    // Crea attachment video con nome file corretto per YouTube
+    const videoBuffer = Buffer.from(videoBase64, 'base64');
     const videoFilename = `${productName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
 
-    // STEP 1: Crea prima il post YouTube (senza video)
-    console.log('[Publish YouTube] Creating YouTube post...');
+    console.log(`[Publish YouTube] Video size: ${videoBuffer.length} bytes (${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
 
-    // Account YouTube LAPA (ID: 7)
-    const youtubeAccountId = 7;
+    // UPLOAD DIRETTO SU YOUTUBE!
+    const youtubeVideoId = await uploadToYouTube(
+      youtubeAccessToken,
+      videoBuffer,
+      youtubeTitle,
+      youtubeDescription,
+      '22',  // People & Blogs category
+      'public'
+    );
+
+    console.log(`[Publish YouTube] Video uploaded to YouTube! ID: ${youtubeVideoId}`);
+
+    // ==========================================
+    // FASE 5: CREA POST ODOO CON VIDEO ID
+    // ==========================================
+
+    console.log('[Publish YouTube] Creating Odoo social post...');
 
     const postId = await callOdoo(
       odooCookies,
@@ -234,92 +353,52 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
         account_ids: [[6, 0, [youtubeAccountId]]],
         youtube_title: youtubeTitle,
         youtube_description: youtubeDescription,
-        youtube_video_category_id: '22', // STRINGA! People & Blogs category
-        youtube_video_privacy: 'public'
+        youtube_video_category_id: '22',
+        youtube_video_privacy: 'public',
+        youtube_video: videoFilename,
+        youtube_video_id: youtubeVideoId,  // L'ID del video gia' caricato su YouTube!
+        youtube_access_token: youtubeAccessToken
       }]
     );
 
     if (!postId) {
-      throw new Error('Creazione post YouTube fallita');
+      throw new Error('Creazione post Odoo fallita');
     }
-    console.log(`[Publish YouTube] Post created! ID: ${postId}`);
-
-    // STEP 2: Carica video come attachment LINKATO al post
-    console.log('[Publish YouTube] Uploading video attachment...');
-
-    const videoAttachmentId = await callOdoo(
-      odooCookies,
-      'ir.attachment',
-      'create',
-      [{
-        name: videoFilename,
-        type: 'binary',
-        datas: videoBase64,
-        res_model: 'social.post',
-        res_id: postId, // Link diretto al post
-        mimetype: 'video/mp4',
-        public: true
-      }]
-    );
-
-    if (!videoAttachmentId) {
-      throw new Error('Upload video fallito');
-    }
-    console.log(`[Publish YouTube] Video uploaded! Attachment ID: ${videoAttachmentId}`);
-
-    // STEP 3: Aggiorna il post con youtube_video = FILENAME (non ID!)
-    // IMPORTANTE: youtube_video deve contenere il NOME DEL FILE, non l'ID dell'attachment!
-    // I post funzionanti hanno youtube_video = "nomefile.mp4"
-    console.log('[Publish YouTube] Linking video to post...');
-
-    await callOdoo(
-      odooCookies,
-      'social.post',
-      'write',
-      [[postId], {
-        youtube_video: videoFilename // DEVE essere il FILENAME!
-      }]
-    );
-    console.log(`[Publish YouTube] Video linked! youtube_video = "${videoFilename}"`);
+    console.log(`[Publish YouTube] Odoo post created! ID: ${postId}`);
 
     // ==========================================
-    // FASE 4: PUBBLICA POST (trigger upload YouTube)
+    // FASE 6: PUBBLICA POST
     // ==========================================
 
-    console.log('[Publish YouTube] Publishing to YouTube...');
-
-    // Delay helper
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    console.log('[Publish YouTube] Publishing post...');
 
     try {
-      // Aspetta che Odoo processi il video prima di pubblicare
-      console.log('[Publish YouTube] Waiting 5s for video processing...');
-      await delay(5000);
-
-      // Chiama il metodo action_post() su social.post per pubblicare
       await callOdoo(
         odooCookies,
         'social.post',
         'action_post',
         [[postId]]
       );
-      console.log('[Publish YouTube] Published successfully!');
+      console.log('[Publish YouTube] Post published successfully!');
     } catch (publishError: any) {
-      console.warn('[Publish YouTube] Auto-publish might have failed:', publishError.message);
-      // Non bloccare - potrebbe richiedere pubblicazione manuale
+      console.warn('[Publish YouTube] action_post warning:', publishError.message);
+      // Non bloccare - il video e' gia' su YouTube
     }
 
     // ==========================================
     // RISULTATO FINALE
     // ==========================================
 
+    const videoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+
     return NextResponse.json({
       success: true,
       data: {
         youtubeTitle,
         youtubeDescription,
+        youtubeVideoId,
         postId,
-        videoUrl: `https://www.youtube.com/@lapa-zero-pensieri` // Channel URL
+        videoUrl
       }
     });
 
