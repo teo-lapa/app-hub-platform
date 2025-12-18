@@ -9,16 +9,6 @@ const nextConfig = {
   images: {
     domains: [],
   },
-  // Exclude sharp native bindings from serverless functions
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push({
-        sharp: 'commonjs sharp',
-      });
-    }
-    return config;
-  },
   // Optimize serverless function size for Vercel
   experimental: {
     outputFileTracingExcludes: {

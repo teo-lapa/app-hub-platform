@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
+import { Jimp } from 'jimp';
 import { readFileSync } from 'fs';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-// Add LAPA logo watermark to image
+// Add LAPA logo watermark to image using Jimp (pure JS, no native deps)
 async function addLogoWatermark(imageBase64: string): Promise<string> {
   try {
     // Load the logo
@@ -24,40 +24,31 @@ async function addLogoWatermark(imageBase64: string): Promise<string> {
     // Decode base64 image
     const imageBuffer = Buffer.from(imageBase64, 'base64');
 
-    // Get image dimensions
-    const imageMetadata = await sharp(imageBuffer).metadata();
-    const imageWidth = imageMetadata.width || 800;
-    const imageHeight = imageMetadata.height || 600;
+    // Load both images with Jimp v1
+    const [image, logo] = await Promise.all([
+      Jimp.read(imageBuffer),
+      Jimp.read(logoBuffer)
+    ]);
 
-    // Resize logo to be small (about 10% of image width)
+    const imageWidth = image.width;
+    const imageHeight = image.height;
+
+    // Resize logo to be small (about 12% of image width)
     const logoWidth = Math.round(imageWidth * 0.12);
-    const resizedLogo = await sharp(logoBuffer)
-      .resize(logoWidth, null, { fit: 'inside' })
-      .png()
-      .toBuffer();
-
-    // Get resized logo dimensions
-    const logoMetadata = await sharp(resizedLogo).metadata();
-    const logoHeight = logoMetadata.height || 50;
+    const logoRatio = logo.width / logo.height;
+    const logoHeight = Math.round(logoWidth / logoRatio);
+    logo.resize({ w: logoWidth, h: logoHeight });
 
     // Position: bottom right corner with padding
     const padding = 15;
-    const left = imageWidth - logoWidth - padding;
-    const top = imageHeight - logoHeight - padding;
+    const x = imageWidth - logoWidth - padding;
+    const y = imageHeight - logoHeight - padding;
 
     // Composite the logo onto the image
-    const outputBuffer = await sharp(imageBuffer)
-      .composite([
-        {
-          input: resizedLogo,
-          left: Math.max(0, left),
-          top: Math.max(0, top),
-          blend: 'over'
-        }
-      ])
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    image.composite(logo, Math.max(0, x), Math.max(0, y));
 
+    // Export as JPEG base64
+    const outputBuffer = await image.getBuffer('image/jpeg', { quality: 90 });
     return outputBuffer.toString('base64');
   } catch (error) {
     console.log('⚠️ Error adding watermark:', error);
