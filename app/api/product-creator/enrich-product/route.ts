@@ -6,12 +6,342 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// RAG: Search web for product information
+async function searchProductInfo(productName: string, brand?: string): Promise<string> {
+  try {
+    // Clean product name for better search
+    const cleanName = productName
+      .replace(/\d+\s*(kg|g|ml|l|cl|pz|conf|x\d+)/gi, '') // Remove quantities
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Build search queries
+    const queries = [
+      `${cleanName} ${brand || ''} scheda tecnica ingredienti`.trim(),
+      `${cleanName} ${brand || ''} prodotto alimentare caratteristiche`.trim(),
+    ];
+
+    let allResults: string[] = [];
+
+    for (const query of queries) {
+      try {
+        // Use Brave Search API if available
+        if (process.env.BRAVE_SEARCH_API_KEY) {
+          const searchUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`;
+          const searchResponse = await fetch(searchUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY
+            }
+          });
+
+          if (searchResponse.ok) {
+            const searchData = await searchResponse.json();
+            if (searchData.web?.results) {
+              for (const result of searchData.web.results.slice(0, 3)) {
+                allResults.push(`📄 ${result.title}\n${result.description}\nURL: ${result.url}`);
+              }
+            }
+          }
+        }
+
+        // Fallback: Use Google Custom Search if available
+        if (allResults.length === 0 && process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) {
+          const googleUrl = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_API_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(query)}&num=3`;
+          const googleResponse = await fetch(googleUrl);
+
+          if (googleResponse.ok) {
+            const googleData = await googleResponse.json();
+            if (googleData.items) {
+              for (const item of googleData.items.slice(0, 3)) {
+                allResults.push(`📄 ${item.title}\n${item.snippet}\nURL: ${item.link}`);
+              }
+            }
+          }
+        }
+
+        // If we have enough results, stop searching
+        if (allResults.length >= 5) break;
+
+      } catch (searchError) {
+        console.log(`⚠️ Search error for query "${query}":`, searchError);
+      }
+    }
+
+    if (allResults.length === 0) {
+      return ''; // No external info found
+    }
+
+    return `\n\n📚 INFORMAZIONI TROVATE SUL WEB (usa queste per arricchire la descrizione):\n${allResults.join('\n\n')}`;
+
+  } catch (error) {
+    console.log('⚠️ RAG search failed:', error);
+    return '';
+  }
+}
+
+// Search Swiss market prices for reference
+async function searchSwissPrices(productName: string, brand?: string): Promise<{ retail?: number; wholesale?: number; sources: string[] }> {
+  const result: { retail?: number; wholesale?: number; sources: string[] } = { sources: [] };
+
+  if (!process.env.BRAVE_SEARCH_API_KEY) return result;
+
+  try {
+    // Clean product name
+    const cleanName = productName
+      .replace(/\d+\s*(kg|g|ml|l|cl|pz|conf|x\d+)/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Swiss retail sites: Coop, Migros, etc.
+    const retailQuery = `"${cleanName}" ${brand || ''} prezzo CHF site:coop.ch OR site:migros.ch OR site:aldi.ch OR site:lidl.ch`.trim();
+
+    const retailSearch = await fetch(
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(retailQuery)}&count=5`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY
+        }
+      }
+    );
+
+    if (retailSearch.ok) {
+      const retailData = await retailSearch.json();
+      if (retailData.web?.results) {
+        for (const r of retailData.web.results) {
+          // Extract prices from snippets (CHF patterns)
+          const priceMatch = r.description?.match(/CHF\s*([\d.,']+)|(\d+[.,]\d{2})\s*CHF/i);
+          if (priceMatch) {
+            const priceStr = (priceMatch[1] || priceMatch[2]).replace(/[',]/g, '.');
+            const price = parseFloat(priceStr);
+            if (price > 0 && price < 500) { // Sanity check
+              if (!result.retail || price < result.retail) {
+                result.retail = price;
+                result.sources.push(`${r.title}: CHF ${price.toFixed(2)}`);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Swiss wholesale/gastro sites: Aligro, Prodega, etc.
+    const wholesaleQuery = `"${cleanName}" ${brand || ''} prezzo grossista Svizzera site:aligro.ch OR site:prodega.ch`.trim();
+
+    const wholesaleSearch = await fetch(
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(wholesaleQuery)}&count=3`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY
+        }
+      }
+    );
+
+    if (wholesaleSearch.ok) {
+      const wholesaleData = await wholesaleSearch.json();
+      if (wholesaleData.web?.results) {
+        for (const r of wholesaleData.web.results) {
+          const priceMatch = r.description?.match(/CHF\s*([\d.,']+)|(\d+[.,]\d{2})\s*CHF/i);
+          if (priceMatch) {
+            const priceStr = (priceMatch[1] || priceMatch[2]).replace(/[',]/g, '.');
+            const price = parseFloat(priceStr);
+            if (price > 0 && price < 500) {
+              if (!result.wholesale || price < result.wholesale) {
+                result.wholesale = price;
+                result.sources.push(`[Grossista] ${r.title}: CHF ${price.toFixed(2)}`);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.log('⚠️ Swiss price search failed:', error);
+    return result;
+  }
+}
+
+// Search for product on manufacturer website
+async function searchManufacturerInfo(productName: string, brand?: string): Promise<string> {
+  if (!brand) return '';
+
+  try {
+    // Common manufacturer websites for food products
+    const brandDomains: Record<string, string> = {
+      'galbani': 'galbani.it',
+      'barilla': 'barilla.com',
+      'mutti': 'mutti-parma.com',
+      'de cecco': 'dececco.com',
+      'garofalo': 'pasta-garofalo.com',
+      'divella': 'divella.com',
+      'colavita': 'colavita.it',
+      'cirio': 'cirio.it',
+      'star': 'star.it',
+      'knorr': 'knorr.com',
+      'findus': 'findus.it',
+      'orogel': 'orogel.it',
+      'ferrero': 'ferrero.com',
+      'lavazza': 'lavazza.it',
+      'illy': 'illy.com',
+      'segafredo': 'segafredo.it',
+      'granarolo': 'granarolo.it',
+      'parmalat': 'parmalat.it',
+      'vallelata': 'vallelata.it',
+      'beretta': 'berettafood.com',
+      'rovagnati': 'rovagnati.it',
+      'fiorucci': 'fiorucci.it',
+      'negroni': 'negroni.com',
+      'parmacotto': 'parmacotto.com',
+      'san daniele': 'prosciuttosandaniele.it',
+      'citterio': 'citterio.com',
+      'ferrarini': 'ferrarini.com',
+    };
+
+    const brandLower = brand.toLowerCase();
+    let domain = '';
+
+    for (const [key, value] of Object.entries(brandDomains)) {
+      if (brandLower.includes(key)) {
+        domain = value;
+        break;
+      }
+    }
+
+    if (!domain) return '';
+
+    // Search specifically on manufacturer site
+    if (process.env.BRAVE_SEARCH_API_KEY) {
+      const query = `site:${domain} ${productName}`;
+      const searchUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=2`;
+      const searchResponse = await fetch(searchUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY
+        }
+      });
+
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+        if (searchData.web?.results && searchData.web.results.length > 0) {
+          const results = searchData.web.results.slice(0, 2).map((r: any) =>
+            `📄 [${brand.toUpperCase()}] ${r.title}\n${r.description}\nURL: ${r.url}`
+          );
+          return `\n\n🏭 INFORMAZIONI DAL PRODUTTORE (${domain}):\n${results.join('\n\n')}`;
+        }
+      }
+    }
+
+    return '';
+  } catch (error) {
+    console.log('⚠️ Manufacturer search failed:', error);
+    return '';
+  }
+}
+
+// Extract brand from product name
+function extractBrandFromName(productName: string): string | undefined {
+  if (!productName) return undefined;
+
+  const nameLower = productName.toLowerCase();
+
+  // Common brand patterns to look for
+  const knownBrands = [
+    'galbani', 'barilla', 'mutti', 'de cecco', 'garofalo', 'divella', 'colavita',
+    'cirio', 'star', 'knorr', 'findus', 'orogel', 'ferrero', 'lavazza', 'illy',
+    'segafredo', 'granarolo', 'parmalat', 'vallelata', 'beretta', 'rovagnati',
+    'fiorucci', 'negroni', 'parmacotto', 'citterio', 'ferrarini', 'coca cola',
+    'pepsi', 'nestle', 'kraft', 'heinz', 'bonduelle', 'rio mare', 'simmenthal',
+    'montana', 'santal', 'yoga', 'develey', 'calvé', 'hellmann', 'nutella',
+    'mulino bianco', 'pan di stelle', 'plasmon', 'mellin', 'santa lucia',
+    'nonno nanni', 'certosa', 'bel paese', 'belpaese', 'philadelphia',
+    'sottilette', 'leerdammer', 'president', 'elle & vire', 'lurpak',
+    'parmigiano reggiano', 'grana padano', 'pecorino romano', 'taleggio',
+    'gorgonzola', 'fontina', 'asiago', 'provolone', 'mozzarella di bufala',
+    'prosciutto di parma', 'prosciutto san daniele', 'mortadella bologna',
+    'bresaola valtellina', 'speck alto adige', 'nduja', 'salsiccia',
+    'oro saiwa', 'ritz', 'tuc', 'pavesi', 'voiello', 'rummo', 'cocco',
+    'agnesi', 'buitoni', 'rana', 'giovanni rana', 'santa lucia', 'auricchio',
+    'lactalis', 'crai', 'conad', 'esselunga', 'coop', 'selex', 'despar',
+    'eurospin', 'lidl', 'aldi', 'penny', 'md', 'todis'
+  ];
+
+  for (const brand of knownBrands) {
+    if (nameLower.includes(brand)) {
+      return brand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+  }
+
+  // Try to extract first word if it looks like a brand (capitalized)
+  const words = productName.split(/\s+/);
+  if (words.length > 1 && words[0].length > 2) {
+    const firstWord = words[0];
+    // Check if it's all caps or first letter cap (likely a brand)
+    if (firstWord === firstWord.toUpperCase() || /^[A-Z][a-z]/.test(firstWord)) {
+      // Make sure it's not a common product type word
+      const nonBrandWords = ['pasta', 'riso', 'olio', 'aceto', 'sale', 'zucchero', 'farina',
+        'latte', 'burro', 'formaggio', 'prosciutto', 'salame', 'mortadella', 'pollo',
+        'manzo', 'maiale', 'pesce', 'tonno', 'salmone', 'verdura', 'frutta'];
+      if (!nonBrandWords.includes(firstWord.toLowerCase())) {
+        return firstWord;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+// Clean supplier name for better matching
+function cleanSupplierName(name: string): string[] {
+  if (!name) return [];
+
+  // Remove common suffixes and clean up
+  const suffixes = [
+    /\s*s\.?r\.?l\.?\s*$/i,
+    /\s*s\.?p\.?a\.?\s*$/i,
+    /\s*s\.?n\.?c\.?\s*$/i,
+    /\s*s\.?a\.?s\.?\s*$/i,
+    /\s*ltd\.?\s*$/i,
+    /\s*gmbh\s*$/i,
+    /\s*inc\.?\s*$/i,
+    /\s*\(.*\)\s*$/i,  // Remove anything in parentheses
+  ];
+
+  let cleaned = name.trim();
+  for (const suffix of suffixes) {
+    cleaned = cleaned.replace(suffix, '').trim();
+  }
+
+  // Return multiple search variants
+  const variants = [
+    name.trim(),           // Original name
+    cleaned,               // Without suffix
+    cleaned.split(' ')[0], // First word only (e.g., "PASTIFICIO")
+  ];
+
+  // Add first two words if available
+  const words = cleaned.split(' ');
+  if (words.length >= 2) {
+    variants.push(words.slice(0, 2).join(' ')); // First two words
+  }
+
+  // Remove duplicates and empty strings
+  return [...new Set(variants.filter(v => v && v.length > 2))];
+}
+
 // Fetch data from Odoo
 async function fetchOdooData(invoiceData: any, sessionId: string) {
   const odooUrl = process.env.ODOO_URL;
 
-  // Fetch UoM, Categories, and Suppliers in parallel
-  const [uomRes, categoryRes, supplierRes] = await Promise.all([
+  // Get search variants for supplier name
+  const supplierSearchVariants = cleanSupplierName(invoiceData.fornitore || '');
+  console.log(`🔍 Supplier search variants:`, supplierSearchVariants);
+
+  // Fetch UoM and Categories in parallel first
+  const [uomRes, categoryRes] = await Promise.all([
     // Get UoM
     fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
@@ -44,8 +374,22 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
         id: 2
       })
     }),
-    // Search for supplier by name from invoice
-    fetch(`${odooUrl}/web/dataset/call_kw`, {
+  ]);
+
+  const [uomData, categoryData] = await Promise.all([
+    uomRes.json(),
+    categoryRes.json(),
+  ]);
+
+  // Try to find supplier with multiple search strategies
+  let suppliers: any[] = [];
+
+  for (const searchTerm of supplierSearchVariants) {
+    if (suppliers.length > 0) break; // Stop if we found a match
+
+    console.log(`🔍 Trying supplier search: "${searchTerm}"`);
+
+    const supplierRes = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
       body: JSON.stringify({
@@ -55,26 +399,54 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
           model: 'res.partner',
           method: 'search_read',
           args: [
-            [['is_company', '=', true], ['supplier_rank', '>', 0], ['name', 'ilike', invoiceData.fornitore || '']],
+            [['is_company', '=', true], ['supplier_rank', '>', 0], ['name', 'ilike', searchTerm]],
             ['id', 'name']
           ],
-          kwargs: { limit: 5 }
+          kwargs: { limit: 10 }
         },
         id: 3
       })
-    })
-  ]);
+    });
 
-  const [uomData, categoryData, supplierData] = await Promise.all([
-    uomRes.json(),
-    categoryRes.json(),
-    supplierRes.json()
-  ]);
+    const supplierData = await supplierRes.json();
+    if (supplierData.result && supplierData.result.length > 0) {
+      suppliers = supplierData.result;
+      console.log(`✅ Found ${suppliers.length} suppliers with search term: "${searchTerm}"`);
+    }
+  }
+
+  // If still no match, get all suppliers for manual selection
+  let allSuppliers: any[] = [];
+  if (suppliers.length === 0) {
+    console.log(`⚠️ No supplier found, fetching all suppliers for manual selection`);
+    const allSuppliersRes = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'res.partner',
+          method: 'search_read',
+          args: [
+            [['is_company', '=', true], ['supplier_rank', '>', 0]],
+            ['id', 'name']
+          ],
+          kwargs: { limit: 200, order: 'name ASC' }
+        },
+        id: 4
+      })
+    });
+    const allSuppliersData = await allSuppliersRes.json();
+    allSuppliers = allSuppliersData.result || [];
+  }
 
   return {
     uom: uomData.result || [],
     categories: categoryData.result || [],
-    suppliers: supplierData.result || []
+    suppliers: suppliers,
+    allSuppliers: allSuppliers, // For manual selection if auto-match fails
+    supplierSearchFailed: suppliers.length === 0
   };
 }
 
@@ -136,10 +508,49 @@ export async function POST(request: NextRequest) {
     console.log(`📦 UoM disponibili: ${uomList.substring(0, 200)}...`);
     console.log(`🏭 ${supplierInfo}`);
 
-    // Use Claude to enrich product data with Odoo context
+    // RAG: Search for additional product information from the web
+    console.log('🔍 RAG: Searching web for product information...');
+
+    // Try to extract brand from product name for better search
+    const possibleBrand = extractBrandFromName(product.nome);
+    console.log(`🏷️ Possible brand detected: ${possibleBrand || 'none'}`);
+
+    // Search in parallel for web info, manufacturer info, and Swiss prices
+    const [webInfo, manufacturerInfo, swissPrices] = await Promise.all([
+      searchProductInfo(product.nome, possibleBrand),
+      searchManufacturerInfo(product.nome, possibleBrand),
+      searchSwissPrices(product.nome, possibleBrand)
+    ]);
+
+    const ragContext = webInfo + manufacturerInfo;
+    if (ragContext) {
+      console.log(`✅ RAG: Found additional information (${ragContext.length} chars)`);
+    } else {
+      console.log('⚠️ RAG: No additional information found');
+    }
+
+    // Log Swiss prices if found
+    if (swissPrices.retail || swissPrices.wholesale) {
+      console.log(`💰 Swiss prices found - Retail: ${swissPrices.retail ? `CHF ${swissPrices.retail}` : 'N/A'}, Wholesale: ${swissPrices.wholesale ? `CHF ${swissPrices.wholesale}` : 'N/A'}`);
+    }
+
+    // Build Swiss price context for Claude
+    let swissPriceContext = '';
+    if (swissPrices.retail || swissPrices.wholesale) {
+      swissPriceContext = `\n\n💰 PREZZI DI RIFERIMENTO MERCATO SVIZZERO (per aiutarti a capire il posizionamento):`;
+      if (swissPrices.retail) {
+        swissPriceContext += `\n- Prezzo dettaglio (Coop/Migros): CHF ${swissPrices.retail.toFixed(2)}`;
+      }
+      if (swissPrices.wholesale) {
+        swissPriceContext += `\n- Prezzo grossista (Aligro/Prodega): CHF ${swissPrices.wholesale.toFixed(2)}`;
+      }
+      swissPriceContext += `\nFonti: ${swissPrices.sources.slice(0, 3).join(', ')}`;
+    }
+
+    // Use Claude to enrich product data with Odoo context + RAG
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 3072,
+      max_tokens: 4096,
       messages: [
         {
           role: 'user',
@@ -171,9 +582,12 @@ IMPORTANTE CATEGORIE:
 
 CATEGORIE DETTAGLIATE (opzionali, se trovi match più preciso):
 ${allCategoryList.substring(0, 500)}...
+${ragContext ? `
+${ragContext}
+` : ''}${swissPriceContext}
 
 COMPITO:
-Analizza il prodotto e genera i seguenti dati.
+Analizza il prodotto e genera i seguenti dati.${ragContext ? ' USA LE INFORMAZIONI DAL WEB per arricchire la descrizione con dettagli reali (ingredienti, metodo di produzione, certificazioni, ecc.).' : ''}
 
 **IMPORTANTE**: Tutti i campi sono OPZIONALI. Se non sei sicuro, usa null. Il prodotto deve essere creato comunque!
 
@@ -184,7 +598,7 @@ Analizza il prodotto e genera i seguenti dati.
 5. **categoria_nome**: Nome categoria scelta
 6. **marca**: Brand/Marca del prodotto (se identificabile dal nome, altrimenti null)
 7. **codice_ean**: Codice EAN/barcode (usa quello dalla fattura)
-8. **prezzo_vendita_suggerito**: Prezzo vendita con margine 30-50%
+8. **prezzo_vendita_suggerito**: Prezzo vendita = prezzo_acquisto × 1.30 (130% del costo, cioè +30% margine)
 9. **caratteristiche**: Array di caratteristiche chiave (se identificabili)
 10. **tags**: Array di tag per ricerca
 11. **uom_odoo_id**: ID dell'unità di misura (default: cerca "Unità(i)" o "pz" se non sei sicuro)
@@ -198,6 +612,31 @@ Analizza il prodotto e genera i seguenti dati.
 19. **shelf_life_days**: Giorni di shelf life totale dalla produzione (es: 365 per prodotti lunghi, 30 per freschi, 730 per surgelati). null se non applicabile.
 20. **expiry_warning_days**: Giorni prima della scadenza per avviso (suggerito: 5-7 giorni). null se non applicabile.
 21. **removal_days**: Giorni prima della scadenza per rimozione (suggerito: 1 giorno). null se non applicabile.
+22. **seo_name**: Nome SEO-friendly per URL (es: "formaggio-belpaese-2-5kg-galbani")
+23. **website_meta_title**: Meta title per SEO (es: "Formaggio Belpaese 2.5kg Galbani | LAPA Grossista") - max 60 caratteri
+24. **website_meta_description**: Meta description per SEO - descrizione accattivante per i motori di ricerca, max 160 caratteri
+
+**DESCRIZIONI MULTILINGUA PER E-COMMERCE - ORIENTATE ALLA VENDITA** (NON tradurre, SCRIVI come un copywriter madrelingua!):
+25. **descrizioni_multilingua**: Descrizioni di VENDITA aggressive e persuasive per e-commerce B2B (ristoranti, hotel, grossisti).
+
+    OBIETTIVO: Far comprare il prodotto! Ogni parola deve spingere all'acquisto.
+
+    STRUTTURA OBBLIGATORIA (100-150 parole, 5-7 frasi POTENTI):
+    1. HOOK IRRESISTIBILE: Inizia con una frase che cattura ("Il segreto dei migliori chef...", "Finalmente disponibile...", "La scelta dei professionisti...")
+    2. PROMESSA DI VALORE: Cosa otterrà il cliente (clienti soddisfatti, piatti eccezionali, margini migliori)
+    3. PROVA DI QUALITÀ: Metodo produzione, ingredienti premium, certificazioni, tradizione
+    4. DIFFERENZIAZIONE: Perché questo e non un altro (unicità, esclusività, risultati garantiti)
+    5. USO PRATICO: Applicazioni concrete, abbinamenti vincenti, versatilità in cucina
+    6. CALL TO ACTION IMPLICITA: Crea urgenza ("I migliori ristoranti lo sanno...", "Non restare indietro...")
+
+    TONO: VENDITA DIRETTA - Entusiasta, convincente, professionale ma pushy. Usa parole potenti: eccellenza, premium, autentico, irresistibile, garantito, esclusivo.
+
+    Lingue richieste:
+    - **it_IT**: Italiano - passionale e persuasivo, "questo prodotto farà la differenza nel tuo locale"
+    - **de_CH**: Tedesco - qualità svizzera, affidabilità, "Qualität die überzeugt"
+    - **fr_CH**: Francese - eleganza gastronomica, "l'excellence à votre portée"
+    - **en_US**: Inglese - premium positioning, "elevate your menu"
+    - **ro_RO**: Rumeno - pratico e convincente, "calitate la preț avantajos"
 
 LOGICA INTELLIGENTE:
 - **Categoria**: SEMPRE scegli tra Frigo/Secco/Pingu/Non-Food come prima scelta
@@ -247,7 +686,17 @@ Rispondi SOLO con JSON valido:
   "nome_fornitore": "...",
   "shelf_life_days": 365 o null,
   "expiry_warning_days": 5 o null,
-  "removal_days": 1 o null
+  "removal_days": 1 o null,
+  "seo_name": "nome-seo-friendly",
+  "website_meta_title": "Titolo SEO | LAPA Grossista",
+  "website_meta_description": "Meta description SEO...",
+  "descrizioni_multilingua": {
+    "it_IT": "Pasta artigianale all'uovo di prima qualità, trafilata al bronzo per una texture perfetta che trattiene ogni condimento. Realizzata con uova fresche italiane e semola di grano duro selezionato. Ideale per sughi corposi, ragù della tradizione e condimenti ricchi. Un prodotto che porta in tavola l'autentico sapore della pasta fatta in casa.",
+    "de_CH": "Hochwertige handwerkliche Eiernudeln, bronzegezogen für eine perfekte Textur, die jede Sauce optimal aufnimmt. Hergestellt mit frischen italienischen Eiern und ausgewähltem Hartweizengrieß. Ideal für kräftige Saucen, traditionelle Ragùs und reichhaltige Beilagen. Ein Produkt, das den authentischen Geschmack hausgemachter Pasta auf den Tisch bringt.",
+    "fr_CH": "Pâtes artisanales aux œufs de première qualité, tréfilées au bronze pour une texture parfaite qui retient chaque sauce. Élaborées avec des œufs frais italiens et de la semoule de blé dur sélectionnée. Idéales pour les sauces corsées, les ragùs traditionnels et les accompagnements riches. Un produit qui apporte à table l'authentique saveur des pâtes faites maison.",
+    "en_US": "Premium artisan egg pasta, bronze-drawn for a perfect texture that holds every sauce. Made with fresh Italian eggs and selected durum wheat semolina. Ideal for hearty sauces, traditional ragùs, and rich condiments. A product that brings the authentic taste of homemade pasta to your table.",
+    "ro_RO": "Paste artizanale cu ou de cea mai bună calitate, trase prin bronz pentru o textură perfectă care reține fiecare sos. Realizate cu ouă proaspete italienești și griș de grâu dur selecționat. Ideale pentru sosuri consistente, ragù tradiționale și condimente bogate. Un produs care aduce la masă gustul autentic al pastelor făcute în casă."
+  }
 }`,
         },
       ],
@@ -291,6 +740,16 @@ Rispondi SOLO con JSON valido:
         uom_odoo_id: enrichedData.uom_odoo_id,
         prezzo_fattura: product.prezzo_unitario,
         quantita_fattura: product.quantita
+      },
+      supplierInfo: {
+        autoMatched: !odooData.supplierSearchFailed,
+        matchedSupplier: odooData.suppliers.length > 0 ? odooData.suppliers[0] : null,
+        allSuppliers: odooData.allSuppliers, // For manual selection if needed
+      },
+      swissPrices: {
+        retail: swissPrices.retail || null,
+        wholesale: swissPrices.wholesale || null,
+        sources: swissPrices.sources,
       }
     });
 

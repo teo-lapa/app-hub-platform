@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   Edit2,
-  Save
+  Save,
+  AlertTriangle,
+  Building2
 } from 'lucide-react';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { useRouter } from 'next/navigation';
@@ -27,12 +29,31 @@ interface Product {
   note?: string;
 }
 
+interface Supplier {
+  id: number;
+  name: string;
+}
+
+interface SupplierInfo {
+  autoMatched: boolean;
+  matchedSupplier: Supplier | null;
+  allSuppliers: Supplier[];
+}
+
+interface SwissPrices {
+  retail: number | null;
+  wholesale: number | null;
+  sources: string[];
+}
+
 interface EnrichedProduct extends Product {
   selected: boolean;
   enriching: boolean;
   enriched: boolean;
   expanded: boolean;
   editing: boolean;
+  supplierInfo?: SupplierInfo;
+  swissPrices?: SwissPrices;
   enrichedData?: {
     nome_completo: string;
     descrizione_breve?: string;
@@ -47,6 +68,7 @@ interface EnrichedProduct extends Product {
     unita_misura?: string;
     peso?: number;
     dimensioni?: string;
+    fornitore_odoo_id?: number | null;
   };
 }
 
@@ -71,7 +93,7 @@ export default function SelectProducts() {
     setProducts(
       parsed.prodotti.map((p: Product) => ({
         ...p,
-        selected: true, // Pre-select all
+        selected: false, // Start deselected - user chooses which to enrich
         enriching: false,
         enriched: false,
         expanded: false,
@@ -121,6 +143,32 @@ export default function SelectProducts() {
     );
   };
 
+  const updateSupplier = (index: number, supplierId: number | null) => {
+    setProducts((prev) =>
+      prev.map((p, i) =>
+        i === index
+          ? {
+              ...p,
+              enrichedData: {
+                ...p.enrichedData!,
+                fornitore_odoo_id: supplierId,
+              },
+              supplierInfo: p.supplierInfo
+                ? {
+                    ...p.supplierInfo,
+                    autoMatched: supplierId !== null,
+                    matchedSupplier: supplierId
+                      ? p.supplierInfo.allSuppliers.find((s) => s.id === supplierId) ||
+                        p.supplierInfo.matchedSupplier
+                      : null,
+                  }
+                : undefined,
+            }
+          : p
+      )
+    );
+  };
+
   const enrichProduct = async (index: number) => {
     setProducts((prev) =>
       prev.map((p, i) => (i === index ? { ...p, enriching: true } : p))
@@ -148,11 +196,21 @@ export default function SelectProducts() {
                   enriched: true,
                   expanded: true,
                   enrichedData: result.data,
+                  supplierInfo: result.supplierInfo,
+                  swissPrices: result.swissPrices,
                 }
               : p
           )
         );
-        toast.success(`✅ ${products[index].nome} arricchito!`);
+        // Show warning if supplier wasn't auto-matched
+        if (result.supplierInfo && !result.supplierInfo.autoMatched) {
+          toast(`⚠️ Fornitore non trovato automaticamente per "${products[index].nome}". Selezionalo manualmente.`, {
+            duration: 5000,
+            icon: '⚠️',
+          });
+        } else {
+          toast.success(`✅ ${products[index].nome} arricchito!`);
+        }
       } else {
         toast.error(result.error || 'Errore arricchimento');
         setProducts((prev) =>
@@ -243,13 +301,18 @@ export default function SelectProducts() {
           }
         }
 
-        // Clear session storage
-        sessionStorage.removeItem('parsedInvoice');
+        // DON'T clear session storage or redirect - stay on page to create more products
+        // Mark created products as completed (deselect them)
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.selected && p.enriched
+              ? { ...p, selected: false, enriched: false, enrichedData: undefined }
+              : p
+          )
+        );
 
-        // Redirect to success or home
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        // Show success message but stay on page
+        toast.success(`✅ Prodotti creati! Puoi continuare con altri prodotti.`, { duration: 4000 });
       } else {
         toast.error(result.error || 'Errore creazione prodotti', {
           id: loadingToast,
@@ -574,6 +637,99 @@ export default function SelectProducts() {
                             </div>
                           </div>
                         )}
+
+                      {/* Swiss Market Prices */}
+                      {product.swissPrices && (product.swissPrices.retail || product.swissPrices.wholesale) && (
+                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-lg">💰</span>
+                            <label className="text-sm font-semibold text-blue-800">
+                              Prezzi di Riferimento Mercato Svizzero
+                            </label>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            {product.swissPrices.retail && (
+                              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                <div className="text-xs text-gray-500 mb-1">🛒 Dettaglio (Coop/Migros)</div>
+                                <div className="text-lg font-bold text-blue-700">
+                                  CHF {product.swissPrices.retail.toFixed(2)}
+                                </div>
+                              </div>
+                            )}
+                            {product.swissPrices.wholesale && (
+                              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                <div className="text-xs text-gray-500 mb-1">🏪 Grossista (Aligro/Prodega)</div>
+                                <div className="text-lg font-bold text-green-700">
+                                  CHF {product.swissPrices.wholesale.toFixed(2)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {product.swissPrices.sources && product.swissPrices.sources.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              <span className="font-medium">Fonti:</span>{' '}
+                              {product.swissPrices.sources.slice(0, 3).join(' • ')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Supplier Selection */}
+                      <div className={`p-4 rounded-lg ${
+                        product.supplierInfo?.autoMatched
+                          ? 'bg-green-50 border border-green-200'
+                          : 'bg-yellow-50 border border-yellow-200'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {product.supplierInfo?.autoMatched ? (
+                            <Building2 className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                          )}
+                          <label className="text-sm font-semibold text-gray-700">
+                            Fornitore
+                          </label>
+                        </div>
+
+                        {product.supplierInfo?.autoMatched && product.supplierInfo.matchedSupplier ? (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-green-700 font-medium">
+                              ✅ {product.supplierInfo.matchedSupplier.name}
+                            </span>
+                            <button
+                              onClick={() => updateSupplier(index, null)}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Cambia
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-xs text-yellow-700 mb-2">
+                              Fornitore non trovato automaticamente. Seleziona manualmente:
+                            </p>
+                            <select
+                              value={product.enrichedData?.fornitore_odoo_id || ''}
+                              onChange={(e) =>
+                                updateSupplier(
+                                  index,
+                                  e.target.value ? parseInt(e.target.value) : null
+                                )
+                              }
+                              className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
+                            >
+                              <option value="">-- Seleziona fornitore --</option>
+                              {product.supplierInfo?.allSuppliers.map((supplier) => (
+                                <option key={supplier.id} value={supplier.id}>
+                                  {supplier.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
