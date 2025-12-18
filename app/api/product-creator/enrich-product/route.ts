@@ -329,7 +329,7 @@ function cleanSupplierName(name: string): string[] {
   }
 
   // Remove duplicates and empty strings
-  return [...new Set(variants.filter(v => v && v.length > 2))];
+  return Array.from(new Set(variants.filter(v => v && v.length > 2)));
 }
 
 // Fetch data from Odoo
