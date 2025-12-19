@@ -121,7 +121,7 @@ export default function DeliveryDatePicker({ value, onChange, customerId }: Deli
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p className="text-xs" style={{ fontSize: '12px', lineHeight: '1.5' }}>
-            La data di consegna predefinita è <strong className="text-white">domani</strong>. Puoi modificarla se necessario.
+            La data di consegna predefinita è <strong className="text-white">domani</strong>. Puoi selezionare anche <strong className="text-emerald-400">oggi</strong> o qualsiasi data futura.
           </p>
         </div>
       </div>
