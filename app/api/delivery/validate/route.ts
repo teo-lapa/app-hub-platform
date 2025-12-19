@@ -226,7 +226,7 @@ ${prodottiNonConsegnati}
 
             console.log(`📞 [WHATSAPP] Venditore trovato: ${salespersonName}`);
 
-            // Crea e invia WhatsApp con il template
+            // Crea e invia WhatsApp con il template DDT
             // Le note del picking sono già state aggiornate PRIMA della validazione
             const composerId = await callOdoo(
               cookies,
@@ -235,7 +235,7 @@ ${prodottiNonConsegnati}
               [{
                 res_model: 'stock.picking',
                 res_ids: picking_id.toString(),
-                wa_template_id: 18 // Template "Sale Order Ship IT v2"
+                wa_template_id: 32 // Template "Sale Order Ship IT v2 (copia)" - DDT al venditore
               }]
             );
 
