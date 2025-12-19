@@ -42,6 +42,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🔥 CONTROLLA SE È UNO SCARICO PARZIALE E AGGIORNA NOTE PRIMA DELLA VALIDAZIONE
+    // Così il DDT PDF avrà le note corrette
+    const prodottiNonConsegnati = products
+      ?.filter((p: any) => (p.delivered || 0) < (p.qty || 0))
+      .map((p: any) => {
+        const delivered = p.delivered || 0;
+        const requested = p.qty || 0;
+        if (delivered === 0) {
+          return `<li>${p.name} - NON CONSEGNATO (richiesto: ${requested})</li>`;
+        } else {
+          return `<li>${p.name} - PARZIALE (consegnato: ${delivered}/${requested})</li>`;
+        }
+      })
+      .join('\n') || '';
+
+    const isPartialDelivery = prodottiNonConsegnati.length > 0;
+
+    if (isPartialDelivery) {
+      console.log('⚠️ [VALIDATE] Scarico parziale rilevato, aggiorno note del picking PRIMA della validazione...');
+
+      const noteContent = `<p><strong>⚠️ SCARICO PARZIALE</strong></p>
+<p><strong>📦 Prodotti non consegnati:</strong></p>
+<ul>
+${prodottiNonConsegnati}
+</ul>
+<p>Il prodotto è rimasto nel furgone e deve tornare in magazzino.</p>`;
+
+      await callOdoo(
+        cookies,
+        'stock.picking',
+        'write',
+        [[picking_id], { note: noteContent }]
+      );
+
+      console.log('✅ [VALIDATE] Campo note del picking aggiornato');
+    }
+
     // Valida il picking
     const validateResult = await callOdoo(cookies, 'stock.picking', 'button_validate', [[picking_id]]);
 
@@ -154,7 +191,8 @@ export async function POST(request: NextRequest) {
 
     // 🚀 SE È UNO SCARICO PARZIALE, INVIA WHATSAPP AL VENDITORE
     // Questo avviene DOPO la validazione, così il PDF ha i dati corretti
-    if (backorder_created) {
+    // Le note sono già state aggiornate PRIMA della validazione
+    if (isPartialDelivery) {
       try {
         console.log('📱 [WHATSAPP] Scarico parziale rilevato, invio notifica al venditore...');
 
@@ -188,40 +226,8 @@ export async function POST(request: NextRequest) {
 
             console.log(`📞 [WHATSAPP] Venditore trovato: ${salespersonName}`);
 
-            // Prepara la lista prodotti non consegnati per il campo note
-            const prodottiNonConsegnati = products
-              ?.filter((p: any) => (p.delivered || 0) < (p.qty || 0))
-              .map((p: any) => {
-                const delivered = p.delivered || 0;
-                const requested = p.qty || 0;
-                if (delivered === 0) {
-                  return `<li>${p.name} - NON CONSEGNATO (richiesto: ${requested})</li>`;
-                } else {
-                  return `<li>${p.name} - PARZIALE (consegnato: ${delivered}/${requested})</li>`;
-                }
-              })
-              .join('\n') || '';
-
-            // Aggiorna il campo note del picking per il PDF
-            if (prodottiNonConsegnati) {
-              const noteContent = `<p><strong>⚠️ SCARICO PARZIALE</strong></p>
-<p><strong>📦 Prodotti non consegnati:</strong></p>
-<ul>
-${prodottiNonConsegnati}
-</ul>
-<p>Il prodotto è rimasto nel furgone e deve tornare in magazzino.</p>`;
-
-              await callOdoo(
-                cookies,
-                'stock.picking',
-                'write',
-                [[picking_id], { note: noteContent }]
-              );
-
-              console.log('✅ [WHATSAPP] Campo note del picking aggiornato');
-            }
-
             // Crea e invia WhatsApp con il template
+            // Le note del picking sono già state aggiornate PRIMA della validazione
             const composerId = await callOdoo(
               cookies,
               'whatsapp.composer',
