@@ -312,54 +312,62 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // RESO: cerca messaggio "RESO REGISTRATO" (con o senza emoji)
-      const resoMessage = pickingMessages.find(
+      // RESO: cerca TUTTI i messaggi "RESO REGISTRATO" (con o senza emoji)
+      const resoMessages = pickingMessages.filter(
         (msg: any) => msg.body?.includes('RESO REGISTRATO')
       );
-      if (resoMessage) {
-        // La foto del reso è salvata come immagine attachment separata
-        // Cerca immagine creata vicino al messaggio
-        const messageDate = new Date(resoMessage.date);
 
-        console.log(`[RESO DEBUG] Picking ${picking.name}: Searching for return photo`);
-        console.log('[RESO DEBUG] Message date:', resoMessage.date);
-        console.log('[RESO DEBUG] Total attachments for this picking:', pickingAttachments.length);
+      if (resoMessages.length > 0) {
+        console.log(`[RESO DEBUG] Picking ${picking.name}: Found ${resoMessages.length} RESO messages`);
 
-        const returnAttachment = pickingAttachments.find((att: any) => {
-          if (!att.create_date) return false;
-          const attDate = new Date(att.create_date);
-          const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
-          // Cerca immagini create entro 2 minuti dal messaggio
-          return timeDiff < 120000 && att.mimetype && att.mimetype.startsWith('image/');
-        });
+        // Array per contenere tutti i resi
+        const resiArray: any[] = [];
 
-        console.log('[RESO DEBUG] Found return attachment:', returnAttachment ? 'YES' : 'NO');
-        if (returnAttachment) {
-          console.log('[RESO DEBUG] Return attachment ID:', returnAttachment.id, 'mimetype:', returnAttachment.mimetype);
-          console.log('[RESO DEBUG] Return has data:', !!returnAttachment.datas, 'data length:', returnAttachment.datas?.length || 0);
+        // Processa ogni messaggio di reso
+        for (const resoMessage of resoMessages) {
+          // La foto del reso è salvata come immagine attachment separata
+          // Cerca immagine creata vicino al messaggio
+          const messageDate = new Date(resoMessage.date);
+
+          console.log('[RESO DEBUG] Processing message date:', resoMessage.date);
+
+          const returnAttachment = pickingAttachments.find((att: any) => {
+            if (!att.create_date) return false;
+            const attDate = new Date(att.create_date);
+            const timeDiff = Math.abs(attDate.getTime() - messageDate.getTime());
+            // Cerca immagini create entro 2 minuti dal messaggio
+            return timeDiff < 120000 && att.mimetype && att.mimetype.startsWith('image/');
+          });
+
+          console.log('[RESO DEBUG] Found return attachment:', returnAttachment ? 'YES' : 'NO');
+          if (returnAttachment) {
+            console.log('[RESO DEBUG] Return attachment ID:', returnAttachment.id, 'mimetype:', returnAttachment.mimetype);
+          }
+
+          const body = resoMessage.body || '';
+          // Estrai motivo del reso dal messaggio
+          let reason: string | undefined;
+          // Il messaggio è in HTML: <p><strong>Motivo:</strong> Cornetti</p>
+          const reasonMatch = body.match(/<strong>Motivo:<\/strong>\s*([^<]+)/i);
+          if (reasonMatch) {
+            reason = reasonMatch[1].trim();
+            console.log('[RESO DEBUG] Extracted reason:', reason);
+          }
+
+          resiArray.push({
+            type: 'reso',
+            data: returnAttachment?.datas || null,
+            timestamp: resoMessage.date,
+            note: body,
+            message_id: resoMessage.id,
+            odoo_attachment_id: returnAttachment?.id,
+            reason: reason,
+          });
         }
 
-        const body = resoMessage.body || '';
-        // Estrai motivo del reso dal messaggio
-        let reason: string | undefined;
-        // Il messaggio è in HTML: <p><strong>Motivo:</strong> Cornetti</p>
-        const reasonMatch = body.match(/<strong>Motivo:<\/strong>\s*([^<]+)/i);
-        if (reasonMatch) {
-          reason = reasonMatch[1].trim();
-          console.log('[RESO DEBUG] Extracted reason:', reason);
-        } else {
-          console.log('[RESO DEBUG] Failed to extract reason from body:', body.substring(0, 200));
-        }
-
-        attachmentsByType.reso = {
-          type: 'reso',
-          data: returnAttachment?.datas || null,
-          timestamp: resoMessage.date,
-          note: body,
-          message_id: resoMessage.id,
-          odoo_attachment_id: returnAttachment?.id,
-          reason: reason,
-        };
+        // Mantieni compatibilità: reso contiene il primo, resi contiene tutti
+        attachmentsByType.reso = resiArray[0];
+        attachmentsByType.resi = resiArray;
       }
 
       // SCARICO PARZIALE: cerca messaggio "SCARICO PARZIALE" (con o senza emoji)

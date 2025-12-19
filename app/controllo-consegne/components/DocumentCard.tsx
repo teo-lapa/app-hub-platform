@@ -16,6 +16,8 @@ export default function DocumentCard({ document }: DocumentCardProps) {
   const hasPhoto = !!document.attachments.photo;
   const hasPayment = !!document.attachments.payment;
   const hasReso = !!document.attachments.reso;
+  const hasMultipleResi = document.attachments.resi && document.attachments.resi.length > 1;
+  const resiCount = document.attachments.resi?.length || (hasReso ? 1 : 0);
   const hasScaricoP = !!document.attachments.scarico_parziale;
 
   const formatTime = (datetime: string) => {
@@ -122,18 +124,39 @@ export default function DocumentCard({ document }: DocumentCardProps) {
             </div>
           )}
           {hasReso && (
-            <div className={styles.resoSection}>
-              <button
-                className={`${styles.attachmentBtn} ${styles.resoBtn}`}
-                onClick={() => setSelectedAttachment(document.attachments.reso)}
-              >
-                <span className={styles.icon}>🔄</span>
-                <span>Reso</span>
-              </button>
-              {(document.attachments.reso as any)?.note && (
-                <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.reso as any).note }} />
+            <>
+              {/* Mostra tutti i resi se ce ne sono multipli */}
+              {document.attachments.resi && document.attachments.resi.length > 0 ? (
+                document.attachments.resi.map((reso, index) => (
+                  <div key={reso.message_id || index} className={styles.resoSection}>
+                    <button
+                      className={`${styles.attachmentBtn} ${styles.resoBtn}`}
+                      onClick={() => setSelectedAttachment(reso)}
+                    >
+                      <span className={styles.icon}>🔄</span>
+                      <span>Reso {resiCount > 1 ? `${index + 1}/${resiCount}` : ''}</span>
+                    </button>
+                    {(reso as any)?.note && (
+                      <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (reso as any).note }} />
+                    )}
+                  </div>
+                ))
+              ) : (
+                // Fallback per compatibilità con dati vecchi
+                <div className={styles.resoSection}>
+                  <button
+                    className={`${styles.attachmentBtn} ${styles.resoBtn}`}
+                    onClick={() => setSelectedAttachment(document.attachments.reso)}
+                  >
+                    <span className={styles.icon}>🔄</span>
+                    <span>Reso</span>
+                  </button>
+                  {(document.attachments.reso as any)?.note && (
+                    <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (document.attachments.reso as any).note }} />
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
           {hasScaricoP && (
             <div className={styles.resoSection}>
