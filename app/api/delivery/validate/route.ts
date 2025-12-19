@@ -152,6 +152,107 @@ export async function POST(request: NextRequest) {
 
     console.log('Messaggio chatter creato ID:', messageId);
 
+    // 🚀 SE È UNO SCARICO PARZIALE, INVIA WHATSAPP AL VENDITORE
+    // Questo avviene DOPO la validazione, così il PDF ha i dati corretti
+    if (backorder_created) {
+      try {
+        console.log('📱 [WHATSAPP] Scarico parziale rilevato, invio notifica al venditore...');
+
+        // Recupera il picking per trovare il Sale Order e il venditore
+        const picking = await callOdoo(
+          cookies,
+          'stock.picking',
+          'read',
+          [[picking_id]],
+          {
+            fields: ['name', 'partner_id', 'sale_id', 'origin']
+          }
+        );
+
+        if (picking && picking[0] && picking[0].sale_id) {
+          const saleOrderId = picking[0].sale_id[0];
+
+          // Recupera il venditore dal Sale Order
+          const saleOrder = await callOdoo(
+            cookies,
+            'sale.order',
+            'read',
+            [[saleOrderId]],
+            {
+              fields: ['user_id']
+            }
+          );
+
+          if (saleOrder && saleOrder[0] && saleOrder[0].user_id) {
+            const salespersonName = saleOrder[0].user_id[1];
+
+            console.log(`📞 [WHATSAPP] Venditore trovato: ${salespersonName}`);
+
+            // Prepara la lista prodotti non consegnati per il campo note
+            const prodottiNonConsegnati = products
+              ?.filter((p: any) => (p.delivered || 0) < (p.qty || 0))
+              .map((p: any) => {
+                const delivered = p.delivered || 0;
+                const requested = p.qty || 0;
+                if (delivered === 0) {
+                  return `<li>${p.name} - NON CONSEGNATO (richiesto: ${requested})</li>`;
+                } else {
+                  return `<li>${p.name} - PARZIALE (consegnato: ${delivered}/${requested})</li>`;
+                }
+              })
+              .join('\n') || '';
+
+            // Aggiorna il campo note del picking per il PDF
+            if (prodottiNonConsegnati) {
+              const noteContent = `<p><strong>⚠️ SCARICO PARZIALE</strong></p>
+<p><strong>📦 Prodotti non consegnati:</strong></p>
+<ul>
+${prodottiNonConsegnati}
+</ul>
+<p>Il prodotto è rimasto nel furgone e deve tornare in magazzino.</p>`;
+
+              await callOdoo(
+                cookies,
+                'stock.picking',
+                'write',
+                [[picking_id], { note: noteContent }]
+              );
+
+              console.log('✅ [WHATSAPP] Campo note del picking aggiornato');
+            }
+
+            // Crea e invia WhatsApp con il template
+            const composerId = await callOdoo(
+              cookies,
+              'whatsapp.composer',
+              'create',
+              [{
+                res_model: 'stock.picking',
+                res_ids: picking_id.toString(),
+                wa_template_id: 18 // Template "Sale Order Ship IT v2"
+              }]
+            );
+
+            await callOdoo(
+              cookies,
+              'whatsapp.composer',
+              'action_send_whatsapp_template',
+              [[composerId]]
+            );
+
+            console.log(`✅ [WHATSAPP] Messaggio inviato a ${salespersonName}!`);
+          } else {
+            console.log('⚠️ [WHATSAPP] Venditore non trovato per questo ordine');
+          }
+        } else {
+          console.log('⚠️ [WHATSAPP] Sale Order non trovato per questo picking');
+        }
+      } catch (whatsappError: any) {
+        console.error('❌ [WHATSAPP] Errore invio WhatsApp:', whatsappError.message);
+        // Non bloccare il flusso principale se WhatsApp fallisce
+      }
+    }
+
     return NextResponse.json({
       success: true,
       backorder_created,

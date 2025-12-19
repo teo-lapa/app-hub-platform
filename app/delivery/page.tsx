@@ -1250,6 +1250,21 @@ export default function DeliveryPage() {
         formData.append('audio_note', partialJustificationAudio, 'giustificazione.webm');
       }
 
+      // Aggiungi lista prodotti problematici per il messaggio nel chatter
+      if (partialProductsList.length > 0) {
+        formData.append('problem_products', JSON.stringify(partialProductsList));
+      }
+
+      // Aggiungi prodotti con quantità per aggiornare qty_done in Odoo
+      const productsData = scaricoProducts.map(p => ({
+        move_line_id: p.move_line_id,
+        product_id: p.product_id,
+        name: p.name,
+        qty: p.qty,
+        delivered: p.delivered || 0
+      }));
+      formData.append('products', JSON.stringify(productsData));
+
       // Salva nel chatter via API
       const response = await fetch('/api/delivery/save-partial-justification', {
         method: 'POST',
