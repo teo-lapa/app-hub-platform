@@ -20,6 +20,7 @@ export interface DeliveryDocument {
     photo?: DocumentAttachment;
     payment?: DocumentAttachment;
     reso?: DocumentAttachment;
+    resi?: DocumentAttachment[]; // Array of all RESO messages
     scarico_parziale?: DocumentAttachment;
   };
 
@@ -40,6 +41,8 @@ export interface DocumentAttachment {
   note?: string;
   odoo_attachment_id?: number;
   mimetype?: string; // MIME type of the attachment (e.g., 'audio/webm', 'image/png', 'application/pdf')
+  message_id?: number; // ID del messaggio Odoo associato
+  reason?: string; // Motivo del reso (solo per tipo 'reso')
 }
 
 export interface FilterState {
