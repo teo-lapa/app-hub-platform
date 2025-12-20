@@ -8,7 +8,32 @@
  * - Suggerimenti prodotti simili
  * - Gestione promozioni e offerte
  *
- * Integrazione: Odoo XML-RPC
+ * INTEGRAZIONE ODOO - DATI REALI:
+ * =================================
+ *
+ * searchProducts() - Cerca in product.product usando domain Odoo
+ *   Campi: id, name, default_code, barcode, list_price, categ_id, qty_available
+ *
+ * getProductDetails() - Recupera singolo prodotto con tutti i campi
+ *   Campi: id, name, default_code, barcode, list_price, standard_price,
+ *          categ_id, type, image_1920, description, description_sale, uom_id
+ *
+ * checkAvailability() - Verifica stock REALE da product.product
+ *   Campi: qty_available, virtual_available, outgoing_qty, incoming_qty, free_qty
+ *   Plus: Dettaglio ubicazioni da stock.quant
+ *
+ * getPrice() - Calcola prezzo da listini REALI (product.pricelist)
+ *   - Se partnerId fornito: usa property_product_pricelist del cliente
+ *   - Altrimenti: cerca listino B2B o B2C per nome
+ *   - Usa get_product_price_rule per calcolo automatico sconti
+ *   - Considera regole di listino e quantità minime
+ *
+ * getProductSuppliers() - Info fornitori da product.supplierinfo
+ *   Campi: partner_id, price, currency_id, min_qty, delay
+ *
+ * getCategories() - Lista categorie da product.category
+ *
+ * Integrazione: Odoo XML-RPC tramite createOdooRPCClient()
  */
 
 import { createOdooRPCClient, OdooRPCClient } from '../../odoo/rpcClient';
@@ -456,72 +481,116 @@ export class ProductsAgent {
       }
 
       const product = products[0];
-
-      // Determina listino in base al tipo cliente
-      let pricelistDomain: any[] = [['active', '=', true]];
-
-      if (customerType === 'B2B') {
-        // Listino B2B (business)
-        pricelistDomain.push(['name', 'ilike', 'B2B']);
-      } else {
-        // Listino B2C (retail/pubblico)
-        pricelistDomain.push(['name', 'ilike', 'B2C']);
-      }
-
-      // Cerca listino specifico
-      const pricelists = await this.odoo.searchRead(
-        'product.pricelist',
-        pricelistDomain,
-        ['id', 'name', 'currency_id'],
-        1
-      );
-
-      let basePrice = product.list_price;
-      let discountPercent = 0;
+      let pricelistId: number | null = null;
       let pricelistName = 'Listino standard';
       let currency = 'EUR';
+      let finalPrice = product.list_price;
+      let discountPercent = 0;
 
-      // Se esiste listino specifico, usa quello
-      if (pricelists.length > 0) {
-        const pricelist = pricelists[0];
-        pricelistName = pricelist.name;
-        currency = pricelist.currency_id ? pricelist.currency_id[1] : 'EUR';
-
-        // Calcola prezzo da listino
+      // Se c'è un partner specifico, usa il suo listino
+      if (partnerId) {
         try {
-          const priceResult = await this.odoo.callKw(
-            'product.pricelist',
-            'get_product_price',
-            [pricelist.id, productId, quantity, partnerId || false]
+          const partners = await this.odoo.searchRead(
+            'res.partner',
+            [['id', '=', partnerId]],
+            ['property_product_pricelist'],
+            1
           );
 
-          if (priceResult && typeof priceResult === 'number') {
-            const calculatedPrice = priceResult;
-            discountPercent = ((basePrice - calculatedPrice) / basePrice) * 100;
-            basePrice = calculatedPrice;
+          if (partners.length > 0 && partners[0].property_product_pricelist) {
+            pricelistId = partners[0].property_product_pricelist[0];
+            pricelistName = partners[0].property_product_pricelist[1];
+            console.log(`   📋 Listino cliente: ${pricelistName} (ID: ${pricelistId})`);
           }
         } catch (error) {
-          console.warn('⚠️ Impossibile calcolare prezzo da listino, uso list_price');
+          console.warn('⚠️ Impossibile recuperare listino del partner');
         }
       }
 
-      // Sconto quantità (esempio: >10 pezzi = -5%, >50 = -10%)
-      let quantityDiscount = 0;
-      if (quantity >= 50) {
-        quantityDiscount = 10;
-      } else if (quantity >= 10) {
-        quantityDiscount = 5;
+      // Altrimenti cerca listino in base al tipo cliente
+      if (!pricelistId) {
+        let pricelistDomain: any[] = [['active', '=', true]];
+
+        if (customerType === 'B2B') {
+          // Listino B2B (business)
+          pricelistDomain.push(['name', 'ilike', 'B2B']);
+        } else {
+          // Listino B2C (retail/pubblico)
+          pricelistDomain.push(['name', 'ilike', 'B2C']);
+        }
+
+        const pricelists = await this.odoo.searchRead(
+          'product.pricelist',
+          pricelistDomain,
+          ['id', 'name', 'currency_id'],
+          1
+        );
+
+        if (pricelists.length > 0) {
+          pricelistId = pricelists[0].id;
+          pricelistName = pricelists[0].name;
+          currency = pricelists[0].currency_id ? pricelists[0].currency_id[1] : 'EUR';
+        }
       }
 
-      const totalDiscount = discountPercent + quantityDiscount;
-      const finalPrice = basePrice * (1 - totalDiscount / 100);
+      // Calcola prezzo dal listino usando il metodo REALE di Odoo
+      if (pricelistId) {
+        try {
+          // Usa get_product_price_rule per ottenere prezzo, sconto e regola applicata
+          const priceResult = await this.odoo.callKw(
+            'product.pricelist',
+            'get_product_price_rule',
+            [[pricelistId], productId, quantity, partnerId || false]
+          );
+
+          // Formato risposta: { product_id: [prezzo, regola_id] }
+          if (priceResult && priceResult[productId]) {
+            const [calculatedPrice, ruleId] = priceResult[productId];
+
+            if (calculatedPrice && typeof calculatedPrice === 'number') {
+              finalPrice = calculatedPrice;
+
+              // Calcola sconto percentuale rispetto al prezzo di listino
+              if (product.list_price > 0) {
+                discountPercent = ((product.list_price - calculatedPrice) / product.list_price) * 100;
+              }
+
+              console.log(`   💰 Prezzo da listino: ${calculatedPrice.toFixed(2)} (sconto: ${discountPercent.toFixed(1)}%)`);
+
+              // Se c'è una regola, recupera i dettagli
+              if (ruleId) {
+                try {
+                  const rules = await this.odoo.searchRead(
+                    'product.pricelist.item',
+                    [['id', '=', ruleId]],
+                    ['name', 'min_quantity'],
+                    1
+                  );
+                  if (rules.length > 0) {
+                    console.log(`   📏 Regola applicata: ${rules[0].name || 'N/A'}`);
+                  }
+                } catch (error) {
+                  // Ignora errori nel recupero regola
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Impossibile calcolare prezzo da listino, uso list_price:', error);
+          finalPrice = product.list_price;
+        }
+      } else {
+        // Nessun listino trovato, usa prezzo standard
+        finalPrice = product.list_price;
+        console.log('   ℹ️ Nessun listino trovato, uso list_price');
+      }
 
       const priceData: ProductPrice = {
         productId: product.id,
         productName: product.name,
         customerType,
         basePrice: product.list_price,
-        discountPercent: totalDiscount > 0 ? totalDiscount : undefined,
+        discountPercent: discountPercent > 0 ? discountPercent : undefined,
         finalPrice: finalPrice,
         currency: currency,
         pricelistName: pricelistName,
@@ -825,6 +894,93 @@ export class ProductsAgent {
     } catch (error) {
       console.error('❌ Test connessione fallito:', error);
       return false;
+    }
+  }
+
+  /**
+   * CATEGORIE PRODOTTI
+   * Recupera tutte le categorie disponibili in Odoo
+   */
+  async getCategories(parentId?: number): Promise<AgentResponse<any[]>> {
+    try {
+      console.log('📂 Recupero categorie prodotti', parentId ? `(parent: ${parentId})` : '');
+
+      const domain: any[] = [];
+
+      // Se specificato, filtra per categoria padre
+      if (parentId) {
+        domain.push(['parent_id', '=', parentId]);
+      }
+
+      const categories = await this.odoo.searchRead(
+        'product.category',
+        domain,
+        ['id', 'name', 'parent_id', 'complete_name', 'product_count'],
+        50,
+        'name asc'
+      );
+
+      console.log(`✅ Trovate ${categories.length} categorie`);
+
+      return {
+        success: true,
+        data: categories,
+        message: `Trovate ${categories.length} categorie`,
+        timestamp: new Date(),
+        language: this.language,
+      };
+
+    } catch (error: any) {
+      console.error('❌ Errore recupero categorie:', error);
+      return {
+        success: false,
+        message: 'Errore recupero categorie',
+        error: error.message,
+        timestamp: new Date(),
+        language: this.language,
+      };
+    }
+  }
+
+  /**
+   * DETTAGLI FORNITORE PRODOTTO
+   * Recupera informazioni sui fornitori del prodotto con prezzi di acquisto
+   */
+  async getProductSuppliers(productId: number): Promise<AgentResponse<any[]>> {
+    try {
+      console.log('🏪 Recupero fornitori prodotto:', productId);
+
+      // Recupera product.supplierinfo del prodotto
+      const suppliers = await this.odoo.searchRead(
+        'product.supplierinfo',
+        [['product_id', '=', productId]],
+        [
+          'id', 'partner_id', 'product_name', 'product_code',
+          'price', 'currency_id', 'min_qty', 'delay'
+        ],
+        10,
+        'sequence,min_qty'
+      );
+
+      console.log(`✅ Trovati ${suppliers.length} fornitori`);
+
+      return {
+        success: true,
+        data: suppliers,
+        message: `Trovati ${suppliers.length} fornitori`,
+        timestamp: new Date(),
+        language: this.language,
+      };
+
+    } catch (error: any) {
+      console.error('❌ Errore recupero fornitori:', error);
+      return {
+        success: false,
+        message: 'Errore recupero fornitori',
+        error: error.message,
+        timestamp: new Date(),
+        language: this.language,
+      };
     }
   }
 }

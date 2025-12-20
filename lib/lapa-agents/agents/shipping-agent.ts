@@ -8,6 +8,18 @@
  * - Informazioni autista/corriere
  * - Storico consegne cliente
  * - Gestione problemi di consegna
+ *
+ * AGGIORNAMENTO - Dati Reali da Odoo:
+ * - trackShipment: Query stock.picking usando id, sale_id, origin (ilike), o name
+ * - getDriverInfo: Recupera autista da stock.picking.batch.x_studio_autista_del_giro
+ * - getDeliveryETA: Usa scheduled_date e state per calcolare ETA
+ * - getDeliveryHistory: Query storico stock.picking per customer (partner_id)
+ *
+ * Campi Odoo utilizzati:
+ * - stock.picking: id, name, state, partner_id, scheduled_date, date_done,
+ *   origin, batch_id, sale_id, note, move_ids, picking_type_code
+ * - stock.picking.batch: x_studio_autista_del_giro, x_studio_auto_del_giro
+ * - stock.move: product_id, product_uom_qty, quantity_done, product_uom
  */
 
 import { getOdooXMLRPCClient } from '@/lib/odoo-xmlrpc';
@@ -139,35 +151,37 @@ export class ShippingAgent {
       let pickings;
 
       if (typeof orderId === 'number') {
-        // Se è un numero, cerca direttamente il picking ID
+        // Se è un numero, cerca prima per picking ID, poi per sale_id
         pickings = await client.execute_kw(
           'stock.picking',
           'search_read',
           [
-            [['id', '=', orderId]]
+            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
           ],
           {
             fields: [
               'id', 'name', 'state', 'scheduled_date', 'date_done',
               'partner_id', 'origin', 'note', 'backorder_id',
-              'location_dest_id', 'driver_id', 'move_ids'
+              'location_dest_id', 'batch_id', 'move_ids', 'sale_id',
+              'picking_type_code'
             ],
             limit: 1
           }
         );
       } else {
-        // Se è una stringa, cerca per nome ordine o picking name
+        // Se è una stringa, cerca per nome ordine (origin) o picking name
         pickings = await client.execute_kw(
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', '=', orderId], ['name', '=', orderId]]
+            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
           ],
           {
             fields: [
               'id', 'name', 'state', 'scheduled_date', 'date_done',
               'partner_id', 'origin', 'note', 'backorder_id',
-              'location_dest_id', 'driver_id', 'move_ids'
+              'location_dest_id', 'batch_id', 'move_ids', 'sale_id',
+              'picking_type_code'
             ],
             limit: 1
           }
@@ -187,9 +201,35 @@ export class ShippingAgent {
       const moves = await this.getPickingProducts(client, picking.move_ids);
 
       // Ottieni info autista/veicolo se disponibile
+      // Prima controlla batch_id per x_studio_autista_del_giro
       let driverInfo = null;
-      if (picking.driver_id) {
-        driverInfo = await this.getDriverDetails(client, picking.driver_id[0]);
+
+      if (picking.batch_id && Array.isArray(picking.batch_id)) {
+        const batchId = picking.batch_id[0];
+        const batches = await client.execute_kw(
+          'stock.picking.batch',
+          'read',
+          [[batchId]],
+          {
+            fields: ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
+          }
+        );
+
+        if (batches && batches.length > 0) {
+          const batch = batches[0];
+          if (batch.x_studio_autista_del_giro) {
+            driverInfo = {
+              id: batch.x_studio_autista_del_giro[0],
+              name: batch.x_studio_autista_del_giro[1],
+              phone: null,
+              email: null,
+              vehicle_id: batch.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[0] : null,
+              vehicle_name: batch.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[1] : null,
+              current_deliveries: 0,
+              completed_today: 0
+            };
+          }
+        }
       }
 
       const shipmentStatus: ShipmentStatus = {
@@ -242,10 +282,10 @@ export class ShippingAgent {
           'stock.picking',
           'search_read',
           [
-            [['id', '=', orderId]]
+            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
           ],
           {
-            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'driver_id'],
+            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'],
             limit: 1
           }
         );
@@ -254,10 +294,10 @@ export class ShippingAgent {
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', '=', orderId], ['name', '=', orderId]]
+            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
           ],
           {
-            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'driver_id'],
+            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'],
             limit: 1
           }
         );
@@ -306,7 +346,116 @@ export class ShippingAgent {
   }
 
   /**
-   * Ottiene informazioni sull'autista/corriere assegnato
+   * Ottiene informazioni sull'autista/corriere assegnato tramite picking ID
+   */
+  async getDriverInfo(pickingId: number): Promise<ShippingAgentResponse> {
+    try {
+      const client = await getOdooXMLRPCClient();
+
+      // Cerca il picking
+      const pickings = await client.execute_kw(
+        'stock.picking',
+        'read',
+        [[pickingId]],
+        {
+          fields: ['batch_id', 'scheduled_date']
+        }
+      );
+
+      if (!pickings || pickings.length === 0) {
+        return {
+          success: false,
+          error: this.t('shipment_not_found', { orderId: pickingId })
+        };
+      }
+
+      const picking = pickings[0];
+
+      if (!picking.batch_id || !Array.isArray(picking.batch_id)) {
+        return {
+          success: false,
+          error: this.t('no_driver_assigned')
+        };
+      }
+
+      const batchId = picking.batch_id[0];
+
+      // Ottieni info batch e autista
+      const batches = await client.execute_kw(
+        'stock.picking.batch',
+        'read',
+        [[batchId]],
+        {
+          fields: ['x_studio_autista_del_giro', 'x_studio_auto_del_giro', 'picking_ids']
+        }
+      );
+
+      if (!batches || batches.length === 0 || !batches[0].x_studio_autista_del_giro) {
+        return {
+          success: false,
+          error: this.t('no_driver_assigned')
+        };
+      }
+
+      const batch = batches[0];
+      const driverId = batch.x_studio_autista_del_giro[0];
+      const driverName = batch.x_studio_autista_del_giro[1];
+
+      // Conta consegne oggi per questo autista
+      const today = new Date().toISOString().split('T')[0];
+      const todayPickings = await client.execute_kw(
+        'stock.picking',
+        'search_count',
+        [
+          [
+            ['batch_id.x_studio_autista_del_giro', '=', driverId],
+            ['scheduled_date', '>=', `${today} 00:00:00`],
+            ['scheduled_date', '<=', `${today} 23:59:59`]
+          ]
+        ]
+      );
+
+      const completedToday = await client.execute_kw(
+        'stock.picking',
+        'search_count',
+        [
+          [
+            ['batch_id.x_studio_autista_del_giro', '=', driverId],
+            ['state', '=', 'done'],
+            ['date_done', '>=', `${today} 00:00:00`],
+            ['date_done', '<=', `${today} 23:59:59`]
+          ]
+        ]
+      );
+
+      const driver: DriverInfo = {
+        id: driverId,
+        name: driverName,
+        phone: null,
+        email: null,
+        vehicle_id: batch.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[0] : null,
+        vehicle_name: batch.x_studio_auto_del_giro ? batch.x_studio_auto_del_giro[1] : null,
+        current_deliveries: todayPickings,
+        completed_today: completedToday
+      };
+
+      return {
+        success: true,
+        data: driver,
+        message: this.t('driver_info_retrieved')
+      };
+
+    } catch (error) {
+      console.error('[ShippingAgent] Errore getDriverInfo:', error);
+      return {
+        success: false,
+        error: this.t('error_getting_driver', { error: (error as Error).message })
+      };
+    }
+  }
+
+  /**
+   * Ottiene informazioni sull'autista/corriere assegnato (metodo legacy)
    */
   async getDeliveryDriver(orderId: number | string): Promise<ShippingAgentResponse> {
     try {
@@ -319,10 +468,10 @@ export class ShippingAgent {
           'stock.picking',
           'search_read',
           [
-            [['id', '=', orderId]]
+            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
           ],
           {
-            fields: ['driver_id'],
+            fields: ['id'],
             limit: 1
           }
         );
@@ -331,10 +480,10 @@ export class ShippingAgent {
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', '=', orderId], ['name', '=', orderId]]
+            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
           ],
           {
-            fields: ['driver_id'],
+            fields: ['id'],
             limit: 1
           }
         );
@@ -349,53 +498,8 @@ export class ShippingAgent {
 
       const picking = pickings[0];
 
-      if (!picking.driver_id) {
-        return {
-          success: false,
-          error: this.t('no_driver_assigned')
-        };
-      }
-
-      const driverInfo = await this.getDriverDetails(client, picking.driver_id[0]);
-
-      // Conta consegne oggi
-      const today = new Date().toISOString().split('T')[0];
-      const todayPickings = await client.execute_kw(
-        'stock.picking',
-        'search_count',
-        [
-          [
-            ['driver_id', '=', picking.driver_id[0]],
-            ['scheduled_date', '>=', `${today} 00:00:00`],
-            ['scheduled_date', '<=', `${today} 23:59:59`]
-          ]
-        ]
-      );
-
-      const completedToday = await client.execute_kw(
-        'stock.picking',
-        'search_count',
-        [
-          [
-            ['driver_id', '=', picking.driver_id[0]],
-            ['state', '=', 'done'],
-            ['date_done', '>=', `${today} 00:00:00`],
-            ['date_done', '<=', `${today} 23:59:59`]
-          ]
-        ]
-      );
-
-      const driver: DriverInfo = {
-        ...driverInfo,
-        current_deliveries: todayPickings,
-        completed_today: completedToday
-      };
-
-      return {
-        success: true,
-        data: driver,
-        message: this.t('driver_info_retrieved')
-      };
+      // Usa il nuovo metodo getDriverInfo
+      return this.getDriverInfo(picking.id);
 
     } catch (error) {
       console.error('[ShippingAgent] Errore getDeliveryDriver:', error);
@@ -642,36 +746,6 @@ export class ShippingAgent {
     }));
   }
 
-  /**
-   * Ottiene dettagli autista
-   */
-  private async getDriverDetails(client: any, driverId: number): Promise<DriverInfo> {
-    const employees = await client.execute_kw(
-      'hr.employee',
-      'read',
-      [[driverId]],
-      {
-        fields: ['id', 'name', 'work_phone', 'work_email', 'vehicle']
-      }
-    );
-
-    if (!employees || employees.length === 0) {
-      throw new Error('Driver not found');
-    }
-
-    const employee = employees[0];
-
-    return {
-      id: employee.id,
-      name: employee.name,
-      phone: employee.work_phone,
-      email: employee.work_email,
-      vehicle_id: employee.vehicle ? employee.vehicle[0] : null,
-      vehicle_name: employee.vehicle ? employee.vehicle[1] : null,
-      current_deliveries: 0,
-      completed_today: 0
-    };
-  }
 
   /**
    * Ottiene indirizzo cliente formattato
@@ -893,10 +967,17 @@ export async function getDeliveryETA(orderId: number | string) {
 }
 
 /**
- * Ottieni info autista
+ * Ottieni info autista tramite ordine
  */
 export async function getDeliveryDriver(orderId: number | string) {
   return shippingAgent.getDeliveryDriver(orderId);
+}
+
+/**
+ * Ottieni info autista tramite picking ID
+ */
+export async function getDriverInfo(pickingId: number) {
+  return shippingAgent.getDriverInfo(pickingId);
 }
 
 /**

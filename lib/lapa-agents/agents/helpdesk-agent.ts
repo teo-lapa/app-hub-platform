@@ -8,9 +8,14 @@
  * - Aggiornamento stato e commenti
  * - Escalation a operatore umano
  * - Notifiche via email al team
+ *
+ * INTEGRAZIONE ODOO:
+ * - Usa createOdooRPCClient per connessione ai dati reali
+ * - Modello principale: helpdesk.ticket
+ * - Fallback a mail.message se helpdesk non disponibile
  */
 
-import { OdooClient, OdooSession } from '@/lib/odoo/client';
+import { createOdooRPCClient } from '../../odoo/rpcClient';
 import { Resend } from 'resend';
 
 // Configurazione email
@@ -138,21 +143,13 @@ const TRANSLATIONS = {
 type Language = 'it' | 'en' | 'de';
 
 export class HelpdeskAgent {
-  private odooClient: OdooClient;
-  private session: OdooSession | null = null;
+  private odooRPC: ReturnType<typeof createOdooRPCClient>;
   private lang: Language = 'it';
+  private helpdeskAvailable: boolean | null = null; // Cache per sapere se helpdesk è disponibile
 
-  constructor(odooClient: OdooClient, session?: OdooSession, language: Language = 'it') {
-    this.odooClient = odooClient;
-    this.session = session || null;
+  constructor(sessionId?: string, language: Language = 'it') {
+    this.odooRPC = createOdooRPCClient(sessionId);
     this.lang = language;
-  }
-
-  /**
-   * Imposta la sessione Odoo
-   */
-  setSession(session: OdooSession) {
-    this.session = session;
   }
 
   /**
@@ -175,18 +172,30 @@ export class HelpdeskAgent {
   }
 
   /**
-   * Verifica la sessione
+   * Verifica se il modulo Helpdesk è disponibile
    */
-  private ensureSession(): OdooSession {
-    if (!this.session) {
-      throw new Error('Odoo session required. Please call setSession() first.');
+  private async checkHelpdeskAvailable(): Promise<boolean> {
+    if (this.helpdeskAvailable !== null) {
+      return this.helpdeskAvailable;
     }
-    return this.session;
+
+    try {
+      // Prova a cercare 1 ticket per verificare che il modello esista
+      await this.odooRPC.searchRead('helpdesk.ticket', [], ['id'], 1);
+      this.helpdeskAvailable = true;
+      console.log('✅ Helpdesk module available');
+      return true;
+    } catch (error) {
+      console.log('⚠️ Helpdesk module not available, will use mail.message fallback');
+      this.helpdeskAvailable = false;
+      return false;
+    }
   }
 
   /**
    * CREA TICKET
    * Crea un nuovo ticket helpdesk e invia notifica email
+   * Se helpdesk non disponibile, usa mail.message come fallback
    */
   async createTicket(params: CreateTicketParams): Promise<{
     success: boolean;
@@ -196,57 +205,17 @@ export class HelpdeskAgent {
     error?: string;
   }> {
     try {
-      const session = this.ensureSession();
-
       console.log('Creating helpdesk ticket:', params);
 
-      // Prepara i valori per il ticket
-      const ticketValues: Record<string, any> = {
-        name: params.subject,
-        description: params.description,
-        partner_id: params.customerId,
-        priority: params.priority || '1',
-        // team_id: 1, // TODO: Ottenere team_id corretto da configurazione
-      };
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
 
-      // Crea il ticket tramite Odoo XML-RPC
-      const ticketId = await this.odooClient.callKw(
-        'helpdesk.ticket',
-        'create',
-        [ticketValues],
-        {},
-        session
-      );
-
-      if (!ticketId) {
-        throw new Error('Failed to create ticket - no ID returned');
+      if (isHelpdeskAvailable) {
+        // Usa il modulo helpdesk.ticket
+        return await this.createHelpdeskTicket(params);
+      } else {
+        // Fallback: crea un messaggio in mail.message
+        return await this.createMailMessage(params);
       }
-
-      console.log('Ticket created with ID:', ticketId);
-
-      // Gestisci allegati se presenti
-      if (params.attachments && params.attachments.length > 0) {
-        await this.attachFiles(ticketId, params.attachments);
-      }
-
-      // Leggi il ticket appena creato per ottenere tutti i dati
-      const ticket = await this.getTicketById(ticketId);
-
-      // Invia notifica email al team
-      await this.sendTicketCreatedEmail({
-        ticketId,
-        subject: params.subject,
-        description: params.description,
-        customerId: params.customerId,
-        priority: params.priority || '1',
-      });
-
-      return {
-        success: true,
-        ticketId,
-        ticket: ticket || undefined,
-        message: this.t('ticketCreated'),
-      };
 
     } catch (error: any) {
       console.error('Error creating ticket:', error);
@@ -258,8 +227,120 @@ export class HelpdeskAgent {
   }
 
   /**
+   * Crea ticket usando il modulo helpdesk.ticket
+   */
+  private async createHelpdeskTicket(params: CreateTicketParams): Promise<{
+    success: boolean;
+    ticketId?: number;
+    ticket?: HelpdeskTicket;
+    message?: string;
+    error?: string;
+  }> {
+    // Prepara i valori per il ticket
+    const ticketValues: Record<string, any> = {
+      name: params.subject,
+      description: params.description,
+      partner_id: params.customerId,
+      priority: params.priority || '1',
+      team_id: 1, // Customer Care team (da configurazione)
+    };
+
+    // Crea il ticket tramite Odoo RPC
+    const ticketId = await this.odooRPC.callKw(
+      'helpdesk.ticket',
+      'create',
+      [ticketValues]
+    );
+
+    if (!ticketId) {
+      throw new Error('Failed to create ticket - no ID returned');
+    }
+
+    console.log('Ticket created with ID:', ticketId);
+
+    // Gestisci allegati se presenti
+    if (params.attachments && params.attachments.length > 0) {
+      await this.attachFiles(ticketId, params.attachments, 'helpdesk.ticket');
+    }
+
+    // Leggi il ticket appena creato per ottenere tutti i dati
+    const ticket = await this.getTicketById(ticketId);
+
+    // Invia notifica email al team
+    await this.sendTicketCreatedEmail({
+      ticketId,
+      subject: params.subject,
+      description: params.description,
+      customerId: params.customerId,
+      priority: params.priority || '1',
+    });
+
+    return {
+      success: true,
+      ticketId,
+      ticket: ticket || undefined,
+      message: this.t('ticketCreated'),
+    };
+  }
+
+  /**
+   * Fallback: crea messaggio usando mail.message
+   */
+  private async createMailMessage(params: CreateTicketParams): Promise<{
+    success: boolean;
+    ticketId?: number;
+    message?: string;
+    error?: string;
+  }> {
+    console.log('Using mail.message fallback for ticket creation');
+
+    const messageBody = `
+      <h3>${params.subject}</h3>
+      <p>${params.description}</p>
+      <p><strong>Customer ID:</strong> ${params.customerId}</p>
+      <p><strong>Priority:</strong> ${params.priority || '1'}</p>
+    `;
+
+    // Crea messaggio in mail.message
+    const messageId = await this.odooRPC.callKw(
+      'mail.message',
+      'create',
+      [{
+        subject: params.subject,
+        body: messageBody,
+        message_type: 'notification',
+        subtype_id: 1, // Note subtype
+        model: 'res.partner',
+        res_id: params.customerId,
+      }]
+    );
+
+    console.log('Message created with ID:', messageId);
+
+    // Gestisci allegati se presenti
+    if (params.attachments && params.attachments.length > 0) {
+      await this.attachFiles(messageId, params.attachments, 'mail.message');
+    }
+
+    // Invia notifica email al team
+    await this.sendTicketCreatedEmail({
+      ticketId: messageId,
+      subject: params.subject,
+      description: params.description,
+      customerId: params.customerId,
+      priority: params.priority || '1',
+    });
+
+    return {
+      success: true,
+      ticketId: messageId,
+      message: this.t('ticketCreated'),
+    };
+  }
+
+  /**
    * LISTA TICKET
-   * Ottieni lista ticket con filtri
+   * Ottieni lista ticket con filtri (alias: getCustomerTickets)
    */
   async getTickets(filters: TicketListFilters = {}): Promise<{
     success: boolean;
@@ -268,7 +349,15 @@ export class HelpdeskAgent {
     error?: string;
   }> {
     try {
-      const session = this.ensureSession();
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
+
+      if (!isHelpdeskAvailable) {
+        console.log('Helpdesk not available, cannot fetch tickets');
+        return {
+          success: false,
+          error: 'Helpdesk module not available',
+        };
+      }
 
       // Costruisci domain per la query
       const domain: any[] = [];
@@ -285,36 +374,27 @@ export class HelpdeskAgent {
         domain.push(['priority', '=', filters.priority]);
       }
 
-      if (filters.assignedToMe && session.uid) {
-        domain.push(['user_id', '=', session.uid]);
-      }
-
       console.log('Fetching tickets with domain:', domain);
 
-      // Esegui search_read
-      const tickets = await this.odooClient.callKw(
+      // Esegui search_read tramite RPC
+      const tickets = await this.odooRPC.searchRead(
         'helpdesk.ticket',
-        'search_read',
-        [domain],
-        {
-          fields: [
-            'name',
-            'description',
-            'partner_id',
-            'team_id',
-            'user_id',
-            'stage_id',
-            'priority',
-            'create_date',
-            'write_date',
-            'kanban_state',
-            'message_ids',
-          ],
-          limit: filters.limit || 50,
-          offset: filters.offset || 0,
-          order: 'create_date desc',
-        },
-        session
+        domain,
+        [
+          'name',
+          'description',
+          'partner_id',
+          'team_id',
+          'user_id',
+          'stage_id',
+          'priority',
+          'create_date',
+          'write_date',
+          'kanban_state',
+          'message_ids',
+        ],
+        filters.limit || 50,
+        'create_date desc'
       );
 
       // Formatta i risultati
@@ -353,8 +433,21 @@ export class HelpdeskAgent {
   }
 
   /**
+   * LISTA TICKET CLIENTE (alias semantico)
+   * Wrapper per getTickets con customerId
+   */
+  async getCustomerTickets(customerId: number): Promise<{
+    success: boolean;
+    tickets?: HelpdeskTicket[];
+    count?: number;
+    error?: string;
+  }> {
+    return this.getTickets({ customerId });
+  }
+
+  /**
    * STATO TICKET
-   * Ottieni dettagli completi di un ticket specifico
+   * Ottieni dettagli completi di un ticket specifico (alias: getTicketDetails)
    */
   async getTicketStatus(ticketId: number): Promise<{
     success: boolean;
@@ -391,12 +484,25 @@ export class HelpdeskAgent {
   }
 
   /**
+   * DETTAGLI TICKET (alias semantico)
+   * Wrapper per getTicketStatus
+   */
+  async getTicketDetails(ticketId: number): Promise<{
+    success: boolean;
+    ticket?: HelpdeskTicket;
+    comments?: TicketComment[];
+    error?: string;
+  }> {
+    return this.getTicketStatus(ticketId);
+  }
+
+  /**
    * AGGIUNGI COMMENTO
    * Aggiungi un commento/messaggio a un ticket
    */
   async addComment(
     ticketId: number,
-    comment: string,
+    message: string,
     internal: boolean = false
   ): Promise<{
     success: boolean;
@@ -405,30 +511,51 @@ export class HelpdeskAgent {
     error?: string;
   }> {
     try {
-      const session = this.ensureSession();
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
 
-      console.log(`Adding comment to ticket ${ticketId}:`, comment);
+      console.log(`Adding comment to ticket ${ticketId}:`, message);
 
-      // Usa il metodo message_post per aggiungere un commento
-      const commentId = await this.odooClient.callKw(
-        'helpdesk.ticket',
-        'message_post',
-        [ticketId],
-        {
-          body: comment,
-          message_type: internal ? 'comment' : 'notification',
-          subtype_xmlid: internal ? 'mail.mt_note' : 'mail.mt_comment',
-        },
-        session
-      );
+      if (isHelpdeskAvailable) {
+        // Usa il metodo message_post per aggiungere un commento al ticket
+        const commentId = await this.odooRPC.callKw(
+          'helpdesk.ticket',
+          'message_post',
+          [[ticketId]],
+          {
+            body: message,
+            message_type: internal ? 'comment' : 'notification',
+            subtype_xmlid: internal ? 'mail.mt_note' : 'mail.mt_comment',
+          }
+        );
 
-      console.log('Comment added with ID:', commentId);
+        console.log('Comment added with ID:', commentId);
 
-      return {
-        success: true,
-        commentId,
-        message: this.t('ticketUpdated'),
-      };
+        return {
+          success: true,
+          commentId,
+          message: this.t('ticketUpdated'),
+        };
+      } else {
+        // Fallback: aggiungi messaggio direttamente in mail.message
+        const commentId = await this.odooRPC.callKw(
+          'mail.message',
+          'create',
+          [{
+            body: message,
+            message_type: internal ? 'comment' : 'notification',
+            model: 'mail.message',
+            res_id: ticketId,
+          }]
+        );
+
+        console.log('Message added with ID:', commentId);
+
+        return {
+          success: true,
+          commentId,
+          message: this.t('ticketUpdated'),
+        };
+      }
 
     } catch (error: any) {
       console.error('Error adding comment:', error);
@@ -453,27 +580,27 @@ export class HelpdeskAgent {
     error?: string;
   }> {
     try {
-      const session = this.ensureSession();
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
 
       console.log(`Escalating ticket ${ticketId} to human support`);
 
-      // Aggiorna il ticket: priorità urgente + stato bloccato
-      const updateValues: Record<string, any> = {
-        priority: '3', // Urgente
-        kanban_state: 'blocked', // Bloccato = richiede attenzione
-      };
+      if (isHelpdeskAvailable) {
+        // Aggiorna il ticket: priorità urgente + stato bloccato
+        const updateValues: Record<string, any> = {
+          priority: '3', // Urgente
+          kanban_state: 'blocked', // Bloccato = richiede attenzione
+        };
 
-      if (assignToUserId) {
-        updateValues.user_id = assignToUserId;
+        if (assignToUserId) {
+          updateValues.user_id = assignToUserId;
+        }
+
+        await this.odooRPC.callKw(
+          'helpdesk.ticket',
+          'write',
+          [[ticketId], updateValues]
+        );
       }
-
-      await this.odooClient.callKw(
-        'helpdesk.ticket',
-        'write',
-        [[ticketId], updateValues],
-        {},
-        session
-      );
 
       // Aggiungi commento con il motivo dell'escalation
       await this.addComment(
@@ -652,9 +779,13 @@ export class HelpdeskAgent {
    */
   private async getTicketById(ticketId: number): Promise<HelpdeskTicket | null> {
     try {
-      const session = this.ensureSession();
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
 
-      const tickets = await this.odooClient.callKw(
+      if (!isHelpdeskAvailable) {
+        return null;
+      }
+
+      const tickets = await this.odooRPC.callKw(
         'helpdesk.ticket',
         'read',
         [[ticketId]],
@@ -672,8 +803,7 @@ export class HelpdeskAgent {
             'kanban_state',
             'message_ids',
           ],
-        },
-        session
+        }
       );
 
       if (!tickets || tickets.length === 0) {
@@ -709,18 +839,20 @@ export class HelpdeskAgent {
    */
   private async getTicketComments(ticketId: number): Promise<TicketComment[]> {
     try {
-      const session = this.ensureSession();
+      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
 
-      // Ottieni i messaggi associati al ticket
-      const messages = await this.odooClient.callKw(
+      // Costruisci domain in base alla disponibilità del modulo helpdesk
+      const domain = isHelpdeskAvailable
+        ? [['model', '=', 'helpdesk.ticket'], ['res_id', '=', ticketId]]
+        : [['model', '=', 'mail.message'], ['res_id', '=', ticketId]];
+
+      // Ottieni i messaggi associati
+      const messages = await this.odooRPC.searchRead(
         'mail.message',
-        'search_read',
-        [[['model', '=', 'helpdesk.ticket'], ['res_id', '=', ticketId]]],
-        {
-          fields: ['body', 'author_id', 'date', 'message_type'],
-          order: 'date desc',
-        },
-        session
+        domain,
+        ['body', 'author_id', 'date', 'message_type'],
+        0,
+        'date desc'
       );
 
       return messages.map((m: any) => ({
@@ -743,28 +875,25 @@ export class HelpdeskAgent {
    */
   private async attachFiles(
     ticketId: number,
-    attachments: Array<{ name: string; content: string; mimetype: string }>
+    attachments: Array<{ name: string; content: string; mimetype: string }>,
+    resModel: string = 'helpdesk.ticket'
   ): Promise<void> {
     try {
-      const session = this.ensureSession();
-
       for (const attachment of attachments) {
-        await this.odooClient.callKw(
+        await this.odooRPC.callKw(
           'ir.attachment',
           'create',
           [{
             name: attachment.name,
             datas: attachment.content, // base64
-            res_model: 'helpdesk.ticket',
+            res_model: resModel,
             res_id: ticketId,
             mimetype: attachment.mimetype,
-          }],
-          {},
-          session
+          }]
         );
       }
 
-      console.log(`Attached ${attachments.length} files to ticket ${ticketId}`);
+      console.log(`Attached ${attachments.length} files to ${resModel} ${ticketId}`);
 
     } catch (error) {
       console.error('Error attaching files:', error);
@@ -902,9 +1031,50 @@ export class HelpdeskAgent {
  * Factory function per creare un'istanza di HelpdeskAgent
  */
 export function createHelpdeskAgent(
-  odooClient: OdooClient,
-  session?: OdooSession,
+  sessionId?: string,
   language: Language = 'it'
 ): HelpdeskAgent {
-  return new HelpdeskAgent(odooClient, session, language);
+  return new HelpdeskAgent(sessionId, language);
 }
+
+/**
+ * METODI PUBBLICI DISPONIBILI:
+ *
+ * 1. createTicket(customerId, subject, description, priority?, attachments?)
+ *    - Crea un nuovo ticket helpdesk
+ *    - Fallback automatico a mail.message se helpdesk non disponibile
+ *
+ * 2. getCustomerTickets(customerId)
+ *    - Ottiene tutti i ticket di un cliente
+ *
+ * 3. getTicketDetails(ticketId)
+ *    - Ottiene dettagli completi di un ticket con commenti
+ *
+ * 4. addComment(ticketId, message, internal?)
+ *    - Aggiunge un commento a un ticket
+ *
+ * ESEMPIO DI UTILIZZO:
+ *
+ * ```typescript
+ * import { createHelpdeskAgent } from '@/lib/lapa-agents/agents/helpdesk-agent';
+ *
+ * const helpdeskAgent = createHelpdeskAgent(sessionId, 'it');
+ *
+ * // Crea ticket
+ * const result = await helpdeskAgent.createTicket({
+ *   customerId: 123,
+ *   subject: 'Problema con ordine',
+ *   description: 'Il mio ordine non è arrivato',
+ *   priority: '2'
+ * });
+ *
+ * // Lista ticket cliente
+ * const tickets = await helpdeskAgent.getCustomerTickets(123);
+ *
+ * // Dettagli ticket
+ * const details = await helpdeskAgent.getTicketDetails(456);
+ *
+ * // Aggiungi commento
+ * await helpdeskAgent.addComment(456, 'Ho risolto il problema');
+ * ```
+ */

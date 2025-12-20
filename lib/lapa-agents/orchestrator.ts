@@ -6,6 +6,11 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { OrdersAgent } from './agents/orders-agent';
+import { InvoicesAgent } from './agents/invoices-agent';
+import { ProductsAgent } from './agents/products-agent';
+import { ShippingAgent } from './agents/shipping-agent';
+import { getOdooClient } from '@/lib/odoo-client';
 
 // Interface minima per OdooClient - compatibile con entrambe le implementazioni
 export interface OdooClientInterface {
@@ -103,6 +108,12 @@ export class LapaAiOrchestrator {
   private agents: Map<string, AgentConfig>;
   private conversationStore: Map<string, CustomerContext>;
 
+  // Agenti specializzati
+  private ordersAgent: OrdersAgent;
+  private invoicesAgent: InvoicesAgent;
+  private productsAgent: ProductsAgent;
+  private shippingAgent: ShippingAgent;
+
   constructor(odooClient: OdooClientInterface) {
     // Initialize Anthropic SDK
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -114,6 +125,12 @@ export class LapaAiOrchestrator {
     this.odooClient = odooClient;
     this.agents = new Map();
     this.conversationStore = new Map();
+
+    // Inizializza agenti specializzati
+    this.ordersAgent = new OrdersAgent();
+    this.invoicesAgent = new InvoicesAgent();
+    this.productsAgent = new ProductsAgent('it');
+    this.shippingAgent = ShippingAgent.getInstance();
 
     // Register default agents
     this.registerDefaultAgents();
@@ -635,20 +652,79 @@ IMPORTANTE:
     context: CustomerContext,
     intent: Intent
   ): Promise<AgentResponse> {
-    // TODO: Integrare con catalogo Odoo per ricerche prodotti reali
-    return {
-      success: true,
-      message: 'Sono qui per aiutarti a trovare i prodotti che cerchi. ' +
-               'Posso fornirti informazioni su disponibilità, prezzi e caratteristiche. ' +
-               'Quale prodotto ti interessa?',
-      agentId: 'product',
-      confidence: 0.7,
-      suggestedActions: [
-        'Visualizza catalogo completo',
-        'Cerca per categoria',
-        'Richiedi un preventivo'
-      ]
-    };
+    try {
+      const entities = intent.entities || {};
+
+      // Se c'è un nome prodotto o query, cerca prodotti
+      if (entities.product_name) {
+        const searchResult = await this.productsAgent.searchProducts(
+          { query: entities.product_name, active_only: true },
+          10
+        );
+
+        if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+          const productsList = searchResult.data
+            .slice(0, 5)
+            .map((product: any, index: number) => {
+              const code = product.default_code ? `[${product.default_code}] ` : '';
+              const category = product.categ_id ? ` - ${product.categ_id[1]}` : '';
+              return `${index + 1}. ${code}${product.name}${category} - ${product.list_price.toFixed(2)} EUR`;
+            })
+            .join('\n');
+
+          return {
+            success: true,
+            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}\n\n` +
+                     'Vuoi verificare la disponibilità o vedere i dettagli di un prodotto?',
+            data: searchResult.data,
+            agentId: 'product',
+            confidence: 0.9,
+            suggestedActions: [
+              'Verifica disponibilità',
+              'Calcola prezzo per quantità',
+              'Vedi prodotti simili'
+            ]
+          };
+        }
+
+        return {
+          success: false,
+          message: `Non ho trovato prodotti che corrispondono a "${entities.product_name}". ` +
+                   'Prova a cercare con un altro termine o esplora il catalogo per categoria.',
+          agentId: 'product',
+          confidence: 0.7,
+          suggestedActions: [
+            'Visualizza catalogo completo',
+            'Cerca per categoria',
+            'Richiedi assistenza'
+          ]
+        };
+      }
+
+      // Risposta generica per richieste di informazioni sui prodotti
+      return {
+        success: true,
+        message: 'Sono qui per aiutarti a trovare i prodotti che cerchi. ' +
+                 'Posso fornirti informazioni su disponibilità, prezzi e caratteristiche. ' +
+                 'Quale prodotto ti interessa?',
+        agentId: 'product',
+        confidence: 0.7,
+        suggestedActions: [
+          'Visualizza catalogo completo',
+          'Cerca per categoria',
+          'Richiedi un preventivo'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore productAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore cercando i prodotti. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'product'
+      };
+    }
   }
 
   /**
@@ -667,19 +743,113 @@ IMPORTANTE:
       };
     }
 
-    // TODO: Integrare con Odoo per recuperare ordini reali
-    return {
-      success: true,
-      message: 'Posso aiutarti con informazioni sui tuoi ordini. ' +
-               'Hai un numero ordine specifico o vuoi vedere tutti i tuoi ordini recenti?',
-      agentId: 'order',
-      confidence: 0.8,
-      suggestedActions: [
-        'Mostra ordini recenti',
-        'Cerca per numero ordine',
-        'Stato ordini in corso'
-      ]
-    };
+    try {
+      // Verifica il tipo di richiesta dall'intento
+      const entities = intent.entities || {};
+
+      // Usa Odoo direttamente per recuperare gli ordini
+      const odoo = await getOdooClient();
+
+      // Se c'è un order_id specifico, mostra i dettagli
+      if (entities.order_id) {
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', context.customerId],
+            ['name', 'ilike', entities.order_id]
+          ],
+          [
+            'name', 'partner_id', 'date_order', 'state',
+            'amount_total', 'currency_id', 'order_line'
+          ],
+          1
+        );
+
+        if (orders.length > 0) {
+          const order = orders[0];
+          const stateLabels: Record<string, string> = {
+            draft: 'Bozza', sent: 'Inviato', sale: 'Confermato',
+            done: 'Completato', cancel: 'Annullato'
+          };
+
+          return {
+            success: true,
+            message: `Ordine ${order.name}:\n` +
+                     `Cliente: ${order.partner_id[1]}\n` +
+                     `Data: ${order.date_order}\n` +
+                     `Stato: ${stateLabels[order.state] || order.state}\n` +
+                     `Totale: ${order.currency_id[1]} ${order.amount_total.toFixed(2)}\n` +
+                     `Prodotti: ${Array.isArray(order.order_line) ? order.order_line.length : 0}`,
+            data: order,
+            agentId: 'order',
+            confidence: 0.9
+          };
+        }
+
+        return {
+          success: false,
+          message: `Non ho trovato l'ordine ${entities.order_id} nel tuo storico.`,
+          agentId: 'order',
+          confidence: 0.7
+        };
+      }
+
+      // Altrimenti mostra lo storico ordini recenti
+      const orders = await odoo.searchRead(
+        'sale.order',
+        [['partner_id', '=', context.customerId]],
+        ['name', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
+        10
+      );
+
+      if (orders && orders.length > 0) {
+        const stateLabels: Record<string, string> = {
+          draft: 'Bozza', sent: 'Inviato', sale: 'Confermato',
+          done: 'Completato', cancel: 'Annullato'
+        };
+
+        const ordersList = orders
+          .map((order: any, index: number) =>
+            `${index + 1}. ${order.name} - ${stateLabels[order.state] || order.state} - ${order.currency_id[1]} ${order.amount_total.toFixed(2)} (${order.date_order})`
+          )
+          .join('\n');
+
+        return {
+          success: true,
+          message: `Ecco i tuoi ultimi ${orders.length} ordini:\n\n${ordersList}\n\n` +
+                   'Vuoi vedere i dettagli di un ordine specifico?',
+          data: orders,
+          agentId: 'order',
+          confidence: 0.9,
+          suggestedActions: [
+            'Dettagli ordine specifico',
+            'Filtra per stato',
+            'Crea nuovo ordine'
+          ]
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Non ho trovato ordini recenti per il tuo account. Vuoi creare un nuovo ordine?',
+        agentId: 'order',
+        confidence: 0.8,
+        suggestedActions: [
+          'Crea nuovo ordine',
+          'Cerca prodotti',
+          'Contatta supporto'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore orderAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando le informazioni sugli ordini. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'order'
+      };
+    }
   }
 
   /**
@@ -698,19 +868,119 @@ IMPORTANTE:
       };
     }
 
-    // TODO: Integrare con Odoo per recuperare fatture reali
-    return {
-      success: true,
-      message: 'Posso aiutarti con informazioni su fatture e pagamenti. ' +
-               'Cosa vorresti sapere?',
-      agentId: 'invoice',
-      confidence: 0.8,
-      suggestedActions: [
-        'Mostra fatture recenti',
-        'Estratto conto',
-        'Scarica fattura'
-      ]
-    };
+    try {
+      const entities = intent.entities || {};
+
+      // Se c'è un invoice_number specifico, mostra i dettagli
+      if (entities.invoice_number) {
+        const odoo = await getOdooClient();
+        const invoices = await odoo.searchRead(
+          'account.move',
+          [
+            ['partner_id', '=', context.customerId],
+            ['move_type', '=', 'out_invoice'],
+            ['name', 'ilike', entities.invoice_number]
+          ],
+          ['id'],
+          1
+        );
+
+        if (invoices.length > 0) {
+          const invoiceDetails = await this.invoicesAgent.getInvoiceDetails(invoices[0].id);
+
+          if (invoiceDetails.success && invoiceDetails.data) {
+            const inv = invoiceDetails.data;
+            const paymentStateLabels: Record<string, string> = {
+              not_paid: 'Non pagata', in_payment: 'In pagamento',
+              paid: 'Pagata', partial: 'Parzialmente pagata',
+              reversed: 'Stornata', invoicing_legacy: 'Legacy'
+            };
+
+            return {
+              success: true,
+              message: `Fattura ${inv.name}:\n` +
+                       `Cliente: ${inv.partner_name}\n` +
+                       `Data: ${inv.invoice_date || 'N/A'}\n` +
+                       `Scadenza: ${inv.invoice_date_due || 'N/A'}\n` +
+                       `Stato: ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
+                       `Totale: ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n` +
+                       `Residuo: ${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}\n` +
+                       `Prodotti: ${inv.lines.length}`,
+              data: inv,
+              agentId: 'invoice',
+              confidence: 0.9
+            };
+          }
+        }
+
+        return {
+          success: false,
+          message: `Non ho trovato la fattura ${entities.invoice_number} nel tuo storico.`,
+          agentId: 'invoice',
+          confidence: 0.7
+        };
+      }
+
+      // Altrimenti mostra le fatture aperte o recenti
+      const invoicesResult = await this.invoicesAgent.getInvoices(context.customerId, 'all', 10);
+
+      if (invoicesResult.success && invoicesResult.data && invoicesResult.data.length > 0) {
+        const paymentStateLabels: Record<string, string> = {
+          not_paid: 'Non pagata', in_payment: 'In pagamento',
+          paid: 'Pagata', partial: 'Parzialmente pagata',
+          reversed: 'Stornata', invoicing_legacy: 'Legacy'
+        };
+
+        const invoicesList = invoicesResult.data
+          .map((inv: any, index: number) =>
+            `${index + 1}. ${inv.name} - ${paymentStateLabels[inv.payment_state] || inv.payment_state} - ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}`
+          )
+          .join('\n');
+
+        // Calcola il saldo aperto
+        const balanceResult = await this.invoicesAgent.getOpenBalance(context.customerId);
+        const balanceInfo = balanceResult.success && balanceResult.data
+          ? `\n\nSaldo aperto totale: ${balanceResult.data.currency} ${balanceResult.data.total_due.toFixed(2)}`
+          : '';
+
+        return {
+          success: true,
+          message: `Ecco le tue ultime ${invoicesResult.data.length} fatture:\n\n${invoicesList}${balanceInfo}\n\n` +
+                   'Vuoi vedere i dettagli di una fattura specifica?',
+          data: {
+            invoices: invoicesResult.data,
+            balance: balanceResult.data
+          },
+          agentId: 'invoice',
+          confidence: 0.9,
+          suggestedActions: [
+            'Dettagli fattura specifica',
+            'Fatture non pagate',
+            'Scarica fattura'
+          ]
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Non ho trovato fatture nel tuo account.',
+        agentId: 'invoice',
+        confidence: 0.8,
+        suggestedActions: [
+          'Verifica storico ordini',
+          'Contatta amministrazione'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore invoiceAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando le informazioni sulle fatture. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'invoice'
+      };
+    }
   }
 
   /**
@@ -720,19 +990,101 @@ IMPORTANTE:
     context: CustomerContext,
     intent: Intent
   ): Promise<AgentResponse> {
-    // TODO: Integrare con sistema tracking spedizioni
-    return {
-      success: true,
-      message: 'Posso aiutarti con informazioni sulle spedizioni. ' +
-               'Hai un numero di tracking o vuoi informazioni generali sui tempi di consegna?',
-      agentId: 'shipping',
-      confidence: 0.7,
-      suggestedActions: [
-        'Traccia spedizione',
-        'Tempi di consegna',
-        'Zone di consegna'
-      ]
-    };
+    try {
+      const entities = intent.entities || {};
+
+      // Se c'è un tracking_number o order_id, traccia la spedizione
+      if (entities.tracking_number || entities.order_id) {
+        const trackingId = entities.tracking_number || entities.order_id;
+
+        const trackingResult = await this.shippingAgent.trackShipment(trackingId);
+
+        if (trackingResult.success && trackingResult.data) {
+          const shipment = trackingResult.data;
+
+          return {
+            success: true,
+            message: `Spedizione ${shipment.name}:\n` +
+                     `Cliente: ${shipment.customer_name}\n` +
+                     `Stato: ${shipment.state_label}\n` +
+                     `Data prevista: ${shipment.scheduled_date || 'N/A'}\n` +
+                     `Data consegna: ${shipment.date_done || 'In corso'}\n` +
+                     `Autista: ${shipment.driver_name || 'Non assegnato'}\n` +
+                     `Prodotti: ${shipment.products_count}`,
+            data: shipment,
+            agentId: 'shipping',
+            confidence: 0.9,
+            suggestedActions: [
+              'Dettagli autista',
+              'Calcola ETA',
+              'Storico consegne'
+            ]
+          };
+        }
+
+        return {
+          success: false,
+          message: `Non ho trovato la spedizione con ID ${trackingId}.`,
+          agentId: 'shipping',
+          confidence: 0.7
+        };
+      }
+
+      // Se c'è un customerId, mostra lo storico consegne
+      if (context.customerId) {
+        const historyResult = await this.shippingAgent.getDeliveryHistory(context.customerId, 10);
+
+        if (historyResult.success && historyResult.data) {
+          const history = historyResult.data;
+
+          const deliveriesList = history.deliveries
+            .slice(0, 5)
+            .map((delivery: any, index: number) =>
+              `${index + 1}. ${delivery.name} - ${delivery.state} - ${delivery.date}`
+            )
+            .join('\n');
+
+          return {
+            success: true,
+            message: `Storico consegne:\n\n${deliveriesList}\n\n` +
+                     `Totale consegne: ${history.total_deliveries}\n` +
+                     `Puntualità: ${history.on_time_percentage}%\n` +
+                     `Ultima consegna: ${history.last_delivery_date || 'N/A'}`,
+            data: history,
+            agentId: 'shipping',
+            confidence: 0.9,
+            suggestedActions: [
+              'Traccia spedizione',
+              'Tempi di consegna',
+              'Zone di consegna'
+            ]
+          };
+        }
+      }
+
+      // Risposta generica
+      return {
+        success: true,
+        message: 'Posso aiutarti con informazioni sulle spedizioni. ' +
+                 'Hai un numero di tracking o un numero d\'ordine da tracciare?',
+        agentId: 'shipping',
+        confidence: 0.7,
+        suggestedActions: [
+          'Traccia spedizione',
+          'Tempi di consegna',
+          'Zone di consegna'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore shippingAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando le informazioni sulle spedizioni. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'shipping'
+      };
+    }
   }
 
   /**

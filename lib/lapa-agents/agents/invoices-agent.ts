@@ -1,6 +1,20 @@
 /**
- * INVOICES AGENT
- * Gestione completa fatture: visualizzazione, dettagli, pagamenti, scadenze e reminder
+ * INVOICES AGENT - COLLEGATO A DATI REALI ODOO
+ *
+ * Gestione completa fatture con query su account.move:
+ * - getCustomerInvoices(customerId): Fatture cliente da account.move
+ * - getInvoiceDetails(invoiceId): Dettagli fattura con linee da account.move.line
+ * - getCustomerBalance(customerId): Saldo aperto con amount_residual
+ * - getDueInvoices(customerId): Fatture scadute/in scadenza
+ * - getPaymentLink(invoiceId): Link portale pagamento fattura
+ * - sendPaymentReminder(invoiceId): Invio reminder via email
+ *
+ * Campi principali account.move:
+ * - move_type: 'out_invoice' (fattura cliente), 'out_refund' (nota credito)
+ * - state: draft, posted, cancel
+ * - payment_state: not_paid, in_payment, paid, partial
+ * - amount_total: importo totale fattura
+ * - amount_residual: importo ancora da pagare
  */
 
 import { getOdooClient } from '@/lib/odoo-client';
@@ -93,6 +107,41 @@ export class InvoicesAgent {
   // ============================================================================
   // PUBLIC METHODS - CORE FUNCTIONALITY
   // ============================================================================
+
+  /**
+   * Ottiene fatture di un cliente specifico
+   * @param customerId - ID Odoo del cliente
+   * @returns Lista fatture del cliente
+   */
+  async getCustomerInvoices(customerId: number): Promise<{
+    success: boolean;
+    data?: Invoice[];
+    error?: string;
+    message?: {
+      it: string;
+      en: string;
+      de: string;
+    };
+  }> {
+    return this.getInvoices(customerId, 'all', 1000);
+  }
+
+  /**
+   * Alias per getOpenBalance - ottiene il saldo di un cliente
+   * @param customerId - ID Odoo del cliente
+   */
+  async getCustomerBalance(customerId: number): Promise<{
+    success: boolean;
+    data?: CustomerBalance;
+    error?: string;
+    message?: {
+      it: string;
+      en: string;
+      de: string;
+    };
+  }> {
+    return this.getOpenBalance(customerId);
+  }
 
   /**
    * Ottiene lista fatture con filtri
@@ -754,6 +803,139 @@ Cordiali saluti`;
           it: "Errore nell'invio del reminder di pagamento",
           en: 'Error sending payment reminder',
           de: 'Fehler beim Senden der Zahlungserinnerung',
+        },
+      };
+    }
+  }
+
+  // ============================================================================
+  // ANALYTICS & REPORTING
+  // ============================================================================
+
+  /**
+   * Ottiene statistiche aggregate sulle fatture per periodo
+   * @param startDate - Data inizio periodo (YYYY-MM-DD)
+   * @param endDate - Data fine periodo (YYYY-MM-DD)
+   * @param customerId - ID Odoo del cliente (opzionale)
+   */
+  async getInvoiceStats(
+    startDate: string,
+    endDate: string,
+    customerId?: number
+  ): Promise<{
+    success: boolean;
+    data?: {
+      total_invoices: number;
+      total_amount: number;
+      total_paid: number;
+      total_due: number;
+      avg_payment_days: number;
+      overdue_count: number;
+      currency: string;
+    };
+    error?: string;
+    message?: {
+      it: string;
+      en: string;
+      de: string;
+    };
+  }> {
+    try {
+      const client = await this.ensureOdooClient();
+
+      // Query fatture del periodo
+      const domain: any[] = [
+        ['move_type', '=', 'out_invoice'],
+        ['state', '=', 'posted'],
+        ['invoice_date', '>=', startDate],
+        ['invoice_date', '<=', endDate],
+      ];
+
+      if (customerId) {
+        domain.push(['partner_id', '=', customerId]);
+      }
+
+      const invoices = await client.searchRead(
+        'account.move',
+        domain,
+        [
+          'name',
+          'amount_total',
+          'amount_residual',
+          'payment_state',
+          'invoice_date',
+          'invoice_date_due',
+          'currency_id',
+        ],
+        1000
+      );
+
+      let totalAmount = 0;
+      let totalPaid = 0;
+      let totalDue = 0;
+      let overdueCount = 0;
+      let paymentDaysSum = 0;
+      let paidInvoicesCount = 0;
+      let currency = 'CHF';
+
+      const today = new Date();
+
+      for (const inv of invoices) {
+        totalAmount += inv.amount_total || 0;
+        totalDue += inv.amount_residual || 0;
+
+        if (inv.currency_id && Array.isArray(inv.currency_id)) {
+          currency = inv.currency_id[1];
+        }
+
+        // Conta scadute
+        if (inv.invoice_date_due && inv.amount_residual > 0) {
+          const dueDate = new Date(inv.invoice_date_due);
+          if (dueDate < today) {
+            overdueCount++;
+          }
+        }
+
+        // Calcola giorni medi di pagamento per fatture pagate
+        if (inv.payment_state === 'paid' && inv.invoice_date && inv.invoice_date_due) {
+          const invoiceDate = new Date(inv.invoice_date);
+          const dueDate = new Date(inv.invoice_date_due);
+          const diffTime = dueDate.getTime() - invoiceDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          paymentDaysSum += diffDays;
+          paidInvoicesCount++;
+        }
+      }
+
+      totalPaid = totalAmount - totalDue;
+      const avgPaymentDays = paidInvoicesCount > 0 ? Math.round(paymentDaysSum / paidInvoicesCount) : 0;
+
+      return {
+        success: true,
+        data: {
+          total_invoices: invoices.length,
+          total_amount: totalAmount,
+          total_paid: totalPaid,
+          total_due: totalDue,
+          avg_payment_days: avgPaymentDays,
+          overdue_count: overdueCount,
+          currency,
+        },
+        message: {
+          it: `Statistiche periodo: ${invoices.length} fatture, ${currency} ${totalAmount.toFixed(2)} fatturato`,
+          en: `Period stats: ${invoices.length} invoices, ${currency} ${totalAmount.toFixed(2)} revenue`,
+          de: `Periodenstatistik: ${invoices.length} Rechnungen, ${currency} ${totalAmount.toFixed(2)} Umsatz`,
+        },
+      };
+    } catch (error) {
+      console.error('❌ [InvoicesAgent] Error calculating stats:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: {
+          it: 'Errore nel calcolo delle statistiche',
+          en: 'Error calculating statistics',
+          de: 'Fehler bei der Berechnung der Statistiken',
         },
       };
     }
