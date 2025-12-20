@@ -418,14 +418,25 @@ IMPORTANTE:
       return response;
 
     } catch (error) {
-      console.error('❌ Errore processamento messaggio:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      console.error('❌ Errore processamento messaggio:', {
+        message: errorMessage,
+        stack: errorStack,
+        name: error instanceof Error ? error.name : 'Unknown'
+      });
 
       return {
         success: false,
-        message: 'Mi dispiace, si è verificato un errore. Un operatore ti contatterà al più presto.',
+        message: `Errore: ${errorMessage}`,
         requiresHumanEscalation: true,
         agentId: 'error_handler',
-        confidence: 0
+        confidence: 0,
+        data: {
+          errorType: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: errorMessage
+        }
       };
     }
   }
