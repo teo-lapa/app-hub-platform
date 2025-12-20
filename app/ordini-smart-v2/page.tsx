@@ -15,7 +15,8 @@ import {
   XMarkIcon,
   StarIcon,
   CalendarIcon,
-  BellAlertIcon
+  BellAlertIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { useOrderTimeline } from '@/lib/hooks/useOrderTimeline';
@@ -518,6 +519,14 @@ export default function SmartOrderingV2() {
           >
             <ExclamationTriangleIcon className="w-5 h-5" />
             <span>Prodotti Critici</span>
+          </button>
+          <button
+            onClick={() => router.push('/ordini-smart-v2/ordini-in-corso')}
+            className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-lg transition-all flex items-center gap-2 font-semibold"
+            title="Analizza ordini inviati ai fornitori"
+          >
+            <ClipboardDocumentListIcon className="w-5 h-5" />
+            <span>Ordini in Corso</span>
           </button>
           <button
             onClick={() => router.push('/prodotti-preordine')}
