@@ -645,13 +645,15 @@ IMPORTANTE:
         ]
       };
     } catch (error) {
-      console.error('❌ Errore helpdesk agent:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('❌ Errore helpdesk agent:', errorMsg, error);
 
       return {
         success: false,
-        message: 'Mi dispiace, si è verificato un errore. Contatta il supporto a info@lapa.ch',
+        message: `Errore helpdesk: ${errorMsg}`,
         requiresHumanEscalation: true,
-        agentId: 'helpdesk'
+        agentId: 'helpdesk',
+        data: { error: errorMsg }
       };
     }
   }
