@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2, ImageOff, Filter, PackageCheck, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Package, Barcode, Tag, Eye, ArrowLeft, Home, X, Sparkles, Wand2, ImageOff, Filter, PackageCheck, AlertTriangle, ChevronUp, ChevronDown, CheckSquare, Square, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { AIImageModal } from '@/components/catalogo-lapa/AIImageModal';
+import { BatchAIImageModal } from '@/components/catalogo-lapa/BatchAIImageModal';
 import { useAppAccess } from '@/hooks/useAppAccess';
 import toast from 'react-hot-toast';
 
@@ -53,6 +54,11 @@ export default function ProductPhotoManagerPage() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false); // Modal AI
   const [productForAI, setProductForAI] = useState<Product | null>(null); // Prodotto per AI
   const [isMounted, setIsMounted] = useState(false);
+
+  // Selezione multipla per generazione batch
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   const productsPerPage = 50;
 
@@ -339,6 +345,49 @@ export default function ProductPhotoManagerPage() {
     setShowOnlyLowQualityPhotos(false);
   };
 
+  // Funzioni per selezione multipla
+  const toggleProductSelection = (productId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedProductIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelectedProductIds(prev => {
+      const newSet = new Set(prev);
+      products.forEach(p => newSet.add(p.id));
+      return newSet;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedProductIds(new Set());
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedProductIds(new Set());
+  };
+
+  // Ottieni i prodotti selezionati completi per il batch modal
+  const getSelectedProducts = (): Product[] => {
+    return allProducts.filter(p => selectedProductIds.has(p.id));
+  };
+
+  // Handler per quando le immagini batch sono generate
+  const handleBatchComplete = async () => {
+    // Ricarica i prodotti per vedere le nuove immagini
+    await loadProducts(currentPage, searchQuery, selectedCategory);
+    exitSelectionMode();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -366,6 +415,43 @@ export default function ProductPhotoManagerPage() {
                     <p className="text-slate-300">Gestisci e rigenera foto prodotti con AI</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Pulsante Selezione Multipla */}
+              <div className="mt-4 lg:mt-0">
+                {!isSelectionMode ? (
+                  <button
+                    onClick={() => setIsSelectionMode(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all shadow-lg"
+                  >
+                    <CheckSquare className="h-5 w-5" />
+                    <span>Seleziona Multipli</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <span className="text-emerald-400 font-semibold">
+                      {selectedProductIds.size} selezionati
+                    </span>
+                    <button
+                      onClick={selectAllVisible}
+                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Seleziona tutti visibili
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Deseleziona
+                    </button>
+                    <button
+                      onClick={exitSelectionMode}
+                      className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -406,11 +492,23 @@ export default function ProductPhotoManagerPage() {
         {!loading && products.length > 0 && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2 mb-8">
-              {products.map((product) => (
+              {products.map((product) => {
+                const isSelected = selectedProductIds.has(product.id);
+                return (
                 <div
                   key={product.id}
-                  onClick={() => setSelectedProduct(product)}
-                  className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-600/50 overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group cursor-pointer">
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      toggleProductSelection(product.id, { stopPropagation: () => {} } as React.MouseEvent);
+                    } else {
+                      setSelectedProduct(product);
+                    }
+                  }}
+                  className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border overflow-hidden transition-all duration-300 group cursor-pointer ${
+                    isSelected
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/50 bg-emerald-500/10'
+                      : 'border-slate-600/50 hover:border-emerald-500/50'
+                  }`}>
                   {/* Immagine prodotto */}
                   <div className="aspect-square bg-slate-700/30 relative overflow-hidden">
                     {product.image_256 ? (
@@ -425,8 +523,26 @@ export default function ProductPhotoManagerPage() {
                       </div>
                     )}
 
-                    {/* Badge categoria madre (prima categoria) */}
-                    {product.categ_id && (
+                    {/* Checkbox selezione (in modalità selezione) */}
+                    {isSelectionMode && (
+                      <div
+                        className="absolute top-1.5 left-1.5 z-10"
+                        onClick={(e) => toggleProductSelection(product.id, e)}
+                      >
+                        {isSelected ? (
+                          <div className="bg-emerald-500 rounded p-0.5 shadow-lg">
+                            <CheckSquare className="h-5 w-5 text-white" />
+                          </div>
+                        ) : (
+                          <div className="bg-slate-800/80 rounded p-0.5 shadow-lg hover:bg-slate-700">
+                            <Square className="h-5 w-5 text-slate-300" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Badge categoria madre (prima categoria) - spostato se in selezione */}
+                    {product.categ_id && !isSelectionMode && (
                       <div className="absolute top-1.5 left-1.5">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-500/90 text-white">
                           {product.categ_id[1].split('/')[0].trim()}
@@ -511,7 +627,8 @@ export default function ProductPhotoManagerPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             {/* Paginazione */}
@@ -927,6 +1044,33 @@ export default function ProductPhotoManagerPage() {
           onImageGenerated={handleImageGenerated}
         />
       )}
+
+      {/* Barra flottante per selezione multipla */}
+      {isSelectionMode && selectedProductIds.size > 0 && (
+        <div className="fixed bottom-[180px] left-1/2 -translate-x-1/2 z-40">
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-2xl px-6 py-4 flex items-center space-x-4 border border-purple-400/30">
+            <div className="text-white">
+              <span className="font-bold text-lg">{selectedProductIds.size}</span>
+              <span className="ml-1 text-purple-200">prodotti selezionati</span>
+            </div>
+            <button
+              onClick={() => setIsBatchModalOpen(true)}
+              className="flex items-center space-x-2 px-6 py-3 bg-white hover:bg-gray-100 text-purple-700 font-bold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <Sparkles className="h-5 w-5" />
+              <span>Genera Immagini AI</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch AI Image Modal */}
+      <BatchAIImageModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        products={getSelectedProducts()}
+        onComplete={handleBatchComplete}
+      />
     </div>
   );
 }
