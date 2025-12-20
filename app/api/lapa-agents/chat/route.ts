@@ -44,9 +44,15 @@ export async function POST(request: NextRequest) {
     // Se AI abilitata, usa l'orchestratore
     if (USE_AI_ORCHESTRATOR && process.env.ANTHROPIC_API_KEY) {
       try {
+        console.log('🔄 Inizializzazione Odoo client...');
         const odooClient = await getOdooClient();
-        const orchestrator = getOrchestrator(odooClient);
+        console.log('✅ Odoo client ottenuto');
 
+        console.log('🔄 Inizializzazione orchestratore...');
+        const orchestrator = getOrchestrator(odooClient);
+        console.log('✅ Orchestratore ottenuto');
+
+        console.log('🔄 Processamento messaggio...');
         const response = await orchestrator.processMessage(message, sessionId, {
           customerType,
           customerId,
@@ -54,6 +60,7 @@ export async function POST(request: NextRequest) {
           customerEmail,
           metadata: { language }
         });
+        console.log('✅ Risposta ottenuta');
 
         const duration = Date.now() - startTime;
         console.log(`✅ AI Response generated in ${duration}ms by agent: ${response.agentId}`);
@@ -68,8 +75,26 @@ export async function POST(request: NextRequest) {
           }
         });
       } catch (aiError) {
-        console.error('⚠️ AI Orchestrator error, falling back to simple mode:', aiError);
-        // Fallback a modalità semplice
+        console.error('⚠️ AI Orchestrator error details:', {
+          name: aiError instanceof Error ? aiError.name : 'Unknown',
+          message: aiError instanceof Error ? aiError.message : String(aiError),
+          stack: aiError instanceof Error ? aiError.stack : undefined
+        });
+
+        // Ritorna errore dettagliato invece di fallback silenzioso
+        return NextResponse.json({
+          success: false,
+          message: `Errore AI: ${aiError instanceof Error ? aiError.message : 'Errore sconosciuto'}`,
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+          agentId: 'error',
+          metadata: {
+            duration: Date.now() - startTime,
+            timestamp: new Date().toISOString(),
+            sessionId,
+            aiEnabled: true,
+            errorType: aiError instanceof Error ? aiError.name : 'Unknown'
+          }
+        }, { status: 500 });
       }
     }
 
