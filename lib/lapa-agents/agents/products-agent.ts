@@ -175,9 +175,12 @@ export class ProductsAgent {
   }
 
   // Helper per messaggi multilingua
-  private msg(key: keyof typeof MESSAGES.it, ...args: any[]): string {
+  private msg(key: keyof typeof MESSAGES.it, ...args: number[]): string {
     const message = MESSAGES[this.language][key];
-    return typeof message === 'function' ? message(...args) : message;
+    if (typeof message === 'function') {
+      return (message as (count: number) => string)(args[0]);
+    }
+    return message as string;
   }
 
   /**
