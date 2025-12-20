@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
+import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
 
 // Tipi
 interface ChatRequest {
@@ -65,6 +66,12 @@ export async function POST(request: NextRequest) {
         const duration = Date.now() - startTime;
         console.log(`✅ AI Response generated in ${duration}ms by agent: ${response.agentId}`);
 
+        // Registra statistiche
+        recordRequest(response.agentId, duration, response.success !== false, sessionId);
+        if (response.requiresHumanEscalation) {
+          recordEscalation();
+        }
+
         return NextResponse.json({
           ...response,
           metadata: {
@@ -81,6 +88,10 @@ export async function POST(request: NextRequest) {
           stack: aiError instanceof Error ? aiError.stack : undefined
         });
 
+        // Registra errore
+        const errorDuration = Date.now() - startTime;
+        recordRequest('error', errorDuration, false, sessionId);
+
         // Ritorna errore dettagliato invece di fallback silenzioso
         return NextResponse.json({
           success: false,
@@ -88,7 +99,7 @@ export async function POST(request: NextRequest) {
           error: aiError instanceof Error ? aiError.message : String(aiError),
           agentId: 'error',
           metadata: {
-            duration: Date.now() - startTime,
+            duration: errorDuration,
             timestamp: new Date().toISOString(),
             sessionId,
             aiEnabled: true,
@@ -104,6 +115,9 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
     console.log(`✅ Fallback response generated in ${duration}ms by agent: ${response.agentId}`);
+
+    // Registra statistiche fallback
+    recordRequest(response.agentId, duration, true, sessionId);
 
     return NextResponse.json({
       ...response,

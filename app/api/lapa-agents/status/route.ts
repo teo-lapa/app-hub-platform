@@ -2,15 +2,20 @@
  * LAPA AI AGENTS - Status API
  *
  * Endpoint per monitorare lo stato degli agenti LAPA AI
+ * Statistiche reali basate sui log delle richieste
  */
 
 import { NextResponse } from 'next/server';
+import { getOdooClient } from '@/lib/odoo-client';
+import { agentStats } from '@/lib/lapa-agents/stats';
 
 interface AgentStatus {
   id: string;
   name: string;
   status: 'active' | 'paused' | 'error' | 'offline';
   enabled: boolean;
+  description: string;
+  capabilities: string[];
   stats: {
     requestsToday: number;
     requestsTotal: number;
@@ -20,114 +25,91 @@ interface AgentStatus {
   };
 }
 
-interface DashboardStats {
-  totalRequests: number;
-  activeConversations: number;
-  resolvedToday: number;
-  escalatedToday: number;
-  avgResponseTime: number;
-  customerSatisfaction: number;
-}
-
-// Stato in memoria (in produzione: database)
-let agentStats: Record<string, AgentStatus> = {
-  orchestrator: {
+// Definizione agenti
+const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
+  {
     id: 'orchestrator',
     name: 'Orchestratore',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 156,
-      requestsTotal: 4523,
-      avgResponseTime: 0.8,
-      successRate: 98.5,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Smista le richieste agli agenti specializzati',
+    capabilities: ['route requests', 'analyze intent', 'manage context']
   },
-  orders: {
+  {
     id: 'orders',
     name: 'Agente Ordini',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 45,
-      requestsTotal: 1234,
-      avgResponseTime: 1.2,
-      successRate: 96.8,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Gestisce ordini, storico, creazione e modifiche',
+    capabilities: ['read orders', 'create orders b2b', 'modify orders', 'cancel orders']
   },
-  invoices: {
+  {
     id: 'invoices',
     name: 'Agente Fatture',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 32,
-      requestsTotal: 892,
-      avgResponseTime: 0.9,
-      successRate: 99.1,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Gestisce fatture, pagamenti e saldo aperto',
+    capabilities: ['read invoices', 'check balance', 'payment links', 'due dates']
   },
-  shipping: {
+  {
     id: 'shipping',
     name: 'Agente Spedizioni',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 28,
-      requestsTotal: 756,
-      avgResponseTime: 1.1,
-      successRate: 97.3,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Tracking spedizioni, ETA e info autista',
+    capabilities: ['track shipments', 'delivery eta', 'driver info', 'delivery history']
   },
-  products: {
+  {
     id: 'products',
     name: 'Agente Prodotti',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 67,
-      requestsTotal: 2341,
-      avgResponseTime: 0.7,
-      successRate: 99.5,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Ricerca prodotti, prezzi e disponibilità',
+    capabilities: ['search products', 'check availability', 'get prices', 'similar products']
   },
-  helpdesk: {
+  {
     id: 'helpdesk',
     name: 'Agente Helpdesk',
     status: 'active',
     enabled: true,
-    stats: {
-      requestsToday: 12,
-      requestsTotal: 456,
-      avgResponseTime: 1.5,
-      successRate: 94.2,
-      lastActive: new Date().toISOString()
-    }
+    description: 'Supporto generico e escalation a operatore',
+    capabilities: ['create tickets', 'escalation', 'general support', 'faq']
   }
-};
+];
 
 export async function GET() {
   try {
-    const agents = Object.values(agentStats);
+    // Costruisci status agenti con statistiche reali
+    const agents: AgentStatus[] = agentDefinitions.map(def => ({
+      ...def,
+      stats: agentStats.getAgentStats(def.id)
+    }));
 
-    // Calcola statistiche globali
-    const stats: DashboardStats = {
-      totalRequests: agents.reduce((sum, a) => sum + a.stats.requestsToday, 0),
-      activeConversations: Math.floor(Math.random() * 10) + 5, // Simulato
-      resolvedToday: Math.floor(agents.reduce((sum, a) => sum + a.stats.requestsToday, 0) * 0.85),
-      escalatedToday: Math.floor(Math.random() * 5) + 1,
-      avgResponseTime: parseFloat((agents.reduce((sum, a) => sum + a.stats.avgResponseTime, 0) / agents.length).toFixed(1)),
-      customerSatisfaction: 4.7
+    // Statistiche globali
+    const stats = agentStats.getGlobalStats();
+
+    // Info sistema
+    const systemInfo = {
+      aiModel: 'claude-sonnet-4-20250514',
+      aiProvider: 'Anthropic',
+      odooConnected: false,
+      lastHealthCheck: new Date().toISOString()
     };
+
+    // Test connessione Odoo
+    try {
+      const odoo = await getOdooClient();
+      if (odoo) {
+        systemInfo.odooConnected = true;
+      }
+    } catch {
+      systemInfo.odooConnected = false;
+    }
 
     return NextResponse.json({
       agents,
       stats,
+      system: systemInfo,
       timestamp: new Date().toISOString()
     });
 
@@ -150,7 +132,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { agentId, enabled, status } = body;
 
-    if (!agentId || !agentStats[agentId]) {
+    const agentIndex = agentDefinitions.findIndex(a => a.id === agentId);
+    if (agentIndex === -1) {
       return NextResponse.json(
         { error: 'Agent not found' },
         { status: 404 }
@@ -159,17 +142,20 @@ export async function POST(request: Request) {
 
     // Aggiorna stato
     if (typeof enabled === 'boolean') {
-      agentStats[agentId].enabled = enabled;
-      agentStats[agentId].status = enabled ? 'active' : 'paused';
+      agentDefinitions[agentIndex].enabled = enabled;
+      agentDefinitions[agentIndex].status = enabled ? 'active' : 'paused';
     }
 
     if (status) {
-      agentStats[agentId].status = status;
+      agentDefinitions[agentIndex].status = status;
     }
 
     return NextResponse.json({
       success: true,
-      agent: agentStats[agentId],
+      agent: {
+        ...agentDefinitions[agentIndex],
+        stats: agentStats.getAgentStats(agentId)
+      },
       timestamp: new Date().toISOString()
     });
 
