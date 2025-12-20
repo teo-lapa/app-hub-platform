@@ -10,8 +10,8 @@ export { LapaAiOrchestrator, getOrchestrator, createOrchestrator } from './orche
 // Agenti specializzati
 export { OrdersAgent } from './agents/orders-agent';
 export { InvoicesAgent, getInvoicesAgent } from './agents/invoices-agent';
-export { ShippingAgent, getShippingAgent } from './agents/shipping-agent';
-export { ProductsAgent, getProductsAgent } from './agents/products-agent';
+export { ShippingAgent, shippingAgent } from './agents/shipping-agent';
+export { ProductsAgent, productsAgent } from './agents/products-agent';
 export { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 
 // Types

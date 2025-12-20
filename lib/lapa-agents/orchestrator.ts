@@ -6,7 +6,21 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { OdooClient, OdooSession } from '@/lib/odoo/client';
+
+// Interface minima per OdooClient - compatibile con entrambe le implementazioni
+export interface OdooClientInterface {
+  searchRead?: (model: string, domain: any[], fields: string[], limit?: number, offset?: number) => Promise<any[]>;
+  call?: (model: string, method: string, args: any[]) => Promise<any>;
+  [key: string]: any;
+}
+
+export interface OdooSession {
+  uid: number;
+  session_id: string;
+  db: string;
+  login: string;
+  password?: string;
+}
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -85,11 +99,11 @@ export interface AgentConfig {
 
 export class LapaAiOrchestrator {
   private anthropic: Anthropic;
-  private odooClient: OdooClient;
+  private odooClient: OdooClientInterface;
   private agents: Map<string, AgentConfig>;
   private conversationStore: Map<string, CustomerContext>;
 
-  constructor(odooClient: OdooClient) {
+  constructor(odooClient: OdooClientInterface) {
     // Initialize Anthropic SDK
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -809,7 +823,8 @@ Rispondi in modo naturale e conversazionale.`;
     const now = new Date();
     const maxAge = maxAgeMinutes * 60 * 1000;
 
-    for (const [sessionId, context] of this.conversationStore.entries()) {
+    const entries = Array.from(this.conversationStore.entries());
+    for (const [sessionId, context] of entries) {
       const lastMessage = context.conversationHistory[context.conversationHistory.length - 1];
       if (lastMessage) {
         const messageAge = now.getTime() - lastMessage.timestamp.getTime();
@@ -831,7 +846,7 @@ let orchestratorInstance: LapaAiOrchestrator | null = null;
 /**
  * Crea o ritorna l'istanza singleton dell'orchestratore
  */
-export function getOrchestrator(odooClient: OdooClient): LapaAiOrchestrator {
+export function getOrchestrator(odooClient: OdooClientInterface): LapaAiOrchestrator {
   if (!orchestratorInstance) {
     orchestratorInstance = new LapaAiOrchestrator(odooClient);
     console.log('✅ LAPA AI Orchestrator inizializzato');
@@ -842,6 +857,6 @@ export function getOrchestrator(odooClient: OdooClient): LapaAiOrchestrator {
 /**
  * Crea una nuova istanza dell'orchestratore (per testing)
  */
-export function createOrchestrator(odooClient: OdooClient): LapaAiOrchestrator {
+export function createOrchestrator(odooClient: OdooClientInterface): LapaAiOrchestrator {
   return new LapaAiOrchestrator(odooClient);
 }
