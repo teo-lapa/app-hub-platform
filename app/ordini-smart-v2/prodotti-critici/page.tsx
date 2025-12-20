@@ -8,7 +8,7 @@
  * - Azione diretta: ORDINA SUBITO
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,7 +21,9 @@ import {
   ClockIcon,
   ChevronRightIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  FunnelIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
 interface CriticalProduct {
@@ -72,6 +74,45 @@ export default function ProdottiCriticiPage() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [orderingProduct, setOrderingProduct] = useState<number | null>(null);
   const [orderSuccess, setOrderSuccess] = useState<{ productId: number; orderId: number } | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<number | null>(null);
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Estrai lista fornitori unici
+  const suppliers = useMemo(() => {
+    const uniqueSuppliers = new Map<number, { id: number; name: string; count: number }>();
+    products.forEach(p => {
+      if (!uniqueSuppliers.has(p.supplierId)) {
+        uniqueSuppliers.set(p.supplierId, {
+          id: p.supplierId,
+          name: p.supplierName,
+          count: 1
+        });
+      } else {
+        uniqueSuppliers.get(p.supplierId)!.count++;
+      }
+    });
+    return Array.from(uniqueSuppliers.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
+  // Filtra prodotti per fornitore
+  const filteredProducts = useMemo(() => {
+    if (!selectedSupplier) return products;
+    return products.filter(p => p.supplierId === selectedSupplier);
+  }, [products, selectedSupplier]);
+
+  const selectedSupplierName = suppliers.find(s => s.id === selectedSupplier)?.name || 'Tutti i fornitori';
+
+  // Chiudi dropdown quando clicchi fuori
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSupplierDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     loadCriticalProducts();
@@ -204,9 +245,66 @@ export default function ProdottiCriticiPage() {
                 <p className="text-gray-400 text-sm">Ordina subito per non rimanere senza</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Dropdown Filtro Fornitore */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowSupplierDropdown(!showSupplierDropdown)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg transition text-white"
+                >
+                  <FunnelIcon className="w-4 h-4" />
+                  <span className="max-w-[200px] truncate">{selectedSupplierName}</span>
+                  <ChevronDownIcon className={`w-4 h-4 transition-transform ${showSupplierDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {showSupplierDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-72 bg-gray-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden z-50"
+                    >
+                      <div className="max-h-80 overflow-y-auto">
+                        {/* Opzione Tutti */}
+                        <button
+                          onClick={() => {
+                            setSelectedSupplier(null);
+                            setShowSupplierDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition ${!selectedSupplier ? 'bg-blue-500/20 text-blue-400' : 'text-white'}`}
+                        >
+                          <span className="font-medium">Tutti i fornitori</span>
+                          <span className="text-sm text-gray-400">{products.length} prodotti</span>
+                        </button>
+
+                        <div className="border-t border-white/10" />
+
+                        {/* Lista Fornitori */}
+                        {suppliers.map((supplier) => (
+                          <button
+                            key={supplier.id}
+                            onClick={() => {
+                              setSelectedSupplier(supplier.id);
+                              setShowSupplierDropdown(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition ${selectedSupplier === supplier.id ? 'bg-blue-500/20 text-blue-400' : 'text-white'}`}
+                          >
+                            <span className="truncate flex-1 text-left">{supplier.name}</span>
+                            <span className="ml-2 px-2 py-0.5 bg-white/10 rounded-full text-xs text-gray-300">
+                              {supplier.count}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Badge conteggio */}
               <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm font-medium">
-                {products.length} prodotti da ordinare
+                {filteredProducts.length} prodotti da ordinare
               </span>
             </div>
           </div>
@@ -221,7 +319,7 @@ export default function ProdottiCriticiPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -316,11 +414,25 @@ export default function ProdottiCriticiPage() {
               </motion.div>
             ))}
 
-            {products.length === 0 && (
+            {filteredProducts.length === 0 && (
               <div className="text-center py-20">
                 <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white">Tutto OK!</h3>
-                <p className="text-gray-400">Non ci sono prodotti critici da ordinare</p>
+                <h3 className="text-xl font-semibold text-white">
+                  {selectedSupplier ? 'Nessun prodotto critico' : 'Tutto OK!'}
+                </h3>
+                <p className="text-gray-400">
+                  {selectedSupplier
+                    ? `${selectedSupplierName} non ha prodotti critici al momento`
+                    : 'Non ci sono prodotti critici da ordinare'}
+                </p>
+                {selectedSupplier && (
+                  <button
+                    onClick={() => setSelectedSupplier(null)}
+                    className="mt-4 px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition"
+                  >
+                    Mostra tutti i fornitori
+                  </button>
+                )}
               </div>
             )}
           </div>
