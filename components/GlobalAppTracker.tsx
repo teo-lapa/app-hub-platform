@@ -58,6 +58,7 @@ const ROUTE_TO_APP_MAP: Record<string, { appId: string; appName: string }> = {
 
   // Agents e AI
   '/agents': { appId: 'agents', appName: 'AI Agents' },
+  '/lapa-ai-agents': { appId: 'lapa-ai-agents', appName: 'LAPA AI Agents' },
   '/stella': { appId: 'stella', appName: 'Stella AI Assistant' },
 
   // Daily plan

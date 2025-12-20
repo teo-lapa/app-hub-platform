@@ -15,10 +15,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`📦 Creazione ordine per fornitore ${supplierId} con ${items.length} prodotti`);
 
-    // 1. Trova il fornitore in Odoo
+    // 1. Trova il fornitore in Odoo (inclusa la valuta per gli acquisti)
     const partners = await searchReadOdoo('res.partner', [
       ['id', '=', supplierId]
-    ], ['name', 'email']);
+    ], ['name', 'email', 'property_purchase_currency_id']);
 
     if (!partners || partners.length === 0) {
       return NextResponse.json({
@@ -69,11 +69,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Crea l'ordine di acquisto in Odoo
-    const orderData = {
+    const orderData: Record<string, unknown> = {
       partner_id: supplierId,
       order_line: orderLines,
       notes: `🤖 Ordine generato automaticamente da LAPA Smart Ordering AI\nData: ${new Date().toLocaleString('it-IT')}\nProdotti: ${items.length}`
     };
+
+    // Imposta la valuta del fornitore se presente
+    if (supplier.property_purchase_currency_id && supplier.property_purchase_currency_id[0]) {
+      orderData.currency_id = supplier.property_purchase_currency_id[0];
+      console.log(`💱 Valuta fornitore: ${supplier.property_purchase_currency_id[1]} (ID: ${supplier.property_purchase_currency_id[0]})`);
+    }
 
     console.log(`🚀 Creazione purchase.order in Odoo...`);
     const orderId = await createOdoo('purchase.order', orderData);
