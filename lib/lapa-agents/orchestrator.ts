@@ -1008,23 +1008,38 @@ IMPORTANTE:
       const entities = intent.entities || {};
 
       // Se c'è un tracking_number o order_id, traccia la spedizione
-      if (entities.tracking_number || entities.order_id) {
-        const trackingId = entities.tracking_number || entities.order_id;
+      // Estrai anche ordini dal messaggio (pattern S12345, SO12345, etc.)
+      let trackingId = entities.tracking_number || entities.order_id;
 
-        const trackingResult = await this.shippingAgent.trackShipment(trackingId);
+      // Se non trovato nelle entities, cerca pattern nel messaggio dell'ultimo user
+      if (!trackingId && context.conversationHistory.length > 0) {
+        const lastMsg = context.conversationHistory[context.conversationHistory.length - 1];
+        if (lastMsg.role === 'user') {
+          const orderMatch = lastMsg.content.match(/\b(S\d{5,}|SO\d{5,})\b/i);
+          if (orderMatch) {
+            trackingId = orderMatch[1].toUpperCase();
+          }
+        }
+      }
+
+      if (trackingId) {
+        // Assicurati che sia una stringa
+        const trackingIdStr = String(trackingId);
+
+        const trackingResult = await this.shippingAgent.trackShipment(trackingIdStr);
 
         if (trackingResult.success && trackingResult.data) {
           const shipment = trackingResult.data;
 
           return {
             success: true,
-            message: `Spedizione ${shipment.name}:\n` +
-                     `Cliente: ${shipment.customer_name}\n` +
-                     `Stato: ${shipment.state_label}\n` +
-                     `Data prevista: ${shipment.scheduled_date || 'N/A'}\n` +
-                     `Data consegna: ${shipment.date_done || 'In corso'}\n` +
-                     `Autista: ${shipment.driver_name || 'Non assegnato'}\n` +
-                     `Prodotti: ${shipment.products_count}`,
+            message: `📦 **Spedizione ${shipment.name}**\n\n` +
+                     `👤 Cliente: ${shipment.customer_name}\n` +
+                     `📍 Stato: ${shipment.state_label}\n` +
+                     `📅 Data prevista: ${shipment.scheduled_date || 'N/A'}\n` +
+                     `✅ Data consegna: ${shipment.date_done || 'In corso'}\n` +
+                     `🚚 Autista: ${shipment.driver_name || 'Non assegnato'}\n` +
+                     `📋 Prodotti: ${shipment.products_count}`,
             data: shipment,
             agentId: 'shipping',
             confidence: 0.9,
@@ -1038,7 +1053,7 @@ IMPORTANTE:
 
         return {
           success: false,
-          message: `Non ho trovato la spedizione con ID ${trackingId}.`,
+          message: `Non ho trovato spedizioni per l'ordine ${trackingIdStr}. Verifica che il numero sia corretto.`,
           agentId: 'shipping',
           confidence: 0.7
         };

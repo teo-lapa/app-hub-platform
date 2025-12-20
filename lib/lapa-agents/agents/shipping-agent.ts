@@ -170,11 +170,22 @@ export class ShippingAgent {
         );
       } else {
         // Se è una stringa, cerca per nome ordine (origin) o picking name
+        // Supporta vari formati: S36269, SO36269, S036269, etc.
+        const orderIdStr = String(orderId).toUpperCase();
+
+        // Prova a estrarre solo il numero per ricerca flessibile
+        const numericPart = orderIdStr.replace(/[^0-9]/g, '');
+
         pickings = await client.execute_kw(
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
+            ['|', '|', '|',
+              ['origin', 'ilike', orderIdStr],
+              ['origin', 'ilike', numericPart],
+              ['name', 'ilike', orderIdStr],
+              ['name', 'ilike', numericPart]
+            ]
           ],
           {
             fields: [
@@ -290,11 +301,20 @@ export class ShippingAgent {
           }
         );
       } else {
+        // Ricerca flessibile per vari formati ordine
+        const orderIdStr = String(orderId).toUpperCase();
+        const numericPart = orderIdStr.replace(/[^0-9]/g, '');
+
         pickings = await client.execute_kw(
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
+            ['|', '|', '|',
+              ['origin', 'ilike', orderIdStr],
+              ['origin', 'ilike', numericPart],
+              ['name', 'ilike', orderIdStr],
+              ['name', 'ilike', numericPart]
+            ]
           ],
           {
             fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'],
@@ -476,11 +496,20 @@ export class ShippingAgent {
           }
         );
       } else {
+        // Ricerca flessibile per vari formati ordine
+        const orderIdStr = String(orderId).toUpperCase();
+        const numericPart = orderIdStr.replace(/[^0-9]/g, '');
+
         pickings = await client.execute_kw(
           'stock.picking',
           'search_read',
           [
-            ['|', ['origin', 'ilike', orderId], ['name', '=', orderId]]
+            ['|', '|', '|',
+              ['origin', 'ilike', orderIdStr],
+              ['origin', 'ilike', numericPart],
+              ['name', 'ilike', orderIdStr],
+              ['name', 'ilike', numericPart]
+            ]
           ],
           {
             fields: ['id'],
