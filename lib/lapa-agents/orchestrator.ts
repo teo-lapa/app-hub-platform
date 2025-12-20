@@ -679,23 +679,24 @@ IMPORTANTE:
           const productsList = searchResult.data
             .slice(0, 5)
             .map((product: any, index: number) => {
-              const code = product.default_code ? `[${product.default_code}] ` : '';
-              const category = product.categ_id ? ` - ${product.categ_id[1]}` : '';
-              return `${index + 1}. ${code}${product.name}${category} - ${product.list_price.toFixed(2)} EUR`;
+              const name = product.name;
+              const price = product.list_price?.toFixed(2) || '0.00';
+              const qty = product.qty_available !== undefined ? product.qty_available : 'N/D';
+              const unit = product.uom_id ? product.uom_id[1] : 'pz';
+              return `${index + 1}. **${name}**\n   💰 ${price} CHF | 📦 Disponibili: ${qty} ${unit}`;
             })
-            .join('\n');
+            .join('\n\n');
 
           return {
             success: true,
-            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}\n\n` +
-                     'Vuoi verificare la disponibilità o vedere i dettagli di un prodotto?',
+            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}`,
             data: searchResult.data,
             agentId: 'product',
             confidence: 0.9,
             suggestedActions: [
-              'Verifica disponibilità',
-              'Calcola prezzo per quantità',
-              'Vedi prodotti simili'
+              'Ordina prodotto',
+              'Vedi altri prodotti',
+              'Richiedi preventivo'
             ]
           };
         }

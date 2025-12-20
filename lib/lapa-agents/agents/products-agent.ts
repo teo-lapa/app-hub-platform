@@ -266,7 +266,8 @@ export class ProductsAgent {
         [
           'id', 'name', 'default_code', 'barcode', 'categ_id',
           'list_price', 'standard_price', 'type', 'description',
-          'description_sale', 'uom_id', 'active'
+          'description_sale', 'uom_id', 'active',
+          'qty_available', 'virtual_available'
         ],
         limit,
         'name asc'
