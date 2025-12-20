@@ -148,7 +148,7 @@ export class LapaAiOrchestrator {
       const systemPrompt = this.buildIntentAnalysisPrompt(context);
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
         temperature: 0.3,
         system: systemPrompt,
@@ -622,7 +622,7 @@ IMPORTANTE:
     try {
       // Usa Claude per generare una risposta contestuale
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
         temperature: 0.7,
         system: this.buildHelpdeskPrompt(context),
