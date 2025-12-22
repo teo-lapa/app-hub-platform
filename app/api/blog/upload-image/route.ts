@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     console.log(`📤 Uploading image to blog post ${blogPostId}...`);
 
     // Upload image as ir.attachment
+    console.log(`📤 Creating attachment for blog post ${blogPostId}...`);
     const attachmentIds = await odoo.create('ir.attachment', [{
       name: imageFilename,
       type: 'binary',
@@ -58,12 +59,19 @@ export async function POST(request: NextRequest) {
     // Update blog post to use this image
     // In Odoo, blog.post uses 'cover_properties' field for the cover image
     // We need to update the blog post with the image
+    console.log(`📝 Updating blog post ${blogPostId} with cover image...`);
+
+    // Try setting the cover_properties field
+    const coverProperties = {
+      background_image: `/web/image/${attachmentId}`,
+      resize_class: 'cover',
+      opacity: '0.4'
+    };
+
+    console.log(`📝 Cover properties:`, coverProperties);
+
     const updateSuccess = await odoo.write('blog.post', [blogPostId], {
-      cover_properties: JSON.stringify({
-        background_image: `/web/image/${attachmentId}`,
-        resize_class: 'cover',
-        opacity: '0.4'
-      })
+      cover_properties: JSON.stringify(coverProperties)
     });
 
     if (!updateSuccess) {

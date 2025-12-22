@@ -179,8 +179,8 @@ class OdooRPC implements OdooClient {
     const data = await response.json();
 
     if (data.error) {
-      console.error('Odoo write error:', data.error);
-      throw new Error(data.error.message || 'Write failed');
+      console.error('❌ Odoo write error:', JSON.stringify(data.error, null, 2));
+      throw new Error(data.error.data?.message || data.error.message || 'Write failed');
     }
 
     return data.result || false;
