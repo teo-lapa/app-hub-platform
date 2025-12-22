@@ -76,10 +76,17 @@ export async function POST(request: NextRequest) {
     console.log(`🔐 CHECK ACCESS - App: ${app.name} (${app.id}), User: ${userId} (${role}), Odoo: ${odooUserId}, Email: ${email}`);
 
     // LIVELLO 1: Carica impostazioni visibilità dal sistema di gestione
-    const allVisibilities = await getAllAppVisibilities();
-    const appVisibility = allVisibilities.find(v => v.appId === app.id);
+    let allVisibilities = [];
+    let appVisibility = undefined;
 
-    console.log(`  📋 Visibility settings:`, appVisibility);
+    try {
+      allVisibilities = await getAllAppVisibilities();
+      appVisibility = allVisibilities.find(v => v.appId === app.id);
+      console.log(`  📋 Visibility settings:`, appVisibility);
+    } catch (error) {
+      console.log(`  ⚠️ KV not available (local dev), using default role access`);
+      appVisibility = undefined;
+    }
 
     // Se NON ci sono impostazioni di visibilità, usa il requiredRole di default
     if (!appVisibility) {
