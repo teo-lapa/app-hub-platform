@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2, CheckCircle, XCircle, Play, Pause, Download, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Loader2, CheckCircle, XCircle, Play, Pause, Download, RotateCcw, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BlogArticle } from '@/types/blog';
 import { generateDefaultPrompt } from '@/lib/utils/blogArticles';
@@ -31,6 +31,8 @@ export function BatchBlogImageModal({
   const [statuses, setStatuses] = useState<GenerationStatus[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [styleTemplate, setStyleTemplate] = useState('editorial');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -182,6 +184,56 @@ export function BatchBlogImageModal({
     });
 
     toast.success(`Download avviato per ${successfulImages.length} immagini`);
+  };
+
+  const uploadAllToOdoo = async () => {
+    const successfulImages = statuses.filter(s => s.status === 'success' && s.imageDataUrl);
+
+    if (successfulImages.length === 0) {
+      toast.error('Nessuna immagine da caricare');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadedCount(0);
+    let uploaded = 0;
+
+    for (const status of successfulImages) {
+      const article = articles.find(a => a.id === status.articleId);
+      if (!article || !status.imageDataUrl) continue;
+
+      try {
+        const response = await fetch('/api/blog/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blogPostId: article.id,
+            imageBase64: status.imageDataUrl,
+            filename: `blog_${article.id}_${Date.now()}.png`
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Errore upload');
+        }
+
+        uploaded++;
+        setUploadedCount(uploaded);
+        console.log(`✅ Uploaded ${article.name} to Odoo`);
+
+        // Small delay between uploads
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (error: any) {
+        console.error(`❌ Error uploading ${article.name}:`, error);
+        toast.error(`Errore caricamento "${article.name.slice(0, 30)}"`);
+      }
+    }
+
+    setIsUploading(false);
+    toast.success(`✅ ${uploaded}/${successfulImages.length} immagini caricate su Odoo!`);
   };
 
   const handleClose = () => {
@@ -367,13 +419,33 @@ export function BatchBlogImageModal({
             )}
 
             {stats.success > 0 && (
-              <button
-                onClick={downloadAll}
-                className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2"
-              >
-                <Download className="w-5 h-5" />
-                Scarica Tutti ({stats.success})
-              </button>
+              <>
+                <button
+                  onClick={uploadAllToOdoo}
+                  disabled={isUploading}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Caricando {uploadedCount}/{stats.success}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      Carica su Odoo ({stats.success})
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={downloadAll}
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Scarica Tutti ({stats.success})
+                </button>
+              </>
             )}
 
             <button

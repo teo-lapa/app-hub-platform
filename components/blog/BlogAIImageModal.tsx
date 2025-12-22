@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Sparkles, Download, Loader2, Wand2 } from 'lucide-react';
+import { X, Sparkles, Download, Loader2, Wand2, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BlogArticle } from '@/types/blog';
 import { generateDefaultPrompt, getKeywordsArray } from '@/lib/utils/blogArticles';
@@ -23,6 +23,8 @@ export function BlogAIImageModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [tone, setTone] = useState<string>('professional');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isUploaded, setIsUploaded] = useState(false);
 
   if (!isOpen) return null;
 
@@ -84,10 +86,46 @@ export function BlogAIImageModal({
     toast.success('Immagine scaricata!');
   };
 
+  const handleUploadToOdoo = async () => {
+    if (!generatedImage) {
+      toast.error('Nessuna immagine da caricare');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await fetch('/api/blog/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogPostId: article.id,
+          imageBase64: generatedImage,
+          filename: `blog_${article.id}_${Date.now()}.png`
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante il caricamento');
+      }
+
+      setIsUploaded(true);
+      toast.success('✅ Immagine caricata su Odoo!');
+    } catch (error: any) {
+      console.error('Errore caricamento su Odoo:', error);
+      toast.error(error.message || 'Errore durante il caricamento su Odoo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleClose = () => {
     setPrompt('');
     setGeneratedImage(null);
     setTone('professional');
+    setIsUploading(false);
+    setIsUploaded(false);
     onClose();
   };
 
@@ -241,13 +279,42 @@ export function BlogAIImageModal({
             </button>
 
             {generatedImage && (
-              <button
-                onClick={handleDownload}
-                className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2"
-              >
-                <Download className="w-5 h-5" />
-                Scarica
-              </button>
+              <>
+                <button
+                  onClick={handleUploadToOdoo}
+                  disabled={isUploading || isUploaded}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+                    isUploaded
+                      ? 'bg-green-600 text-white cursor-default'
+                      : 'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50'
+                  }`}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Caricamento...
+                    </>
+                  ) : isUploaded ? (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      Caricato su Odoo ✓
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      Carica su Odoo
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleDownload}
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Scarica
+                </button>
+              </>
             )}
 
             <button
