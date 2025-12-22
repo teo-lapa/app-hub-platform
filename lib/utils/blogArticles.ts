@@ -1,12 +1,24 @@
-import { BlogArticle, ArticleFilters, ContentExport } from '@/types/blog';
-import contentExport from '@/seo-geo-optimizer/data/content-export.json';
+import { BlogArticle, ArticleFilters } from '@/types/blog';
 
 /**
- * Load all blog articles from the content-export.json file
+ * Load all blog articles from Odoo API
  */
-export function loadBlogArticles(): BlogArticle[] {
-  const data = contentExport as ContentExport;
-  return data.articles || [];
+export async function loadBlogArticles(): Promise<BlogArticle[]> {
+  try {
+    const response = await fetch('/api/blog/posts', {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch articles: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.articles || [];
+  } catch (error) {
+    console.error('Error loading blog articles:', error);
+    return [];
+  }
 }
 
 /**

@@ -49,18 +49,22 @@ export default function BlogPhotoManagerPage() {
 
   // Load articles on mount
   useEffect(() => {
-    if (hasAccess && !accessLoading) {
-      try {
-        const articles = loadBlogArticles();
-        setAllArticles(articles);
-        toast.success(`${articles.length} articoli caricati`);
-      } catch (error) {
-        console.error('Errore caricamento articoli:', error);
-        toast.error('Errore nel caricamento degli articoli');
-      } finally {
-        setLoading(false);
+    async function loadArticles() {
+      if (hasAccess && !accessLoading) {
+        try {
+          setLoading(true);
+          const articles = await loadBlogArticles();
+          setAllArticles(articles);
+          toast.success(`✅ ${articles.length} articoli caricati da Odoo`);
+        } catch (error) {
+          console.error('Errore caricamento articoli:', error);
+          toast.error('Errore nel caricamento degli articoli');
+        } finally {
+          setLoading(false);
+        }
       }
     }
+    loadArticles();
   }, [hasAccess, accessLoading]);
 
   // Update filter search query when search changes
