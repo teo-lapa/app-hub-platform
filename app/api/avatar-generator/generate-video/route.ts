@@ -401,8 +401,7 @@ async function generateWithVeo31(
             sampleCount: 1,
             aspectRatio: '16:9',
             personGeneration: 'allow_all', // Allow generating people
-            durationSeconds: 8, // Max 8 seconds per clip
-            enhancePrompt: true
+            durationSeconds: 8 // Max 8 seconds per clip
           }
         })
       }
