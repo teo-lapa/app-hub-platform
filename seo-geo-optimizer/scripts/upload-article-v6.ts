@@ -244,9 +244,43 @@ async function uploadArticle(articlePath: string) {
     const translations: Record<string, string> = {};
     let found = 0;
 
+    // Helper: estrai tutti i tag heading con il loro contenuto
+    function extractHeadings(html: string): Map<string, string> {
+      const headings = new Map<string, string>();
+      // Estrai h1-h6 separatamente per evitare problemi con backreferences
+      for (let level = 1; level <= 6; level++) {
+        const regex = new RegExp(`<h${level}[^>]*>([^<]+)</h${level}>`, 'gi');
+        let match;
+        while ((match = regex.exec(html)) !== null) {
+          const content = match[1].trim();
+          if (!headings.has(content)) {
+            headings.set(content, content);
+          }
+        }
+      }
+      return headings;
+    }
+
+    // Estrai heading da IT e target per match diretto
+    const itHeadings = extractHeadings(itData.content_html);
+    const targetHeadings = extractHeadings(langData.content_html);
+    const itHeadingsArray = Array.from(itHeadings.keys());
+    const targetHeadingsArray = Array.from(targetHeadings.keys());
+
     for (const src of sources) {
-      const trans = findTranslation(src, itData.content_html, langData.content_html);
-      if (trans && trans !== src && !trans.includes('<')) {
+      let trans = null;
+
+      // Prova 1: Se src è un heading in IT, mappa per posizione
+      const itHeadingIndex = itHeadingsArray.indexOf(src.trim());
+      if (itHeadingIndex >= 0 && itHeadingIndex < targetHeadingsArray.length) {
+        trans = targetHeadingsArray[itHeadingIndex];
+      } else {
+        // Prova 2: Usa findTranslation normale
+        trans = findTranslation(src, itData.content_html, langData.content_html);
+      }
+
+      // Permetti traduzioni con tag HTML, ma verifica che sia diversa dalla source
+      if (trans && trans !== src && trans.trim().length > 0) {
         translations[src] = trans;
         found++;
       }

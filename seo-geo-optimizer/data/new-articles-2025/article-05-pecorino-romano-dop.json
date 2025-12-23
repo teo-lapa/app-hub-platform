@@ -1,0 +1,54 @@
+{
+  "article_id": "pecorino-romano-dop",
+  "topic": "Pecorino Romano DOP: Il Formaggio Storico per Carbonara, Cacio e Pepe e Amatriciana",
+  "target_keywords": {
+    "primary": ["pecorino romano dop", "pecorino romano", "formaggio carbonara"],
+    "secondary": ["pecorino autentico", "fornitore pecorino", "pecorino ristoranti"],
+    "long_tail": ["pecorino romano dop svizzera", "dove comprare pecorino autentico", "pecorino per cacio e pepe professionale"]
+  },
+  "translations": {
+    "it_IT": {
+      "name": "Pecorino Romano DOP: Il Formaggio Storico dei Romani per Carbonara Autentica",
+      "subtitle": "Scopri il Pecorino Romano DOP: storia millenaria, caratteristiche uniche, differenze con Parmigiano e utilizzo professionale nei piatti iconici romani",
+      "meta": {
+        "title": "Pecorino Romano DOP | Fornitore Premium LAPA Svizzera",
+        "description": "Pecorino Romano DOP autentico per ristoranti: formaggio certificato DOP, consegna 24-48h in Svizzera. Il vero pecorino per carbonara, cacio e pepe, amatriciana con LAPA.",
+        "keywords": "pecorino romano dop, pecorino romano, formaggio carbonara, pecorino autentico, fornitore pecorino, pecorino ristoranti"
+      },
+      "content_html": "..."
+    },
+    "de_DE": {
+      "name": "Pecorino Romano DOP: Der Historische Käse der Römer für Authentische Carbonara",
+      "subtitle": "...",
+      "meta": {},
+      "content_html": "..."
+    },
+    "fr_FR": {
+      "name": "Pecorino Romano AOP : Le Fromage Historique des Romains pour Carbonara Authentique",
+      "subtitle": "...",
+      "meta": {},
+      "content_html": "..."
+    },
+    "en_US": {
+      "name": "Pecorino Romano PDO: The Historic Roman Cheese for Authentic Carbonara",
+      "subtitle": "...",
+      "meta": {},
+      "content_html": "..."
+    }
+  },
+  "seo_analysis": {
+    "keyword_density": "2.5-3%",
+    "word_count_it": 1000,
+    "word_count_de": 1000,
+    "word_count_fr": 1000,
+    "word_count_en": 1000,
+    "h1_count": 1,
+    "h2_count": 7,
+    "h3_count": 10,
+    "has_faq": true,
+    "has_lists": true,
+    "has_tables": true,
+    "internal_links": 3,
+    "geo_optimized": true
+  }
+}

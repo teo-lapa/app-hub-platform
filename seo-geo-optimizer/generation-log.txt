@@ -1,0 +1,1315 @@
+🚀 GENERATORE AUTOMATICO - 60 ARTICOLI BLOG LAPA
+
+Questo script genererà:
+- 60 articoli completi
+- 4 lingue per articolo (IT, DE, FR, EN)
+- Tot: 240 articoli ottimizzati SEO+GEO
+- ~300,000+ parole totali
+
+
+[1/60] ====== Fiordilatte per Pizza Napoletana STG: La Scelta dei Maestri Pizzaioli ======
+   ⏭️  File already exists, skipping...
+
+[2/60] ====== Burrata di Andria DOP: Il Gioiello Cremoso della Puglia ======
+   ⏭️  File already exists, skipping...
+
+[3/60] ====== Fior di Latte Gerola: Tradizione Valtellinese per la Cucina d'Elite ======
+   ⏭️  File already exists, skipping...
+
+[4/60] ====== Guanciale Amatriciano IGP: L'Ingrediente Segreto della Carbonara Perfetta ======
+   ⏭️  File already exists, skipping...
+
+[5/60] ====== Pecorino Romano DOP: Dal Lazio alla Tua Cucina - Guida Completa ======
+   ⏭️  File already exists, skipping...
+
+[6/60] ====== Pancetta Piacentina DOP: Versatilità e Sapore per Ogni Piatto ======
+   ⏭️  File already exists, skipping...
+
+[7/60] ====== Olive Ascolane del Piceno DOP: Croccanti, Ripiene, Irresistibili ======
+   ⏭️  File already exists, skipping...
+
+[8/60] ====== Pomodoro San Marzano DOP: Il Segreto della Pizza Napoletana Verace ======
+   ⏭️  File already exists, skipping...
+
+[9/60] ====== Speck Alto Adige IGP: Il Re degli Affettati del Trentino ======
+   ⏭️  File already exists, skipping...
+
+[10/60] ====== Capperi di Pantelleria IGP: Piccoli Tesori Siciliani per Grandi Piatti ======
+   ⏭️  File already exists, skipping...
+
+[11/60] ====== Carbonara Autentica Romana: La Ricetta con Guanciale LAPA ======
+
+📝 Generating article: Carbonara Autentica Romana: La Ricetta con Guanciale LAPA (IT)...
+   ❌ Error generating article 11: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MJq9JmK63VU53cJdV"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:08 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MJq9JmK63VU53cJdV',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '125',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e46ba3fbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MJq9JmK63VU53cJdV',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MJq9JmK63VU53cJdV'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[12/60] ====== Amatriciana Tradizionale: Come Prepararla con Guanciale e Pecorino ======
+   ⏭️  File already exists, skipping...
+
+[13/60] ====== Gricia: La Madre della Carbonara con Guanciale e Pecorino ======
+   ⏭️  File already exists, skipping...
+
+[14/60] ====== Cacio e Pepe Perfetta: La Tecnica per una Cremosità Unica ======
+
+📝 Generating article: Cacio e Pepe Perfetta: La Tecnica per una Cremosità Unica (IT)...
+   ❌ Error generating article 14: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8ML73MeTriup8q4PVz"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:08 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8ML73MeTriup8q4PVz',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '24',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e489c220221-ZRH'
+  },
+  requestID: 'req_011CWN8ML73MeTriup8q4PVz',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8ML73MeTriup8q4PVz'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[15/60] ====== Pizza Margherita STG: La Ricetta Verace con Fiordilatte LAPA ======
+   ⏭️  File already exists, skipping...
+
+[16/60] ====== Pizza Bianca con Burrata: Il Tocco Gourmet che Conquista ======
+   ⏭️  File already exists, skipping...
+
+[17/60] ====== Antipasto Italiano Perfetto: Olive Ascolane, Salumi e Formaggi LAPA ======
+   ⏭️  File already exists, skipping...
+
+[18/60] ====== Come Scegliere il Fiordilatte Giusto per la Tua Pizza: Guida Completa ======
+
+📝 Generating article: Come Scegliere il Fiordilatte Giusto per la Tua Pizza: Guida Completa (IT)...
+   ❌ Error generating article 18: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MLjkJHn72saZyZGes"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MLjkJHn72saZyZGes',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '27',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e498cf8bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MLjkJHn72saZyZGes',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MLjkJHn72saZyZGes'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[19/60] ====== Burrata: Come Conservarla, Servirla e Valorizzarla nel Menu ======
+   ⏭️  File already exists, skipping...
+
+[20/60] ====== Guanciale vs Pancetta vs Bacon: Differenze e Quando Usarli ======
+
+📝 Generating article: Guanciale vs Pancetta vs Bacon: Differenze e Quando Usarli (IT)...
+   ❌ Error generating article 20: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MMRAo8DanP2GWPMpS"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MMRAo8DanP2GWPMpS',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '38',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4a7d4f0221-ZRH'
+  },
+  requestID: 'req_011CWN8MMRAo8DanP2GWPMpS',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MMRAo8DanP2GWPMpS'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[21/60] ====== I 10 Formaggi DOP Italiani Indispensabili per Ogni Ristorante ======
+
+📝 Generating article: I 10 Formaggi DOP Italiani Indispensabili per Ogni Ristorante (IT)...
+   ❌ Error generating article 21: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MN4s2vTurjDgkria8"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MN4s2vTurjDgkria8',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '20',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4b7eb0bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MN4s2vTurjDgkria8',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MN4s2vTurjDgkria8'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[22/60] ====== Salumi Italiani DOP e IGP: La Guida Definitiva per Ristoratori ======
+   ⏭️  File already exists, skipping...
+
+[23/60] ====== Fornitore Burrata per Ristoranti in Svizzera: Qualità LAPA ======
+   ⏭️  File already exists, skipping...
+
+[24/60] ====== Guanciale Amatriciano per Pizzerie: Ordina da LAPA ======
+
+📝 Generating article: Guanciale Amatriciano per Pizzerie: Ordina da LAPA (IT)...
+   ❌ Error generating article 24: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MNiZLT6KkRLfzD1bJ"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MNiZLT6KkRLfzD1bJ',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '23',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4c6e680221-ZRH'
+  },
+  requestID: 'req_011CWN8MNiZLT6KkRLfzD1bJ',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MNiZLT6KkRLfzD1bJ'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[25/60] ====== Olive Ascolane Surgelate per Ristoranti: Pronte in 3 Minuti ======
+   ⏭️  File already exists, skipping...
+
+[26/60] ====== Fiordilatte: Il Segreto dei Migliori Pizzaioli Svizzeri ======
+   ⏭️  File already exists, skipping...
+
+[27/60] ====== Menu Autunnale Italiano: Funghi Porcini, Tartufo e Castagne LAPA ======
+   ⏭️  File already exists, skipping...
+
+[28/60] ====== Estate Italiana: Menu Fresco con Burrata, Pomodori e Basilico ======
+   ⏭️  File already exists, skipping...
+
+[29/60] ====== Natale in Tavola: I Prodotti Italiani Tradizionali di LAPA ======
+   ⏭️  File already exists, skipping...
+
+[30/60] ====== Pasqua Italiana: Tradizioni e Prodotti Pasquali LAPA ======
+   ⏭️  File already exists, skipping...
+
+[31/60] ====== LAPA: Storia di un Fornitore Italiano in Svizzera ======
+
+📝 Generating article: LAPA: Storia di un Fornitore Italiano in Svizzera (IT)...
+   ❌ Error generating article 31: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MPPV5WcJSSTzyDUFn"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MPPV5WcJSSTzyDUFn',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '27',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4d589fbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MPPV5WcJSSTzyDUFn',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MPPV5WcJSSTzyDUFn'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[32/60] ====== Consegna 24-48h in Tutta la Svizzera: Come Funziona LAPA ======
+
+📝 Generating article: Consegna 24-48h in Tutta la Svizzera: Come Funziona LAPA (IT)...
+   ❌ Error generating article 32: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MQ1hAMZvRy38hZYv6"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MQ1hAMZvRy38hZYv6',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '48',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4e4fbc0221-ZRH'
+  },
+  requestID: 'req_011CWN8MQ1hAMZvRy38hZYv6',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MQ1hAMZvRy38hZYv6'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[33/60] ====== Nessun Ordine Minimo: La Rivoluzione LAPA per Piccoli Ristoranti ======
+
+📝 Generating article: Nessun Ordine Minimo: La Rivoluzione LAPA per Piccoli Ristoranti (IT)...
+   ❌ Error generating article 33: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MQicEH8RvqqT1rFoB"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MQicEH8RvqqT1rFoB',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '22',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e4f5a5ebac5-ZRH'
+  },
+  requestID: 'req_011CWN8MQicEH8RvqqT1rFoB',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MQicEH8RvqqT1rFoB'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[34/60] ====== Controllo Qualità LAPA: Dalla Selezione alla Consegna ======
+
+📝 Generating article: Controllo Qualità LAPA: Dalla Selezione alla Consegna (IT)...
+   ❌ Error generating article 34: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MRLozFJNGNygMyXvg"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:10 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MRLozFJNGNygMyXvg',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '50',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e50390f0221-ZRH'
+  },
+  requestID: 'req_011CWN8MRLozFJNGNygMyXvg',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MRLozFJNGNygMyXvg'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[35/60] ====== Servizio Clienti LAPA: Supporto in Italiano, Tedesco e Francese ======
+
+📝 Generating article: Servizio Clienti LAPA: Supporto in Italiano, Tedesco e Francese (IT)...
+   ❌ Error generating article 35: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MS7SmptWLjixbsNAD"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:10 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MS7SmptWLjixbsNAD',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '69',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e514c2cbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MS7SmptWLjixbsNAD',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MS7SmptWLjixbsNAD'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[36/60] ====== Catalogo Digitale LAPA: 3000+ Prodotti Sempre Disponibili Online ======
+
+📝 Generating article: Catalogo Digitale LAPA: 3000+ Prodotti Sempre Disponibili Online (IT)...
+   ❌ Error generating article 36: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MSs66nFgpaJuXhkyi"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:10 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MSs66nFgpaJuXhkyi',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '67',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e526a3b0221-ZRH'
+  },
+  requestID: 'req_011CWN8MSs66nFgpaJuXhkyi',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MSs66nFgpaJuXhkyi'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[37/60] ====== Prezzi Trasparenti LAPA: Tariffe da Grossista per Tutti ======
+
+📝 Generating article: Prezzi Trasparenti LAPA: Tariffe da Grossista per Tutti (IT)...
+   ❌ Error generating article 37: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MTexrJaWrxtZzotGB"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MTexrJaWrxtZzotGB',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '462',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e539e08bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MTexrJaWrxtZzotGB',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MTexrJaWrxtZzotGB'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[38/60] ====== Sostenibilità LAPA: Imballaggi Eco e Filiera Corta ======
+
+📝 Generating article: Sostenibilità LAPA: Imballaggi Eco e Filiera Corta (IT)...
+   ❌ Error generating article 38: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MW9YGRSumTuT5LHZn"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MW9YGRSumTuT5LHZn',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '23',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e574d340221-ZRH'
+  },
+  requestID: 'req_011CWN8MW9YGRSumTuT5LHZn',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MW9YGRSumTuT5LHZn'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[39/60] ====== Partnership LAPA: Collaboriamo con i Migliori Produttori Italiani ======
+
+📝 Generating article: Partnership LAPA: Collaboriamo con i Migliori Produttori Italiani (IT)...
+   ❌ Error generating article 39: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MWrhfEffFAQ4vqsAH"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MWrhfEffFAQ4vqsAH',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '108',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e582a8fbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MWrhfEffFAQ4vqsAH',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MWrhfEffFAQ4vqsAH'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[40/60] ====== Testimonianze Ristoratori: Perché 500+ Locali Scelgono LAPA ======
+
+📝 Generating article: Testimonianze Ristoratori: Perché 500+ Locali Scelgono LAPA (IT)...
+   ❌ Error generating article 40: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MXmGa5N4tYgXoheQ8"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MXmGa5N4tYgXoheQ8',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '25',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e599f2d0221-ZRH'
+  },
+  requestID: 'req_011CWN8MXmGa5N4tYgXoheQ8',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MXmGa5N4tYgXoheQ8'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[41/60] ====== Come Aprire una Pizzeria di Successo in Svizzera: Guida Completa 2026 ======
+
+📝 Generating article: Come Aprire una Pizzeria di Successo in Svizzera: Guida Completa 2026 (IT)...
+   ❌ Error generating article 41: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MYMzET4XGb1CdB5RD"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MYMzET4XGb1CdB5RD',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '124',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5a7c59bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MYMzET4XGb1CdB5RD',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MYMzET4XGb1CdB5RD'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[42/60] ====== Menu Engineering: Come Aumentare i Profitti del Tuo Ristorante Italiano ======
+
+📝 Generating article: Menu Engineering: Come Aumentare i Profitti del Tuo Ristorante Italiano (IT)...
+   ❌ Error generating article 42: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MZSjF3nLeJfzuHbJ6"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:11 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MZSjF3nLeJfzuHbJ6',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '20',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5c08a70221-ZRH'
+  },
+  requestID: 'req_011CWN8MZSjF3nLeJfzuHbJ6',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MZSjF3nLeJfzuHbJ6'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[43/60] ====== Food Cost e Margini: Calcolare la Redditività di Ogni Piatto ======
+
+📝 Generating article: Food Cost e Margini: Calcolare la Redditività di Ogni Piatto (IT)...
+   ❌ Error generating article 43: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Ma3SfgtpMdG6TwiAZ"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Ma3SfgtpMdG6TwiAZ',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '28',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5cfe92bac5-ZRH'
+  },
+  requestID: 'req_011CWN8Ma3SfgtpMdG6TwiAZ',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Ma3SfgtpMdG6TwiAZ'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[44/60] ====== Gestione Inventario Ristorante: Ridurre Gli Sprechi del 30% ======
+
+📝 Generating article: Gestione Inventario Ristorante: Ridurre Gli Sprechi del 30% (IT)...
+   ❌ Error generating article 44: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Maeu7ivYyYxw2pY7S"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Maeu7ivYyYxw2pY7S',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '21',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5dd9c60221-ZRH'
+  },
+  requestID: 'req_011CWN8Maeu7ivYyYxw2pY7S',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Maeu7ivYyYxw2pY7S'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[45/60] ====== Marketing per Ristoranti Italiani in Svizzera: Strategie 2026 ======
+
+📝 Generating article: Marketing per Ristoranti Italiani in Svizzera: Strategie 2026 (IT)...
+   ❌ Error generating article 45: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MbJ6g87nr3hb4viww"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MbJ6g87nr3hb4viww',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '20',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5ec840bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MbJ6g87nr3hb4viww',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MbJ6g87nr3hb4viww'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[46/60] ====== Selezione e Formazione Staff Ristorante: La Guida del Titolare ======
+
+📝 Generating article: Selezione e Formazione Staff Ristorante: La Guida del Titolare (IT)...
+   ❌ Error generating article 46: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Mbwnhdz9W1GrHpwXG"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Mbwnhdz9W1GrHpwXG',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '31',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e5fbb060221-ZRH'
+  },
+  requestID: 'req_011CWN8Mbwnhdz9W1GrHpwXG',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Mbwnhdz9W1GrHpwXG'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[47/60] ====== Igiene e HACCP in Cucina: Normative Svizzere Spiegate Semplice ======
+
+📝 Generating article: Igiene e HACCP in Cucina: Normative Svizzere Spiegate Semplice (IT)...
+   ❌ Error generating article 47: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Mcaz3sJWHygcYsr9n"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Mcaz3sJWHygcYsr9n',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '28',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e60a9f4bac5-ZRH'
+  },
+  requestID: 'req_011CWN8Mcaz3sJWHygcYsr9n',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Mcaz3sJWHygcYsr9n'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[48/60] ====== Creare un Menu Stagionale Italiano: Vantaggi e Strategia ======
+
+📝 Generating article: Creare un Menu Stagionale Italiano: Vantaggi e Strategia (IT)...
+   ❌ Error generating article 48: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MdChJTKDi5fioGMuH"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:12 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MdChJTKDi5fioGMuH',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '56',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e618c3a0221-ZRH'
+  },
+  requestID: 'req_011CWN8MdChJTKDi5fioGMuH',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MdChJTKDi5fioGMuH'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[49/60] ====== Wine Pairing Italiano: Abbinare Vini ai Piatti del Menu ======
+
+📝 Generating article: Wine Pairing Italiano: Abbinare Vini ai Piatti del Menu (IT)...
+   ❌ Error generating article 49: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Mdx6E8DvksZ3v8zyD"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Mdx6E8DvksZ3v8zyD',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '32',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e62abccbac5-ZRH'
+  },
+  requestID: 'req_011CWN8Mdx6E8DvksZ3v8zyD',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Mdx6E8DvksZ3v8zyD'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[50/60] ====== Delivery e Take-Away per Ristoranti: Ottimizzare il Servizio ======
+
+📝 Generating article: Delivery e Take-Away per Ristoranti: Ottimizzare il Servizio (IT)...
+   ❌ Error generating article 50: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Med2Mma4KDcg2DXyN"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Med2Mma4KDcg2DXyN',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '21',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e63ad6d0221-ZRH'
+  },
+  requestID: 'req_011CWN8Med2Mma4KDcg2DXyN',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Med2Mma4KDcg2DXyN'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[51/60] ====== Trend Gastronomici 2026: Cosa Vogliono i Clienti Svizzeri ======
+
+📝 Generating article: Trend Gastronomici 2026: Cosa Vogliono i Clienti Svizzeri (IT)...
+   ❌ Error generating article 51: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MfFitJUPup5dK7oXm"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MfFitJUPup5dK7oXm',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '81',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e648d8bbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MfFitJUPup5dK7oXm',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MfFitJUPup5dK7oXm'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[52/60] ====== Intelligenza Artificiale in Cucina: Chat AI per Ristoratori ======
+
+📝 Generating article: Intelligenza Artificiale in Cucina: Chat AI per Ristoratori (IT)...
+   ❌ Error generating article 52: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Mg8K1DZZS8vTkXHfp"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Mg8K1DZZS8vTkXHfp',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '59',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e65dea70221-ZRH'
+  },
+  requestID: 'req_011CWN8Mg8K1DZZS8vTkXHfp',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Mg8K1DZZS8vTkXHfp'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[53/60] ====== Sostenibilità nel Food: Come Ridurre l'Impatto Ambientale ======
+
+📝 Generating article: Sostenibilità nel Food: Come Ridurre l'Impatto Ambientale (IT)...
+   ❌ Error generating article 53: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MgriH5ERqEbVmiPtK"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MgriH5ERqEbVmiPtK',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '25',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e66eff7bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MgriH5ERqEbVmiPtK',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MgriH5ERqEbVmiPtK'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[54/60] ====== Menu Vegetariano e Vegano: Opportunità per Ristoranti Italiani ======
+
+📝 Generating article: Menu Vegetariano e Vegano: Opportunità per Ristoranti Italiani (IT)...
+   ❌ Error generating article 54: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MhUAuqgQyxdtj9Szo"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:13 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MhUAuqgQyxdtj9Szo',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '45',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e67dfbd0221-ZRH'
+  },
+  requestID: 'req_011CWN8MhUAuqgQyxdtj9Szo',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MhUAuqgQyxdtj9Szo'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[55/60] ====== Food Photography per Ristoranti: Aumentare le Prenotazioni ======
+
+📝 Generating article: Food Photography per Ristoranti: Aumentare le Prenotazioni (IT)...
+   ❌ Error generating article 55: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MiBqBMioYVd16uHQR"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:14 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MiBqBMioYVd16uHQR',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '19',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e68d9f1bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MiBqBMioYVd16uHQR',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MiBqBMioYVd16uHQR'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[56/60] ====== Cucina Regionale Italiana: Un Viaggio da Nord a Sud ======
+
+📝 Generating article: Cucina Regionale Italiana: Un Viaggio da Nord a Sud (IT)...
+   ❌ Error generating article 56: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MinoNTest6Ka3G92y"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:14 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MinoNTest6Ka3G92y',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '130',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e69b8dd0221-ZRH'
+  },
+  requestID: 'req_011CWN8MinoNTest6Ka3G92y',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MinoNTest6Ka3G92y'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[57/60] ====== Denominazioni DOP e IGP: Cosa Significano Veramente ======
+
+📝 Generating article: Denominazioni DOP e IGP: Cosa Significano Veramente (IT)...
+   ❌ Error generating article 57: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MjqJf3xx4D4HuK8H8"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:14 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MjqJf3xx4D4HuK8H8',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '34',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e6b4bf3bac5-ZRH'
+  },
+  requestID: 'req_011CWN8MjqJf3xx4D4HuK8H8',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MjqJf3xx4D4HuK8H8'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[58/60] ====== Storia della Pizza: Dalle Origini a Patrimonio UNESCO ======
+
+📝 Generating article: Storia della Pizza: Dalle Origini a Patrimonio UNESCO (IT)...
+   ❌ Error generating article 58: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MkXUTG9VkA2r4WTLN"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:14 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MkXUTG9VkA2r4WTLN',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '158',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e6c4a3a0221-ZRH'
+  },
+  requestID: 'req_011CWN8MkXUTG9VkA2r4WTLN',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MkXUTG9VkA2r4WTLN'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[59/60] ====== Pasta Artigianale vs Industriale: Differenze che Contano ======
+
+📝 Generating article: Pasta Artigianale vs Industriale: Differenze che Contano (IT)...
+   ❌ Error generating article 59: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8MmhRKNojvojo8LmYT"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:15 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8MmhRKNojvojo8LmYT',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '207',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e6dfebbbac5-ZRH'
+  },
+  requestID: 'req_011CWN8MmhRKNojvojo8LmYT',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8MmhRKNojvojo8LmYT'
+  }
+}
+   ⚠️  Skipping to next article...
+
+[60/60] ====== L'Arte del Caffè Italiano: Dall'Espresso al Cappuccino ======
+
+📝 Generating article: L'Arte del Caffè Italiano: Dall'Espresso al Cappuccino (IT)...
+   ❌ Error generating article 60: AuthenticationError: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CWN8Mo4XM7jW2guBDyYiT"}
+    at Function.generate (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/core/error.ts:67:14)
+    at Anthropic.makeStatusError (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:443:28)
+    at Anthropic.makeRequest (/home/paul/app-hub-platform/seo-geo-optimizer/node_modules/@anthropic-ai/sdk/src/client.ts:678:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateItalianArticle (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:543:19)
+    at async generateAllArticles (/home/paul/app-hub-platform/seo-geo-optimizer/scripts/generate-all-60-articles.ts:613:30) {
+  status: 401,
+  headers: Headers {
+    date: 'Mon, 22 Dec 2025 17:34:15 GMT',
+    'content-type': 'application/json',
+    'content-length': '130',
+    connection: 'keep-alive',
+    'x-should-retry': 'false',
+    'request-id': 'req_011CWN8Mo4XM7jW2guBDyYiT',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    server: 'cloudflare',
+    'x-envoy-upstream-service-time': '25',
+    'cf-cache-status': 'DYNAMIC',
+    'x-robots-tag': 'none',
+    'cf-ray': '9b215e6ffc740221-ZRH'
+  },
+  requestID: 'req_011CWN8Mo4XM7jW2guBDyYiT',
+  error: {
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    request_id: 'req_011CWN8Mo4XM7jW2guBDyYiT'
+  }
+}
+   ⚠️  Skipping to next article...
+
+
+✅ ====== GENERATION COMPLETE ======
+Generated: 24 articles
+Errors: 36 articles
+Total articles: 96 (including all languages)
+Duration: 0 minutes
+
+📂 Files saved in: data/new-articles-2025/
+
+🚀 Next step: Run upload script to publish to Odoo

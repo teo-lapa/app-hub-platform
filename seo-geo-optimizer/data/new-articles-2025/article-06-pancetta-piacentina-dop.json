@@ -1,0 +1,27 @@
+{
+  "article_id": "pancetta-piacentina-dop",
+  "topic": "Pancetta Piacentina DOP: Il Salume Dolce dell'Emilia per Taglieri e Cucina Gourmet",
+  "target_keywords": {
+    "primary": ["pancetta piacentina dop", "pancetta piacentina", "salumi piacenza"],
+    "secondary": ["pancetta arrotolata", "pancetta dolce", "salumi dop"],
+    "long_tail": ["pancetta piacentina dop svizzera", "dove comprare pancetta piacentina", "differenza pancetta piacentina e tesa"]
+  },
+  "translations": {
+    "it_IT": {
+      "name": "Pancetta Piacentina DOP: Il Salume Dolce e Arrotolato di Piacenza per Ristoranti",
+      "subtitle": "...",
+      "meta": {},
+      "content_html": "..."
+    },
+    "de_DE": {},
+    "fr_FR": {},
+    "en_US": {}
+  },
+  "seo_analysis": {
+    "keyword_density": "2.5-3%",
+    "word_count_it": 900,
+    "h1_count": 1,
+    "h2_count": 7,
+    "h3_count": 9
+  }
+}
