@@ -23,6 +23,7 @@ export function BlogAIImageModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [tone, setTone] = useState<string>('professional');
+  const [language, setLanguage] = useState<string>('it'); // Language for text on image
   const [isUploading, setIsUploading] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
 
@@ -44,7 +45,8 @@ export function BlogAIImageModal({
         body: JSON.stringify({
           prompt: finalPrompt,
           aspectRatio: '16:9',
-          tone
+          tone,
+          language // Pass language for text on image
         })
       });
 
@@ -124,6 +126,7 @@ export function BlogAIImageModal({
     setPrompt('');
     setGeneratedImage(null);
     setTone('professional');
+    setLanguage('it');
     setIsUploading(false);
     setIsUploaded(false);
     onClose();
@@ -173,6 +176,35 @@ export function BlogAIImageModal({
                 >
                   {keyword}
                 </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Language Selection for Text on Image */}
+          <div>
+            <label className="block text-white font-medium mb-2">
+              Lingua Testo sull'Immagine
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                { value: 'it', label: 'Italiano', emoji: '🇮🇹' },
+                { value: 'de', label: 'Tedesco', emoji: '🇩🇪' },
+                { value: 'fr', label: 'Francese', emoji: '🇫🇷' },
+                { value: 'en', label: 'Inglese', emoji: '🇬🇧' }
+              ].map((lang) => (
+                <button
+                  key={lang.value}
+                  onClick={() => setLanguage(lang.value)}
+                  className={`
+                    px-4 py-2 rounded-lg font-medium transition-all
+                    ${language === lang.value
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }
+                  `}
+                >
+                  {lang.emoji} {lang.label}
+                </button>
               ))}
             </div>
           </div>
