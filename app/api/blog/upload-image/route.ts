@@ -61,13 +61,14 @@ export async function POST(request: NextRequest) {
     // We need to update the blog post with the image
     console.log(`📝 Updating blog post ${blogPostId} with cover image...`);
 
-    // Set cover_properties with correct Odoo format
-    // Note: use "background-image" with hyphen, not underscore!
+    // Set cover_properties - EXACT format from publish-recipe (working code)
     const coverProperties = {
-      'background-image': `url('/web/image/${attachmentId}')`,
-      'resize_class': 'o_half_screen_height',  // Options: o_half_screen_height, o_full_screen_height, cover_auto
-      'opacity': '0.4',
-      'background_color_class': 'o_cc1'
+      'background-image': `url(/web/image/${attachmentId})`, // NO quotes inside url()!
+      'background_color_class': 'o_cc3 o_cc',
+      'background_color_style': '',
+      'opacity': '0.2',
+      'resize_class': 'o_half_screen_height o_record_has_cover',
+      'text_align_class': ''
     };
 
     console.log(`📝 Cover properties:`, coverProperties);
