@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooClient } from '@/lib/odoo-client';
+import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -25,7 +25,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const odoo = await getOdooClient();
+    // Get user session (same as publish-recipe)
+    const userCookies = request.headers.get('cookie');
+    if (!userCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not logged in'
+      }, { status: 401 });
+    }
+
+    const { cookies: odooCookies, uid } = await getOdooSession(userCookies);
+    if (!odooCookies) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid Odoo session'
+      }, { status: 401 });
+    }
 
     // Extract mimetype and clean base64
     const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
@@ -36,23 +51,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`📤 Uploading image to blog post ${blogPostId}...`);
 
-    // Upload image as ir.attachment
+    // Upload image as ir.attachment (same as publish-recipe)
     console.log(`📤 Creating attachment for blog post ${blogPostId}...`);
-    const attachmentIds = await odoo.create('ir.attachment', [{
-      name: imageFilename,
-      type: 'binary',
-      datas: cleanBase64,
-      mimetype: mimetype,
-      public: true,
-      res_model: 'blog.post',
-      res_id: blogPostId
-    }]);
+    const attachmentId = await callOdoo(
+      odooCookies,
+      'ir.attachment',
+      'create',
+      [{
+        name: imageFilename,
+        type: 'binary',
+        datas: cleanBase64,
+        mimetype: mimetype,
+        public: true,
+        res_model: 'blog.post',
+        res_id: blogPostId
+      }]
+    );
 
-    if (!attachmentIds || attachmentIds.length === 0) {
+    if (!attachmentId) {
       throw new Error('Failed to create attachment');
     }
-
-    const attachmentId = attachmentIds[0];
 
     console.log(`✅ Image uploaded as attachment ${attachmentId}`);
 
@@ -73,13 +91,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Cover properties:`, coverProperties);
 
-    const updateSuccess = await odoo.write('blog.post', [blogPostId], {
-      cover_properties: JSON.stringify(coverProperties)
-    });
-
-    if (!updateSuccess) {
-      throw new Error('Failed to update blog post with image');
-    }
+    // Update blog post with callOdoo (same as publish-recipe)
+    await callOdoo(
+      odooCookies,
+      'blog.post',
+      'write',
+      [[blogPostId], {
+        cover_properties: JSON.stringify(coverProperties)
+      }]
+    );
 
     console.log(`✅ Blog post ${blogPostId} updated with cover image`);
 
