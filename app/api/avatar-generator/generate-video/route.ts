@@ -137,6 +137,7 @@ async function generateAvatarVideoAsync(
         access: 'public',
         contentType: 'image/png',
         token: process.env.BLOB_READ_WRITE_TOKEN,
+        addRandomSuffix: true,
       });
       imageUrl = blob.url;
     }
@@ -157,6 +158,7 @@ async function generateAvatarVideoAsync(
       access: 'public',
       contentType: 'audio/mpeg',
       token: process.env.BLOB_READ_WRITE_TOKEN,
+      addRandomSuffix: true,
     });
 
     console.log(`✅ Audio generated: ${audioBlob.url}`);
@@ -460,6 +462,7 @@ async function pollVeoOperationStatus(jobId: string, operationName: string): Pro
           access: 'public',
           contentType: 'video/mp4',
           token: process.env.BLOB_READ_WRITE_TOKEN,
+          addRandomSuffix: true,
         });
         return blob.url;
       }
@@ -490,6 +493,7 @@ async function saveVideoToBlob(jobId: string, videoUrl: string): Promise<string>
     access: 'public',
     contentType: 'video/mp4',
     token: process.env.BLOB_READ_WRITE_TOKEN,
+    addRandomSuffix: true,
   });
 
   return blob.url;
