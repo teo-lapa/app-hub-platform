@@ -64,9 +64,9 @@ export function BlogArticleCard({
 
       {/* Image Preview Area (16:9) */}
       <div className="relative w-full aspect-video bg-slate-800">
-        {generatedImage ? (
+        {generatedImage || article.coverImage ? (
           <img
-            src={generatedImage}
+            src={generatedImage || article.coverImage || ''}
             alt={article.name}
             className="w-full h-full object-cover"
           />

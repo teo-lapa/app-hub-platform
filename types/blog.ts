@@ -31,6 +31,7 @@ export interface BlogArticle {
   subtitle: string;
   content_text: string;
   content_html: string;
+  coverImage?: string | null; // URL of cover image from Odoo
   meta: BlogArticleMeta;
   is_published: boolean;
   dates: BlogArticleDates;

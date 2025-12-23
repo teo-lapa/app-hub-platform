@@ -38,36 +38,58 @@ export async function GET(request: NextRequest) {
     console.log(`📝 Fetched ${posts.length} blog posts from Odoo`);
 
     // Transform to our BlogArticle format
-    const articles = posts.map((post: any) => ({
-      id: post.id,
-      name: post.name || '',
-      subtitle: post.subtitle || '',
-      content_text: post.content ? stripHtml(post.content) : '',
-      content_html: post.content || '',
-      meta: {
-        title: post.website_meta_title || post.name || '',
-        description: post.website_meta_description || '',
-        keywords: post.website_meta_keywords || ''
-      },
-      is_published: post.website_published || post.is_published || false,
-      dates: {
-        created: post.create_date || '',
-        updated: post.write_date || ''
-      },
-      analysis: {
-        wordCount: post.content ? countWords(stripHtml(post.content)) : 0,
-        hasH1: post.content ? /<h1/i.test(post.content) : false,
-        h1Count: post.content ? (post.content.match(/<h1/gi) || []).length : 0,
-        hasH2: post.content ? /<h2/i.test(post.content) : false,
-        h2Count: post.content ? (post.content.match(/<h2/gi) || []).length : 0,
-        hasList: post.content ? /<ul|<ol/i.test(post.content) : false,
-        hasImages: post.content ? (post.content.match(/<img/gi) || []).length : 0,
-        imagesWithAlt: post.content ? (post.content.match(/<img[^>]+alt=/gi) || []).length : 0,
-        titleLength: (post.website_meta_title || post.name || '').length,
-        descriptionLength: (post.website_meta_description || '').length,
-        hasMeta: !!(post.website_meta_title || post.website_meta_description || post.website_meta_keywords)
+    const articles = posts.map((post: any) => {
+      // Extract cover image URL from cover_properties if it exists
+      let coverImageUrl = null;
+      if (post.cover_properties) {
+        try {
+          const coverProps = JSON.parse(post.cover_properties);
+          const bgImage = coverProps['background-image'];
+          if (bgImage && bgImage.includes('url(')) {
+            // Extract URL from url(...) format
+            coverImageUrl = bgImage.match(/url\(([^)]+)\)/)?.[1];
+            // Prepend domain if relative URL
+            if (coverImageUrl && coverImageUrl.startsWith('/')) {
+              coverImageUrl = `https://www.lapa.ch${coverImageUrl}`;
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
       }
-    }));
+
+      return {
+        id: post.id,
+        name: post.name || '',
+        subtitle: post.subtitle || '',
+        content_text: post.content ? stripHtml(post.content) : '',
+        content_html: post.content || '',
+        coverImage: coverImageUrl, // Add cover image URL
+        meta: {
+          title: post.website_meta_title || post.name || '',
+          description: post.website_meta_description || '',
+          keywords: post.website_meta_keywords || ''
+        },
+        is_published: post.website_published || post.is_published || false,
+        dates: {
+          created: post.create_date || '',
+          updated: post.write_date || ''
+        },
+        analysis: {
+          wordCount: post.content ? countWords(stripHtml(post.content)) : 0,
+          hasH1: post.content ? /<h1/i.test(post.content) : false,
+          h1Count: post.content ? (post.content.match(/<h1/gi) || []).length : 0,
+          hasH2: post.content ? /<h2/i.test(post.content) : false,
+          h2Count: post.content ? (post.content.match(/<h2/gi) || []).length : 0,
+          hasList: post.content ? /<ul|<ol/i.test(post.content) : false,
+          hasImages: post.content ? (post.content.match(/<img/gi) || []).length : 0,
+          imagesWithAlt: post.content ? (post.content.match(/<img[^>]+alt=/gi) || []).length : 0,
+          titleLength: (post.website_meta_title || post.name || '').length,
+          descriptionLength: (post.website_meta_description || '').length,
+          hasMeta: !!(post.website_meta_title || post.website_meta_description || post.website_meta_keywords)
+        }
+      };
+    });
 
     return NextResponse.json({
       success: true,
