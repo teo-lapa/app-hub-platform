@@ -10,6 +10,31 @@ const openai = new OpenAI({
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+// Initialize database table if not exists
+async function initDatabase() {
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS avatar_video_jobs (
+        job_id VARCHAR(100) PRIMARY KEY,
+        status VARCHAR(20) NOT NULL DEFAULT 'queued',
+        progress INTEGER DEFAULT 0,
+        step TEXT,
+        video_url TEXT,
+        error TEXT,
+        provider VARCHAR(10),
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CHECK (status IN ('queued', 'processing', 'completed', 'failed')),
+        CHECK (provider IS NULL OR provider IN ('sora', 'veo'))
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_avatar_jobs_created_at ON avatar_video_jobs(created_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_avatar_jobs_status ON avatar_video_jobs(status)`;
+  } catch (error) {
+    console.error('Database initialization error (may already exist):', error);
+  }
+}
+
 // Database helpers for job persistence
 async function getJob(jobId: string) {
   const result = await sql`
@@ -71,6 +96,9 @@ const PRICING = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure database table exists
+    await initDatabase();
+
     const body = await request.json();
     const { photoUrl, photoBase64, script, outfit, background, voice = 'alloy', provider = 'sora' } = body;
 
@@ -551,6 +579,9 @@ async function updateJobProgress(jobId: string, progress: number, step: string, 
 // GET endpoint to retrieve job status
 export async function GET(request: NextRequest) {
   try {
+    // Ensure database table exists
+    await initDatabase();
+
     const searchParams = request.nextUrl.searchParams;
     const jobId = searchParams.get('jobId');
 
