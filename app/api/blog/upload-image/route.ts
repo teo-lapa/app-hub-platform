@@ -61,11 +61,13 @@ export async function POST(request: NextRequest) {
     // We need to update the blog post with the image
     console.log(`📝 Updating blog post ${blogPostId} with cover image...`);
 
-    // Try setting the cover_properties field
+    // Set cover_properties with correct Odoo format
+    // Note: use "background-image" with hyphen, not underscore!
     const coverProperties = {
-      background_image: `/web/image/${attachmentId}`,
-      resize_class: 'cover',
-      opacity: '0.4'
+      'background-image': `url('/web/image/${attachmentId}')`,
+      'resize_class': 'o_half_screen_height',  // Options: o_half_screen_height, o_full_screen_height, cover_auto
+      'opacity': '0.4',
+      'background_color_class': 'o_cc1'
     };
 
     console.log(`📝 Cover properties:`, coverProperties);
