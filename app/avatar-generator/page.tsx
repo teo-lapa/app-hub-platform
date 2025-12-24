@@ -13,11 +13,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { Loader2 } from 'lucide-react';
 
-// Voci italiane disponibili (Microsoft Azure)
+// Voci OpenAI TTS
 const VOICES = [
-  { id: 'it-IT-IsabellaNeural', name: 'Isabella', gender: 'Femminile' },
-  { id: 'it-IT-DiegoNeural', name: 'Diego', gender: 'Maschile' },
-  { id: 'it-IT-ElsaNeural', name: 'Elsa', gender: 'Femminile' },
+  { id: 'onyx', name: 'Onyx', gender: 'Maschile' },
+  { id: 'nova', name: 'Nova', gender: 'Femminile' },
+  { id: 'alloy', name: 'Alloy', gender: 'Neutro' },
 ];
 
 export default function AvatarGeneratorPage() {
@@ -25,7 +25,7 @@ export default function AvatarGeneratorPage() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [script, setScript] = useState('');
-  const [voice, setVoice] = useState('it-IT-IsabellaNeural');
+  const [voice, setVoice] = useState('onyx');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
@@ -307,7 +307,7 @@ export default function AvatarGeneratorPage() {
 
         {/* Info */}
         <p className="text-center text-xs text-gray-500 mt-4">
-          Powered by D-ID
+          Powered by OpenAI + Replicate
         </p>
       </div>
     </div>
