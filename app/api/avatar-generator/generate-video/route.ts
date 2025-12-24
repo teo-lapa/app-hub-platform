@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { put } from '@vercel/blob';
+import { kv } from '@vercel/kv';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -9,9 +10,8 @@ const openai = new OpenAI({
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Store for tracking video generation jobs
-// In production, use Vercel KV or a database
-const videoJobs = new Map<string, {
+// Job type definition
+interface VideoJob {
   status: 'queued' | 'processing' | 'completed' | 'failed';
   progress?: number;
   step?: string;
@@ -19,7 +19,26 @@ const videoJobs = new Map<string, {
   error?: string;
   createdAt: number;
   provider?: 'sora' | 'veo';
-}>();
+}
+
+// Helper functions for KV storage
+async function getJob(jobId: string): Promise<VideoJob | null> {
+  try {
+    return await kv.get<VideoJob>(`avatar-job:${jobId}`);
+  } catch (error) {
+    console.error(`Error getting job ${jobId}:`, error);
+    return null;
+  }
+}
+
+async function setJob(jobId: string, job: VideoJob): Promise<void> {
+  try {
+    // Set with 1 hour expiration
+    await kv.set(`avatar-job:${jobId}`, job, { ex: 3600 });
+  } catch (error) {
+    console.error(`Error setting job ${jobId}:`, error);
+  }
+}
 
 // Pricing info (USD per second)
 const PRICING = {
@@ -63,8 +82,8 @@ export async function POST(request: NextRequest) {
     console.log(`   Estimated duration: ${estimatedSeconds}s`);
     console.log(`   Estimated cost: $${estimatedCost.toFixed(2)}`);
 
-    // Initialize job status
-    videoJobs.set(jobId, {
+    // Initialize job status in KV
+    await setJob(jobId, {
       status: 'queued',
       progress: 0,
       step: 'Inizializzazione...',
@@ -72,7 +91,7 @@ export async function POST(request: NextRequest) {
       provider: provider as 'sora' | 'veo'
     });
 
-    // Start async video generation
+    // Start async video generation (fire and forget - will update KV)
     generateAvatarVideoAsync(jobId, {
       photoUrl,
       photoBase64,
@@ -81,9 +100,9 @@ export async function POST(request: NextRequest) {
       background,
       voice,
       provider
-    }).catch(error => {
+    }).catch(async (error) => {
       console.error(`❌ Error in async video generation for job ${jobId}:`, error);
-      videoJobs.set(jobId, {
+      await setJob(jobId, {
         status: 'failed',
         error: error.message || 'Errore durante la generazione del video',
         createdAt: Date.now()
@@ -127,7 +146,7 @@ async function generateAvatarVideoAsync(
 
   try {
     // Step 1: Prepare photo
-    updateJobProgress(jobId, 5, 'Elaborazione foto...', provider as 'sora' | 'veo');
+    await updateJobProgress(jobId, 5, 'Elaborazione foto...', provider as 'sora' | 'veo');
 
     let imageUrl = photoUrl;
     if (photoBase64 && !photoUrl) {
@@ -143,7 +162,7 @@ async function generateAvatarVideoAsync(
     }
 
     // Step 2: Generate audio with OpenAI TTS
-    updateJobProgress(jobId, 15, 'Generazione voce AI...', provider as 'sora' | 'veo');
+    await updateJobProgress(jobId, 15, 'Generazione voce AI...', provider as 'sora' | 'veo');
 
     const audioResponse = await openai.audio.speech.create({
       model: 'tts-1-hd',
@@ -164,12 +183,12 @@ async function generateAvatarVideoAsync(
     console.log(`✅ Audio generated: ${audioBlob.url}`);
 
     // Step 3: Build optimized prompt for realistic avatar
-    updateJobProgress(jobId, 30, 'Preparazione prompt video...', provider as 'sora' | 'veo');
+    await updateJobProgress(jobId, 30, 'Preparazione prompt video...', provider as 'sora' | 'veo');
 
     const videoPrompt = buildRealisticAvatarPrompt(script, outfit, background);
 
     // Step 4: Generate video based on provider
-    updateJobProgress(jobId, 40, `Generazione video con ${provider === 'sora' ? 'OpenAI Sora 2' : 'Google Veo 3.1'}...`, provider as 'sora' | 'veo');
+    await updateJobProgress(jobId, 40, `Generazione video con ${provider === 'sora' ? 'OpenAI Sora 2' : 'Google Veo 3.1'}...`, provider as 'sora' | 'veo');
 
     let videoUrl: string;
 
@@ -180,9 +199,9 @@ async function generateAvatarVideoAsync(
     }
 
     // Step 5: Finalize
-    updateJobProgress(jobId, 100, 'Video completato!', provider as 'sora' | 'veo');
+    await updateJobProgress(jobId, 100, 'Video completato!', provider as 'sora' | 'veo');
 
-    videoJobs.set(jobId, {
+    await setJob(jobId, {
       status: 'completed',
       progress: 100,
       step: 'Completato',
@@ -207,7 +226,7 @@ async function generateAvatarVideoAsync(
       }
     }
 
-    videoJobs.set(jobId, {
+    await setJob(jobId, {
       status: 'failed',
       error: error.message || 'Errore durante la generazione del video',
       createdAt: Date.now()
@@ -274,7 +293,7 @@ async function generateWithSora2(
   audioUrl: string,
   prompt: string
 ): Promise<string> {
-  updateJobProgress(jobId, 50, 'Connessione a OpenAI Sora 2...', 'sora');
+  await updateJobProgress(jobId, 50, 'Connessione a OpenAI Sora 2...', 'sora');
 
   try {
     // OpenAI Sora 2 API structure (based on official docs)
@@ -310,7 +329,7 @@ async function generateWithSora2(
 
     const data = await response.json();
 
-    updateJobProgress(jobId, 70, 'Video in elaborazione da Sora 2...', 'sora');
+    await updateJobProgress(jobId, 70, 'Video in elaborazione da Sora 2...', 'sora');
 
     // Poll for completion if async
     if (data.id && data.status === 'processing') {
@@ -356,7 +375,7 @@ async function pollSoraVideoStatus(jobId: string, videoId: string): Promise<stri
 
     // Update progress
     const progress = 70 + Math.min(25, attempts * 0.5);
-    updateJobProgress(jobId, progress, `Elaborazione Sora 2... (${attempts * 5}s)`, 'sora');
+    await updateJobProgress(jobId, progress, `Elaborazione Sora 2... (${attempts * 5}s)`, 'sora');
 
     // Wait 5 seconds before next poll
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -371,7 +390,7 @@ async function generateWithVeo31(
   audioUrl: string,
   prompt: string
 ): Promise<string> {
-  updateJobProgress(jobId, 50, 'Connessione a Google Veo 3.1...', 'veo');
+  await updateJobProgress(jobId, 50, 'Connessione a Google Veo 3.1...', 'veo');
 
   try {
     // Fetch image as base64
@@ -413,7 +432,7 @@ async function generateWithVeo31(
 
     const data = await response.json();
 
-    updateJobProgress(jobId, 70, 'Video in elaborazione da Veo 3.1...', 'veo');
+    await updateJobProgress(jobId, 70, 'Video in elaborazione da Veo 3.1...', 'veo');
 
     // Veo returns a long-running operation
     if (data.name) {
@@ -472,7 +491,7 @@ async function pollVeoOperationStatus(jobId: string, operationName: string): Pro
 
     // Update progress based on metadata if available
     const progress = 70 + Math.min(25, attempts * 0.5);
-    updateJobProgress(jobId, progress, `Elaborazione Veo 3.1... (${attempts * 5}s)`, 'veo');
+    await updateJobProgress(jobId, progress, `Elaborazione Veo 3.1... (${attempts * 5}s)`, 'veo');
 
     // Wait 5 seconds before next poll
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -482,7 +501,7 @@ async function pollVeoOperationStatus(jobId: string, operationName: string): Pro
 }
 
 async function saveVideoToBlob(jobId: string, videoUrl: string): Promise<string> {
-  updateJobProgress(jobId, 95, 'Salvataggio video...', 'sora');
+  await updateJobProgress(jobId, 95, 'Salvataggio video...', 'sora');
 
   const videoResponse = await fetch(videoUrl);
   const videoBuffer = await videoResponse.arrayBuffer();
@@ -497,9 +516,9 @@ async function saveVideoToBlob(jobId: string, videoUrl: string): Promise<string>
   return blob.url;
 }
 
-function updateJobProgress(jobId: string, progress: number, step: string, provider?: 'sora' | 'veo') {
-  const currentJob = videoJobs.get(jobId);
-  videoJobs.set(jobId, {
+async function updateJobProgress(jobId: string, progress: number, step: string, provider?: 'sora' | 'veo') {
+  const currentJob = await getJob(jobId);
+  await setJob(jobId, {
     status: 'processing',
     progress,
     step,
@@ -521,11 +540,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const job = videoJobs.get(jobId);
+    const job = await getJob(jobId);
 
     if (!job) {
       return NextResponse.json(
-        { success: false, error: 'Job non trovato' },
+        { success: false, error: 'Job non trovato o scaduto' },
         { status: 404 }
       );
     }
@@ -552,6 +571,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Note: videoJobs is internal to this route
-// For production, use Vercel KV or a database for job tracking
