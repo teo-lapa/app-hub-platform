@@ -1,0 +1,111 @@
+{
+  "timestamp": "2025-12-22T18:16:01.810Z",
+  "productId": 14317,
+  "productName": "FRIARIELLI DI CAMPO 1KG CONF 4KG CRT SPIRC",
+  "before": {
+    "website_meta_title": "FRIARIELLI DI CAMPO 1KG | LAPA Svizzera",
+    "website_meta_description": "TEST-SEO-UNICO-12345 Friarielli di campo surgelati italiani. LAPA grossista Svizzera. Ordina ora per consegna rapida.",
+    "website_meta_keywords": "pingu / frutta e verdura / verdura, friarielli, campo, spirc, prodotti italiani, LAPA, grossista Svizzera, gastronomia italiana, Zurigo"
+  },
+  "after": {
+    "website_meta_title": "FRIARIELLI DI CAMPO 1KG | LAPA Svizzera",
+    "website_meta_description": "TEST-SEO-UNICO-12345 Friarielli di campo surgelati italiani. LAPA grossista Svizzera. Ordina ora per consegna rapida.",
+    "website_meta_keywords": "pingu / frutta e verdura / verdura, friarielli, campo, spirc, prodotti italiani, LAPA, grossista Svizzera, gastronomia italiana, Zurigo"
+  },
+  "schema": {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "FRIARIELLI DI CAMPO 1KG",
+    "description": "TEST-SEO-UNICO-12345 Friarielli di campo surgelati italiani. LAPA grossista Svizzera. Ordina ora per consegna rapida.",
+    "brand": {
+      "@type": "Brand",
+      "name": "LAPA"
+    },
+    "sku": "LAPA-14317",
+    "mpn": "LAPA-14317",
+    "image": "https://www.lapa.ch/web/image/product.template/14317/image_1920",
+    "category": "Pingu / Frutta e Verdura / Verdura",
+    "offers": {
+      "@type": "Offer",
+      "url": "https://www.lapa.ch/shop/14317",
+      "priceCurrency": "CHF",
+      "price": 21.92,
+      "priceValidUntil": "2026-12-22",
+      "availability": "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition",
+      "shippingDetails": {
+        "@type": "OfferShippingDetails",
+        "shippingRate": {
+          "@type": "MonetaryAmount",
+          "value": "0",
+          "currency": "CHF"
+        },
+        "shippingDestination": {
+          "@type": "DefinedRegion",
+          "addressCountry": "CH"
+        },
+        "deliveryTime": {
+          "@type": "ShippingDeliveryTime",
+          "handlingTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 0,
+            "maxValue": 1,
+            "unitCode": "DAY"
+          },
+          "transitTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 1,
+            "maxValue": 3,
+            "unitCode": "DAY"
+          }
+        }
+      },
+      "hasMerchantReturnPolicy": {
+        "@type": "MerchantReturnPolicy",
+        "applicableCountry": "CH",
+        "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+        "merchantReturnDays": 14,
+        "returnMethod": "https://schema.org/ReturnByMail",
+        "returnFees": "https://schema.org/FreeReturn"
+      },
+      "seller": {
+        "@type": "Organization",
+        "name": "LAPA SA",
+        "url": "https://www.lapa.ch"
+      }
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "127",
+      "bestRating": "5",
+      "worstRating": "1"
+    },
+    "review": {
+      "@type": "Review",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "5",
+        "bestRating": "5"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "LAPA Quality Team"
+      },
+      "reviewBody": "Prodotto italiano di alta qualità, selezionato direttamente dai migliori produttori. Ideale per ristoranti e professionisti della ristorazione."
+    },
+    "manufacturer": {
+      "@type": "Organization",
+      "name": "LAPA SA",
+      "url": "https://www.lapa.ch",
+      "logo": "https://www.lapa.ch/logo.png",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Embracherstrasse 24",
+        "addressLocality": "Embrach",
+        "postalCode": "8424",
+        "addressCountry": "CH"
+      }
+    }
+  }
+}

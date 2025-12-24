@@ -1,0 +1,1699 @@
+{
+  "azienda": {
+    "nome": "LAPA",
+    "slogan": "Zero Pensieri - Specialisti in prodotti italiani in Svizzera",
+    "descrizione": "LAPA è il principale distributore di prodotti alimentari italiani autentici in Svizzera. Serviamo ristoranti, pizzerie, hotel e privati con ingredienti di alta qualità direttamente dall'Italia.",
+    "puntiForza": [
+      "Prodotti 100% italiani autentici",
+      "Consegna rapida in tutta la Svizzera",
+      "Servizio B2B per ristoratori",
+      "Catalogo con oltre 1000 prodotti",
+      "Assistenza clienti dedicata",
+      "Shop online 24/7"
+    ],
+    "zona": "Svizzera (Zurigo, Berna, Basilea, Ginevra, Lugano e tutto il territorio)",
+    "lingue": [
+      "Italiano",
+      "Tedesco",
+      "Francese"
+    ]
+  },
+  "categorie": [
+    {
+      "nome": "Fresco",
+      "parent": null
+    },
+    {
+      "nome": "Pingu",
+      "parent": null
+    },
+    {
+      "nome": "Secco",
+      "parent": null
+    },
+    {
+      "nome": "Secco / Ittico",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Ittico / Conservati e scatolame",
+      "parent": "Secco / Ittico"
+    },
+    {
+      "nome": "Fresco / Carne",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Cereali",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Condimenti",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Fingerfood",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Frutta e verdura",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Ittico",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Pasticceria",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Salumi",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Snack",
+      "parent": "Fresco"
+    },
+    {
+      "nome": "Fresco / Carne / Animali da cortile",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Fingerfood / Basi",
+      "parent": "Fresco / Fingerfood"
+    },
+    {
+      "nome": "Fresco / Pasticceria / Basi decori e farciture",
+      "parent": "Fresco / Pasticceria"
+    },
+    {
+      "nome": "Fresco / Carne / Bovino",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Burro e materie grasse",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Salumi / Cotti",
+      "parent": "Fresco / Salumi"
+    },
+    {
+      "nome": "Fresco / Ittico / Crostacei",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Fresco / Fingerfood / Decori",
+      "parent": "Fresco / Fingerfood"
+    },
+    {
+      "nome": "Fresco / Pasticceria / Decori",
+      "parent": "Fresco / Pasticceria"
+    },
+    {
+      "nome": "Fresco / Pasticceria / Dessert",
+      "parent": "Fresco / Pasticceria"
+    },
+    {
+      "nome": "Fresco / Carne / Equino",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Formaggi di capra",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Formaggi di latte vaccino",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Formaggi di pecora",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Frutta e verdura / Frutta",
+      "parent": "Fresco / Frutta e verdura"
+    },
+    {
+      "nome": "Fresco / Salumi / Insaccati",
+      "parent": "Fresco / Salumi"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Latte e yogurt",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Ittico / Mollame",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Fresco / Ittico / Molluschi",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Mozzarelle",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Condimenti / Olio",
+      "parent": "Fresco / Condimenti"
+    },
+    {
+      "nome": "Fresco / Carne / Ovino",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Cereali / Panificati",
+      "parent": "Fresco / Cereali"
+    },
+    {
+      "nome": "Fresco / Cereali / Pasta",
+      "parent": "Fresco / Cereali"
+    },
+    {
+      "nome": "Fresco / Ittico / Pesci",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Fresco / Carne / Pollame",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Carne / Preparati di carne",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Ittico / Preparazioni a base di pesce",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Fresco / Fingerfood / Pronti",
+      "parent": "Fresco / Fingerfood"
+    },
+    {
+      "nome": "Fresco / Cereali / Riso",
+      "parent": "Fresco / Cereali"
+    },
+    {
+      "nome": "Fresco / Condimenti / Sale e spezie",
+      "parent": "Fresco / Condimenti"
+    },
+    {
+      "nome": "Fresco / Condimenti / Salse",
+      "parent": "Fresco / Condimenti"
+    },
+    {
+      "nome": "Fresco / Snack / Snack dolci",
+      "parent": "Fresco / Snack"
+    },
+    {
+      "nome": "Fresco / Snack / Snack salati",
+      "parent": "Fresco / Snack"
+    },
+    {
+      "nome": "Fresco / Salumi / Stagionati",
+      "parent": "Fresco / Salumi"
+    },
+    {
+      "nome": "Fresco / Condimenti / Sughi",
+      "parent": "Fresco / Condimenti"
+    },
+    {
+      "nome": "Fresco / Carne / Suino",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Formaggi latticini e uova / Uova",
+      "parent": "Fresco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Fresco / Frutta e verdura / Verdura",
+      "parent": "Fresco / Frutta e verdura"
+    },
+    {
+      "nome": "Fresco / Carne / Vitello",
+      "parent": "Fresco / Carne"
+    },
+    {
+      "nome": "Fresco / Ittico / Conservati e scatole",
+      "parent": "Fresco / Ittico"
+    },
+    {
+      "nome": "Secco / Bevande",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Cereali",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Condimenti",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Formaggi latticini e uova",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Frutta e Verdura",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Minestre e zuppe",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Pasticceria",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Prima colazione",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Snack",
+      "parent": "Secco"
+    },
+    {
+      "nome": "Secco / Condimenti / Aceto",
+      "parent": "Secco / Condimenti"
+    },
+    {
+      "nome": "Secco / Bevande / Analcolici",
+      "parent": "Secco / Bevande"
+    },
+    {
+      "nome": "Secco / Pasticceria / Basi decori e farciture",
+      "parent": "Secco / Pasticceria"
+    },
+    {
+      "nome": "Secco / Prima colazione / Bevande",
+      "parent": "Secco / Prima colazione"
+    },
+    {
+      "nome": "Secco / Bevande / Birre",
+      "parent": "Secco / Bevande"
+    },
+    {
+      "nome": "Secco / Formaggi latticini e uova / Burro e materie grasse",
+      "parent": "Secco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Secco / Pasticceria / Confetture, creme e miele",
+      "parent": "Secco / Pasticceria"
+    },
+    {
+      "nome": "Secco / Ittico / Crostacei",
+      "parent": "Secco / Ittico"
+    },
+    {
+      "nome": "Secco / Pasticceria / Dessert",
+      "parent": "Secco / Pasticceria"
+    },
+    {
+      "nome": "Secco / Prima colazione / Dolci",
+      "parent": "Secco / Prima colazione"
+    },
+    {
+      "nome": "Secco / Cereali / Farine",
+      "parent": "Secco / Cereali"
+    },
+    {
+      "nome": "Secco / Formaggi latticini e uova / Formaggi latte vaccino",
+      "parent": "Secco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Secco / Frutta e Verdura / Frutta",
+      "parent": "Secco / Frutta e Verdura"
+    },
+    {
+      "nome": "Secco / Pasticceria / Gelati e Sorbetti",
+      "parent": "Secco / Pasticceria"
+    },
+    {
+      "nome": "Secco / Formaggi latticini e uova / Latte e yogurt",
+      "parent": "Secco / Formaggi latticini e uova"
+    },
+    {
+      "nome": "Secco / Frutta e Verdura / Legumi",
+      "parent": "Secco / Frutta e Verdura"
+    },
+    {
+      "nome": "Secco / Minestre e zuppe / Minestre",
+      "parent": "Secco / Minestre e zuppe"
+    },
+    {
+      "nome": "Secco / Ittico / Molluschi",
+      "parent": "Secco / Ittico"
+    },
+    {
+      "nome": "Secco / Condimenti / Olio",
+      "parent": "Secco / Condimenti"
+    },
+    {
+      "nome": "Secco / Minestre e zuppe / Omogeneizzati",
+      "parent": "Secco / Minestre e zuppe"
+    },
+    {
+      "nome": "Secco / Cereali / Panificati",
+      "parent": "Secco / Cereali"
+    },
+    {
+      "nome": "Secco / Cereali / Pasta",
+      "parent": "Secco / Cereali"
+    },
+    {
+      "nome": "Secco / Bevande / Preparati per bevande",
+      "parent": "Secco / Bevande"
+    },
+    {
+      "nome": "Secco / Minestre e zuppe / Preparati per brodi",
+      "parent": "Secco / Minestre e zuppe"
+    },
+    {
+      "nome": "Secco / Cereali / Riso",
+      "parent": "Secco / Cereali"
+    },
+    {
+      "nome": "Secco / Condimenti / Sale e spezie",
+      "parent": "Secco / Condimenti"
+    },
+    {
+      "nome": "Secco / Condimenti / Salse",
+      "parent": "Secco / Condimenti"
+    },
+    {
+      "nome": "Secco / Snack / Snack dolci",
+      "parent": "Secco / Snack"
+    },
+    {
+      "nome": "Secco / Snack / Snack salati",
+      "parent": "Secco / Snack"
+    },
+    {
+      "nome": "Secco / Condimenti / Sughi",
+      "parent": "Secco / Condimenti"
+    },
+    {
+      "nome": "Secco / Bevande / Super alcolici",
+      "parent": "Secco / Bevande"
+    },
+    {
+      "nome": "Secco / Frutta e Verdura / Verdura",
+      "parent": "Secco / Frutta e Verdura"
+    },
+    {
+      "nome": "Secco / Bevande / Vini",
+      "parent": "Secco / Bevande"
+    },
+    {
+      "nome": "Secco / Minestre e zuppe / Zuppe",
+      "parent": "Secco / Minestre e zuppe"
+    },
+    {
+      "nome": "Pingu / Carne",
+      "parent": "Pingu"
+    }
+  ],
+  "prodotti": [
+    {
+      "nome": "ARGONIT AF/2 Disinfettante Professionale 750ml - Confezione 6 pezzi",
+      "codice": "39726",
+      "prezzo": "CHF 6.40",
+      "descrizione": "Introducing the **ARGONIT AF/2 Professional Disinfectant**, a powerhouse in sanitation specifically designed for the foodservice and pastry industry. This 750ml bottle is expertly formulated to provid"
+    },
+    {
+      "nome": "BROCCOLI A ROSETTE ITALIA 2 CONF 4 KG A CRT FREDD",
+      "codice": "",
+      "prezzo": "CHF 7.71",
+      "descrizione": "Introducing our premium **Italian Broccoli Florets - 2 Packs x 4kg (8kg Total) - Frozen**! Harvested at peak freshness and quickly frozen to preserve its vibrant color and rich flavor, this versatile "
+    },
+    {
+      "nome": "CACAO POLVERE 22/24 CONF 1KG 10KG CRT MIO",
+      "codice": "",
+      "prezzo": "CHF 27.32",
+      "descrizione": "Indulge in the rich, velvety delight of \"CACAO POLVERE 22/24 CONF 1KG 10KG CRT MIO,\" a premium cocoa powder that will elevate your culinary creations. With a perfect balance of flavor and cocoa conten"
+    },
+    {
+      "nome": "CALAMARO ANELLI E CIUFFI CON PELLE IQF LOLIGO/DORYTEUTHIS GAHI PATAGONICO FAO41 5PZ CRT",
+      "codice": "",
+      "prezzo": "CHF 18.88",
+      "descrizione": "Indulge in the ocean’s finest with our ‘CALAMARO ANELLI E CIUFFI CON PELLE IQF PATAGONICO FAO41 6PZ CRT PER.’ These premium Patagonian squid rings and tentacles are expertly frozen at their peak fresh"
+    },
+    {
+      "nome": "CALAMARO ANELLI E CIUFFI CON PELLE IQF PATAGONICO 5CONF CRT 5.4KG FREDD",
+      "codice": "",
+      "prezzo": "CHF 19.50",
+      "descrizione": "**Product Description: CALAMARO ANELLI E CIUFFI CON PELLE IQF PATAGONICO** Elevate your culinary creations with our Calamaro Anelli e Ciuffi con Pelle, sourced from the crystal-clear waters of Patagon"
+    },
+    {
+      "nome": "CARCIOFI A SPICCHI - SPECIALE PIZZA NATURALE LATTA 2.5KG 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 12.70",
+      "descrizione": "Introducing our **CARCIOFI A SPICCHI - SPECIALE PIZZA NATURALE** in a convenient 2.5kg can, packed with 6 pieces per crate. These premium artichoke hearts, expertly quartered, burst with flavor and ar"
+    },
+    {
+      "nome": "CARCIOFINI IN CROSTA DI FARINA DI GRANO 1KG CONF 4KG CRT SPIRC",
+      "codice": "",
+      "prezzo": "CHF 20.95",
+      "descrizione": "Indulge in the delightful taste of 'Carciofini in Crosta di Farina di Grano' – a perfect blend of tender artichoke hearts enveloped in a crispy, golden crust. Each 1kg pack is designed for convenience"
+    },
+    {
+      "nome": "CARPACCIO DI TARTUFO A FETTE IN OLIO EVO VASO VETRO 580ML 6PZ CRT RIS",
+      "codice": "Carpaccio di Tartufo d'Estate",
+      "prezzo": "CHF 98.77",
+      "descrizione": "Indulge in the luxurious taste of our **Carpaccio di Tartufo in Extra Virgin Olive Oil**. Presented in a stunning glass jar, this exquisite product features delicate slices of aromatic truffle, expert"
+    },
+    {
+      "nome": "CARTONI PIZZA ZIGRINATI ALL'INTERNO 33X33X3,5 100PZ CRT SIFA",
+      "codice": "",
+      "prezzo": "CHF 0.45",
+      "descrizione": "Introducing the **CARTONI PIZZA ZIGRINATI ALL'INTERNO**, the ultimate solution for pizza presentations that impress! Measuring at a perfect 33x33x3.5 cm, these premium corrugated pizza boxes are desig"
+    },
+    {
+      "nome": "CHEESECAKE AI FRUTTI DI BOSCO MONO 12 PZ CT MAR",
+      "codice": "",
+      "prezzo": "CHF 47.30",
+      "descrizione": "Indulge in the delightful richness of our **Berry Delight Cheesecake Bites** – a gourmet treat perfect for any occasion. Each mono portion features a velvety smooth cheesecake base, infused with the n"
+    },
+    {
+      "nome": "CORNETTO 1980 85G CURVO VUOTO GLASSATO 50PZ CRT SG",
+      "codice": "",
+      "prezzo": "CHF 57.74",
+      "descrizione": "Indulge in the delightful taste of nostalgia with our 'CORNETTO 1980 85G CURVO VUOTO GLASSATO.' Crafted for perfection, this exquisite vacuum-glazed curved cornetto delivers an irresistible crunch wit"
+    },
+    {
+      "nome": "CORNETTO BICOLORE CALISE DARK 40X95G CRT EUR",
+      "codice": "",
+      "prezzo": "CHF 67.68",
+      "descrizione": "Indulge in the delightful taste of nostalgia with our 'CORNETTO 1980 85G CURVO VUOTO GLASSATO.' Crafted for perfection, this exquisite vacuum-glazed curved cornetto delivers an irresistible crunch wit"
+    },
+    {
+      "nome": "CORNETTO BICOLORE CALISE PASSION 40X95G CRT EUR",
+      "codice": "",
+      "prezzo": "CHF 67.68",
+      "descrizione": "Indulge in the delightful taste of nostalgia with our 'CORNETTO 1980 85G CURVO VUOTO GLASSATO.' Crafted for perfection, this exquisite vacuum-glazed curved cornetto delivers an irresistible crunch wit"
+    },
+    {
+      "nome": "CORNETTO ISCHITANO 90G 50PZ CRT SG",
+      "codice": "",
+      "prezzo": "CHF 46.30",
+      "descrizione": "Indulge in the delightful taste of nostalgia with our 'CORNETTO 1980 85G CURVO VUOTO GLASSATO.' Crafted for perfection, this exquisite vacuum-glazed curved cornetto delivers an irresistible crunch wit"
+    },
+    {
+      "nome": "CREMA DI RICOTTA CONGELATA1PZ 12KG BADAL",
+      "codice": "",
+      "prezzo": "CHF 116.40",
+      "descrizione": "Indulge in the exquisite taste of Badal's Frozen Ricotta Cream, a 12kg masterpiece crafted for food enthusiasts and professionals alike. This creamy delight boasts a velvety texture, making it perfect"
+    },
+    {
+      "nome": "Detergente Igienizzante Multigen Efficace 750ml",
+      "codice": "70114",
+      "prezzo": "CHF 5.76",
+      "descrizione": "Detergente igienizzante multiuso in flacone da 750ml, confezionato in pack da 6 pezzi"
+    },
+    {
+      "nome": "Detergente Lavabar Gel Syner Tecno - Confezione 2x6kg",
+      "codice": "53114",
+      "prezzo": "CHF 61.88",
+      "descrizione": "Detergente professionale in gel per lavastoviglie industriali, formato convenienza 2 taniche da 6kg"
+    },
+    {
+      "nome": "Detergente Pavimenti EQO Arancia-Limone 5kg",
+      "codice": "270421",
+      "prezzo": "CHF 7.68",
+      "descrizione": "Detergente professionale per pavimenti con fragranza arancia e limone, formato convenienza da 5kg"
+    },
+    {
+      "nome": "Detergente multiuso EQO per vetri e superfici multiple - 750ml (confezione 6 pezzi)",
+      "codice": "270424",
+      "prezzo": "CHF 3.00",
+      "descrizione": "Detergente professionale multiuso per la pulizia di vetri e superfici multiple, formato 750ml in confezione da 6 pezzi"
+    },
+    {
+      "nome": "Detersivo per Lavastoviglie EQO Professional Tanica 5.5 kg (Confezione 2 pezzi)",
+      "codice": "270425",
+      "prezzo": "CHF 12.70",
+      "descrizione": "Detergente liquido professionale per lavastoviglie in tanica da 5.5 kg, confezionato in pack da 2 pezzi"
+    },
+    {
+      "nome": "Detersivo per Piatti EQO Profumazione Tan - Tanica 5kg",
+      "codice": "270420",
+      "prezzo": "CHF 8.72",
+      "descrizione": "Detergente liquido concentrato per il lavaggio manuale delle stoviglie, profumazione Tan. Formato professionale da 5kg."
+    },
+    {
+      "nome": "EQO Brillantante Professional per Lavastoviglie Tanica 5kg - Confezione 2 pezzi",
+      "codice": "270426",
+      "prezzo": "CHF 14.62",
+      "descrizione": ""
+    },
+    {
+      "nome": "EQO Detergente Anticalcare per Bagno 750ml - Confezione 6 pezzi",
+      "codice": "270423",
+      "prezzo": "CHF 3.62",
+      "descrizione": "Detergente anticalcare professionale per la pulizia del bagno in formato da 750ml, venduto in confezione da 6 pezzi."
+    },
+    {
+      "nome": "EQO Sgrassatore Limone Spray 750ml - Confezione 6 pezzi",
+      "codice": "270422",
+      "prezzo": "CHF 3.20",
+      "descrizione": "Sgrassatore professionale al limone in formato spray da 750ml. Venduto in confezione da 6 pezzi con 6 spruzzini."
+    },
+    {
+      "nome": "FARINA 00 CAPUTO BLU PIZZERIA 25KG FERR",
+      "codice": "",
+      "prezzo": "CHF 52.26",
+      "descrizione": "Elevate your baking with FARINA 00 CAPUTO BLU, a premium flour from Italy that comes in a generous 25kg bag. Renowned for its fine texture and exceptional quality, this flour is perfect for crafting a"
+    },
+    {
+      "nome": "FARINA DI MANDORLE BUSTA 1KG 10KG CRT PAV",
+      "codice": "",
+      "prezzo": "CHF 19.39",
+      "descrizione": "**FARINA DI MANDORLE BUSTA 1KG 10KG CRT PAV** Elevate your culinary creations with our premium Almond Flour, available in 1kg and 10kg bulk packaging. This finely ground almond flour is crafted from t"
+    },
+    {
+      "nome": "FARINA DI MANDORLE DOLCI PELATE 1KG POL",
+      "codice": "",
+      "prezzo": "CHF 24.50",
+      "descrizione": "**FARINA DI MANDORLE BUSTA 1KG 10KG CRT PAV** Elevate your culinary creations with our premium Almond Flour, available in 1kg and 10kg bulk packaging. This finely ground almond flour is crafted from t"
+    },
+    {
+      "nome": "FINOCCHIONA IGP PZ CA 3KG BG",
+      "codice": "",
+      "prezzo": "CHF 41.39",
+      "descrizione": "Introducing our **FINOCCHIONA IGP PZ CA 3KG BG** – a true gem of Italian charcuterie! Crafted in the heart of Tuscany, this traditional salami is an exquisite blend of finely ground pork, aromatic fen"
+    },
+    {
+      "nome": "FIORI DI ZUCCA CA 60G RIPIENI MOZZARELLA ALICI 2X 2.5KG CRT POL",
+      "codice": "",
+      "prezzo": "CHF 22.74",
+      "descrizione": "Indulge in a taste of authentic Italian cuisine with our 'Fiori di Zucca in Crosta di Farina di Grano'—delicately hand-stuffed zucchini flowers coated in a light, crispy batter. Perfectly frozen for o"
+    },
+    {
+      "nome": "FIORI DI ZUCCA IN CROSTA DI FARINA DI GRANO 1KG CONF 4KG CRT SPIRC",
+      "codice": "",
+      "prezzo": "CHF 35.09",
+      "descrizione": "Indulge in a taste of authentic Italian cuisine with our 'Fiori di Zucca in Crosta di Farina di Grano'—delicately hand-stuffed zucchini flowers coated in a light, crispy batter. Perfectly frozen for o"
+    },
+    {
+      "nome": "FRIARIELLI DI CAMPO 1KG CONF 4KG CRT SPIRC",
+      "codice": "",
+      "prezzo": "CHF 21.92",
+      "descrizione": "Discover the vibrant taste of Italy with **FRIARIELLI DI CAMPO SURGELATI** from Spirito C. Each 1kg package captures the essence of fresh, tender rapini, known for its slightly bitter greens and delic"
+    },
+    {
+      "nome": "FRITTO MISTO CAMPANO MIGNON 30G CONF 1KG 3KG CRT SG",
+      "codice": "",
+      "prezzo": "CHF 34.11",
+      "descrizione": "Indulge in the delightful flavors of Campania with our 'Fritto Misto Campano Mignon'! This exquisite selection features a tempting assortment of bite-sized delicacies, perfectly crafted for your snack"
+    },
+    {
+      "nome": "FUNGHI PORCINI CONG. INTERI EXTRA TOP BUSTA 1KG 6KG CRT MF",
+      "codice": "",
+      "prezzo": "CHF 24.29",
+      "descrizione": "Indulge in the rich, earthy flavors of our **Extra Top Whole Porcini Mushrooms**. Packed in a convenient 1 kg bag within a 6 kg crate, these premium, carefully selected mushrooms are frozen to preserv"
+    },
+    {
+      "nome": "GAMBERO ARGENTINA L1 CONG BORDO CONF 2KG 12KG CRT DSD",
+      "codice": "",
+      "prezzo": "CHF 14.99",
+      "descrizione": "Indulge in the exquisite taste of 'Gambero Argentina L1 Cong Bordo' – your premier choice for high-quality Argentine shrimp. Each 2kg pack, conveniently boxed within a 12kg crate, delivers a delightfu"
+    },
+    {
+      "nome": "GAMBERO ARGENTINA PLEOTICUS MUELLERI SGUSC PD 16/20 GLASS 20% CONF 1KG 10KG CRT DSD",
+      "codice": "",
+      "prezzo": "CHF 29.61",
+      "descrizione": "Introducing our **Argentina Giant Shrimp (Gambero Argentina) - Peeled, 16/20 Count**. Packaged in a convenient 1kg, designed for chefs and culinary enthusiasts seeking premium quality and versatility "
+    },
+    {
+      "nome": "GELATINA NEUTRA PZ 6KG MIO",
+      "codice": "",
+      "prezzo": "CHF 7.84",
+      "descrizione": "Introducing **GELATINA NEUTRA PZ 6KG MIO** – the ultimate ingredient for culinary creativity! This high-quality neutral gelatin is perfect for pastry chefs and foodservice professionals looking to cra"
+    },
+    {
+      "nome": "GRANA PADANO DOP GRATTUGIATO FRESCO 1KG 10KG CRT LSM",
+      "codice": "",
+      "prezzo": "CHF 19.82",
+      "descrizione": "Introducing **Grana Padano DOP Grattugiato Fresco** – a premium grated cheese that embodies the authentic flavors of Italy. Crafted from the finest cow’s milk, this DOP (Protected Designation of Origi"
+    },
+    {
+      "nome": "GRANA PADANO DOP SCAGLIE FRESCHE 1KG 10KG CRT LSM",
+      "codice": "",
+      "prezzo": "CHF 22.66",
+      "descrizione": "**Grana Padano DOP Fresh Shavings - 1kg & 10kg CRT LSM** Elevate your culinary creations with our Grana Padano DOP Fresh Shavings. Sourced from the lush pastures of Northern Italy, this exquisite chee"
+    },
+    {
+      "nome": "GRANELLA DI PISTACCHI 2/4MM CONF 1KG 10KG CRT MIO",
+      "codice": "",
+      "prezzo": "CHF 59.69",
+      "descrizione": "Introducing our premium 'GRANELLA DI PISTACCHI 2/4MM' – a delightful choice for pastry chefs and food enthusiasts alike. Available in convenient 1kg and bulk 10kg formats, this finely crushed pistachi"
+    },
+    {
+      "nome": "GUANCIALE DI SUINO AL PEPE SV INTERO PZ CA 1.5KG SORR",
+      "codice": "",
+      "prezzo": "CHF 31.96",
+      "descrizione": "Indulge in the rich flavor of our **Whole Pork Guanciale with Pepper - Approximately 1.5kg** by SORR. This traditional Italian cured meat is crafted from premium pork cheeks, delivering an unparallele"
+    },
+    {
+      "nome": "Guanti Monouso in Nitrile Nero Reflexx - Taglia XL - Confezione da 100 Pezzi",
+      "codice": "26423",
+      "prezzo": "CHF 29.12",
+      "descrizione": "Guanti monouso professionali in nitrile nero, taglia XL. Resistenti e privi di lattice, ideali per uso alimentare e professionale."
+    },
+    {
+      "nome": "Guanti in Nitrile Reflexx Monouso Neri Taglia L - Confezione 100pz",
+      "codice": "26424",
+      "prezzo": "CHF 29.12",
+      "descrizione": ""
+    },
+    {
+      "nome": "Guanti in Nitrile Reflexx Monouso Neri Taglia L - Confezione 100pz",
+      "codice": "26424",
+      "prezzo": "CHF 29.12",
+      "descrizione": ""
+    },
+    {
+      "nome": "Guanti in Nitrile Reflexx Monouso Neri Taglia M - Confezione 100pz",
+      "codice": "26425",
+      "prezzo": "CHF 29.12",
+      "descrizione": "Guanti monouso in nitrile di colore nero, taglia M, confezione da 100 pezzi. Ideali per uso professionale."
+    },
+    {
+      "nome": "Guanti in Nitrile Reflexx Monouso Neri Taglia S - Confezione 100pz",
+      "codice": "26426",
+      "prezzo": "CHF 29.12",
+      "descrizione": ""
+    },
+    {
+      "nome": "LATTE INTERO VOLLMILCH UHT CH 1L 12PZ CONF AL",
+      "codice": "",
+      "prezzo": "CHF 1.61",
+      "descrizione": "Indulge in the rich and creamy goodness of our LATTE INTERO VOLLMILCH UHT CH 1L, available in a convenient pack of 12. This ultra-high temperature (UHT) whole milk is perfect for your culinary creatio"
+    },
+    {
+      "nome": "LATTE SENZA LATTOSIO 1.5% UHT 1L - 12 L CRT PRO",
+      "codice": "",
+      "prezzo": "CHF 2.61",
+      "descrizione": "Introducing our LATTE SENZA LATTOSIO 1.5% UHT 1L PRO – the perfect dairy alternative for those who love the creamy taste of milk but are sensitive to lactose. This ultra-high temperature processed mil"
+    },
+    {
+      "nome": "LATTUGA DI MARE ECO ALGA DISIDRATATA PZ 25G NAT",
+      "codice": "",
+      "prezzo": "CHF 3.60",
+      "descrizione": "Introducing our **Lattuga di Mare Eco Dried Sea Lettuce (25g)** – a sustainable and flavorful addition to your culinary creations! Sourced from pristine waters, this seaweed boasts a delicate, umami-r"
+    },
+    {
+      "nome": "LIEVITO DI BIRRA 5 STAGIONI CONF 500G AF",
+      "codice": "",
+      "prezzo": "CHF 7.56",
+      "descrizione": "Introducing **LIEVITO DI BIRRA 5 STAGIONI CONF 500G AF** – the perfect choice for bakers seeking to elevate their creations. This high-quality active dry yeast is crafted in Italy, providing exception"
+    },
+    {
+      "nome": "MASCARPONE GALBANI 500G 8PZ CRT FERR",
+      "codice": "",
+      "prezzo": "CHF 5.98",
+      "descrizione": "Introducing **Galbani Mascarpone** – a rich and creamy delight that elevates your culinary creations! This 500g tub, available in a convenient 8-piece carton, is the perfect ingredient for both sweet "
+    },
+    {
+      "nome": "MIELE IN TUBETTO SQUEEZE LAGNESE 500G 2 PZ CONF AL",
+      "codice": "",
+      "prezzo": "CHF 11.33",
+      "descrizione": "Indulge your senses with the exquisite 'MIELE IN TUBETTO SQUEEZE LAGNESE.' This wonderful honey, beautifully packaged in convenient 500g squeeze tubes, is perfect for drizzling over your favorite dish"
+    },
+    {
+      "nome": "MISTO PER SOFFRITTO BUSTA 1KG IQF ITALIA 10KG CRT FREDD",
+      "codice": "",
+      "prezzo": "CHF 4.59",
+      "descrizione": "Introducing the **Misto per Soffritto – 1kg IQF** by Italia, a delightful blend of fresh, carefully selected vegetables that brings authentic Italian flavors right to your kitchen. This high-quality m"
+    },
+    {
+      "nome": "MONTASIO DOP STRAVECCHIO FIORDIMASO FORMA CA 6KG CAF",
+      "codice": "",
+      "prezzo": "CHF 32.29",
+      "descrizione": "Indulge in the rich, complex flavors of Montasio DOP Stravecchio Fiordimaso, a premium cheese that embodies the essence of Italian craftsmanship. Aged to perfection, this exceptional 6kg wheel (FORMA)"
+    },
+    {
+      "nome": "MORTADELLA OPERA AL PISTACCCHIO A META CA 7KG FRAN RIS LUIGIE",
+      "codice": "",
+      "prezzo": "CHF 40.96",
+      "descrizione": "Indulge in the exquisite flavors of **Mortadella Opera al Pistacchio**, a gourmet masterpiece weighing approximately 7 kg. Crafted by the renowned Fran Ris Luigie, this Italian delicacy combines the t"
+    },
+    {
+      "nome": "MOZZARELLA DI BUFALA CIUFFO 2X125G 3KG CRT LA FAVORITA FERR",
+      "codice": "",
+      "prezzo": "CHF 43.88",
+      "descrizione": "Discover the exquisite taste of La Favorita's Mozzarella di Bufala Ciuffo, a premium delicacy crafted from the milk of water buffaloes. This delightful cheese comes in convenient packs of 2x125g, with"
+    },
+    {
+      "nome": "Mandorle bianche macinate 1kg Pro",
+      "codice": "",
+      "prezzo": "CHF 30.00",
+      "descrizione": "**FARINA DI MANDORLE BUSTA 1KG 10KG CRT PAV** Elevate your culinary creations with our premium Almond Flour, available in 1kg and 10kg bulk packaging. This finely ground almond flour is crafted from t"
+    },
+    {
+      "nome": "Miele di Castagno Biovita Kastanienhonig 500g Pro",
+      "codice": "",
+      "prezzo": "CHF 28.44",
+      "descrizione": "Indulge your senses with the exquisite 'MIELE IN TUBETTO SQUEEZE LAGNESE.' This wonderful honey, beautifully packaged in convenient 500g squeeze tubes, is perfect for drizzling over your favorite dish"
+    },
+    {
+      "nome": "NDUJA PICCANTE SV INTERA KG 0.5 SORR.",
+      "codice": "",
+      "prezzo": "CHF 37.22",
+      "descrizione": "Introducing our Nduja SV Intera KG 0.5 Sorrento — a luscious, spreadable salami that embodies the bold flavors of Southern Italy. Crafted from a blend of high-quality pork and a perfect harmony of spi"
+    },
+    {
+      "nome": "NEOFORT RAPIDO Detergente Professionale 0,75L - Confezione 6 pezzi + 1 spruzzino",
+      "codice": "09632",
+      "prezzo": "CHF 5.66",
+      "descrizione": "Detergente professionale multiuso in formato convenienza da 0,75L, confezione da 6 flaconi con spruzzino incluso"
+    },
+    {
+      "nome": "OLIO DI GIRASOLE ALTOLEICO ZETA PET 10L 2PZ CRT ZUCCHI",
+      "codice": "",
+      "prezzo": "CHF 83.67",
+      "descrizione": "Introducing Zeta High Oleic Sunflower Oil in a convenient 10L PET bottle, packaged as a set of two. Sourced from premium sunflowers, this oil stands out with its high oleic content, offering superior "
+    },
+    {
+      "nome": "OLIVE NERE A RONDELLE LATTA2400G 3PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 13.18",
+      "descrizione": "Experience the rich, robust flavor of our 'OLIVE NERE A RONDELLE LATTA 2400G 3PZ CRT RIS'. These premium black olives, elegantly sliced into convenient round shapes, are perfect for enhancing your cul"
+    },
+    {
+      "nome": "OLIVE TAGGIASCHE DENOCCIOLATE IN OLIO EXTRAVERGINE DI OLIVA VASO 900G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 25.14",
+      "descrizione": "Indulge in the rich flavors of Italy with our **Pitted Taggiasca Olives in Extra Virgin Olive Oil**. Each 900g jar is a savory treasure trove, sourced from the renowned Taggiasca variety, celebrated f"
+    },
+    {
+      "nome": "PANETTONE AL CIOCCOLATO 1KG MAR",
+      "codice": "",
+      "prezzo": "CHF 42.94",
+      "descrizione": "Indulge in the rich, delectable flavors of our **PANETTONE AL CIOCCOLATO 1KG MAR**. This delightful Italian chocolate panettone is a festive treat that promises to elevate your holiday gatherings. Cra"
+    },
+    {
+      "nome": "PANETTONE AL PISTACCHIO 1KG MAR",
+      "codice": "",
+      "prezzo": "CHF 46.82",
+      "descrizione": "Indulge in the luxurious flavors of our **Pistachio Panettone 1kg by Mar**. This exquisite Italian specialty elevates the classic panettone with the rich, nutty essence of premium pistachios, creating"
+    },
+    {
+      "nome": "PANETTONE ALL AMARENA E CREMA ALLO STREGA 1KG MAR",
+      "codice": "",
+      "prezzo": "CHF 42.94",
+      "descrizione": "Indulge in the exquisite flavors of our **Panettone All Amarena e Crema allo Strega**! Weighing in at 1kg, this luxurious Italian treat combines a moist, fluffy dough enriched with wild Amarena cherri"
+    },
+    {
+      "nome": "PANETTONE MANDORLATO 1KG MAR",
+      "codice": "",
+      "prezzo": "CHF 42.94",
+      "descrizione": "Indulge in the exquisite taste of our PANETTONE MANDORLATO 1KG MAR, a luxurious holiday treat that elevates any celebration. This artisan panettone is crafted with the finest ingredients, featuring a "
+    },
+    {
+      "nome": "PANETTONE PANDUBAI CHOCOLATE 1KG MAR",
+      "codice": "",
+      "prezzo": "CHF 46.82",
+      "descrizione": "Indulge in the luxurious flavors of our **Pistachio Panettone 1kg by Mar**. This exquisite Italian specialty elevates the classic panettone with the rich, nutty essence of premium pistachios, creating"
+    },
+    {
+      "nome": "PANNA INTERA 35% VOLLRAHM 12L CRT PR",
+      "codice": "",
+      "prezzo": "CHF 7.96",
+      "descrizione": "Introducing our **Panna Intera 35% Vollrahm UHT** – the ultimate cream for all your culinary creations! This rich, ultra-high temperature (UHT) processed cream boasts a luxurious 35% fat content, ensu"
+    },
+    {
+      "nome": "PASTA FRESCA AL BRASATO CONF 250G CA 3KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 24.44",
+      "descrizione": "Experience the rich and authentic flavors of Italy with our **Pasta Fresca al Brasato**. This exquisite fresh pasta is delicately crafted and filled with a succulent braised meat mixture, designed to "
+    },
+    {
+      "nome": "PASTA RIPIENA BUFALA E BASILICO CONF 1 KG CA 5 KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 24.90",
+      "descrizione": "Indulge in the authentic flavors of Italy with our \"Pasta Ripiena Bufala e Basilico.\" Each 1 kg pack offers a delicious assortment of hand-filled pasta bursting with the rich creaminess of buffalo moz"
+    },
+    {
+      "nome": "PASTA RIPIENA BURRATA E POMODORINI CONF 250G CA 3KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 24.48",
+      "descrizione": "Indulge in the exquisite flavors of our *Pasta Ripiena Burrata e Pomodorini*! Each 250g package is filled with delectable pasta pockets stuffed with rich, creamy burrata cheese and the vibrant sweetne"
+    },
+    {
+      "nome": "PASTA RIPIENA RICOTTA E LIMONE CONF CA 5KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 25.61",
+      "descrizione": "Indulge in the delightful flavors of **Ricotta and Lemon Stuffed Pasta**. Each 1kg pack is filled with expertly crafted pasta, bursting with a creamy ricotta filling subtly infused with zesty lemon, o"
+    },
+    {
+      "nome": "PECORINO BUCARO PRIMO SALE CON PEPE 1/4 PZ 2KG 4 PZ CRT AUR",
+      "codice": "",
+      "prezzo": "CHF 22.90",
+      "descrizione": "Introducing Pecorino Bucaro Primo Sale Con Pepe, a delightful Italian cheese that will elevate your culinary creations! This 2kg quarter wheel, beautifully packaged with four pieces per crate, boasts "
+    },
+    {
+      "nome": "PECORINO MARZOLINO AL TARTUFO PZ 700G BN",
+      "codice": "",
+      "prezzo": "CHF 39.55",
+      "descrizione": "Indulge your palate with **Pecorino Marzolino al Tartufo**, a luxurious sheep's milk cheese infused with the earthy essence of black truffles. This 700g wheel boasts a rich, creamy texture and a robus"
+    },
+    {
+      "nome": "PECORINO ROMANO DOP GRATTUGIATO FRESCO 1KG 10KG CRT AUR",
+      "codice": "",
+      "prezzo": "CHF 25.10",
+      "descrizione": "Discover the rich and robust flavor of **Pecorino Romano DOP Grated Fresh**! This 1kg (10kg case) offering brings you the authentic taste of Italy with every sprinkle. Made from high-quality sheep's m"
+    },
+    {
+      "nome": "PENNE MEZZANI RIGATE GRAGNANO IGP 12X500G CRT DI MART",
+      "codice": "",
+      "prezzo": "CHF 2.98",
+      "descrizione": "Introducing our exquisite **Penne Mezzani Rigate D&G Gragnano IGP**, the ultimate pasta choice for discerning food lovers. Crafted in the heart of Gragnano, Italy, this artisanal penne is made from th"
+    },
+    {
+      "nome": "PEPERONI A FILETTI GRIGLIATI LATTA 800G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 9.55",
+      "descrizione": "Indulge in the vibrant flavors of Italy with our **Grilled Bell Pepper Strips in Olive Oil**. Packaged in a convenient 800g tin, this product showcases perfectly grilled sweet red and yellow peppers, "
+    },
+    {
+      "nome": "PESTO ALLA GENOVESE LATTA 800G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 10.48",
+      "descrizione": "Introducing our **Pesto Alla Genovese in 800g Cans (Case of 6)** – the quintessential taste of Italy in a convenient, ready-to-use format! This exquisite pesto sauce is crafted from the finest Italian"
+    },
+    {
+      "nome": "PINOLI 1KG 10PZ CONF MIO",
+      "codice": "",
+      "prezzo": "CHF 69.52",
+      "descrizione": "Introducing **PINOLI 1KG 10PZ CONF MIO** – a delightful blend of high-quality pine nuts that will elevate your culinary creations to new heights! Packed in a convenient 1KG bag, this product features "
+    },
+    {
+      "nome": "POMODORI CILIEG GIALLI SEMISECCHI LATTA 750G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 15.83",
+      "descrizione": "Introducing our delightful **Semi-Dried Yellow Cherry Tomatoes** packed in a convenient 750g tin, with six vibrant cans per carton. These sun-kissed gems, known as \"Pomodori Ciliegini Gialli,\" are car"
+    },
+    {
+      "nome": "POMODORI DATTERINI GIALLI IN SUCCO 800G 6PZ CRT SAMMY",
+      "codice": "",
+      "prezzo": "CHF 8.44",
+      "descrizione": "Elevate your culinary creations with Sammy's Pomodori Datterini Gialli in Juice. These vibrant, sun-ripened yellow cherry tomatoes are packed in a rich, flavorful juice that enhances their natural swe"
+    },
+    {
+      "nome": "POMODORI PELATI 6X2500G LITO STRIANESE REG",
+      "codice": "",
+      "prezzo": "CHF 6.31",
+      "descrizione": "Introducing Sica Blu Si's Pomodori Pelati 6x2500g – the perfect foundation for your culinary creations! These peeled tomatoes are sourced from the sun-drenched fields of Italy, ensuring rich flavor an"
+    },
+    {
+      "nome": "POMODORI ROSSI SEMISECCHI AL COLTELLO LATTA 750G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 11.50",
+      "descrizione": "Introducing our exquisite **Semi-Dried Red Tomatoes**, expertly preserved in a convenient 750g tin. Each can contains plump, sun-ripened tomatoes, hand-cut and semi-dried to intensify their rich, natu"
+    },
+    {
+      "nome": "POMODORI VERDI SEMISECCHI - AL COLTELLO LATTA 750G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 8.93",
+      "descrizione": "Introducing our **Pomodori Verdi Semisecchi - Al Coltello** in a convenient 750g tin! These succulent semi-dried green tomatoes are a culinary delight, expertly cut by hand to preserve their vibrant f"
+    },
+    {
+      "nome": "PROSCIUTTO CRUDO DI SAN DANIELE DISOSSATO ADDOBBO LAVATO S.V. KG 7.5",
+      "codice": "",
+      "prezzo": "CHF 38.86",
+      "descrizione": "Indulge in the exquisite taste of our 'Prosciutto di San Daniele Disossato Addobbo Lavato S.V. KG 7.5 MV'. This premium, bone-in prosciutto is expertly crafted in the picturesque region of San Daniele"
+    },
+    {
+      "nome": "PROSCIUTTO CRUDO DI SAN DANIELE DISOSSATO ADDOBBO LAVATO S.V. KG 7.5 MV",
+      "codice": "",
+      "prezzo": "CHF 38.46",
+      "descrizione": "Indulge in the exquisite taste of our 'Prosciutto di San Daniele Disossato Addobbo Lavato S.V. KG 7.5 MV'. This premium, bone-in prosciutto is expertly crafted in the picturesque region of San Daniele"
+    },
+    {
+      "nome": "PROSCIUTTO DI CERVO CA 1.5KG POL",
+      "codice": "",
+      "prezzo": "CHF 85.44",
+      "descrizione": "**PROSCIUTTO DI PARMA DISOSSATO PRESSATO CA 7.5 KG MV** Indulge in the exquisite taste of our **Prosciutto di Parma Disossato Pressato**, weighing approximately 7.5 kg. This authentic Italian delicacy"
+    },
+    {
+      "nome": "PROSCIUTTO DI PARMA DISOSSATO PRESSATO CA 7.5 KG MV",
+      "codice": "",
+      "prezzo": "CHF 33.70",
+      "descrizione": "**PROSCIUTTO DI PARMA DISOSSATO PRESSATO CA 7.5 KG MV** Indulge in the exquisite taste of our **Prosciutto di Parma Disossato Pressato**, weighing approximately 7.5 kg. This authentic Italian delicacy"
+    },
+    {
+      "nome": "PULIVAT Detergente Professionale - Confezione 6 Flaconi da 750ml",
+      "codice": "09731",
+      "prezzo": "CHF 5.98",
+      "descrizione": "Detergente professionale in confezione da 6 flaconi da 750ml ciascuno. Prodotto specifico per la pulizia industriale."
+    },
+    {
+      "nome": "Panno in Microfibra Professionale Blu 32x32cm",
+      "codice": "32125",
+      "prezzo": "CHF 2.00",
+      "descrizione": "Panno in microfibra di alta qualità, dimensioni 32x32cm, colore blu, ideale per pulizia professionale."
+    },
+    {
+      "nome": "Pellicola Film Trasparente per Alimenti 300m x 9cm - Champagne",
+      "codice": "50004",
+      "prezzo": "CHF 9.70",
+      "descrizione": "Pellicola trasparente professionale per alimenti, rotolo da 300 metri, larghezza 9cm, qualità Champagne."
+    },
+    {
+      "nome": "Puligen Disincrostante Professionale 1L",
+      "codice": "11563",
+      "prezzo": "CHF 10.66",
+      "descrizione": "Disincrostante liquido professionale in flacone da 1 litro, ideale per la rimozione del calcare e delle incrostazioni."
+    },
+    {
+      "nome": "RICOTTA DA 250G 6PZ CRT AUR",
+      "codice": "",
+      "prezzo": "CHF 3.76",
+      "descrizione": "Indulge in the creamy delight of our RICOTTA DA 250G, available in a convenient 6-pack. This premium Italian ricotta is made from the finest ingredients, offering a rich, velvety texture that elevates"
+    },
+    {
+      "nome": "RICOTTA VACCINA 1.5KG TERMOSALDATA KG3 2PZ CRT TAMB",
+      "codice": "",
+      "prezzo": "CHF 12.89",
+      "descrizione": "Indulge in the creamy perfection of our **Ricotta Vaccina**! Packaged in a convenient 1.5 kg format, this artisanal Italian cheese is crafted from high-quality cow's milk, delivering a rich and velvet"
+    },
+    {
+      "nome": "RICOTTA VACCINA VASCHETTA 2X1.5KG MORO POL",
+      "codice": "",
+      "prezzo": "CHF 6.20",
+      "descrizione": "Indulge in the creamy perfection of our **Ricotta Vaccina**! Packaged in a convenient 1.5 kg format, this artisanal Italian cheese is crafted from high-quality cow's milk, delivering a rich and velvet"
+    },
+    {
+      "nome": "RISO ARBORIO ASTUCCIO 1KG 12PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 6.14",
+      "descrizione": "**Product Description: RISO ARBORIO ASTUCCIO 1KG 12PZ CRT RIS** Elevate your culinary creations with our premium Riso Arborio, conveniently packaged in a 1kg box — perfect for both home cooks and prof"
+    },
+    {
+      "nome": "RISO CARNAROLI ASTUCCIO 1KG 12PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 5.17",
+      "descrizione": "**Riso Carnaroli Astuccio 1kg - 12 Pack** Elevate your culinary creations with our premium Riso Carnaroli, packaged beautifully in a convenient 1kg box. Known as the king of Italian rice, Carnaroli is"
+    },
+    {
+      "nome": "Ricambio Mop Sintetico per Pulizia Pavimenti",
+      "codice": "31128",
+      "prezzo": "CHF 6.10",
+      "descrizione": "Ricambio mop in materiale sintetico per pulizia professionale dei pavimenti. Compatibile con manici standard."
+    },
+    {
+      "nome": "Rotolo Alluminio Professionale 300mm x 1300g",
+      "codice": "50000",
+      "prezzo": "CHF 22.40",
+      "descrizione": "Rotolo di alluminio professionale per uso alimentare, larghezza 300mm, peso 1300g."
+    },
+    {
+      "nome": "Rotolo Pellicola Alimentare Champagne 45cm x 300m",
+      "codice": "",
+      "prezzo": "CHF 15.80",
+      "descrizione": "Pellicola alimentare professionale in rotolo, larghezza 45cm, lunghezza 1200 metri. Colore champagne."
+    },
+    {
+      "nome": "Rotolo Pellicola Grande Alimentare Champagne 45cm x 1200m",
+      "codice": "50119",
+      "prezzo": "CHF 65.80",
+      "descrizione": "Pellicola alimentare professionale in rotolo, larghezza 45cm, lunghezza 1200 metri. Colore champagne."
+    },
+    {
+      "nome": "SALSA DI OLIVE NERE VASO 225G 12PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 4.66",
+      "descrizione": "Introducing our exquisite **Black Olive Sauce (Salsa di Olive Nere)**, presented in a convenient 225g jar (12 pieces per carton). This rich and flavorful sauce is crafted from the finest Mediterranean"
+    },
+    {
+      "nome": "SALSA DI PISTACCHIO RICETTA SICILIANA VASO 520G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 28.41",
+      "descrizione": "Indulge in the rich flavors of Sicily with our **Sicilian Pistachio Sauce (Salsa di Pistacchio) in a 520g Jar**. This exquisite sauce captures the essence of sun-kissed Sicilian pistachios, blending t"
+    },
+    {
+      "nome": "SALSA PICCANTISSIMA VASO VETRO 980G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 18.79",
+      "descrizione": "Introducing our **Salsa Piccantissima Vaso Vetro**—a fiery addition to your culinary repertoire! This 980g jar is packed with a bold blend of hand-selected peppers and spices, carefully crafted to del"
+    },
+    {
+      "nome": "SFOGLIA LASAGNA PASTA ALL'UOVO PRECOTTA AMICO FREDDO 5X2KG CONF 10KG CRT L.T. POL",
+      "codice": "",
+      "prezzo": "CHF 8.26",
+      "descrizione": "Indulge in the authentic taste of Italy with Amico Freddo's Pre-Cooked Egg Lasagna Sheets. This convenient 5x2kg pack (totaling 10kg) of high-quality lasagna pasta is expertly crafted to elevate your "
+    },
+    {
+      "nome": "SFOGLIA LASAGNE 1.5KG CONF CA 9KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 11.38",
+      "descrizione": "Introducing our **Sfoglia Lasagne**, a premium-quality pasta crafted for culinary excellence. Weighing in at a generous **1.5kg** per package, this versatile lasagna sheet is perfect for creating laye"
+    },
+    {
+      "nome": "SPAGHETTI ALLA CHITARRA ALL UOVO 1KG CONF CA 5KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 10.57",
+      "descrizione": "Indulge in the authentic taste of Italy with our **Spaghetti alla Chitarra all'Uovo**. Each 1kg package, sourced from the trusted CRT Marc brand, features rich, egg-infused strands that are crafted us"
+    },
+    {
+      "nome": "SPAGHETTI N3 SENZA GLUTINE RUMMO 12X400G POL",
+      "codice": "",
+      "prezzo": "CHF 8.60",
+      "descrizione": ""
+    },
+    {
+      "nome": "SPECK DE BAITA PZ 2KG SOSIO",
+      "codice": "",
+      "prezzo": "CHF 33.71",
+      "descrizione": "Introducing **Speck de Baita PZ 2KG Sosio** – a culinary masterpiece that embodies the rich traditions of Italian charcuterie. This premium cured ham, originating from the pristine Alpine region, offe"
+    },
+    {
+      "nome": "SPECK SENZA COTENNA Pancetta affumicata CH AL",
+      "codice": "",
+      "prezzo": "CHF 28.65",
+      "descrizione": "Introducing our **SPECK CH SENZA COTENNA AL** – a delectable Italian cured meat that promises to elevate your charcuterie boards and gourmet dishes. This artisanal speck is crafted from premium-qualit"
+    },
+    {
+      "nome": "SPINACI FOGLIA PIU IQF 1KG CONF 4KG CRT FREDD",
+      "codice": "",
+      "prezzo": "CHF 8.72",
+      "descrizione": "Introducing **SPINACI FOGLIA PIU' IQF (OROGEL)** – the ultimate frozen spinach solution for your culinary creations! This high-quality, individually quick-frozen (IQF) spinach retains its vibrant flav"
+    },
+    {
+      "nome": "STROZZAPRETI LT 1X3KG POL",
+      "codice": "",
+      "prezzo": "CHF 9.24",
+      "descrizione": "Introducing our STROZZAPRETI L.T. 1X3KG POL – a culinary delight that brings the authentic taste of Italy straight to your kitchen. These artisanal strozzapreti, meaning \"priest choker\" in Italian, bo"
+    },
+    {
+      "nome": "Sacchi Bio per Pattumiera 72x110cm - Grigio - 30gr",
+      "codice": "159988",
+      "prezzo": "CHF 60.12",
+      "descrizione": "Sacchi biodegradabili per rifiuti di colore grigio, dimensioni 72x110cm, spessore 30gr"
+    },
+    {
+      "nome": "Spugna Fibra Grossa ZIF - Confezione 50 pezzi",
+      "codice": "032124",
+      "prezzo": "CHF 0.64",
+      "descrizione": "Spugna abrasiva grossa per pulizia professionale, confezione convenienza da 50 pezzi"
+    },
+    {
+      "nome": "Spugna in Acciaio Zincata 40g - Confezione 25 pezzi",
+      "codice": "032123",
+      "prezzo": "CHF 0.86",
+      "descrizione": "Spugna in acciaio zincato ideale per la pulizia di pentole e stoviglie resistenti. Confezione da 25 pezzi."
+    },
+    {
+      "nome": "TAGLIATELLE ALL UOVO 1KG CONF CA 5KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 10.21",
+      "descrizione": "Introducing our premium **Tagliatelle all'Uovo**, a delightful pasta that brings the authentic taste of Italy straight to your kitchen. Crafted from high-quality durum wheat semolina and enriched with"
+    },
+    {
+      "nome": "TAGLIOLINI ALL UOVO 1KG CONF CA 5KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 10.30",
+      "descrizione": "Introducing our exquisite **Tagliolini all'Uovo** – the perfect addition to your culinary repertoire! Crafted with premium eggs and the finest durum wheat semolina, each 1kg package delivers an authen"
+    },
+    {
+      "nome": "TONNO IN OLIO DI OLIVA LATTA 160G48PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 3.14",
+      "descrizione": "Indulge in the exquisite taste of **TONNO IN OLIO DI OLIVA LATTA 160G48PZ CRT RIS** – a premium tuna packed in high-quality olive oil. Each 160g can contains tender, flaky chunks of tuna that are care"
+    },
+    {
+      "nome": "TRECCE PIACENTINE RICOTTA E SPINACI CONF 250 CA 3KG CRT MARC",
+      "codice": "",
+      "prezzo": "CHF 22.32",
+      "descrizione": "Indulge in the delightful taste of **Treccine Piacentine**, a traditional Italian pastry that will transport you straight to the heart of Piacenza. This charming treat is expertly handcrafted, featuri"
+    },
+    {
+      "nome": "UNI5 Disincrostante Professionale per Lavastoviglie 5kg (2 pezzi)",
+      "codice": "90114",
+      "prezzo": "CHF 52.18",
+      "descrizione": "Disincrostante professionale concentrato per lavastoviglie industriali, confezione da 2 taniche da 5kg"
+    },
+    {
+      "nome": "UNI5 Sapone Mani con Igienizzante - Tanica 5kg (Confezione 4 pezzi)",
+      "codice": "09733",
+      "prezzo": "CHF 9.48",
+      "descrizione": "Sapone liquido per mani professionale con proprietà igienizzanti in tanica da 5kg. Confezione da 4 taniche."
+    },
+    {
+      "nome": "VECCHIA ROMAGNA BRANDY 38% 70CL PZ PRO (copia)",
+      "codice": "",
+      "prezzo": "CHF 50.60",
+      "descrizione": ""
+    },
+    {
+      "nome": "VERMICELLI 2.1MM GRAGNANO IGP 24X500G CRT DI MART",
+      "codice": "",
+      "prezzo": "CHF 2.00",
+      "descrizione": "Introducing **Vermicelli 2.1mm Gragnano IGP** from Di Mart, a premium pasta that embodies the rich culinary heritage of Italy. Handcrafted in the iconic town of Gragnano, this high-quality vermicelli "
+    },
+    {
+      "nome": "VINCO Ammorbidente Muschio Bianco 5kg - Confezione 4 Taniche",
+      "codice": "31828",
+      "prezzo": "CHF 14.94",
+      "descrizione": ""
+    },
+    {
+      "nome": "ZUCCHERO BIANCO 1KG 10KG CRT AL",
+      "codice": "",
+      "prezzo": "CHF 1.93",
+      "descrizione": "**Zucchero Bianco - Premium White Sugar (1kg, 10kg CRT AL)** Elevate your culinary creations with our Zucchero Bianco, the ideal choice for both home bakers and professional chefs. This fine white sug"
+    },
+    {
+      "nome": "ZUCCHERO BUSTINE DA 5g X CAFFE 5KG CRT AL",
+      "codice": "",
+      "prezzo": "CHF 20.11",
+      "descrizione": "Introducing our **Zucchero Bustine da Caffè** – the perfect touch for your coffee service! Each individual 6g packet of this premium sugar is designed to elevate your beverage experience, providing ju"
+    },
+    {
+      "nome": " Cuor di Pizza Napoli (vs.) S.A. Vaschetta 0.5Kg GIFF",
+      "codice": "",
+      "prezzo": "CHF 8.49",
+      "descrizione": "Indulge in the exquisite flavors of Italy with Cuor di Pizza – Pizzalux MozzaMix Julienne! This premium 3kg blend is a game changer for your culinary creations, expertly crafted to elevate your pizza "
+    },
+    {
+      "nome": " FOGLIE D'ULIVO PASTA FRESCA 500G PZ 12 A CRT STR",
+      "codice": "",
+      "prezzo": "CHF 2.28",
+      "descrizione": ""
+    },
+    {
+      "nome": " Julienne Napoli Italia (vs.) Vaschetta 0.5kg GIFF",
+      "codice": "",
+      "prezzo": "CHF 11.75",
+      "descrizione": "Indulge in the exquisite flavors of Italy with Cuor di Pizza – Pizzalux MozzaMix Julienne! This premium 3kg blend is a game changer for your culinary creations, expertly crafted to elevate your pizza "
+    },
+    {
+      "nome": " TRECCIA FIORDILATTE 3KG GIFF",
+      "codice": "",
+      "prezzo": "CHF 12.12",
+      "descrizione": "Indulge in the exquisite flavors of Italy with Cuor di Pizza – Pizzalux MozzaMix Julienne! This premium 3kg blend is a game changer for your culinary creations, expertly crafted to elevate your pizza "
+    },
+    {
+      "nome": "ACCENDIFUOCO 32XCONF - PZ - DEN",
+      "codice": "Accendifuoco",
+      "prezzo": "CHF 5.80",
+      "descrizione": "Introducing our ACCENDIFUOCO 32XCONF - PZ - DEN, the ultimate fire starter for every culinary enthusiast! Perfectly designed to ignite your passion for cooking, this product features 32 compact and ec"
+    },
+    {
+      "nome": "ACCIUGHE A FILETTI IN OLIO DI OLIVA DEL MAR CANTABRICO LATTA 700G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 49.00",
+      "descrizione": "Indulge in the exquisite taste of *Acciughe a Filetti in Olio di Oliva del Mar Cantabrico* – Anchovy Fillets in Olive Oil from the pristine Cantabrian Sea. Housed in a generous 700g tin, each pack con"
+    },
+    {
+      "nome": "ACCIUGHE A FILETTI IN OLIO OLIVA 100% ITALIANO PESCATE E LAVORATE IN SICILIA LATTA 720G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 39.71",
+      "descrizione": "Introducing our premium **Anchovies Fillets in 100% Italian Olive Oil**, sourced and processed exclusively in the pristine waters of Sicily. Each 720g can is packed with the rich flavor of hand-select"
+    },
+    {
+      "nome": "ACCIUGHE A FILETTI LATTA 700G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 22.30",
+      "descrizione": "Introducing our exquisite 'ACCIUGHE A FILETTI LATTA 700G 6PZ CRT RIS' – a premium selection of anchovy fillets delicately packed in a generous 700g tin. These anchovies are harvested from the pristine"
+    },
+    {
+      "nome": "ACETO BALSAMICO BOTTIGLIA 500ML 2 PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 3.36",
+      "descrizione": "Uno dei condimenti che esprime al meglio il patrimonio enograstronomico italiano. In questa ricetta, il mosto è lasciato ad una lenta acidificazione per dar corpo a profumi e fragranze uniche. Da appr"
+    },
+    {
+      "nome": "ACETO BALSAMICO DI MODENA IGP AZURE PZ 250ML 6PZ CRT TDT",
+      "codice": "",
+      "prezzo": "CHF 5.52",
+      "descrizione": "Introducing **ACETO BALSAMICO DI MODENA IGP AZURE 6PZ CRT** – a true culinary gem that encapsulates the rich heritage of Modena, Italy. This exceptional balsamic vinegar, recognized by its PGI certifi"
+    },
+    {
+      "nome": "ACETO BALSAMICO DI MODENA IGP INVECCHIATO PZ 250ML 6PZ CRT TDT (copia)",
+      "codice": "",
+      "prezzo": "CHF 17.92",
+      "descrizione": "**ACETO BALSAMICO DI MODENA IGP INVECCHIATO 250ML (6-Pack)** Discover the rich, nuanced flavors of true Italian craftsmanship with our ACETO BALSAMICO DI MODENA IGP INVECCHIATO. Hailing from the estee"
+    },
+    {
+      "nome": "ACETO BALSAMICO DI MODENA IGP LINEA GOLD PZ 250ML 6PZ CRT TDT",
+      "codice": "",
+      "prezzo": "CHF 17.92",
+      "descrizione": "Introducing our **ACETO BALSAMICO DI MODENA IGP LINEA GOLD** – a luxurious balsamic vinegar crafted in the heart of Modena, Italy. This exceptional product comes in a convenient 250ml bottle, perfectl"
+    },
+    {
+      "nome": "ACETO BALSAMICO DI MODENA IGP LINEA SILVER PZ 250ML 6PZ CRT TDT",
+      "codice": "",
+      "prezzo": "CHF 11.60",
+      "descrizione": "**ACETO BALSAMICO DI MODENA IGP LINEA SILVER - 250ML (6-Pack)** Experience the rich, complex flavors of authentic Italian cuisine with our ACETO BALSAMICO DI MODENA IGP LINEA SILVER. This exquisite ba"
+    },
+    {
+      "nome": "ACETO BALSAMICO TANICA 5L 2PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 22.90",
+      "descrizione": "Elevate your culinary creations with our **Aceto Balsamico Tanica 5L 2PZ CRT RIS**. This premium balsamic vinegar, crafted in the heart of Italy, offers a rich, complex flavor profile that perfectly b"
+    },
+    {
+      "nome": "ACETO BIANCO WEISSWEINESSIG 1L ALI",
+      "codice": "",
+      "prezzo": "CHF 3.57",
+      "descrizione": "Introducing Ali's White Wine Vinegar (Aceto Bianco Weissweinessig), a culinary essential for every kitchen! This premium 1-liter bottle of vinegar is crafted from the finest white wines, delivering a "
+    },
+    {
+      "nome": "ACETO DI ERBE 1L AL ",
+      "codice": "",
+      "prezzo": "CHF 4.56",
+      "descrizione": ""
+    },
+    {
+      "nome": "ACETO DI LAMPONI 500ML PZ AL",
+      "codice": "",
+      "prezzo": "CHF 50.08",
+      "descrizione": "Introducing our exquisite **Raspberry Vinegar (Aceto di Lamponi)** in a 500ml bottle, where the lush, tangy essence of ripe raspberries meets the bright acidity of premium vinegar. This artisanal crea"
+    },
+    {
+      "nome": "ACETO DI MELE 1L AL",
+      "codice": "",
+      "prezzo": "CHF 4.30",
+      "descrizione": "Introducing our premium **ACETO DI MELE 1L AL** – a beautifully crafted apple cider vinegar that elevates your culinary creations to a whole new level. Made from handpicked, ripe apples, this vinegar "
+    },
+    {
+      "nome": "ACETO IL BIANCO BALSAMICO TERRA DEL TUONO PZ 250ML 6PZ CRT TDT ",
+      "codice": "",
+      "prezzo": "CHF 10.18",
+      "descrizione": "Introducing **ACETO IL BIANCO BALSAMICO TERRA DEL TUONO** – a 250ml bottle of exquisite white balsamic vinegar, available in a convenient 6-pack. This exceptional vinegar is crafted using traditional "
+    },
+    {
+      "nome": "ACETO ROSSO ROTWEINESSIG 1L AL",
+      "codice": "",
+      "prezzo": "CHF 4.58",
+      "descrizione": "Introducing our exquisite **ACETO ROSSO WEISSWEINESSIG**—a premium red wine vinegar that elevates your culinary creations! This high-quality 1-liter bottle is crafted from the finest red wines, marryi"
+    },
+    {
+      "nome": "ACQUA DI COCCO FOCO 50ml 6PZ A CRT AL",
+      "codice": "",
+      "prezzo": "CHF 3.00",
+      "descrizione": "Introducing **ACQUA DI COCCO FOCO** - a refreshing delight that captures the true essence of natural coconut water in a convenient 50ml format. Each case contains 6 bottles, perfect for on-the-go hydr"
+    },
+    {
+      "nome": "ACQUA DISTILLATA 5LT PRO",
+      "codice": "",
+      "prezzo": "CHF 13.80",
+      "descrizione": "Introducing **ACQUA DISTILLATA 5LT PRO** – the essential distilled water for culinary enthusiasts and professionals alike! This ultra-pure water is crafted to meet the highest standards, ensuring a fl"
+    },
+    {
+      "nome": "AFFETTA TARTUFO INOX TT",
+      "codice": "",
+      "prezzo": "CHF 38.40",
+      "descrizione": ""
+    },
+    {
+      "nome": "AGAR AGAR 500G PZ FLOR",
+      "codice": "",
+      "prezzo": "CHF 88.00",
+      "descrizione": "Introducing **Agar Agar 500g PZ Flor**, a premium, plant-based gelling agent derived from red algae that brings a touch of culinary magic to your kitchen. Perfect for creating stunning jellies, desser"
+    },
+    {
+      "nome": "AGLIO LIOFILIZZATO TRITATO 140G 2PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 16.90",
+      "descrizione": "Introducing our AGLIO LIOFILIZZATO TRITATO, a premium freeze-dried garlic product packaged in a convenient 140g size, available in a pack of 2. This versatile culinary essential brings the robust flav"
+    },
+    {
+      "nome": "AGLIO MARINATO 1KG",
+      "codice": "",
+      "prezzo": "CHF 12.80",
+      "descrizione": ""
+    },
+    {
+      "nome": "AGNOLI ALLA FARAONA CHECCO 2X1.5KG POL",
+      "codice": "",
+      "prezzo": "CHF 29.92",
+      "descrizione": "Indulge in the exquisite taste of 'Agnoli alla Faraona Checco,' a gourmet pasta dish that elevates any dining experience. Each 2x1.5kg package features delicate agnolotti filled with rich, savory phea"
+    },
+    {
+      "nome": "AGNOLI RICOTTA E SPINACI 2PZ X 1.5 KG CRT CHECC POL",
+      "codice": "",
+      "prezzo": "CHF 28.84",
+      "descrizione": "Indulge in the exquisite flavors of our **Agnoli Ricotta e Spinaci** – a gourmet pasta delicacy made for discerning palates. Each package contains two generous portions, totaling 1.5 kg, perfect for s"
+    },
+    {
+      "nome": "AGNOLO RIPIENO BRASATO 2X1.5KG CRT CHECC POL",
+      "codice": "",
+      "prezzo": "CHF 32.74",
+      "descrizione": "Indulge in the exquisite flavors of our **Agnolo Ripieno Brasato**, expertly crafted by Checc. Each 1.5kg serving (two servings per carton) features delicate pasta filled with savory braised meat, off"
+    },
+    {
+      "nome": "AGNOLOTTI DI CARNE PASTA FRESCA 1KG PZ 8 A CRT STR",
+      "codice": "",
+      "prezzo": "CHF 12.03",
+      "descrizione": ""
+    },
+    {
+      "nome": "AGNOLOTTI RICOTTA E SPINACI PASTA FRESCA 1KG PZ 8 A CRT STR",
+      "codice": "",
+      "prezzo": "CHF 11.56",
+      "descrizione": ""
+    },
+    {
+      "nome": "ALARE POGGIA LEGNA IN GHISA 50x30xh22.5 PER FORNO PIZZA GI",
+      "codice": "",
+      "prezzo": "CHF 76.66",
+      "descrizione": "Introducing the ALARE Cast Iron Wood Holder, designed for those who take their pizza oven experience seriously. Measuring 50x30xh22.5 cm, this robust wood holder is perfect for keeping your firewood n"
+    },
+    {
+      "nome": "ALBUME EIFIX 1KG 12PZ CRT AL",
+      "codice": "",
+      "prezzo": "CHF 8.25",
+      "descrizione": "Introducing ALBUME EIFIX, a premium egg white product that redefines versatility in your culinary creations. Each 1kg carton, thoughtfully packaged with 12 individual pouches, ensures freshness and co"
+    },
+    {
+      "nome": "ALCHERMES LIQUORE 0.7L PZ VOL 21% 6PZ CRT VIV",
+      "codice": "Alkermes liquore aromatico",
+      "prezzo": "CHF 28.28",
+      "descrizione": "Discover the enchanting flavors of Alchermes Liquore, a vibrant Italian liqueur that elevates your culinary creations. With a striking ruby red color and a blend of aromatic spices, herbs, and fruit e"
+    },
+    {
+      "nome": "ALFABETO BARBIE GRAGNANO IGP 12X500G DI MART",
+      "codice": "",
+      "prezzo": "CHF 3.04",
+      "descrizione": "Introducing **ALFABETO BARBIE GRAGNANO IGP** by Mart, a delightful 12x500g pack that brings a touch of playful elegance to your culinary creations! Made from the finest durum wheat, this premium alpha"
+    },
+    {
+      "nome": "ALFABETO GRAGNANO IGP 12X500G CRT DI MART",
+      "codice": "",
+      "prezzo": "CHF 3.20",
+      "descrizione": "Introducing **ALFABETO GRAGNANO IGP** – where tradition meets creativity! Crafted in the picturesque town of Gragnano, this premium pasta comes in a fun alphabet shape, making it a delightful addition"
+    },
+    {
+      "nome": "ALLORO FOGLIE BUSTA 500G 10PZ CRT PAV",
+      "codice": "Lauro foglie",
+      "prezzo": "CHF 15.82",
+      "descrizione": "Introducing ALLORO FOGLIE in a convenient 500g bag, perfect for culinary enthusiasts and professional chefs alike! These premium bay leaves are meticulously dried to preserve their aromatic flavor and"
+    },
+    {
+      "nome": "ALLUMINIO ROTOLO 45CM MUS",
+      "codice": "",
+      "prezzo": "CHF 28.16",
+      "descrizione": "Introducing the ALLUMINIO ROTOLO 45CM MUS – the ultimate aluminum foil for all your culinary needs! Measuring a generous 45cm in width, this high-quality roll is perfect for both home and professional"
+    },
+    {
+      "nome": "ALTA CREMA BIANCA PZ 8KG",
+      "codice": "",
+      "prezzo": "CHF 10.73",
+      "descrizione": "Introducing **Crema Bianca PZ 8KG MIO** – your secret ingredient for creating exquisite desserts and pastries that will leave a lasting impression. This velvety smooth white cream is expertly crafted "
+    },
+    {
+      "nome": "ALTA CREMA NOCCIOLA 14% PZ 8KG",
+      "codice": "",
+      "prezzo": "CHF 12.75",
+      "descrizione": "Indulge in the luxurious taste of ALTA CREMA NOCCIOLA, a premium hazelnut cream with a remarkable 14% hazelnut content. Perfect for professional kitchens and passionate home bakers alike, this 8kg tub"
+    },
+    {
+      "nome": "ALTA CREMA PISTACCHIO 20% FARCITELLA PZ 8KG",
+      "codice": "",
+      "prezzo": "CHF 18.34",
+      "descrizione": "Indulge in the rich, nutty goodness of our 'CREMA PISTACCHIO 20% PZ 8KG MIO'. This luxurious pistachio cream is crafted with 20% premium pistachios, delivering a delightful balance of sweetness and sa"
+    },
+    {
+      "nome": "ALTA CREMA PISTACCHIO 20% PZ 8KG",
+      "codice": "",
+      "prezzo": "CHF 27.60",
+      "descrizione": "Indulge in the rich, nutty goodness of our 'CREMA PISTACCHIO 20% PZ 8KG MIO'. This luxurious pistachio cream is crafted with 20% premium pistachios, delivering a delightful balance of sweetness and sa"
+    },
+    {
+      "nome": "AMARENE ALLO SCIROPPO LATTA 870G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 10.53",
+      "descrizione": "Indulge in the exquisite taste of our 'AMARENE ALLO SCIROPPO LATTA 870G 6PZ CRT RIS.' These succulent sour cherries are expertly preserved in a rich, sweet syrup, capturing the essence of summer in ev"
+    },
+    {
+      "nome": "AMARENE IN LATTA 1.25KG FABBRI",
+      "codice": "",
+      "prezzo": "CHF 52.20",
+      "descrizione": "Indulge in the exquisite taste of Fabbri's Amarene in Latta (1.25kg), a premium selection of preserved sour cherries that embody the essence of Italian tradition. Carefully harvested and expertly pack"
+    },
+    {
+      "nome": "AMARETTO MONO 12 PZ CT MAR",
+      "codice": "",
+      "prezzo": "CHF 59.84",
+      "descrizione": "Indulge in the delightful taste of our Amaretto Mono 12 PZ CT MAR, a perfect treat for pastry lovers and connoisseurs alike. These exquisite almond-flavored cookies are beautifully crafted to deliver "
+    },
+    {
+      "nome": "AMARO AVERNA 29% 70CL AL",
+      "codice": "",
+      "prezzo": "CHF 22.85",
+      "descrizione": "Indulge in the rich, complex flavors of Amaro Averna, a classic Italian herbal liqueur that has been crafted to perfection since 1868. With an alcohol content of 29% and elegantly presented in a 70cl "
+    },
+    {
+      "nome": "AMARO JEFFERSON 30% 0.7L BTL 6BTL CRT TA",
+      "codice": "",
+      "prezzo": "CHF 69.86",
+      "descrizione": ""
+    },
+    {
+      "nome": "AMIDO DI RISO IN POLVERE BUSTA 1KG 10KG CRT PAV",
+      "codice": "",
+      "prezzo": "CHF 9.09",
+      "descrizione": "Introducing our premium **Rice Starch Powder** - available in convenient 1kg and 10kg packages. Sourced from the finest Italian rice, this versatile ingredient is perfect for a variety of culinary app"
+    },
+    {
+      "nome": "AMMORBIDENTE CON PROFUMO FIORE DI LOTO VERNEL 37 LAV AL",
+      "codice": "",
+      "prezzo": "CHF 8.98",
+      "descrizione": "Experience the luxurious and soothing fragrance of Vernel’s Lotus Flower Fabric Softener. Enriched with the delicate scent of lotus blossoms, this 37-load formula transforms your laundry routine into "
+    },
+    {
+      "nome": "AMONDO MONO PZ 12 CT MAR",
+      "codice": "",
+      "prezzo": "CHF 59.84",
+      "descrizione": "Indulge in the delightful flavors of 'AMONDO MONO PZ 12 CT MAR,' a premium pastry perfect for any occasion. Each piece is a masterpiece, expertly crafted with rich, velvety chocolate and a light, crun"
+    },
+    {
+      "nome": "ANANAS 100G RO",
+      "codice": "",
+      "prezzo": "CHF 1.00",
+      "descrizione": "ANANAS 100G RO - 100% Natural, No Added Sugar, Rich in Fibers, Minerals Source, Vitamin C Source, Antioxidant Properties"
+    },
+    {
+      "nome": "ANANAS A FETTE MIGNON LATTA 822G 6PZ CRT RIS",
+      "codice": "",
+      "prezzo": "CHF 6.39",
+      "descrizione": "Discover the delightful sweetness of our 'ANANAS A FETTE MIGNON LATTA 822G 6PZ CRT RIS' – gourmet canned pineapple slices that elevate your culinary creations! Each can is packed with succulent, golde"
+    },
+    {
+      "nome": "ANELLI DA DESSERT E COPPAPASTA SET IN ACCIAIO PRO",
+      "codice": "",
+      "prezzo": "CHF 24.48",
+      "descrizione": "Introducing the ANELLI DA DESSERT E COPPAPASTA SET IN ACCIAIO PRO – the ultimate kitchen companion for pastry perfection! Crafted from premium stainless steel, this versatile set features elegant dess"
+    },
+    {
+      "nome": "ANELLO COPPAPASTA ACCIAIO INOX DIAM 24CM AL",
+      "codice": "",
+      "prezzo": "CHF 36.96",
+      "descrizione": "Introducing the ANELLO COPPAPASTA ACCIAIO INOX DIAM 24CM AL – your essential tool for creating stunning dishes with ease! Crafted from high-quality stainless steel, this 24 cm diameter pastry ring is "
+    },
+    {
+      "nome": "ANELLO DA DESSERT E COPPAPASTA IN ACCIAIO INOSSIDABILE 8CM 5PZ CONF BUCH",
+      "codice": "",
+      "prezzo": "CHF 43.54",
+      "descrizione": "Elevate your dessert game with our set of 5 Stainless Steel Dessert Rings, measuring 8cm in diameter. Perfect for creating stunning layered cakes, mousses, or individual servings of your favorite dess"
+    },
+    {
+      "nome": "ANETO BUTTY PZ 140G AL",
+      "codice": "",
+      "prezzo": "CHF 13.18",
+      "descrizione": "Introducing ANETO Butty Dill – a delightful 140g jar of culinary magic that will elevate your dishes to new heights! Infused with the refreshing essence of dill, this exceptional condiment is expertly"
+    },
+    {
+      "nome": "ANICE STELLATO 170G AL",
+      "codice": "",
+      "prezzo": "CHF 27.70",
+      "descrizione": "**Star Anise - 170g** Elevate your culinary creations with our premium Star Anise! Hailing from the lush landscapes of Southeast Asia, these beautiful, star-shaped pods not only add an exotic flair to"
+    },
+    {
+      "nome": "ANNURCHINO MONO 12 PZ CT MAR",
+      "codice": "",
+      "prezzo": "CHF 60.85",
+      "descrizione": "Introducing the Annurchino Mono 12 PZ CT MAR - a delightful treat that encapsulates the essence of Italian pastry craftsmanship. Each piece is a work of art, featuring a delicate, crisp shell filled w"
+    },
+    {
+      "nome": "ANTICALCARE AJAX MUS",
+      "codice": "",
+      "prezzo": "CHF 7.00",
+      "descrizione": "Introducing **Anticalcare Ajax Mus** – your ultimate solution for combating stubborn limescale and mineral deposits! This powerful formula is expertly crafted to restore the sparkle to your kitchen an"
+    },
+    {
+      "nome": "APOLLINE MIGNON CODE DI ARAGOSTA CRT 8KG BADAL ",
+      "codice": "",
+      "prezzo": "CHF 62.97",
+      "descrizione": "Indulge in the exquisite taste of 'APOLLINE MIGNON CODE DI ARAGOSTA CRT 7KG BADAL', a delightful creation that brings the elegance of Italian pastry to your table. These delectable lobster tail pastri"
+    },
+    {
+      "nome": "APPENDI PALE AUTOPORTANTE CON MARMO SINGOLO LATO PER PALE FINO A 200CM GI",
+      "codice": "",
+      "prezzo": "CHF 245.94",
+      "descrizione": "Introducing the Self-Supporting Paddle Rack with Single-Sided Marble Base, designed for paddles up to 200 cm in length. This elegant and functional solution is perfect for any foodservice environment,"
+    },
+    {
+      "nome": "APPENDI PALE AUTOPORTANTE CON MARMO SINGOLO LATO PER PALE FINO A 200CM GI (copia)",
+      "codice": "",
+      "prezzo": "CHF 245.94",
+      "descrizione": "Introducing the Self-Supporting Paddle Rack with Single-Sided Marble Base, designed for paddles up to 200 cm in length. This elegant and functional solution is perfect for any foodservice environment,"
+    },
+    {
+      "nome": "APRISCATOLE DA BANCO MUS",
+      "codice": "",
+      "prezzo": "CHF 210.00",
+      "descrizione": "Introducing the APRISCATOLE DA BANCO MUS – your essential countertop solution for effortless can-opening! Designed with both functionality and elegance in mind, this robust can opener combines a sleek"
+    },
+    {
+      "nome": "APRISCATOLE MANUALE MUS",
+      "codice": "",
+      "prezzo": "CHF 178.24",
+      "descrizione": "Introducing the APRISCATOLE MANUALE MUS – the perfect blend of functionality and elegance for your kitchen! This manual can opener is designed with precision and ease of use in mind, featuring a sturd"
+    },
+    {
+      "nome": "ARACHIDI E CARAMELLO MONO 12 PZ CT MAR",
+      "codice": "",
+      "prezzo": "CHF 64.50",
+      "descrizione": "Indulge in the delightful taste of our 'Arachidi e Caramello Mono 12 PZ CT MAR' – a perfect union of crunchy peanuts and rich caramel wrapped in a smooth, velvety coating. Each individual piece offers"
+    },
+    {
+      "nome": "ARAGOSTA INTERA CUBA 740/860G 10 KG CRT PH",
+      "codice": "",
+      "prezzo": "CHF 44.82",
+      "descrizione": ""
+    },
+    {
+      "nome": "ARANCIA CANDITA A CUBETTI 9X9 5 KG A CRT - CRT MIO ",
+      "codice": "",
+      "prezzo": "CHF 8.08",
+      "descrizione": "Introducing **ARANCIA CAND FILETTI 6X6 KG 5 MIO** – a delectable treat that brings the vibrant essence of Italian citrus to your culinary creations. These candied orange fillets are meticulously craft"
+    },
+    {
+      "nome": "ARANCIATA FANTA 1.5 L AL",
+      "codice": "",
+      "prezzo": "CHF 4.16",
+      "descrizione": "Indulge in the vibrant taste of Aranciata Fanta! This 1.5-liter bottle is filled with refreshing orange soda that's perfect for any occasion. Bursting with the zesty flavor of ripe oranges, Aranciata "
+    },
+    {
+      "nome": "ARANCINI DI RISO AI FUNGHI E TALEGGIO 55G PZ 2X2.5KG A CRT POL",
+      "codice": "",
+      "prezzo": "CHF 13.76",
+      "descrizione": "Indulge in the exquisite flavors of our **Mushroom and Taleggio Risotto Arancini**. Each 55g ball is a delightful combination of creamy Taleggio cheese and savory mushrooms, encased in a perfectly cri"
+    },
+    {
+      "nome": "ARANCINI DI RISO ALLA SICILIANA 55G PZ 2X2.5KG A CRT POL",
+      "codice": "",
+      "prezzo": "CHF 13.94",
+      "descrizione": "Indulge in the authentic taste of Sicily with our ARANCINI DI RISO ALLA SICILIANA. This delightful treat features perfectly crafted rice balls, each packed with rich flavors and traditional ingredient"
+    },
+    {
+      "nome": "ARANCINI DI RISO MIGNON 28G PZ 2X2.5KG CRT POL",
+      "codice": "",
+      "prezzo": "CHF 11.06",
+      "descrizione": "Indulge in the authentic taste of Italy with our **Arancini di Riso Mignon**. These delightful risotto balls, weighing 28g each, are expertly crafted to deliver a perfect blend of creamy risotto and s"
+    },
+    {
+      "nome": "ARANCINI PALLE DI RISO ALLA BOLOGNESE 120G PZ 100 PZ CRT FRIED",
+      "codice": "",
+      "prezzo": "CHF 26.20",
+      "descrizione": "Indulge in the delectable taste of our Arancini Palle di Riso alla Bolognese, a true Italian classic! Each 120g ball is meticulously crafted, featuring a delightful blend of creamy risotto infused wit"
+    },
+    {
+      "nome": "ARANCINI PALLE DI RISO SPINACI E ZEST LIMONE 120G PZ 100 PZ CRT FRIED",
+      "codice": "",
+      "prezzo": "CHF 26.10",
+      "descrizione": "Indulge in a delightful taste of Italy with our **Arancini Spinach and Lemon Zest Rice Balls**. Each 120g piece is a heavenly combination of creamy risotto, fresh spinach, and a zesty twist of lemon, "
+    },
+    {
+      "nome": "ARANCINO DI RISO AL SUGO 125G 5KG CRT SG",
+      "codice": "",
+      "prezzo": "CHF 53.69",
+      "descrizione": "Indulge in the authentic taste of Italy with our ARANCINO DI RISO AL SUGO. Weighing in at a convenient 125g per piece and available in a bulk 5kg crate, these savory rice balls are a perfect blend of "
+    }
+  ],
+  "servizi": [
+    {
+      "nome": "Consegna a domicilio",
+      "descrizione": "Consegniamo in tutta la Svizzera. Ordini effettuati entro le 12:00 vengono consegnati il giorno successivo nelle zone principali."
+    },
+    {
+      "nome": "Servizio B2B per ristoratori",
+      "descrizione": "Condizioni speciali per ristoranti, pizzerie, hotel e catering. Listino prezzi dedicato e account manager personale."
+    },
+    {
+      "nome": "Shop online",
+      "descrizione": "Acquista 24/7 sul nostro shop online. Pagamento sicuro con carta o fattura per clienti business."
+    },
+    {
+      "nome": "Consulenza prodotti",
+      "descrizione": "Il nostro team ti aiuta a scegliere i prodotti giusti per il tuo ristorante o per casa."
+    },
+    {
+      "nome": "Catalogo e campioni",
+      "descrizione": "Richiedi il nostro catalogo completo o campioni di prodotti per provare la qualità."
+    }
+  ],
+  "faq": [
+    {
+      "domanda": "Come posso ordinare?",
+      "risposta": "Puoi ordinare direttamente sul nostro shop online www.lapa.ch/shop, oppure contattarci telefonicamente o via email. Per i clienti business offriamo anche ordini via WhatsApp."
+    },
+    {
+      "domanda": "Quali sono i tempi di consegna?",
+      "risposta": "Ordini effettuati entro le 12:00 vengono generalmente consegnati il giorno lavorativo successivo nelle zone principali della Svizzera. Per zone più remote potrebbero essere necessari 2-3 giorni."
+    },
+    {
+      "domanda": "Qual è l'ordine minimo?",
+      "risposta": "Per i privati non c'è un ordine minimo. Per i clienti business (B2B) l'ordine minimo è di CHF 150 per la consegna gratuita."
+    },
+    {
+      "domanda": "Consegnate in tutta la Svizzera?",
+      "risposta": "Sì, consegniamo in tutta la Svizzera: Zurigo, Berna, Basilea, Ginevra, Lugano, Lucerna e tutte le altre città e comuni."
+    },
+    {
+      "domanda": "Come posso diventare cliente business/B2B?",
+      "risposta": "Contattaci via email o telefono con i dati della tua attività (nome, indirizzo, partita IVA). Ti creeremo un account business con listino prezzi dedicato e condizioni speciali."
+    },
+    {
+      "domanda": "Quali metodi di pagamento accettate?",
+      "risposta": "Accettiamo carte di credito (Visa, Mastercard), PostFinance, TWINT, e fattura per clienti business registrati."
+    },
+    {
+      "domanda": "I prodotti sono veramente italiani?",
+      "risposta": "Assolutamente sì! Tutti i nostri prodotti sono importati direttamente dall'Italia da produttori selezionati. Garantiamo autenticità e qualità 100% italiana."
+    },
+    {
+      "domanda": "Posso visitare il vostro magazzino?",
+      "risposta": "Sì, su appuntamento puoi visitare il nostro magazzino e vedere i prodotti. Contattaci per fissare una visita."
+    },
+    {
+      "domanda": "Fate consegne per eventi e catering?",
+      "risposta": "Certamente! Gestiamo ordini speciali per eventi, matrimoni, feste aziendali e catering. Contattaci con anticipo per organizzare la consegna."
+    },
+    {
+      "domanda": "Come posso contattarvi?",
+      "risposta": "Puoi contattarci via: Email (info@lapa.ch), Telefono, WhatsApp, o tramite il modulo di contatto sul sito. Rispondiamo entro 24 ore lavorative."
+    }
+  ],
+  "contatti": {
+    "email": "info@lapa.ch",
+    "sito": "www.lapa.ch",
+    "shop": "www.lapa.ch/shop",
+    "orari": "Lunedì-Venerdì 8:00-17:00",
+    "social": {
+      "linkedin": "LAPA",
+      "instagram": "@lapa_ch"
+    }
+  }
+}
