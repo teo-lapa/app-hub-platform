@@ -41,11 +41,38 @@ export default function BlogPhotoManagerPage() {
   // Generated images storage (in-memory)
   const [generatedImages, setGeneratedImages] = useState<Record<number, string>>({});
 
+  // Header visibility tracking
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   // Mount tracking
   useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Scroll detection for header auto-hide
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 50) {
+        // Always show header at top
+        setIsHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down - hide header
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up - show header
+        setIsHeaderVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   // Load articles on mount
   useEffect(() => {
@@ -172,24 +199,28 @@ export default function BlogPhotoManagerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 pb-32">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-emerald-600 p-6 shadow-lg sticky top-0 z-40">
+      {/* Header - with auto-hide on scroll */}
+      <div className={`
+        bg-gradient-to-r from-purple-600 to-emerald-600 p-3 md:p-4 shadow-lg sticky top-0 z-40
+        transition-transform duration-300 ease-in-out
+        ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}
+      `}>
         <div className="container mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
               <Link
                 href="/"
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                className="p-1.5 md:p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
               >
-                <ArrowLeft className="w-6 h-6 text-white" />
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </Link>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
-                  <BookOpen className="w-8 h-8" />
-                  Blog Photo Manager
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-1.5 md:gap-2 truncate">
+                  <BookOpen className="w-5 h-5 md:w-7 md:h-7 flex-shrink-0" />
+                  <span className="truncate">Blog Photo Manager</span>
                 </h1>
-                <p className="text-purple-100 text-sm mt-1">
-                  Gestisci e genera immagini AI per articoli blog
+                <p className="text-purple-100 text-xs md:text-sm mt-0.5 hidden sm:block">
+                  Gestisci e genera immagini AI
                 </p>
               </div>
             </div>
@@ -198,39 +229,41 @@ export default function BlogPhotoManagerPage() {
             <button
               onClick={toggleSelectionMode}
               className={`
-                px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2
+                px-2 md:px-4 py-1.5 md:py-2 rounded-lg font-semibold transition-all
+                flex items-center gap-1 md:gap-2 text-xs md:text-sm flex-shrink-0
                 ${isSelectionMode
                   ? 'bg-white text-purple-600'
                   : 'bg-white/20 text-white hover:bg-white/30'
                 }
               `}
             >
-              {isSelectionMode ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-              Selezione Multipla
+              {isSelectionMode ? <CheckSquare className="w-4 h-4 md:w-5 md:h-5" /> : <Square className="w-4 h-4 md:w-5 md:h-5" />}
+              <span className="hidden sm:inline">Selezione</span>
             </button>
           </div>
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4">
-            <div className="bg-white/10 rounded-lg p-2 text-center">
-              <div className="text-lg font-bold text-white">{stats.total}</div>
-              <div className="text-xs text-purple-100">Totale</div>
+          {/* Stats Bar - Compact on mobile */}
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2 mt-2 md:mt-3">
+            <div className="bg-white/10 rounded-lg p-1.5 md:p-2 text-center">
+              <div className="text-sm md:text-lg font-bold text-white">{stats.total}</div>
+              <div className="text-[10px] md:text-xs text-purple-100">Totale</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-2 text-center">
-              <div className="text-lg font-bold text-white">{stats.published}</div>
-              <div className="text-xs text-purple-100">Pubblicati</div>
+            <div className="bg-white/10 rounded-lg p-1.5 md:p-2 text-center">
+              <div className="text-sm md:text-lg font-bold text-white">{stats.published}</div>
+              <div className="text-[10px] md:text-xs text-purple-100">Pubbl.</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-2 text-center">
-              <div className="text-lg font-bold text-white">{stats.withImages}</div>
-              <div className="text-xs text-purple-100">Con Immagini</div>
+            <div className="bg-white/10 rounded-lg p-1.5 md:p-2 text-center">
+              <div className="text-sm md:text-lg font-bold text-white">{stats.withImages}</div>
+              <div className="text-[10px] md:text-xs text-purple-100 hidden md:block">Con Immagini</div>
+              <div className="text-[10px] md:text-xs text-purple-100 md:hidden">Img</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-2 text-center">
-              <div className="text-lg font-bold text-white">{filteredArticles.length}</div>
-              <div className="text-xs text-purple-100">Filtrati</div>
+            <div className="bg-white/10 rounded-lg p-1.5 md:p-2 text-center hidden md:block">
+              <div className="text-sm md:text-lg font-bold text-white">{filteredArticles.length}</div>
+              <div className="text-[10px] md:text-xs text-purple-100">Filtrati</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-2 text-center">
-              <div className="text-lg font-bold text-white">{Object.keys(generatedImages).length}</div>
-              <div className="text-xs text-purple-100">Generati</div>
+            <div className="bg-white/10 rounded-lg p-1.5 md:p-2 text-center hidden md:block">
+              <div className="text-sm md:text-lg font-bold text-white">{Object.keys(generatedImages).length}</div>
+              <div className="text-[10px] md:text-xs text-purple-100">Generati</div>
             </div>
           </div>
         </div>
