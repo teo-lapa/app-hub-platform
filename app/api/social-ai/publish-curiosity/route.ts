@@ -241,7 +241,7 @@ MOOD: Engaging, informative, social media friendly.`;
 
         try {
           const imageResponse = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp-image-generation',
+            model: 'gemini-2.5-flash-image',
             contents: [{ text: imagePrompt }],
             config: {
               responseModalities: ['Text', 'Image']
