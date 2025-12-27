@@ -879,23 +879,24 @@ IMPORTANTE:
     intent: Intent
   ): Promise<AgentResponse> {
     try {
-      const lastMessage = context.conversationHistory[context.conversationHistory.length - 1];
-      const userMessage = lastMessage?.content?.toLowerCase() || '';
+      // Prendi l'ultimo messaggio dell'utente dalla history
+      const userMessages = context.conversationHistory.filter(m => m.role === 'user');
+      const lastUserMessage = userMessages[userMessages.length - 1];
+      const userMessage = lastUserMessage?.content?.toLowerCase() || '';
 
-      console.log('🔍 DEBUG helpdeskAgentHandler:', {
+      console.log('🔍 helpdeskAgentHandler:', {
         customerId: context.customerId,
         customerType: context.customerType,
-        lastMessage: userMessage,
-        historyLength: context.conversationHistory.length
+        userMessage: userMessage.substring(0, 100),
+        historyLength: context.conversationHistory.length,
+        userMessagesCount: userMessages.length
       });
 
       // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
-      const wantsOperator = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo/i.test(userMessage);
-
-      console.log('🔍 DEBUG wantsOperator:', wantsOperator, 'customerId:', context.customerId);
+      const wantsTicket = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt/i.test(userMessage);
 
       // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
-      if (wantsOperator && context.customerId) {
+      if (wantsTicket && context.customerId) {
         console.log('📝 Cliente B2B richiede assistenza - recupero dati completi e creazione ticket');
 
         // 1. Recupera TUTTI i dati del cliente da Odoo
