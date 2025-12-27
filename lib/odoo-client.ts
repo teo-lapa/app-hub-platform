@@ -9,6 +9,10 @@ interface OdooClient {
   uid: number | null;
   sessionId: string | null;
   searchRead: (model: string, domain: any[], fields: string[], limit?: number, offset?: number) => Promise<any[]>;
+  searchReadKw: (model: string, domain: any[], fields: string[], kwargs?: { limit?: number; offset?: number; order?: string }) => Promise<any[]>;
+  read: (model: string, ids: number[], fields: string[]) => Promise<any[]>;
+  search: (model: string, domain: any[], kwargs?: { limit?: number; offset?: number; order?: string }) => Promise<number[]>;
+  searchCount: (model: string, domain: any[]) => Promise<number>;
   create: (model: string, values: any[]) => Promise<number[]>;
   write: (model: string, ids: number[], values: any) => Promise<boolean>;
   call: (model: string, method: string, args: any[]) => Promise<any>;
@@ -120,6 +124,138 @@ class OdooRPC implements OdooClient {
     }
 
     return data.result || [];
+  }
+
+  async searchReadKw(model: string, domain: any[], fields: string[], kwargs: { limit?: number; offset?: number; order?: string } = {}): Promise<any[]> {
+    await this.ensureAuthenticated();
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: 'search_read',
+          args: [],
+          kwargs: {
+            domain: domain,
+            fields: fields,
+            ...kwargs
+          }
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Odoo searchReadKw error:', data.error);
+      throw new Error(data.error.message || 'Search failed');
+    }
+
+    return data.result || [];
+  }
+
+  async read(model: string, ids: number[], fields: string[]): Promise<any[]> {
+    await this.ensureAuthenticated();
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: 'read',
+          args: [ids],
+          kwargs: { fields: fields }
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Odoo read error:', data.error);
+      throw new Error(data.error.message || 'Read failed');
+    }
+
+    return data.result || [];
+  }
+
+  async search(model: string, domain: any[], kwargs: { limit?: number; offset?: number; order?: string } = {}): Promise<number[]> {
+    await this.ensureAuthenticated();
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: 'search',
+          args: [domain],
+          kwargs: kwargs
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Odoo search error:', data.error);
+      throw new Error(data.error.message || 'Search failed');
+    }
+
+    return data.result || [];
+  }
+
+  async searchCount(model: string, domain: any[]): Promise<number> {
+    await this.ensureAuthenticated();
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: 'search_count',
+          args: [domain],
+          kwargs: {}
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Odoo searchCount error:', data.error);
+      throw new Error(data.error.message || 'Search count failed');
+    }
+
+    return data.result || 0;
   }
 
   async create(model: string, values: any[]): Promise<number[]> {
