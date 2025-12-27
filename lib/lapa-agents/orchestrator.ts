@@ -911,7 +911,10 @@ IMPORTANTE:
       console.log('🎫 Ticket check:', ticketCheck);
 
       // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
-      if (wantsTicket && context.customerId) {
+      const shouldCreateTicket = wantsTicket && context.customerId;
+      console.log('🎟️ shouldCreateTicket:', shouldCreateTicket, 'wantsTicket:', wantsTicket, 'customerId:', context.customerId);
+
+      if (shouldCreateTicket) {
         console.log('✅ Condizioni soddisfatte - creazione ticket in corso...');
         console.log('📝 Cliente B2B richiede assistenza - recupero dati completi e creazione ticket');
 
@@ -985,7 +988,7 @@ ${conversationSummary}
 ══════════════════════════════════════════════════════`.trim();
 
         const ticketResult = await helpdeskAgent.createTicket({
-          customerId: context.customerId,
+          customerId: context.customerId!,  // Non-null assertion - già verificato nell'if
           subject: `[Chat AI] ${nome} - Richiesta assistenza`,
           description: ticketDescription,
           priority
@@ -1004,6 +1007,21 @@ ${conversationSummary}
             requiresHumanEscalation: true,
             data: { ticketId: ticketResult.ticketId, customerId: context.customerId, customerName: nome, customerEmail: email },
             suggestedActions: ['Ho altre domande', 'Torna al menu principale']
+          };
+        } else {
+          // Ticket creation failed
+          console.error('❌ Creazione ticket fallita:', ticketResult);
+          return {
+            success: false,
+            message: `⚠️ Non sono riuscito a creare il ticket automaticamente.\n\n` +
+                     `Per favore contattaci direttamente:\n` +
+                     `📧 lapa@lapa.ch\n` +
+                     `📞 +41 76 361 70 21\n\n` +
+                     `Errore: ${ticketResult.message || 'Errore sconosciuto'}`,
+            agentId: 'helpdesk',
+            confidence: 0.5,
+            requiresHumanEscalation: true,
+            data: { error: ticketResult.message, debug: ticketCheck }
           };
         }
       }
@@ -1053,7 +1071,7 @@ ${conversationSummary}
           'Apri un ticket di assistenza',
           'Hai altre domande?'
         ],
-        data: { debug: ticketCheck }  // DEBUG - rimuovere dopo
+        data: { debug: { ...ticketCheck, shouldCreateTicket } }  // DEBUG - rimuovere dopo
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
