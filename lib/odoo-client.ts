@@ -15,7 +15,7 @@ interface OdooClient {
   searchCount: (model: string, domain: any[]) => Promise<number>;
   create: (model: string, values: any[]) => Promise<number[]>;
   write: (model: string, ids: number[], values: any) => Promise<boolean>;
-  call: (model: string, method: string, args: any[]) => Promise<any>;
+  call: (model: string, method: string, args: any[], kwargs?: any) => Promise<any>;
 }
 
 class OdooRPC implements OdooClient {
@@ -322,7 +322,7 @@ class OdooRPC implements OdooClient {
     return data.result || false;
   }
 
-  async call(model: string, method: string, args: any[]): Promise<any> {
+  async call(model: string, method: string, args: any[], kwargs: any = {}): Promise<any> {
     await this.ensureAuthenticated();
 
     const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
@@ -338,7 +338,7 @@ class OdooRPC implements OdooClient {
           model: model,
           method: method,
           args: args,
-          kwargs: {}
+          kwargs: kwargs
         },
         id: Math.floor(Math.random() * 1000000)
       })

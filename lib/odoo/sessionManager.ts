@@ -113,10 +113,26 @@ class OdooSessionManager {
       }
 
       // Extract session ID from Set-Cookie header
-      const setCookie = response.headers.get('set-cookie');
+      // Try multiple methods to get cookies (compatibility with different Node.js versions)
+      let setCookie: string | null = null;
+
+      // Method 1: getSetCookie (Node 18.14.0+)
+      if (typeof response.headers.getSetCookie === 'function') {
+        const cookies = response.headers.getSetCookie();
+        setCookie = cookies.find((c: string) => c.startsWith('session_id=')) || cookies.join('; ');
+      }
+
+      // Method 2: get('set-cookie') fallback
+      if (!setCookie) {
+        setCookie = response.headers.get('set-cookie');
+      }
+
+      console.log('🍪 [SESSION-MANAGER] Set-Cookie header:', setCookie?.substring(0, 100));
+
       const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
 
       if (!sessionMatch) {
+        console.error('❌ [SESSION-MANAGER] No session_id found in cookies:', setCookie);
         throw new Error('No session_id in response cookies');
       }
 
