@@ -1275,18 +1275,33 @@ IMPORTANTE:
       if (!trackingId && context.conversationHistory.length > 0) {
         const lastMsg = context.conversationHistory[context.conversationHistory.length - 1];
         if (lastMsg.role === 'user') {
+          // Pattern per ordini (S12345, SO12345)
           const orderMatch = lastMsg.content.match(/\b(S\d{5,}|SO\d{5,})\b/i);
           if (orderMatch) {
             trackingId = orderMatch[1].toUpperCase();
+          }
+          // Pattern per picking names (WH/OUT/12345, WH/PICK/12345)
+          if (!trackingId) {
+            const pickingMatch = lastMsg.content.match(/\b(WH\/(?:OUT|PICK|IN)\/\d+)\b/i);
+            if (pickingMatch) {
+              trackingId = pickingMatch[1].toUpperCase();
+            }
+          }
+          // Pattern per ID numerico puro (5+ cifre per essere un ID picking)
+          if (!trackingId) {
+            const numericMatch = lastMsg.content.match(/\b(\d{5,})\b/);
+            if (numericMatch) {
+              // Converti in numero intero per usare la logica ID numerico
+              trackingId = parseInt(numericMatch[1], 10);
+            }
           }
         }
       }
 
       if (trackingId) {
-        // Assicurati che sia una stringa
-        const trackingIdStr = String(trackingId);
-
-        const trackingResult = await this.shippingAgent.trackShipment(trackingIdStr);
+        // Passa il trackingId così com'è (numero o stringa)
+        // trackShipment gestisce entrambi i tipi
+        const trackingResult = await this.shippingAgent.trackShipment(trackingId);
 
         if (trackingResult.success && trackingResult.data) {
           const shipment = trackingResult.data;
@@ -1313,7 +1328,7 @@ IMPORTANTE:
 
         return {
           success: false,
-          message: `Non ho trovato spedizioni per l'ordine ${trackingIdStr}. Verifica che il numero sia corretto.`,
+          message: `Non ho trovato spedizioni per l'ordine ${trackingId}. Verifica che il numero sia corretto.`,
           agentId: 'shipping',
           confidence: 0.7
         };

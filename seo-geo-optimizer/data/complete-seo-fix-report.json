@@ -1,0 +1,2159 @@
+{
+  "timestamp": "2025-12-19T16:52:36.695Z",
+  "stats": {
+    "products": {
+      "total": 3305,
+      "fixed": 101,
+      "errors": 0
+    },
+    "articles": {
+      "total": 108,
+      "fixed": 81,
+      "errors": 0
+    },
+    "categories": {
+      "total": 156,
+      "fixed": 0,
+      "errors": 0
+    },
+    "pages": {
+      "total": 48,
+      "fixed": 46,
+      "errors": 0
+    }
+  },
+  "totalFixed": 228,
+  "totalErrors": 0,
+  "details": [
+    {
+      "type": "product",
+      "id": 23153,
+      "name": "ACQUA DISTILLATA 5LT PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16159,
+      "name": "AFFETTA TARTUFO INOX TT",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15175,
+      "name": "AGLIO AL",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15188,
+      "name": "AGLIO MARINATO 1KG",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15784,
+      "name": "ANTIGELO AL",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14812,
+      "name": "ARACHIDI PELATI 1KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14785,
+      "name": "ARANCIATA FANTA 1.5 L AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21002,
+      "name": "ARANCINI DA GIUS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14762,
+      "name": "BASE NEUTRO 05 MIN",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15151,
+      "name": "BASILICO FRESCO AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14781,
+      "name": "BIGNE VUOTO 200G AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16755,
+      "name": "CAMPARI 25% 100CL PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16192,
+      "name": "CARBONARA PACK",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14784,
+      "name": "COCA COLA 1.5 L AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20941,
+      "name": "COMMERCIALISTA",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14248,
+      "name": "COZZE FRESCHE 1KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14813,
+      "name": "CURRY LEGGERO 36G AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12806,
+      "name": "DAZIO DOGANALE E IVA CH",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15677,
+      "name": "DECALCIFICANTE BARATTOLO 1KG MUS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15796,
+      "name": "DEPOSITO MERCE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20213,
+      "name": "DEPOSITO RUEMIKON",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15797,
+      "name": "ENTRATA E USCITA MERCE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24586,
+      "name": "FARINA 00 ORO 5 STAGIONI ROSSA SACCO 25KG AF",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24217,
+      "name": "FARINA PER POLENTA GIALLA ISTANT 10X360G CRT POL",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12805,
+      "name": "FATTURA FORNITORE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14237,
+      "name": "FAVE 1KG CONG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15147,
+      "name": "FAVE SECCHE 900G SI",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15763,
+      "name": "FELPA ROSSA ENGEL LE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24675,
+      "name": "Fave Secche1kg",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 17065,
+      "name": "Field Service",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24668,
+      "name": "Formaggio Bel Paese 2.5kg - Galbani",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16881,
+      "name": "Fuel",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24649,
+      "name": "Fusilli N.48 Rummo 1kg",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24672,
+      "name": "Fusillotti Rummo 500g - Pasta di Semola di Grano Duro",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15758,
+      "name": "GIACCA ROSSA NERA LE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24674,
+      "name": "Hero Rösti Original 500g - Patate Gratinate Svizzere",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 23054,
+      "name": "IMPASTO FU",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16710,
+      "name": "IMPIANTO STAMPA",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14772,
+      "name": "INULINA 1KG 12 PZ CRT WA",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13628,
+      "name": "ISOMALT 1KG",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15282,
+      "name": "ISOMALTO 500G MIN",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 23134,
+      "name": "JOGURT DA 5KG",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14244,
+      "name": "KEFEN CONG 2.5KG CONF AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14739,
+      "name": "KETCHUP 5KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16666,
+      "name": "KNORR STOCKI 750G PZ PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14774,
+      "name": "LATTE IN POLVERE MIN",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20959,
+      "name": "LEASING",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24673,
+      "name": "Liquirizia Essiccata e Macinata 400g",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21053,
+      "name": "MERCE",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20934,
+      "name": "MULTE SORIN POP",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24671,
+      "name": "Macarons Artigianali Assortiti Dolci - Confezione 432 pezzi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 6,
+      "name": "Miscellaneous expenses",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20894,
+      "name": "NATUR EMUL 500G PZ SOS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13337,
+      "name": "NUTELLA 750G 6PZ CRT AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21566,
+      "name": "NUTELLA SECCHIO 3KG PZ",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15226,
+      "name": "PANDORO 1KG MAR",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16121,
+      "name": "PELLICOLA PER IMBALLO MUS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15966,
+      "name": "PIASTRE PROFUMATE MUS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13675,
+      "name": "POLENTA 1KG AG LOMB",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14738,
+      "name": "POLENTA 1KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15783,
+      "name": "PORTATORTE 35X8X25 AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15154,
+      "name": "PREZZEMOLO FRESCO AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20937,
+      "name": "Pranzo",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21231,
+      "name": "RISO SOFFIATO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13061,
+      "name": "ROBIOLA 100G 9PZ CRT POL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15897,
+      "name": "SACCHI MULTIUSO 33L PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15898,
+      "name": "SACCHI MULTIUSO 77L PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13424,
+      "name": "SALAME TIPO FELINO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15215,
+      "name": "SALSA TARTARA 950G AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13090,
+      "name": "SALSICCIA DI CINTA CASAN",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15759,
+      "name": "SCARPE ANTINFORTUNISTICA",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16761,
+      "name": "SEMI DI LINO 1KG PZ PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15137,
+      "name": "SESAMO PELATO PZ 1KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15166,
+      "name": "SESAMO PZ 750G PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15716,
+      "name": "SET PALETTA E SCOPA JIRR",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15998,
+      "name": "SETACCIO 22 CM AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12871,
+      "name": "SOYADRINK BIO 1L PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12802,
+      "name": "SPESA CAMPIONATURE",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16623,
+      "name": "SPESE INCASSO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 14801,
+      "name": "SPIRULINA 200G PZ PU",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15037,
+      "name": "SPIRULINA BLU 100G PZ BU",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15800,
+      "name": "SPRUZZINO 1L AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24670,
+      "name": "Salame Bonalumi - Salume Stagionato Italiano",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24650,
+      "name": "Salame Toscano Valtiberino",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24034,
+      "name": "Scaldatelli fer",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21090,
+      "name": "Sconto PAGAM. 2% ",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 10,
+      "name": "Service on Timesheet",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 24669,
+      "name": "Spaghetti alla Chitarra all'Uovo 1kg - Pastificio Stroppa",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21163,
+      "name": "Stracetti di polo cotti",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15896,
+      "name": "TAGLIAPIZZA 10CM PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 16173,
+      "name": "TAGLIERINA PER PIZZA MUS",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 23967,
+      "name": "TARTUFO 250g RO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 15843,
+      "name": "TIMER DIGITALE AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12848,
+      "name": "TOFU BIO 1 KG AL",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20925,
+      "name": "TRASPORTO CH",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 7,
+      "name": "Tips",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20938,
+      "name": "Vehicle maintenance",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 12847,
+      "name": "WAGYU BEEF ENTRECOTE PRO",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 13131,
+      "name": "ZIZZONA 1KG SRI",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 21543,
+      "name": "pere 825 g al",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "product",
+      "id": 20996,
+      "name": "servizi per dipendenti",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 151,
+      "name": "Pasta, Potatoes and Provola",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 150,
+      "name": "Scrocchiarella Classica: The Crispy Embodiment of Italian Conviviality",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 149,
+      "name": "Traditional Sicilian Rice Arancini with Ragù",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 148,
+      "name": "Ventricina Abruzzese: The Spiced Heart of the Apennines",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 147,
+      "name": "Fresh Paccheri with Swordfish and Cherry Tomatoes",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 146,
+      "name": "Potato Gnocchi: Alpine Authenticity at the Heart of Valdostana Tradition",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 145,
+      "name": "Traditional Potato Gnocchi with Ragù",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 144,
+      "name": "Supplier of Authentic Italian Products in Canton Schaffhausen",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 143,
+      "name": "DOP and IGP Products for Restaurants in Canton Thurgau",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 114,
+      "name": "The Cornetto: From Viennese Origins to the Symbol of Italian Breakfast",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 113,
+      "name": "Sicilian Anchovies: The Ancient and Authentic Flavor of the Mediterranean",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 112,
+      "name": "Spaghetti with Turnip Greens, Anchovies, and White Wine",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 111,
+      "name": "Pasta con Acciughe e Pangrattato Tostato",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 110,
+      "name": "Sicilian Anchovies: Treasures of the Sea and Guardians of Ancient Traditions",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 109,
+      "name": "Spaghetti with Breadcrumbs and Anchovies",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 108,
+      "name": "Porcini Mushroom Risotto",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 107,
+      "name": "Porcini Mushrooms: The Hidden Gold of Italian Forests",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 105,
+      "name": "LAPA and Artificial Intelligence: The Future of Restaurants",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 74,
+      "name": "Burrata: A Creamy Heart from Apulian Tradition",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 73,
+      "name": "Authentic Spaghetti Carbonara",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 69,
+      "name": "Chitarra Spaghetti with Cuttlefish Ink, Fresh Cuttlefish and Cherry Tomatoes",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 65,
+      "name": "Pappardelle with Wild Boar Ragù (Tuscan)",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 64,
+      "name": "Why the Heck Do You Settle for \"Normal\"? 🤔",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 63,
+      "name": "Why LAPA's Grilled Artichokes with Stem Are the Secret to Your Restaurant's Success 😎🍽️",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 62,
+      "name": "Want Success? Use Pesto Genovese Ristoris! 🍝💚",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 61,
+      "name": "The Secret No Restaurant Wants to Reveal: SPECK DE BAITA PC 2KG SOSIO 😋🔪",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 60,
+      "name": "🍐 Discover LAPA's FROZEN SWEETENED 10% PEAR PUREE 🚀",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 59,
+      "name": "🚫🍖 Enough with Cheap Cooked Ham! Discover One That's Finger-Lickin' Good 🤤",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 58,
+      "name": "🍅 Do You Really Want to Waste Your Fantastic Dishes with Poor Tomatoes? Choose Sammy's Red Peeled Datterini! 🍅",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 57,
+      "name": "Your Restaurant is Sinking Without Our Pecorino Romano Sauce",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 56,
+      "name": "🔥 Hot Challenge to Pizza Makers: The Pizza Peel That Will Change the Way You Work 🍕",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 55,
+      "name": "🍚 LAPA's Arborio Rice: The Kitchen Revolution! 😱",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 54,
+      "name": "🔥 The Parma Ham That Drives Everyone Crazy - Ready to Bust Some Myths? 🐷",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 53,
+      "name": "🌿 Spinach? No Thanks... Unless It's From Another Planet! 🚀",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 52,
+      "name": "Yellowfin Tuna: Not Just a Fish, It's the Gastronomic Bomb You've Been Waiting For! 🔥🐟",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 51,
+      "name": "Want to Hit the Jackpot? Discover the Penne That Drive Everyone Crazy! 😎",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 50,
+      "name": "Red Egg Yolk Plus AIA: The Kitchen Revolution You Didn't Know You Needed!",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 49,
+      "name": "LAPA's Mignon Tartlets: The Appetizer That Changes the Game! 🎲",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 47,
+      "name": "Ready to Say Goodbye to Cheap Porchetta? 🚀",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 46,
+      "name": "Discover the Pistachio Crumble That'll Make You Say 'Mamma Mia'!",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 45,
+      "name": "Discover the Secret of Pine Nuts: A Flavor Explosion That Will Revolutionize Your Kitchen! 🔥🌿",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 44,
+      "name": "🚀 Discover Caper Berries and Revolutionize Your Kitchen! 🌶️",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 43,
+      "name": "Sfogliatella Riccia: Get Ready to Shake Up Your Menu! 🚀",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 42,
+      "name": "The Seafood Salad That Leaves You Speechless!",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 40,
+      "name": "Grilled Pepper Strips: Why Eat 💩 When You Can Have the Best? 🌶️🔥",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 39,
+      "name": "VIP Salmon? We'll Serve It to You on a Silver Platter! 🐟🍴🚀",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 38,
+      "name": "Egg Pappardelle: Do You Really Think You've Eaten Pasta Until Now? 😂🍝",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 37,
+      "name": "Your Grana Padano Sucks Without LAPA! 🧀❌",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 36,
+      "name": "MASCARPONE: The 🤴 King of Cheeses or Just a Hipster Whim? 🤔",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 35,
+      "name": "Whole Porcini Mushrooms Fresh as Can Be with Forest Aroma? 🍄🤘",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 33,
+      "name": "🍕The Friarielli Revolution: Health, Taste and Tradition on Your Pizza🔥",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 32,
+      "name": "🧀Fiordilatte Taglio Napoli: Not Just Any Cheese, But The King Of Your Pizza🍕",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 31,
+      "name": "🔥 Finocchiona IGP with LAPA - Beyond Cured Meat, Towards the Art of Taste! 🔥",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 30,
+      "name": "🍖 Aged Culatta or Culatello with Rind: An Exclusive Treasure from Western Emilia for Your Menu! 🇮🇹",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 29,
+      "name": "Sweetened Sheep's Milk Ricotta Cream – The Secret of Great Pastry Chefs They Don't Want to Tell You!",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 28,
+      "name": "Pistachio Coulant by iMarigliano: I Dare You Not to Fall in Love!",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 27,
+      "name": "💥 Boom! The 1980 Style Croissant from LAPA - Take That, '90s! 👊",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 26,
+      "name": "Frozen Turnip Tops? Are you kidding? 😲🥦",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 24,
+      "name": "🍽️🇮🇹 Spirito Contadino: Turnip Tops and Sausage in Wheat Flour Crust: An Authentic Taste That Makes You Feel at Home! 🍽️🇮🇹",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 23,
+      "name": "🍫🇮🇹 Dark Mignon Wafers: The secret for amazing Sicilian Cannoli! 🎉",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 22,
+      "name": "Discover iMarigliano's Single-Portion Sicilian Cassatine: a taste explosion in your venue! 😍🍰",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 21,
+      "name": "🚀 Discover luxury on your plate with our Sliced Truffle Carpaccio! 🤩",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 20,
+      "name": "🚀 \"Discover LAPA's Sautéed Artichoke Hearts: The secret to driving your venue's customers crazy!\" 🌟",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 19,
+      "name": "🧀🔥 LAPA's Burrata: When Taste Becomes Pure Magic in Your Venue! 🌟💫",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 18,
+      "name": "🥃🎂 \"The Rum Baba from iMarigliano: the Forbidden Pleasure that Will Win Over Your Customers!\" 🌟",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 17,
+      "name": "🔥 \"Explosive Arancini: Discover the Irresistible Rice Arancini with Sauce from LAPA and Win Over Your Customers!\" 🍊🍚💣",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 16,
+      "name": "Amazing Sour Cherries in Syrup: The Taste You Were Looking For! 😋🍒🎉",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 15,
+      "name": "🐣 Easter at the Table: Surprise Your Customers with Traditional Italian and Swiss Desserts Thanks to LAPA! 🍰",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 14,
+      "name": "LAPA - The sustainable evolution of Italian dining 😋🌿",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 13,
+      "name": "Here are the differences between squid and flying squid: characteristics, properties and use in cooking",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 12,
+      "name": "7 steps to select the right staff for your restaurant",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 11,
+      "name": "The products are truly excellent, whatever I need they manage to find me everything.",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 10,
+      "name": "We seek true Italian authenticity and that is why we work with Lapa",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 9,
+      "name": "When we look for products to change recipes LAPA helps us",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 8,
+      "name": "LAPA for us is synonymous with guarantee and satisfaction",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 7,
+      "name": "Being a new restaurant, I've only recently started working with Lapa, but I'm happy to be able to talk with them, who give me advice on products and from whom I draw inspiration",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 6,
+      "name": "I've known and worked with Lapa for 6 years, I met them through an old professional acquaintance, and I brought them with me here too",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 5,
+      "name": "Both in quality and price it was more convenient for us, and the fact that we are nearby makes it much easier, they are always available.",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 4,
+      "name": "LAPA means Availability, Speed, Punctuality.",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 3,
+      "name": "Available, fast, human, exceptional quality.",
+      "fieldsUpdated": [
+        "website_meta_title",
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "article",
+      "id": 2,
+      "name": "March 24th is Artisan Gelato Day",
+      "fieldsUpdated": [
+        "website_meta_title"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 26,
+      "name": "Formaggi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 22,
+      "name": "Prodotti e Cataloghi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 47,
+      "name": "Offerta guanciale",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 15,
+      "name": "privacy",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 41,
+      "name": "Spezie",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 14,
+      "name": "Contact Us",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 42,
+      "name": "Packaging",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 17,
+      "name": "Thanks (Contact us)",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 35,
+      "name": "Farine",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 16,
+      "name": "cookie",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 43,
+      "name": "Grazie per aver inviato la tua richiesta!",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 44,
+      "name": "Grazie per aver inviato la tua richiesta!",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 11,
+      "name": "I nostri servizi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 66,
+      "name": "ticket-internal-purchase",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 61,
+      "name": "CLIENTI FELICI",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 60,
+      "name": "PROMOZIONI",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 63,
+      "name": "Panettoni Marigliano",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 62,
+      "name": "Attrezzature varie",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 64,
+      "name": "internal-ticket",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 65,
+      "name": "ticket-internal-tech",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 10,
+      "name": "Ticket Received",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 5,
+      "name": "Thank you (Recruitment)",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 13,
+      "name": "Pacco Romandi atterraggio",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 39,
+      "name": "Pasta fresca e Tartufi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 34,
+      "name": "Pesce Gelo",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 40,
+      "name": "Verdure Gelo",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 23,
+      "name": "Pasticceria",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 25,
+      "name": "Salumi",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 38,
+      "name": "Pomodori e Conserve",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 48,
+      "name": "offerta-scauduta",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 27,
+      "name": "Richiedi il regalo informativo",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 36,
+      "name": "Ricette offerte ",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 4,
+      "name": "Home",
+      "fieldsUpdated": [
+        "website_meta_description"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 56,
+      "name": "Contact Us",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 57,
+      "name": "carbonara-pack-small",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 52,
+      "name": "CARBONARA PACK",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 50,
+      "name": "Home",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 53,
+      "name": "terms",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 54,
+      "name": "privacy",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 55,
+      "name": "cookie",
+      "fieldsUpdated": [
+        "website_meta_description",
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 74,
+      "name": "job-thank-you",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 72,
+      "name": "Privacy Policy",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 70,
+      "name": "About Us",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 71,
+      "name": "Services",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 73,
+      "name": "Contact Us",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    },
+    {
+      "type": "page",
+      "id": 69,
+      "name": "Home",
+      "fieldsUpdated": [
+        "website_meta_keywords"
+      ],
+      "success": true
+    }
+  ]
+}

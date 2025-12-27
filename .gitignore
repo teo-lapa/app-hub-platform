@@ -136,3 +136,4 @@ test-*.html
 .env.vercel-preview
 *.env.local
 .env*.local
+seo-geo-optimizer/scripts/chatbot-config.json
