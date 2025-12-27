@@ -27,6 +27,7 @@ interface ExpiryProduct {
   lot_name?: string;
   lot_expiration_date?: string;
   hasExpiry: boolean;
+  isVerified?: boolean; // Ha foto etichetta allegata
 }
 
 interface Location {
@@ -112,7 +113,8 @@ export default function GestioneScadenzePage() {
         lot_id: item.lot_id,
         lot_name: item.lot_name,
         lot_expiration_date: item.lot_expiration_date,
-        hasExpiry: !!item.lot_expiration_date
+        hasExpiry: !!item.lot_expiration_date,
+        isVerified: false
       }))
       .sort((a, b) => {
         // Prima i prodotti senza scadenza, poi per data scadenza
@@ -130,6 +132,9 @@ export default function GestioneScadenzePage() {
 
       toast.success(`✅ ${location.name} - ${expiryProducts.length} prodotti`);
 
+      // Controlla quali prodotti/lotti hanno già foto allegate
+      checkVerifiedProducts(expiryProducts);
+
     } catch (error: any) {
       console.error('Errore scan ubicazione:', error);
       toast.error('Errore: ' + error.message);
@@ -141,6 +146,53 @@ export default function GestioneScadenzePage() {
   const handleLocationScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       scanLocation(locationCode);
+    }
+  };
+
+  // Controlla quali prodotti/lotti hanno foto allegate (verificati)
+  const checkVerifiedProducts = async (productsList: ExpiryProduct[]) => {
+    try {
+      const lotIds = productsList
+        .filter(p => p.lot_id)
+        .map(p => p.lot_id as number);
+
+      const productIds = productsList
+        .filter(p => !p.lot_id)
+        .map(p => p.id);
+
+      if (lotIds.length === 0 && productIds.length === 0) return;
+
+      const response = await fetch('/api/gestione-scadenze/save-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'check_verified',
+          lotIds: lotIds.length > 0 ? lotIds : undefined,
+          productIds: productIds.length > 0 ? productIds : undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const { verifiedLots, verifiedProducts } = data;
+
+        // Aggiorna lo stato dei prodotti
+        setProducts(prev => prev.map(p => ({
+          ...p,
+          isVerified: p.lot_id
+            ? verifiedLots.includes(p.lot_id)
+            : verifiedProducts.includes(p.id)
+        })));
+
+        const totalVerified = verifiedLots.length + verifiedProducts.length;
+        if (totalVerified > 0) {
+          console.log(`✅ ${totalVerified} prodotti già verificati`);
+        }
+      }
+    } catch (error) {
+      console.error('Errore controllo verificati:', error);
     }
   };
 
@@ -166,7 +218,7 @@ export default function GestioneScadenzePage() {
     setProcessingAI(true);
 
     try {
-      // 1. Prima salva le foto come allegati su Odoo
+      // 1. Prima salva le foto come allegati su Odoo (sul lotto se esiste, altrimenti sul prodotto)
       const uploadResponse = await fetch('/api/gestione-scadenze/save-expiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,6 +226,7 @@ export default function GestioneScadenzePage() {
         body: JSON.stringify({
           action: 'upload_photos',
           productId: selectedProduct.id,
+          lotId: selectedProduct.lot_id, // Allega al lotto se presente
           photos: photos
         })
       });
@@ -249,16 +302,18 @@ export default function GestioneScadenzePage() {
         throw new Error(data.error || 'Errore salvataggio');
       }
 
-      // Aggiorna prodotto nella lista locale
+      // Aggiorna prodotto nella lista locale - segna come verificato
       setProducts(prev => prev.map(p => {
         if (selectedProduct.quant_id
           ? p.quant_id === selectedProduct.quant_id
           : p.id === selectedProduct.id) {
           return {
             ...p,
+            lot_id: data.lotId || p.lot_id,
             lot_name: lotNumber,
             lot_expiration_date: expiryDate,
-            hasExpiry: !!expiryDate
+            hasExpiry: !!expiryDate,
+            isVerified: true // Foto caricate = verificato
           };
         }
         return p;

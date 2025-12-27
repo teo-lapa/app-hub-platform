@@ -38,13 +38,17 @@ export async function POST(req: NextRequest) {
 
     // ACTION: Upload photos as attachments
     if (action === 'upload_photos') {
-      const { productId, photos } = body;
+      const { productId, lotId, photos } = body;
 
       if (!productId || !photos || !Array.isArray(photos)) {
         return NextResponse.json({ success: false, error: 'Parametri mancanti' });
       }
 
-      console.log(`📸 [save-expiry] Caricando ${photos.length} foto per prodotto ${productId}`);
+      // Determina dove allegare le foto: al lotto se esiste, altrimenti al prodotto
+      const targetModel = lotId ? 'stock.lot' : 'product.product';
+      const targetId = lotId || productId;
+
+      console.log(`📸 [save-expiry] Caricando ${photos.length} foto su ${targetModel} ID ${targetId}`);
 
       const attachmentIds: number[] = [];
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -61,16 +65,16 @@ export async function POST(req: NextRequest) {
           name: `scadenza_${timestamp}_${i + 1}.jpg`,
           type: 'binary',
           datas: base64Data,
-          res_model: 'product.product',
-          res_id: productId,
+          res_model: targetModel,
+          res_id: targetId,
           mimetype: 'image/jpeg',
-          description: `Foto etichetta scadenza - ${new Date().toLocaleDateString('it-IT')}`
+          description: `Foto etichetta scadenza - ${new Date().toLocaleDateString('it-IT')}${lotId ? ` - Lotto ID: ${lotId}` : ''}`
         };
 
         try {
           const attachmentId = await callOdoo('ir.attachment', 'create', [attachmentData]);
           attachmentIds.push(attachmentId);
-          console.log(`✅ [save-expiry] Allegato ${i + 1} creato: ID ${attachmentId}`);
+          console.log(`✅ [save-expiry] Allegato ${i + 1} creato: ID ${attachmentId} su ${targetModel}`);
         } catch (err: any) {
           console.error(`❌ [save-expiry] Errore upload foto ${i + 1}:`, err.message);
         }
@@ -78,8 +82,10 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `${attachmentIds.length} foto caricate`,
-        attachmentIds
+        message: `${attachmentIds.length} foto caricate su ${targetModel}`,
+        attachmentIds,
+        targetModel,
+        targetId
       });
     }
 
@@ -189,6 +195,67 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: false,
         error: 'Nessun dato da salvare'
+      });
+    }
+
+    // ACTION: Check which lots have photos attached (verification status)
+    if (action === 'check_verified') {
+      const { lotIds, productIds } = body;
+
+      if ((!lotIds || !Array.isArray(lotIds)) && (!productIds || !Array.isArray(productIds))) {
+        return NextResponse.json({ success: false, error: 'Parametri mancanti' });
+      }
+
+      const verifiedLots: number[] = [];
+      const verifiedProducts: number[] = [];
+
+      // Controlla allegati sui lotti
+      if (lotIds && lotIds.length > 0) {
+        const lotAttachments = await callOdoo('ir.attachment', 'search_read',
+          [[
+            ['res_model', '=', 'stock.lot'],
+            ['res_id', 'in', lotIds],
+            ['mimetype', 'like', 'image%']
+          ]],
+          { fields: ['res_id'] }
+        );
+
+        if (lotAttachments?.length > 0) {
+          lotAttachments.forEach((att: any) => {
+            if (!verifiedLots.includes(att.res_id)) {
+              verifiedLots.push(att.res_id);
+            }
+          });
+        }
+      }
+
+      // Controlla allegati sui prodotti (per prodotti senza lotto)
+      if (productIds && productIds.length > 0) {
+        const productAttachments = await callOdoo('ir.attachment', 'search_read',
+          [[
+            ['res_model', '=', 'product.product'],
+            ['res_id', 'in', productIds],
+            ['mimetype', 'like', 'image%'],
+            ['name', 'like', 'scadenza_%']
+          ]],
+          { fields: ['res_id'] }
+        );
+
+        if (productAttachments?.length > 0) {
+          productAttachments.forEach((att: any) => {
+            if (!verifiedProducts.includes(att.res_id)) {
+              verifiedProducts.push(att.res_id);
+            }
+          });
+        }
+      }
+
+      console.log(`🔍 [save-expiry] Verificati: ${verifiedLots.length} lotti, ${verifiedProducts.length} prodotti`);
+
+      return NextResponse.json({
+        success: true,
+        verifiedLots,
+        verifiedProducts
       });
     }
 
