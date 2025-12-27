@@ -1023,7 +1023,7 @@ ${conversationSummary}
       }
 
       // Se il cliente NON è loggato ma vuole assistenza - chiedi i dati di contatto
-      if (wantsOperator && !context.customerId) {
+      if (wantsTicket && !context.customerId) {
         return {
           success: true,
           message: `Per poterti aiutare e aprire un ticket di assistenza, ho bisogno dei tuoi dati:\n\n` +
