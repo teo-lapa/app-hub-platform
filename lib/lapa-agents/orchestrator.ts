@@ -10,6 +10,7 @@ import { OrdersAgent } from './agents/orders-agent';
 import { InvoicesAgent } from './agents/invoices-agent';
 import { ProductsAgent } from './agents/products-agent';
 import { ShippingAgent } from './agents/shipping-agent';
+import { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 import { getOdooClient } from '@/lib/odoo-client';
 
 // Interface minima per OdooClient - compatibile con entrambe le implementazioni
@@ -878,7 +879,49 @@ IMPORTANTE:
     intent: Intent
   ): Promise<AgentResponse> {
     try {
-      // Usa Claude per generare una risposta contestuale
+      const lastMessage = context.conversationHistory[context.conversationHistory.length - 1];
+      const userMessage = lastMessage?.content?.toLowerCase() || '';
+
+      // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
+      const wantsOperator = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo/i.test(userMessage);
+
+      // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket
+      if (wantsOperator && context.customerId) {
+        console.log('📝 Cliente richiede assistenza - creazione ticket helpdesk');
+
+        const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
+
+        // Costruisci la descrizione del ticket dalla conversazione
+        const conversationSummary = context.conversationHistory
+          .slice(-5) // Ultimi 5 messaggi
+          .map(m => `${m.role === 'user' ? 'Cliente' : 'AI'}: ${m.content}`)
+          .join('\n');
+
+        const ticketResult = await helpdeskAgent.createTicket({
+          customerId: context.customerId,
+          subject: `Richiesta assistenza da ${context.customerName || 'Cliente'}`,
+          description: `Richiesta assistenza via chat AI.\n\nCliente: ${context.customerName || 'N/D'}\nEmail: ${context.customerEmail || 'N/D'}\nTipo: ${context.customerType}\n\nConversazione:\n${conversationSummary}`,
+          priority: '2' // Alta priorità per richieste dirette
+        });
+
+        if (ticketResult.success) {
+          return {
+            success: true,
+            message: `Ho creato un ticket di assistenza (#${ticketResult.ticketId}) per te. Il nostro team ti contatterà al più presto!\n\n📧 Email: lapa@lapa.ch\n📞 Telefono: +41 76 361 70 21\n\nNel frattempo, posso aiutarti con qualcos'altro?`,
+            agentId: 'helpdesk',
+            confidence: 1.0,
+            requiresHumanEscalation: true,
+            data: { ticketId: ticketResult.ticketId },
+            suggestedActions: [
+              'Vedi i miei ticket',
+              'Ho altre domande',
+              'Torna al menu principale'
+            ]
+          };
+        }
+      }
+
+      // Se non è loggato o non vuole operatore, usa Claude per risposta generale
       const response = await this.anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
@@ -892,13 +935,28 @@ IMPORTANTE:
         throw new Error('Unexpected response type');
       }
 
+      // Se il cliente non è loggato ma vuole assistenza
+      if (wantsOperator && !context.customerId) {
+        return {
+          success: true,
+          message: content.text + '\n\n📧 Per assistenza diretta: lapa@lapa.ch\n📞 Telefono: +41 76 361 70 21',
+          agentId: 'helpdesk',
+          confidence: 0.8,
+          suggestedActions: [
+            'Accedi per aprire un ticket',
+            'Contatta via email',
+            'Hai altre domande?'
+          ]
+        };
+      }
+
       return {
         success: true,
         message: content.text,
         agentId: 'helpdesk',
         confidence: 0.8,
         suggestedActions: [
-          'Vuoi parlare con un operatore?',
+          'Apri un ticket di assistenza',
           'Hai altre domande?'
         ]
       };
@@ -908,7 +966,7 @@ IMPORTANTE:
 
       return {
         success: false,
-        message: `Errore helpdesk: ${errorMsg}`,
+        message: `Mi dispiace, c'è stato un problema. Per assistenza immediata contattaci:\n\n📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
         requiresHumanEscalation: true,
         agentId: 'helpdesk',
         data: { error: errorMsg }
@@ -1410,7 +1468,7 @@ IMPORTANTE:
       suggestedActions: [
         'Lascia i tuoi contatti',
         'Allega foto del problema',
-        'Scrivici a info@lapa.ch'
+        'Scrivici a lapa@lapa.ch'
       ]
     };
   }
@@ -1912,7 +1970,7 @@ INFORMAZIONI AZIENDA:
 - Clienti: B2B (ristoranti, hotel, negozi) e B2C (consumatori finali)
 
 CONTATTO:
-- Email: info@lapa.ch
+- Email: lapa@lapa.ch
 - Sito: https://www.lapa.ch
 - Indirizzo: Industriestrasse 18, 8424 Embrach, Svizzera
 
