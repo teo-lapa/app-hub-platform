@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`\n📨 LAPA AI Chat: "${message.substring(0, 100)}..."`);
-    console.log(`   Customer: ${customerType}, customerId: ${customerId}, Session: ${sessionId}`);
+    console.log(`   Customer: ${customerType}, customerId: ${customerId} (type: ${typeof customerId}), Session: ${sessionId}`);
+    console.log('   Full body received:', JSON.stringify(body));
 
     const startTime = Date.now();
 

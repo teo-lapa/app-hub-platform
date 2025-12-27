@@ -388,12 +388,19 @@ IMPORTANTE:
     customerContext?: Partial<CustomerContext>
   ): Promise<AgentResponse> {
     try {
+      console.log('📥 processMessage received:', {
+        message: message.substring(0, 50),
+        sessionId,
+        customerContext: JSON.stringify(customerContext)
+      });
+
       // Recupera o crea il contesto della conversazione
       let context = this.conversationStore.get(sessionId);
 
       if (!context) {
         context = this.createContext(sessionId, customerContext);
         this.conversationStore.set(sessionId, context);
+        console.log('📝 New context created:', { customerId: context.customerId, customerType: context.customerType });
       } else {
         // Aggiorna context con nuove info se fornite
         if (customerContext) {
