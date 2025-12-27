@@ -156,7 +156,6 @@ type Language = 'it' | 'en' | 'de';
 export class HelpdeskAgent {
   private odooRPC: ReturnType<typeof createOdooRPCClient>;
   private lang: Language = 'it';
-  private helpdeskAvailable: boolean | null = null; // Cache per sapere se helpdesk è disponibile
 
   constructor(sessionId?: string, language: Language = 'it') {
     this.odooRPC = createOdooRPCClient(sessionId);
@@ -186,19 +185,19 @@ export class HelpdeskAgent {
    * Verifica se il modulo Helpdesk è disponibile
    */
   private async checkHelpdeskAvailable(): Promise<boolean> {
-    if (this.helpdeskAvailable !== null) {
-      return this.helpdeskAvailable;
-    }
-
+    // No caching - controlla ogni volta per evitare problemi con session expired
     try {
       // Prova a cercare 1 ticket per verificare che il modello esista
       await this.odooRPC.searchRead('helpdesk.ticket', [], ['id'], 1);
-      this.helpdeskAvailable = true;
       console.log('✅ Helpdesk module available');
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      // Se è un errore di sessione, non è un problema del modulo
+      if (error.message?.toLowerCase().includes('session')) {
+        console.warn('⚠️ Session error checking helpdesk:', error.message);
+        throw error; // Propaga l'errore di sessione
+      }
       console.log('⚠️ Helpdesk module not available, will use mail.message fallback');
-      this.helpdeskAvailable = false;
       return false;
     }
   }
