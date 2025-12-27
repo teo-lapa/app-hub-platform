@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`\n📨 LAPA AI Chat: "${message.substring(0, 100)}..."`);
-    console.log(`   Customer: ${customerType}, Session: ${sessionId}`);
+    console.log(`   Customer: ${customerType}, customerId: ${customerId} (type: ${typeof customerId}), Session: ${sessionId}`);
+    console.log('   Full body received:', JSON.stringify(body));
 
     const startTime = Date.now();
 
@@ -293,6 +294,7 @@ function getGenericResponse(lang: string): string {
 export async function GET() {
   return NextResponse.json({
     status: 'online',
+    version: 'v2-debug-ticket',  // Per verificare deploy
     agents: [
       { id: 'orchestrator', status: 'active' },
       { id: 'orders', status: 'active' },

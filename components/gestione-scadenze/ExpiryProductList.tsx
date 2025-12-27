@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Package, Calendar, AlertTriangle, CheckCircle, Camera } from 'lucide-react';
+import { Package, Calendar, AlertTriangle, CheckCircle, Camera, ImageIcon } from 'lucide-react';
 
 interface ExpiryProduct {
   id: number;
@@ -16,6 +16,7 @@ interface ExpiryProduct {
   lot_name?: string;
   lot_expiration_date?: string;
   hasExpiry: boolean;
+  isVerified?: boolean; // Ha foto etichetta allegata
 }
 
 interface ExpiryProductListProps {
@@ -93,7 +94,11 @@ export function ExpiryProductList({ products, onSelectProduct }: ExpiryProductLi
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Prodotti</h3>
-        <div className="flex gap-2 text-xs">
+        <div className="flex gap-2 text-xs flex-wrap justify-end">
+          <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 flex items-center gap-1">
+            <ImageIcon className="w-3 h-3" />
+            {products.filter(p => p.isVerified).length} verificati
+          </span>
           <span className="px-2 py-1 rounded bg-gray-500/20 text-gray-400">
             {products.filter(p => !p.hasExpiry).length} senza
           </span>
@@ -144,8 +149,14 @@ export function ExpiryProductList({ products, onSelectProduct }: ExpiryProductLi
                   <span>{product.quantity} {product.uom}</span>
                 </div>
 
-                {/* Lot and Expiry */}
-                <div className="flex items-center gap-2 mt-2">
+                {/* Lot, Verified and Expiry */}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {product.isVerified && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3" />
+                      Verificato
+                    </span>
+                  )}
                   {product.lot_name && (
                     <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
                       Lotto: {product.lot_name}
@@ -164,15 +175,24 @@ export function ExpiryProductList({ products, onSelectProduct }: ExpiryProductLi
                 <span className="hidden sm:inline">{getStatusLabel(status)}</span>
               </div>
 
-              {/* Camera Button */}
+              {/* Camera Button - diverso se già verificato */}
               <button
-                className="p-3 rounded-full bg-orange-500/20 hover:bg-orange-500/40 text-orange-400 transition-colors"
+                className={`p-3 rounded-full transition-colors ${
+                  product.isVerified
+                    ? 'bg-purple-500/20 hover:bg-purple-500/40 text-purple-400'
+                    : 'bg-orange-500/20 hover:bg-orange-500/40 text-orange-400'
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectProduct(product);
                 }}
+                title={product.isVerified ? 'Rifare foto' : 'Scatta foto'}
               >
-                <Camera className="w-5 h-5" />
+                {product.isVerified ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <Camera className="w-5 h-5" />
+                )}
               </button>
             </div>
           </motion.div>

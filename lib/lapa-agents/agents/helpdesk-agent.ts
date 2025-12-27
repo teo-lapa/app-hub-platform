@@ -18,9 +18,20 @@
 import { createOdooRPCClient } from '../../odoo/rpcClient';
 import { Resend } from 'resend';
 
-// Configurazione email
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configurazione email - lazy initialization per evitare errori se RESEND_API_KEY non è configurato
+let resendInstance: Resend | null = null;
 const HELPDESK_TEAM_EMAIL = 'lapa@lapa.ch';
+
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY non configurato - le email non verranno inviate');
+    return null;
+  }
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
 
 // Tipi
 export interface HelpdeskTicket {
@@ -748,6 +759,15 @@ export class HelpdeskAgent {
 </html>
       `;
 
+      const resend = getResend();
+      if (!resend) {
+        console.log('⚠️ Email non inviata - Resend non configurato');
+        return {
+          success: true,
+          message: this.t('notificationSent') + ' (email skipped - Resend not configured)',
+        };
+      }
+
       const result = await resend.emails.send({
         from: 'Helpdesk LAPA <helpdesk@lapa.ch>',
         to: HELPDESK_TEAM_EMAIL,
@@ -1010,6 +1030,12 @@ export class HelpdeskAgent {
 </body>
 </html>
       `;
+
+      const resend = getResend();
+      if (!resend) {
+        console.log('⚠️ Email creazione ticket non inviata - Resend non configurato');
+        return;
+      }
 
       await resend.emails.send({
         from: 'Helpdesk LAPA <helpdesk@lapa.ch>',
