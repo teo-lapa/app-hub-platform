@@ -1287,14 +1287,21 @@ IMPORTANTE:
               trackingId = pickingMatch[1].toUpperCase();
             }
           }
+          // Pattern per ID numerico puro (5+ cifre per essere un ID picking)
+          if (!trackingId) {
+            const numericMatch = lastMsg.content.match(/\b(\d{5,})\b/);
+            if (numericMatch) {
+              // Converti in numero intero per usare la logica ID numerico
+              trackingId = parseInt(numericMatch[1], 10);
+            }
+          }
         }
       }
 
       if (trackingId) {
-        // Assicurati che sia una stringa
-        const trackingIdStr = String(trackingId);
-
-        const trackingResult = await this.shippingAgent.trackShipment(trackingIdStr);
+        // Passa il trackingId così com'è (numero o stringa)
+        // trackShipment gestisce entrambi i tipi
+        const trackingResult = await this.shippingAgent.trackShipment(trackingId);
 
         if (trackingResult.success && trackingResult.data) {
           const shipment = trackingResult.data;
@@ -1321,7 +1328,7 @@ IMPORTANTE:
 
         return {
           success: false,
-          message: `Non ho trovato spedizioni per l'ordine ${trackingIdStr}. Verifica che il numero sia corretto.`,
+          message: `Non ho trovato spedizioni per l'ordine ${trackingId}. Verifica che il numero sia corretto.`,
           agentId: 'shipping',
           confidence: 0.7
         };
