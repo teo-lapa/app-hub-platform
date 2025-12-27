@@ -895,8 +895,11 @@ IMPORTANTE:
       // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
       const wantsTicket = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt/i.test(userMessage);
 
+      console.log('🎫 Ticket check:', { wantsTicket, customerId: context.customerId, customerIdType: typeof context.customerId });
+
       // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
       if (wantsTicket && context.customerId) {
+        console.log('✅ Condizioni soddisfatte - creazione ticket in corso...');
         console.log('📝 Cliente B2B richiede assistenza - recupero dati completi e creazione ticket');
 
         // 1. Recupera TUTTI i dati del cliente da Odoo
