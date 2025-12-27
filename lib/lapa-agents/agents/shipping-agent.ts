@@ -565,31 +565,45 @@ export class ShippingAgent {
 
       const customer = customers[0];
 
-      // Prima ottieni tutti gli indirizzi (child) del cliente
-      const childPartners = await client.execute_kw(
-        'res.partner',
+      // STRATEGIA: Cerca i picking tramite gli ordini di vendita del cliente
+      // Questo è più affidabile perché il partner_id del picking può essere un indirizzo di consegna diverso
+
+      // 1. Prima cerca tutti gli ordini di vendita del cliente
+      const saleOrders = await client.execute_kw(
+        'sale.order',
         'search',
-        [[['parent_id', '=', customerId]]],
-        { limit: 50 }
+        [[['partner_id', '=', customerId]]],
+        { limit: 100 }
       );
 
-      // Costruisci la lista di tutti i partner IDs da cercare (cliente + indirizzi)
-      const allPartnerIds = [customerId, ...(childPartners || [])];
+      if (!saleOrders || saleOrders.length === 0) {
+        return {
+          success: true,
+          data: {
+            customer_id: customerId,
+            customer_name: customer.name,
+            total_deliveries: 0,
+            last_delivery_date: null,
+            avg_delivery_time: null,
+            on_time_percentage: 0,
+            deliveries: []
+          }
+        };
+      }
 
-      // Cerca tutte le consegne del cliente (inclusi indirizzi di consegna)
-      // Nota: non filtriamo per picking_type_code perché può variare in base alla configurazione Odoo
+      // 2. Cerca tutti i picking collegati a questi ordini
       const pickings = await client.execute_kw(
         'stock.picking',
         'search_read',
         [
           [
-            ['partner_id', 'in', allPartnerIds],
+            ['sale_id', 'in', saleOrders],
             ['state', '!=', 'cancel']
           ]
         ],
         {
-          fields: ['id', 'name', 'state', 'scheduled_date', 'date_done', 'driver_id', 'move_ids'],
-          order: 'date_done DESC, scheduled_date DESC',
+          fields: ['id', 'name', 'state', 'scheduled_date', 'date_done', 'driver_id', 'move_ids', 'origin', 'sale_id'],
+          order: 'scheduled_date DESC',
           limit: limit
         }
       );
