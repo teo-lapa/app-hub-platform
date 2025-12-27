@@ -79,14 +79,16 @@ const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
 
 export async function GET() {
   try {
-    // Costruisci status agenti con statistiche reali
-    const agents: AgentStatus[] = agentDefinitions.map(def => ({
-      ...def,
-      stats: agentStats.getAgentStats(def.id)
-    }));
+    // Costruisci status agenti con statistiche reali da Vercel KV
+    const agents: AgentStatus[] = await Promise.all(
+      agentDefinitions.map(async (def) => ({
+        ...def,
+        stats: await agentStats.getAgentStatsAsync(def.id)
+      }))
+    );
 
-    // Statistiche globali
-    const stats = agentStats.getGlobalStats();
+    // Statistiche globali da Vercel KV
+    const stats = await agentStats.getGlobalStatsAsync();
 
     // Info sistema
     const systemInfo = {
@@ -154,7 +156,7 @@ export async function POST(request: Request) {
       success: true,
       agent: {
         ...agentDefinitions[agentIndex],
-        stats: agentStats.getAgentStats(agentId)
+        stats: await agentStats.getAgentStatsAsync(agentId)
       },
       timestamp: new Date().toISOString()
     });
