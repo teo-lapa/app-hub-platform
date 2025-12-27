@@ -211,16 +211,26 @@ export class HelpdeskAgent {
     // No caching - controlla ogni volta per evitare problemi con session expired
     try {
       // Prova a cercare 1 ticket per verificare che il modello esista
+      console.log('🔍 Checking if helpdesk.ticket model is available...');
       await this.odooRPC.searchRead('helpdesk.ticket', [], ['id'], 1);
       console.log('✅ Helpdesk module available');
       return true;
     } catch (error: any) {
+      console.log('⚠️ Helpdesk check error:', error.message);
       // Se è un errore di sessione, non è un problema del modulo
       if (error.message?.toLowerCase().includes('session')) {
         console.warn('⚠️ Session error checking helpdesk:', error.message);
         throw error; // Propaga l'errore di sessione
       }
-      console.log('⚠️ Helpdesk module not available, will use mail.message fallback');
+      // Se contiene "access" o "not found" o "does not exist", il modulo non è disponibile
+      if (error.message?.toLowerCase().includes('access') ||
+          error.message?.toLowerCase().includes('not found') ||
+          error.message?.toLowerCase().includes('does not exist')) {
+        console.log('⚠️ Helpdesk module not available, will use mail.message fallback');
+        return false;
+      }
+      // Per altri errori (es. Odoo Server Error) - prova il fallback
+      console.log('⚠️ Unknown error checking helpdesk, will try mail.message fallback');
       return false;
     }
   }
@@ -269,27 +279,51 @@ export class HelpdeskAgent {
     message?: string;
     error?: string;
   }> {
+    // Prima verifica se esistono team disponibili
+    let teamId = 1;
+    try {
+      const teams = await this.odooRPC.searchRead('helpdesk.team', [], ['id', 'name'], 1);
+      if (teams && teams.length > 0) {
+        teamId = teams[0].id;
+        console.log('🎫 Using helpdesk team:', teams[0].name, 'ID:', teamId);
+      } else {
+        console.warn('⚠️ No helpdesk teams found, using default team_id: 1');
+      }
+    } catch (teamError) {
+      console.warn('⚠️ Could not fetch helpdesk teams:', teamError);
+    }
+
     // Prepara i valori per il ticket
     const ticketValues: Record<string, any> = {
       name: params.subject,
       description: params.description,
       partner_id: params.customerId,
       priority: params.priority || '1',
-      team_id: 1, // Customer Care team (da configurazione)
+      team_id: teamId,
     };
 
+    console.log('🎫 Creating ticket with values:', JSON.stringify(ticketValues));
+
     // Crea il ticket tramite Odoo RPC
-    const ticketId = await this.odooRPC.callKw(
-      'helpdesk.ticket',
-      'create',
-      [ticketValues]
-    );
+    let ticketId;
+    try {
+      ticketId = await this.odooRPC.callKw(
+        'helpdesk.ticket',
+        'create',
+        [ticketValues]
+      );
+    } catch (createError: any) {
+      console.error('🎫 Error creating helpdesk.ticket:', createError.message);
+      // Try fallback to mail.message
+      console.log('🎫 Falling back to mail.message...');
+      return await this.createMailMessage(params);
+    }
 
     if (!ticketId) {
       throw new Error('Failed to create ticket - no ID returned');
     }
 
-    console.log('Ticket created with ID:', ticketId);
+    console.log('🎫 Ticket created with ID:', ticketId);
 
     // Gestisci allegati se presenti
     if (params.attachments && params.attachments.length > 0) {
