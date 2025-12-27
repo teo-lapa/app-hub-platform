@@ -577,13 +577,13 @@ export class ShippingAgent {
       const allPartnerIds = [customerId, ...(childPartners || [])];
 
       // Cerca tutte le consegne del cliente (inclusi indirizzi di consegna)
+      // Nota: non filtriamo per picking_type_code perché può variare in base alla configurazione Odoo
       const pickings = await client.execute_kw(
         'stock.picking',
         'search_read',
         [
           [
             ['partner_id', 'in', allPartnerIds],
-            ['picking_type_code', '=', 'outgoing'],
             ['state', '!=', 'cancel']
           ]
         ],
