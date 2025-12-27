@@ -1275,9 +1275,17 @@ IMPORTANTE:
       if (!trackingId && context.conversationHistory.length > 0) {
         const lastMsg = context.conversationHistory[context.conversationHistory.length - 1];
         if (lastMsg.role === 'user') {
+          // Pattern per ordini (S12345, SO12345)
           const orderMatch = lastMsg.content.match(/\b(S\d{5,}|SO\d{5,})\b/i);
           if (orderMatch) {
             trackingId = orderMatch[1].toUpperCase();
+          }
+          // Pattern per picking names (WH/OUT/12345, WH/PICK/12345)
+          if (!trackingId) {
+            const pickingMatch = lastMsg.content.match(/\b(WH\/(?:OUT|PICK|IN)\/\d+)\b/i);
+            if (pickingMatch) {
+              trackingId = pickingMatch[1].toUpperCase();
+            }
           }
         }
       }
