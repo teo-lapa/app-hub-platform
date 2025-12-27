@@ -67,7 +67,10 @@ export interface AgentResponse {
 
 export type IntentType =
   | 'order_inquiry'        // Domande su ordini
+  | 'order_detail'         // Dettagli di un ordine specifico
   | 'invoice_inquiry'      // Domande su fatture
+  | 'invoice_detail'       // Dettagli di una fattura specifica
+  | 'invoice_filter'       // Filtrare fatture (da pagare, pagate, etc.)
   | 'shipping_inquiry'     // Domande su spedizioni
   | 'product_inquiry'      // Domande su prodotti/catalogo
   | 'account_management'   // Gestione account
@@ -75,6 +78,7 @@ export type IntentType =
   | 'pricing_quote'       // Richiesta preventivi
   | 'complaint'           // Reclami
   | 'general_info'        // Informazioni generali
+  | 'followup'            // Domanda di follow-up contestuale
   | 'unknown';            // Intento non chiaro
 
 export interface Intent {
@@ -209,7 +213,10 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
 - order_inquiry: Domande su ordini esistenti, stato ordini, modifiche (Keywords: ordine, ordini, ordinato, acquisto, SO, order, Bestellung, commande)
+- order_detail: Richiesta DETTAGLI di un ordine specifico (Keywords: dettagli ordine, mostrami l'ordine, più info su ordine)
 - invoice_inquiry: Domande su fatture, pagamenti, estratti conto, saldo (Keywords: fattura, fatture, pagamento, saldo, INV, invoice, Rechnung, facture)
+- invoice_detail: Richiesta DETTAGLI di una fattura specifica (Keywords: dettagli fattura, mostrami la fattura)
+- invoice_filter: Richiesta di FILTRARE le fatture (Keywords: da pagare, non pagate, aperte, pagate, scadute)
 - shipping_inquiry: Domande su spedizioni, tracking, consegne, dove si trova la merce (Keywords: spedizione, spedizioni, consegna, tracking, traccia, tracciare, DDT, dove, arriva, delivery, Lieferung, livraison)
 - product_inquiry: Domande su prodotti, catalogo, disponibilità, prezzi prodotti (Keywords: prodotto, prodotti, catalogo, disponibile, mozzarella, parmigiano, prosciutto, formaggio)
 - account_management: Gestione account, dati personali, password (Keywords: account, password, profilo, dati personali)
@@ -217,7 +224,19 @@ DEFINIZIONI INTENTI (con parole chiave tipiche):
 - pricing_quote: Richiesta preventivi, listini prezzi B2B (Keywords: preventivo, listino, prezzi all'ingrosso)
 - complaint: Reclami, problemi con ordini/prodotti ricevuti (Keywords: reclamo, problema, danneggiato, sbagliato)
 - general_info: Informazioni generali sull'azienda, orari, contatti (Keywords: orari, dove siete, contatti, chi siete)
+- followup: Domanda di follow-up riferita alla risposta precedente (Keywords: quelle, questi, l'ultimo, il primo, più dettagli, dimmi di più)
 - unknown: Intento non chiaro
+
+ATTENZIONE CONTESTO CONVERSAZIONALE:
+- Se l'utente fa riferimento a elementi discussi prima (es. "quelle da pagare", "l'ultimo ordine", "più dettagli"), guarda la conversazione precedente
+- "Quelle da pagare" dopo aver mostrato fatture = invoice_filter con filter: "unpaid"
+- "Dettagli dell'ultimo" dopo aver mostrato ordini = order_detail con position: "last"
+- "Dimmi di più" = followup che richiede dettagli sull'ultimo argomento discusso
+
+Nella risposta JSON, aggiungi questi campi entities se rilevanti:
+- filter: "unpaid" | "paid" | "overdue" per filtrare fatture
+- position: "last" | "first" | numero specifico per riferimenti a liste
+- reference_type: "order" | "invoice" | "product" se il riferimento è implicito dal contesto
 
 ATTENZIONE: La parola "traccia" o "tracciare" indica SEMPRE shipping_inquiry, NON invoice_inquiry!
 
@@ -793,6 +812,58 @@ IMPORTANTE:
         return await this.complaintAgentHandler(context, intent);
       }
     });
+
+    // ORDER DETAIL AGENT - Dettagli ordine specifico
+    this.registerAgent({
+      id: 'order_detail',
+      name: 'Order Detail Agent',
+      description: 'Mostra dettagli di un ordine specifico (dall\'ultimo menzionato o posizione)',
+      intents: ['order_detail'],
+      requiresAuth: true,
+      priority: 9,
+      handler: async (context, intent) => {
+        return await this.orderDetailAgentHandler(context, intent);
+      }
+    });
+
+    // INVOICE FILTER AGENT - Filtra fatture
+    this.registerAgent({
+      id: 'invoice_filter',
+      name: 'Invoice Filter Agent',
+      description: 'Filtra fatture per stato pagamento',
+      intents: ['invoice_filter'],
+      requiresAuth: true,
+      priority: 9,
+      handler: async (context, intent) => {
+        return await this.invoiceFilterAgentHandler(context, intent);
+      }
+    });
+
+    // INVOICE DETAIL AGENT - Dettagli fattura specifica
+    this.registerAgent({
+      id: 'invoice_detail',
+      name: 'Invoice Detail Agent',
+      description: 'Mostra dettagli di una fattura specifica',
+      intents: ['invoice_detail'],
+      requiresAuth: true,
+      priority: 9,
+      handler: async (context, intent) => {
+        return await this.invoiceDetailAgentHandler(context, intent);
+      }
+    });
+
+    // FOLLOWUP AGENT - Gestisce domande di contesto
+    this.registerAgent({
+      id: 'followup',
+      name: 'Followup Agent',
+      description: 'Gestisce domande di follow-up riferite a risposte precedenti',
+      intents: ['followup'],
+      requiresAuth: false,
+      priority: 10,
+      handler: async (context, intent) => {
+        return await this.followupAgentHandler(context, intent);
+      }
+    });
   }
 
   // ============================================================================
@@ -1327,6 +1398,476 @@ IMPORTANTE:
         'Scrivici a info@lapa.ch'
       ]
     };
+  }
+
+  /**
+   * Handler per dettagli ordine specifico
+   * Gestisce richieste come "dettagli dell'ultimo ordine" o "mostrami l'ordine S36399"
+   */
+  private async orderDetailAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    if (!context.customerId) {
+      return {
+        success: false,
+        message: 'Cliente non identificato. Effettua il login per vedere i dettagli degli ordini.',
+        agentId: 'order_detail'
+      };
+    }
+
+    try {
+      const entities = intent.entities || {};
+      const odoo = await getOdooClient();
+
+      // Determina quale ordine mostrare
+      let orderToShow: any = null;
+
+      // 1. Se c'è un order_id specifico nelle entities
+      if (entities.order_id) {
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', context.customerId],
+            ['name', 'ilike', entities.order_id]
+          ],
+          ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
+          1
+        );
+        if (orders.length > 0) orderToShow = orders[0];
+      }
+
+      // 2. Se c'è position (last, first, o numero)
+      if (!orderToShow && entities.position) {
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [['partner_id', '=', context.customerId]],
+          ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
+          20
+        );
+
+        if (orders.length > 0) {
+          if (entities.position === 'last') {
+            orderToShow = orders[0]; // Già ordinati per data DESC
+          } else if (entities.position === 'first') {
+            orderToShow = orders[orders.length - 1];
+          } else if (typeof entities.position === 'number') {
+            const idx = entities.position - 1;
+            if (idx >= 0 && idx < orders.length) {
+              orderToShow = orders[idx];
+            }
+          }
+        }
+      }
+
+      // 3. Cerca nell'ultimo messaggio/risposta per riferimento a ordini
+      if (!orderToShow) {
+        const lastAssistantMsg = context.conversationHistory
+          .filter(m => m.role === 'assistant')
+          .pop();
+
+        if (lastAssistantMsg?.metadata?.orders) {
+          // Se l'ultimo messaggio conteneva una lista di ordini
+          const lastOrders = lastAssistantMsg.metadata.orders;
+          if (lastOrders.length > 0) {
+            orderToShow = lastOrders[0]; // Prendi il primo (più recente)
+          }
+        }
+      }
+
+      // 4. Fallback: prendi l'ultimo ordine
+      if (!orderToShow) {
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [['partner_id', '=', context.customerId]],
+          ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
+          1
+        );
+        if (orders.length > 0) orderToShow = orders[0];
+      }
+
+      if (!orderToShow) {
+        return {
+          success: false,
+          message: 'Non ho trovato ordini nel tuo storico. Vuoi creare un nuovo ordine?',
+          agentId: 'order_detail',
+          suggestedActions: ['Crea nuovo ordine', 'Cerca prodotti']
+        };
+      }
+
+      // Recupera le righe dell'ordine
+      const orderLines = await odoo.searchRead(
+        'sale.order.line',
+        [['order_id', '=', orderToShow.id]],
+        ['product_id', 'name', 'product_uom_qty', 'price_unit', 'price_subtotal'],
+        50
+      );
+
+      const stateLabels: Record<string, string> = {
+        draft: 'Bozza', sent: 'Inviato', sale: 'Confermato',
+        done: 'Completato', cancel: 'Annullato'
+      };
+
+      // Formatta le righe prodotto
+      const productLines = orderLines
+        .map((line: any, idx: number) => {
+          const productName = line.product_id ? line.product_id[1] : line.name;
+          return `   ${idx + 1}. ${productName}\n      Qtà: ${line.product_uom_qty} × ${line.price_unit.toFixed(2)} CHF = ${line.price_subtotal.toFixed(2)} CHF`;
+        })
+        .join('\n');
+
+      const message = `📦 **Dettagli Ordine ${orderToShow.name}**\n\n` +
+        `👤 Cliente: ${orderToShow.partner_id[1]}\n` +
+        `📅 Data: ${orderToShow.date_order}\n` +
+        `📊 Stato: ${stateLabels[orderToShow.state] || orderToShow.state}\n` +
+        `💰 Totale: ${orderToShow.currency_id[1]} ${orderToShow.amount_total.toFixed(2)}\n\n` +
+        `📋 **Prodotti (${orderLines.length}):**\n${productLines}\n\n` +
+        `Vuoi altre informazioni su questo ordine?`;
+
+      return {
+        success: true,
+        message,
+        data: { order: orderToShow, lines: orderLines },
+        agentId: 'order_detail',
+        confidence: 0.95,
+        suggestedActions: [
+          'Traccia la spedizione',
+          'Vedi la fattura',
+          'Altri ordini'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore orderDetailAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando i dettagli dell\'ordine. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'order_detail'
+      };
+    }
+  }
+
+  /**
+   * Handler per filtrare fatture per stato pagamento
+   * Gestisce richieste come "quelle da pagare" o "mostrami le fatture pagate"
+   */
+  private async invoiceFilterAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    if (!context.customerId) {
+      return {
+        success: false,
+        message: 'Cliente non identificato. Effettua il login per vedere le tue fatture.',
+        agentId: 'invoice_filter'
+      };
+    }
+
+    try {
+      const entities = intent.entities || {};
+      const filter = entities.filter || 'unpaid'; // Default: da pagare
+
+      // Determina quale filtro applicare
+      let status: 'open' | 'paid' | 'overdue' | 'all' = 'all';
+      if (filter === 'unpaid' || filter === 'open' || filter === 'not_paid') {
+        status = 'open';
+      } else if (filter === 'paid') {
+        status = 'paid';
+      } else if (filter === 'overdue') {
+        status = 'overdue';
+      }
+
+      const invoicesResult = await this.invoicesAgent.getInvoices(context.customerId, status, 20);
+
+      if (!invoicesResult.success || !invoicesResult.data || invoicesResult.data.length === 0) {
+        const filterLabels: Record<string, string> = {
+          open: 'da pagare',
+          paid: 'pagate',
+          overdue: 'scadute',
+          all: ''
+        };
+
+        return {
+          success: true,
+          message: `Non hai fatture ${filterLabels[status]} al momento. Ottimo!`,
+          agentId: 'invoice_filter',
+          confidence: 0.9,
+          suggestedActions: [
+            'Vedi tutte le fatture',
+            'Storico ordini',
+            'Nuovi prodotti'
+          ]
+        };
+      }
+
+      const paymentStateLabels: Record<string, string> = {
+        not_paid: 'Non pagata', in_payment: 'In pagamento',
+        paid: 'Pagata', partial: 'Parzialmente pagata',
+        reversed: 'Stornata', invoicing_legacy: 'Legacy'
+      };
+
+      const invoicesList = invoicesResult.data
+        .map((inv: any, index: number) =>
+          `${index + 1}. **${inv.name}** - ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
+          `   📅 Scadenza: ${inv.invoice_date_due || 'N/A'} | 💰 ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)} | ` +
+          `Residuo: ${inv.amount_residual.toFixed(2)}`
+        )
+        .join('\n');
+
+      // Calcola totale residuo
+      const totalResidual = invoicesResult.data.reduce((sum: number, inv: any) => sum + (inv.amount_residual || 0), 0);
+
+      const filterLabels: Record<string, string> = {
+        open: 'da pagare',
+        paid: 'pagate',
+        overdue: 'scadute',
+        all: 'totali'
+      };
+
+      const message = `📄 **Fatture ${filterLabels[status]}:** ${invoicesResult.data.length}\n\n` +
+        invoicesList +
+        (status === 'open' ? `\n\n💰 **Totale da pagare:** CHF ${totalResidual.toFixed(2)}` : '') +
+        `\n\nVuoi vedere i dettagli di una fattura specifica?`;
+
+      return {
+        success: true,
+        message,
+        data: invoicesResult.data,
+        agentId: 'invoice_filter',
+        confidence: 0.95,
+        suggestedActions: [
+          'Dettagli fattura',
+          'Paga online',
+          'Scarica PDF'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore invoiceFilterAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore filtrando le fatture. Riprova più tardi.',
+        requiresHumanEscalation: true,
+        agentId: 'invoice_filter'
+      };
+    }
+  }
+
+  /**
+   * Handler per dettagli fattura specifica
+   */
+  private async invoiceDetailAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    if (!context.customerId) {
+      return {
+        success: false,
+        message: 'Cliente non identificato. Effettua il login per vedere le tue fatture.',
+        agentId: 'invoice_detail'
+      };
+    }
+
+    try {
+      const entities = intent.entities || {};
+      const odoo = await getOdooClient();
+
+      let invoiceToShow: any = null;
+
+      // 1. Se c'è un invoice_number specifico
+      if (entities.invoice_number) {
+        const invoices = await odoo.searchRead(
+          'account.move',
+          [
+            ['partner_id', '=', context.customerId],
+            ['move_type', '=', 'out_invoice'],
+            ['name', 'ilike', entities.invoice_number]
+          ],
+          ['id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'state', 'payment_state', 'amount_total', 'amount_residual', 'currency_id'],
+          1
+        );
+        if (invoices.length > 0) invoiceToShow = invoices[0];
+      }
+
+      // 2. Se c'è position
+      if (!invoiceToShow && entities.position) {
+        const invoices = await odoo.searchRead(
+          'account.move',
+          [
+            ['partner_id', '=', context.customerId],
+            ['move_type', '=', 'out_invoice']
+          ],
+          ['id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'state', 'payment_state', 'amount_total', 'amount_residual', 'currency_id'],
+          20
+        );
+
+        if (invoices.length > 0) {
+          if (entities.position === 'last') {
+            invoiceToShow = invoices[0];
+          } else if (entities.position === 'first') {
+            invoiceToShow = invoices[invoices.length - 1];
+          } else if (typeof entities.position === 'number') {
+            const idx = entities.position - 1;
+            if (idx >= 0 && idx < invoices.length) {
+              invoiceToShow = invoices[idx];
+            }
+          }
+        }
+      }
+
+      // 3. Fallback: ultima fattura
+      if (!invoiceToShow) {
+        const invoices = await odoo.searchRead(
+          'account.move',
+          [
+            ['partner_id', '=', context.customerId],
+            ['move_type', '=', 'out_invoice']
+          ],
+          ['id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'state', 'payment_state', 'amount_total', 'amount_residual', 'currency_id'],
+          1
+        );
+        if (invoices.length > 0) invoiceToShow = invoices[0];
+      }
+
+      if (!invoiceToShow) {
+        return {
+          success: false,
+          message: 'Non ho trovato fatture nel tuo storico.',
+          agentId: 'invoice_detail'
+        };
+      }
+
+      // Recupera dettagli completi
+      const invoiceDetails = await this.invoicesAgent.getInvoiceDetails(invoiceToShow.id);
+
+      if (!invoiceDetails.success || !invoiceDetails.data) {
+        return {
+          success: false,
+          message: 'Errore recuperando i dettagli della fattura.',
+          agentId: 'invoice_detail'
+        };
+      }
+
+      const inv = invoiceDetails.data;
+      const paymentStateLabels: Record<string, string> = {
+        not_paid: 'Non pagata', in_payment: 'In pagamento',
+        paid: 'Pagata', partial: 'Parzialmente pagata'
+      };
+
+      // Formatta le righe
+      const lines = inv.lines
+        .slice(0, 10)
+        .map((line: any, idx: number) =>
+          `   ${idx + 1}. ${line.name || line.product_id?.[1] || 'Prodotto'}\n      ${line.quantity} × ${line.price_unit.toFixed(2)} = ${line.price_subtotal.toFixed(2)} CHF`
+        )
+        .join('\n');
+
+      const message = `📄 **Dettagli Fattura ${inv.name}**\n\n` +
+        `👤 Cliente: ${inv.partner_name}\n` +
+        `📅 Data: ${inv.invoice_date || 'N/A'}\n` +
+        `⏰ Scadenza: ${inv.invoice_date_due || 'N/A'}\n` +
+        `📊 Stato: ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
+        `💰 Totale: ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n` +
+        `💳 Residuo: ${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}\n\n` +
+        `📋 **Righe (${inv.lines.length}):**\n${lines}` +
+        (inv.lines.length > 10 ? `\n   ... e altre ${inv.lines.length - 10} righe` : '') +
+        `\n\nCosa vuoi fare con questa fattura?`;
+
+      return {
+        success: true,
+        message,
+        data: inv,
+        agentId: 'invoice_detail',
+        confidence: 0.95,
+        suggestedActions: [
+          'Paga online',
+          'Scarica PDF',
+          'Altre fatture'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore invoiceDetailAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando i dettagli della fattura.',
+        requiresHumanEscalation: true,
+        agentId: 'invoice_detail'
+      };
+    }
+  }
+
+  /**
+   * Handler per domande di follow-up contestuali
+   * Usa Claude per capire a cosa si riferisce il cliente e risponde appropriatamente
+   */
+  private async followupAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    try {
+      // Usa Claude per generare una risposta contestuale basata sulla conversazione
+      const systemPrompt = `Sei l'assistente AI di LAPA, distributore di prodotti alimentari italiani in Svizzera.
+
+CONTESTO CONVERSAZIONE:
+Il cliente ha fatto una domanda di follow-up che si riferisce a qualcosa discusso prima.
+Devi capire a cosa si riferisce e rispondere in modo utile.
+
+REGOLE:
+1. Analizza la cronologia per capire il contesto
+2. Se il cliente chiede "dettagli" su qualcosa, fornisci più informazioni
+3. Se chiede "l'ultimo" o "il primo", riferisciti all'ultima lista mostrata
+4. Se chiede di filtrare (es. "quelle da pagare"), applica il filtro
+5. Se non sei sicuro, chiedi chiarimenti in modo gentile
+6. Rispondi in italiano a meno che il cliente non usi un'altra lingua
+
+CLIENTE: ${context.customerType === 'b2b' ? `B2B - ${context.customerName}` : 'Visitatore'}
+
+Rispondi in modo naturale e conversazionale.`;
+
+      const response = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        temperature: 0.7,
+        system: systemPrompt,
+        messages: this.buildConversationHistory(context)
+      });
+
+      const content = response.content[0];
+      if (content.type !== 'text') {
+        throw new Error('Unexpected response type');
+      }
+
+      return {
+        success: true,
+        message: content.text,
+        agentId: 'followup',
+        confidence: 0.8,
+        suggestedActions: [
+          'Ordini',
+          'Fatture',
+          'Spedizioni',
+          'Parla con operatore'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore followupAgentHandler:', error);
+
+      return {
+        success: true,
+        message: 'Non ho capito bene a cosa ti riferisci. Puoi essere più specifico? ' +
+                 'Posso aiutarti con ordini, fatture, spedizioni o prodotti.',
+        agentId: 'followup',
+        suggestedActions: [
+          'I miei ordini',
+          'Le mie fatture',
+          'Le mie spedizioni',
+          'Cerca prodotti'
+        ]
+      };
+    }
   }
 
   /**
