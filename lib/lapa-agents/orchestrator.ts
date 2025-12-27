@@ -1569,28 +1569,46 @@ IMPORTANTE:
       const filter = entities.filter || 'unpaid'; // Default: da pagare
 
       // Determina quale filtro applicare
-      let status: 'open' | 'paid' | 'overdue' | 'all' = 'all';
-      if (filter === 'unpaid' || filter === 'open' || filter === 'not_paid') {
+      // Nota: getInvoices supporta solo 'open' | 'paid' | 'all'
+      // Per 'overdue' usiamo 'open' e poi filtriamo manualmente
+      let status: 'open' | 'paid' | 'all' = 'all';
+      const isOverdueFilter = filter === 'overdue';
+      let displayStatus = filter; // Per mostrare all'utente
+
+      if (filter === 'unpaid' || filter === 'open' || filter === 'not_paid' || filter === 'overdue') {
         status = 'open';
       } else if (filter === 'paid') {
         status = 'paid';
-      } else if (filter === 'overdue') {
-        status = 'overdue';
       }
 
-      const invoicesResult = await this.invoicesAgent.getInvoices(context.customerId, status, 20);
+      let invoicesResult = await this.invoicesAgent.getInvoices(context.customerId, status, 20);
+
+      // Se è richiesto solo scadute, filtra per data scadenza < oggi
+      if (isOverdueFilter && invoicesResult.success && invoicesResult.data) {
+        const today = new Date().toISOString().split('T')[0];
+        invoicesResult = {
+          ...invoicesResult,
+          data: invoicesResult.data.filter((inv: any) =>
+            inv.invoice_date_due && inv.invoice_date_due < today
+          )
+        };
+      }
 
       if (!invoicesResult.success || !invoicesResult.data || invoicesResult.data.length === 0) {
         const filterLabels: Record<string, string> = {
           open: 'da pagare',
           paid: 'pagate',
           overdue: 'scadute',
+          unpaid: 'da pagare',
           all: ''
         };
 
+        // Usa isOverdueFilter per determinare la label corretta
+        const displayLabel = isOverdueFilter ? 'scadute' : filterLabels[status] || filterLabels[filter] || '';
+
         return {
           success: true,
-          message: `Non hai fatture ${filterLabels[status]} al momento. Ottimo!`,
+          message: `Non hai fatture ${displayLabel} al momento. Ottimo!`,
           agentId: 'invoice_filter',
           confidence: 0.9,
           suggestedActions: [
@@ -1618,14 +1636,10 @@ IMPORTANTE:
       // Calcola totale residuo
       const totalResidual = invoicesResult.data.reduce((sum: number, inv: any) => sum + (inv.amount_residual || 0), 0);
 
-      const filterLabels: Record<string, string> = {
-        open: 'da pagare',
-        paid: 'pagate',
-        overdue: 'scadute',
-        all: 'totali'
-      };
+      // Label per il tipo di filtro
+      const displayLabel = isOverdueFilter ? 'scadute' : (status === 'open' ? 'da pagare' : status === 'paid' ? 'pagate' : 'totali');
 
-      const message = `📄 **Fatture ${filterLabels[status]}:** ${invoicesResult.data.length}\n\n` +
+      const message = `📄 **Fatture ${displayLabel}:** ${invoicesResult.data.length}\n\n` +
         invoicesList +
         (status === 'open' ? `\n\n💰 **Totale da pagare:** CHF ${totalResidual.toFixed(2)}` : '') +
         `\n\nVuoi vedere i dettagli di una fattura specifica?`;
