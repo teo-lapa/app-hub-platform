@@ -207,17 +207,19 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
   "requiresAuth": true/false
 }
 
-DEFINIZIONI INTENTI:
-- order_inquiry: Domande su ordini esistenti, stato ordini, modifiche
-- invoice_inquiry: Domande su fatture, pagamenti, estratti conto
-- shipping_inquiry: Domande su spedizioni, tracking, consegne
-- product_inquiry: Domande su prodotti, catalogo, disponibilità
-- account_management: Gestione account, dati personali, password
-- helpdesk: Supporto tecnico, problemi generali
-- pricing_quote: Richiesta preventivi, listini prezzi
-- complaint: Reclami, problemi con ordini/prodotti
-- general_info: Informazioni generali sull'azienda, orari, contatti
+DEFINIZIONI INTENTI (con parole chiave tipiche):
+- order_inquiry: Domande su ordini esistenti, stato ordini, modifiche (Keywords: ordine, ordini, ordinato, acquisto, SO, order, Bestellung, commande)
+- invoice_inquiry: Domande su fatture, pagamenti, estratti conto, saldo (Keywords: fattura, fatture, pagamento, saldo, INV, invoice, Rechnung, facture)
+- shipping_inquiry: Domande su spedizioni, tracking, consegne, dove si trova la merce (Keywords: spedizione, spedizioni, consegna, tracking, traccia, tracciare, DDT, dove, arriva, delivery, Lieferung, livraison)
+- product_inquiry: Domande su prodotti, catalogo, disponibilità, prezzi prodotti (Keywords: prodotto, prodotti, catalogo, disponibile, mozzarella, parmigiano, prosciutto, formaggio)
+- account_management: Gestione account, dati personali, password (Keywords: account, password, profilo, dati personali)
+- helpdesk: Supporto tecnico, problemi generali, assistenza (Keywords: aiuto, help, problema, supporto, operatore, assistenza)
+- pricing_quote: Richiesta preventivi, listini prezzi B2B (Keywords: preventivo, listino, prezzi all'ingrosso)
+- complaint: Reclami, problemi con ordini/prodotti ricevuti (Keywords: reclamo, problema, danneggiato, sbagliato)
+- general_info: Informazioni generali sull'azienda, orari, contatti (Keywords: orari, dove siete, contatti, chi siete)
 - unknown: Intento non chiaro
+
+ATTENZIONE: La parola "traccia" o "tracciare" indica SEMPRE shipping_inquiry, NON invoice_inquiry!
 
 IMPORTANTE:
 - Se il messaggio richiede accesso a dati personali/ordini, imposta requiresAuth a true
