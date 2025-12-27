@@ -1008,6 +1008,21 @@ ${conversationSummary}
             data: { ticketId: ticketResult.ticketId, customerId: context.customerId, customerName: nome, customerEmail: email },
             suggestedActions: ['Ho altre domande', 'Torna al menu principale']
           };
+        } else {
+          // Ticket creation failed
+          console.error('❌ Creazione ticket fallita:', ticketResult);
+          return {
+            success: false,
+            message: `⚠️ Non sono riuscito a creare il ticket automaticamente.\n\n` +
+                     `Per favore contattaci direttamente:\n` +
+                     `📧 lapa@lapa.ch\n` +
+                     `📞 +41 76 361 70 21\n\n` +
+                     `Errore: ${ticketResult.message || 'Errore sconosciuto'}`,
+            agentId: 'helpdesk',
+            confidence: 0.5,
+            requiresHumanEscalation: true,
+            data: { error: ticketResult.message, debug: ticketCheck }
+          };
         }
       }
 
