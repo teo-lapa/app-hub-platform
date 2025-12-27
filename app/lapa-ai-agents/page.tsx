@@ -243,24 +243,45 @@ export default function LapaAIAgentsPage() {
   const [testSending, setTestSending] = useState(false);
   const [testCustomerType, setTestCustomerType] = useState<'b2b' | 'b2c' | 'anonymous'>('b2b');
 
-  // Carica dati
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000); // Refresh ogni 30s
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadData = async () => {
+  // Funzione per caricare dati dall'API
+  const loadData = useCallback(async () => {
     try {
-      // In futuro: chiamata API reale
-      // const response = await fetch('/api/lapa-agents/status');
-      // const data = await response.json();
-      // setAgents(data.agents);
-      // setStats(data.stats);
+      setLoading(true);
+      const response = await fetch('/api/lapa-agents/status');
+      const data = await response.json();
+
+      if (data.agents) {
+        // Mappa gli agenti dall'API mantenendo le configurazioni locali (icone, colori)
+        setAgents(prev => prev.map(localAgent => {
+          const apiAgent = data.agents.find((a: { id: string }) => a.id === localAgent.id);
+          if (apiAgent) {
+            return {
+              ...localAgent,
+              status: apiAgent.status,
+              enabled: apiAgent.enabled,
+              stats: apiAgent.stats
+            };
+          }
+          return localAgent;
+        }));
+      }
+
+      if (data.stats) {
+        setStats(data.stats);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
+
+  // Carica dati all'avvio e ogni 30 secondi
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   const toggleAgent = async (agentId: string) => {
     setAgents(prev => prev.map(agent => {
