@@ -935,10 +935,11 @@ IMPORTANTE:
     context: CustomerContext,
     intent: Intent
   ): Promise<AgentResponse> {
-    if (!context.odooSession || !context.customerId) {
+    // Verifica solo customerId - la sessione Odoo viene gestita automaticamente dal client
+    if (!context.customerId) {
       return {
         success: false,
-        message: 'Sessione non valida. Effettua nuovamente il login.',
+        message: 'Cliente non identificato. Effettua il login per vedere i tuoi ordini.',
         requiresHumanEscalation: false,
         agentId: 'order'
       };
@@ -1060,10 +1061,11 @@ IMPORTANTE:
     context: CustomerContext,
     intent: Intent
   ): Promise<AgentResponse> {
-    if (!context.odooSession || !context.customerId) {
+    // Verifica solo customerId - la sessione Odoo viene gestita automaticamente dal client
+    if (!context.customerId) {
       return {
         success: false,
-        message: 'Sessione non valida. Effettua nuovamente il login.',
+        message: 'Cliente non identificato. Effettua il login per vedere le tue fatture.',
         requiresHumanEscalation: false,
         agentId: 'invoice'
       };
