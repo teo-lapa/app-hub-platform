@@ -885,38 +885,99 @@ IMPORTANTE:
       // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
       const wantsOperator = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo/i.test(userMessage);
 
-      // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket
+      // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
       if (wantsOperator && context.customerId) {
-        console.log('📝 Cliente richiede assistenza - creazione ticket helpdesk');
+        console.log('📝 Cliente B2B richiede assistenza - recupero dati completi e creazione ticket');
+
+        // 1. Recupera TUTTI i dati del cliente da Odoo
+        let customerData: any = null;
+        try {
+          const odooClient = await getOdooClient();
+          const partners = await odooClient.searchRead(
+            'res.partner',
+            [['id', '=', context.customerId]],
+            ['name', 'email', 'phone', 'mobile', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 'ref', 'company_id', 'parent_id', 'category_id', 'property_payment_term_id', 'sale_order_count', 'total_invoiced', 'comment'],
+            1
+          );
+          if (partners && partners.length > 0) {
+            customerData = partners[0];
+          }
+        } catch (odooError) {
+          console.warn('⚠️ Impossibile recuperare dati cliente:', odooError);
+        }
 
         const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
 
-        // Costruisci la descrizione del ticket dalla conversazione
+        // 2. Costruisci conversazione completa con timestamp
         const conversationSummary = context.conversationHistory
-          .slice(-5) // Ultimi 5 messaggi
-          .map(m => `${m.role === 'user' ? 'Cliente' : 'AI'}: ${m.content}`)
-          .join('\n');
+          .map(m => `[${m.timestamp.toLocaleString('it-CH')}] ${m.role === 'user' ? 'CLIENTE' : 'AI'}: ${m.content}`)
+          .join('\n\n');
+
+        // 3. Determina priorità automaticamente
+        let priority: '0' | '1' | '2' | '3' = '1';
+        if (/urgente|subito|emergenza|grave/i.test(userMessage)) priority = '3';
+        else if (/problema|errore|sbagliato|reclamo/i.test(userMessage)) priority = '2';
+
+        // 4. Costruisci descrizione COMPLETA del ticket
+        const nome = customerData?.name || context.customerName || 'N/D';
+        const email = customerData?.email || context.customerEmail || 'N/D';
+        const telefono = customerData?.phone || customerData?.mobile || 'N/D';
+        const indirizzo = customerData ? `${customerData.street || ''} ${customerData.street2 || ''}, ${customerData.zip || ''} ${customerData.city || ''}`.trim() : 'N/D';
+        const paese = customerData?.country_id?.[1] || 'N/D';
+
+        const ticketDescription = `
+══════════════════════════════════════════════════════
+📋 RICHIESTA ASSISTENZA - CHAT AI LAPA
+══════════════════════════════════════════════════════
+
+👤 DATI CLIENTE (per contattarlo):
+──────────────────────────────────────────────────────
+• ID Odoo: ${context.customerId}
+• Nome: ${nome}
+• Email: ${email}
+• Telefono: ${telefono}
+• Indirizzo: ${indirizzo}
+• Paese: ${paese}
+• P.IVA: ${customerData?.vat || 'N/D'}
+• Codice Cliente: ${customerData?.ref || 'N/D'}
+• Tipo: ${context.customerType.toUpperCase()}
+
+📊 INFO COMMERCIALI:
+──────────────────────────────────────────────────────
+• Totale Ordini: ${customerData?.sale_order_count || 'N/D'}
+• Fatturato Totale: CHF ${customerData?.total_invoiced?.toFixed(2) || 'N/D'}
+• Termini Pagamento: ${customerData?.property_payment_term_id?.[1] || 'Standard'}
+• Note Cliente: ${customerData?.comment || 'Nessuna'}
+
+💬 CONVERSAZIONE CHAT:
+──────────────────────────────────────────────────────
+${conversationSummary}
+
+──────────────────────────────────────────────────────
+📅 Creato: ${new Date().toLocaleString('it-CH')}
+🔗 Sessione: ${context.sessionId}
+══════════════════════════════════════════════════════`.trim();
 
         const ticketResult = await helpdeskAgent.createTicket({
           customerId: context.customerId,
-          subject: `Richiesta assistenza da ${context.customerName || 'Cliente'}`,
-          description: `Richiesta assistenza via chat AI.\n\nCliente: ${context.customerName || 'N/D'}\nEmail: ${context.customerEmail || 'N/D'}\nTipo: ${context.customerType}\n\nConversazione:\n${conversationSummary}`,
-          priority: '2' // Alta priorità per richieste dirette
+          subject: `[Chat AI] ${nome} - Richiesta assistenza`,
+          description: ticketDescription,
+          priority
         });
 
         if (ticketResult.success) {
           return {
             success: true,
-            message: `Ho creato un ticket di assistenza (#${ticketResult.ticketId}) per te. Il nostro team ti contatterà al più presto!\n\n📧 Email: lapa@lapa.ch\n📞 Telefono: +41 76 361 70 21\n\nNel frattempo, posso aiutarti con qualcos'altro?`,
+            message: `✅ Ho creato il ticket **#${ticketResult.ticketId}** con tutti i tuoi dati.\n\n` +
+                     `Il nostro team ti contatterà presto a:\n` +
+                     `• 📧 ${email}\n` +
+                     `• 📞 ${telefono}\n\n` +
+                     `Per urgenze: lapa@lapa.ch | +41 76 361 70 21`,
             agentId: 'helpdesk',
             confidence: 1.0,
             requiresHumanEscalation: true,
-            data: { ticketId: ticketResult.ticketId },
-            suggestedActions: [
-              'Vedi i miei ticket',
-              'Ho altre domande',
-              'Torna al menu principale'
-            ]
+            data: { ticketId: ticketResult.ticketId, customerId: context.customerId, customerName: nome, customerEmail: email },
+            suggestedActions: ['Ho altre domande', 'Torna al menu principale']
           };
         }
       }
@@ -935,17 +996,24 @@ IMPORTANTE:
         throw new Error('Unexpected response type');
       }
 
-      // Se il cliente non è loggato ma vuole assistenza
+      // Se il cliente NON è loggato ma vuole assistenza - chiedi i dati di contatto
       if (wantsOperator && !context.customerId) {
         return {
           success: true,
-          message: content.text + '\n\n📧 Per assistenza diretta: lapa@lapa.ch\n📞 Telefono: +41 76 361 70 21',
+          message: `Per poterti aiutare e aprire un ticket di assistenza, ho bisogno dei tuoi dati:\n\n` +
+                   `📝 Per favore scrivi:\n` +
+                   `• Nome e Cognome\n` +
+                   `• Email\n` +
+                   `• Telefono\n` +
+                   `• Descrizione del problema\n\n` +
+                   `Oppure contattaci direttamente:\n` +
+                   `📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
           agentId: 'helpdesk',
-          confidence: 0.8,
+          confidence: 0.9,
           suggestedActions: [
-            'Accedi per aprire un ticket',
+            'Fornisci i tuoi dati',
             'Contatta via email',
-            'Hai altre domande?'
+            'Accedi al tuo account'
           ]
         };
       }
