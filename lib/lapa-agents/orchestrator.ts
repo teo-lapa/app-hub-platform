@@ -335,13 +335,16 @@ IMPORTANTE:
    * Seleziona l'agente appropriato per gestire l'intento
    */
   private selectAgent(intent: Intent, context: CustomerContext): AgentConfig | null {
+    // Un utente è veramente autenticato solo se ha customerType='b2b' E un customerId valido
+    const isAuthenticated = context.customerType === 'b2b' && context.customerId;
+
     // Filter agents che possono gestire questo intento
     const capableAgents = Array.from(this.agents.values())
       .filter(agent => agent.intents.includes(intent.type))
       .filter(agent => {
-        // Se l'agente richiede auth, verifica che il cliente sia autenticato
+        // Se l'agente richiede auth, verifica che il cliente sia veramente autenticato
         if (agent.requiresAuth) {
-          return context.customerType === 'b2b' && context.odooSession;
+          return isAuthenticated;
         }
         return true;
       })
@@ -388,7 +391,10 @@ IMPORTANTE:
       console.log('📊 Intento identificato:', intent);
 
       // 2. Verifica se richiede autenticazione
-      if (intent.requiresAuth && context.customerType !== 'b2b') {
+      // Un utente è considerato "loggato" solo se ha customerType='b2b' E un customerId valido
+      const isAuthenticated = context.customerType === 'b2b' && context.customerId;
+
+      if (intent.requiresAuth && !isAuthenticated) {
         return this.handleAuthRequired(context, intent);
       }
 
@@ -477,39 +483,218 @@ IMPORTANTE:
 
   /**
    * Gestisce il caso in cui è richiesta l'autenticazione
+   * Comportamento da "venditore": accogliente, proattivo, orientato alla conversione
+   * Supporta IT, DE, FR, EN
    */
   private handleAuthRequired(context: CustomerContext, intent: Intent): AgentResponse {
+    const lang = context.metadata?.language || 'it';
+
+    // Messaggi multilingua per ogni tipo di richiesta
+    const authMessages: Record<string, Record<string, { message: string; actions: string[] }>> = {
+      order_inquiry: {
+        it: {
+          message: '📦 Per visualizzare i tuoi ordini devo sapere chi sei!\n\n' +
+                   'Sei già cliente LAPA? Accedi al tuo account per vedere lo storico ordini, ' +
+                   'lo stato delle consegne e molto altro.\n\n' +
+                   'Se invece sei nuovo, benvenuto! Posso aiutarti a scoprire i nostri prodotti italiani di alta qualità. ' +
+                   'Cosa stai cercando?',
+          actions: ['Accedi al tuo account', 'Scopri i nostri prodotti', 'Diventa cliente B2B']
+        },
+        de: {
+          message: '📦 Um Ihre Bestellungen anzuzeigen, muss ich wissen, wer Sie sind!\n\n' +
+                   'Sind Sie bereits LAPA-Kunde? Melden Sie sich an, um Bestellhistorie, ' +
+                   'Lieferstatus und vieles mehr zu sehen.\n\n' +
+                   'Sind Sie neu? Willkommen! Ich kann Ihnen unsere hochwertigen italienischen Produkte zeigen. ' +
+                   'Was suchen Sie?',
+          actions: ['Anmelden', 'Produkte entdecken', 'B2B-Kunde werden']
+        },
+        fr: {
+          message: '📦 Pour voir vos commandes, je dois savoir qui vous êtes!\n\n' +
+                   'Êtes-vous déjà client LAPA? Connectez-vous pour voir l\'historique des commandes, ' +
+                   'le statut des livraisons et bien plus.\n\n' +
+                   'Vous êtes nouveau? Bienvenue! Je peux vous aider à découvrir nos produits italiens de qualité. ' +
+                   'Que cherchez-vous?',
+          actions: ['Se connecter', 'Découvrir les produits', 'Devenir client B2B']
+        },
+        en: {
+          message: '📦 To view your orders, I need to know who you are!\n\n' +
+                   'Already a LAPA customer? Log in to see order history, ' +
+                   'delivery status and much more.\n\n' +
+                   'New here? Welcome! I can help you discover our high-quality Italian products. ' +
+                   'What are you looking for?',
+          actions: ['Log in', 'Discover products', 'Become B2B customer']
+        }
+      },
+      invoice_inquiry: {
+        it: {
+          message: '📄 Le fatture sono riservate ai clienti registrati.\n\n' +
+                   'Se sei già cliente LAPA, accedi al tuo account per visualizzare fatture, ' +
+                   'scadenze e pagare online.\n\n' +
+                   'Non sei ancora cliente? Scopri i vantaggi di diventare un cliente B2B LAPA!',
+          actions: ['Accedi al tuo account', 'Vantaggi clienti B2B', 'Contattaci']
+        },
+        de: {
+          message: '📄 Rechnungen sind registrierten Kunden vorbehalten.\n\n' +
+                   'Sind Sie bereits LAPA-Kunde? Melden Sie sich an, um Rechnungen, ' +
+                   'Fälligkeiten und Online-Zahlung zu sehen.\n\n' +
+                   'Noch kein Kunde? Entdecken Sie die Vorteile eines LAPA B2B-Kunden!',
+          actions: ['Anmelden', 'B2B-Vorteile', 'Kontakt']
+        },
+        fr: {
+          message: '📄 Les factures sont réservées aux clients enregistrés.\n\n' +
+                   'Êtes-vous déjà client LAPA? Connectez-vous pour voir les factures, ' +
+                   'les échéances et payer en ligne.\n\n' +
+                   'Pas encore client? Découvrez les avantages de devenir client B2B LAPA!',
+          actions: ['Se connecter', 'Avantages B2B', 'Contact']
+        },
+        en: {
+          message: '📄 Invoices are reserved for registered customers.\n\n' +
+                   'Already a LAPA customer? Log in to view invoices, ' +
+                   'due dates and pay online.\n\n' +
+                   'Not a customer yet? Discover the benefits of becoming a LAPA B2B customer!',
+          actions: ['Log in', 'B2B benefits', 'Contact us']
+        }
+      },
+      shipping_inquiry: {
+        it: {
+          message: '🚚 Per tracciare le tue spedizioni ho bisogno di identificarti!\n\n' +
+                   'Se sei già cliente LAPA, accedi al tuo account per vedere lo stato delle consegne ' +
+                   'e l\'orario di arrivo stimato.\n\n' +
+                   'Hai un numero d\'ordine? Dimmi di più e vedo come posso aiutarti!',
+          actions: ['Accedi al tuo account', 'Ho un numero ordine', 'Scopri i nostri prodotti']
+        },
+        de: {
+          message: '🚚 Um Ihre Sendungen zu verfolgen, muss ich Sie identifizieren!\n\n' +
+                   'Sind Sie bereits LAPA-Kunde? Melden Sie sich an, um den Lieferstatus ' +
+                   'und die voraussichtliche Ankunftszeit zu sehen.\n\n' +
+                   'Haben Sie eine Bestellnummer? Sagen Sie mir mehr und ich helfe Ihnen!',
+          actions: ['Anmelden', 'Ich habe eine Bestellnummer', 'Produkte entdecken']
+        },
+        fr: {
+          message: '🚚 Pour suivre vos expéditions, je dois vous identifier!\n\n' +
+                   'Êtes-vous déjà client LAPA? Connectez-vous pour voir le statut de livraison ' +
+                   'et l\'heure d\'arrivée estimée.\n\n' +
+                   'Avez-vous un numéro de commande? Dites-moi plus et je vous aide!',
+          actions: ['Se connecter', 'J\'ai un numéro de commande', 'Découvrir les produits']
+        },
+        en: {
+          message: '🚚 To track your shipments, I need to identify you!\n\n' +
+                   'Already a LAPA customer? Log in to see delivery status ' +
+                   'and estimated arrival time.\n\n' +
+                   'Have an order number? Tell me more and I\'ll help you!',
+          actions: ['Log in', 'I have an order number', 'Discover products']
+        }
+      },
+      default: {
+        it: {
+          message: '👋 Ciao! Per accedere a queste informazioni riservate devi effettuare il login.\n\n' +
+                   'Sei già cliente LAPA? Accedi al tuo account.\n' +
+                   'Sei nuovo? Fantastico! Posso aiutarti a scoprire i nostri prodotti italiani di qualità.\n\n' +
+                   'Come posso esserti utile?',
+          actions: ['Accedi al tuo account', 'Scopri i prodotti', 'Diventa cliente', 'Parla con un operatore']
+        },
+        de: {
+          message: '👋 Hallo! Um auf diese reservierten Informationen zuzugreifen, müssen Sie sich anmelden.\n\n' +
+                   'Sind Sie bereits LAPA-Kunde? Melden Sie sich an.\n' +
+                   'Sind Sie neu? Fantastisch! Ich kann Ihnen unsere hochwertigen italienischen Produkte zeigen.\n\n' +
+                   'Wie kann ich Ihnen helfen?',
+          actions: ['Anmelden', 'Produkte entdecken', 'Kunde werden', 'Mit Mitarbeiter sprechen']
+        },
+        fr: {
+          message: '👋 Bonjour! Pour accéder à ces informations réservées, vous devez vous connecter.\n\n' +
+                   'Êtes-vous déjà client LAPA? Connectez-vous.\n' +
+                   'Vous êtes nouveau? Fantastique! Je peux vous aider à découvrir nos produits italiens de qualité.\n\n' +
+                   'Comment puis-je vous aider?',
+          actions: ['Se connecter', 'Découvrir les produits', 'Devenir client', 'Parler à un opérateur']
+        },
+        en: {
+          message: '👋 Hi! To access this reserved information, you need to log in.\n\n' +
+                   'Already a LAPA customer? Log in to your account.\n' +
+                   'New here? Fantastic! I can help you discover our quality Italian products.\n\n' +
+                   'How can I help you?',
+          actions: ['Log in', 'Discover products', 'Become a customer', 'Talk to an operator']
+        }
+      }
+    };
+
+    // Seleziona il messaggio corretto
+    const intentType = intent.type in authMessages ? intent.type : 'default';
+    const langMessages = authMessages[intentType];
+    const content = langMessages[lang] || langMessages['it'];
+
     return {
-      success: false,
-      message: 'Per accedere a queste informazioni è necessario effettuare il login. ' +
-               'Se sei un cliente B2B, accedi al tuo account per visualizzare ordini, fatture e altre informazioni riservate.',
-      suggestedActions: [
-        'Effettua il login',
-        'Registrati come cliente B2B',
-        'Contatta il supporto per assistenza'
-      ],
+      success: true, // Non è un errore, è una risposta valida!
+      message: content.message,
+      suggestedActions: content.actions,
       requiresHumanEscalation: false,
-      agentId: 'auth_guard',
+      agentId: 'sales_assistant',
       confidence: 1.0
     };
   }
 
   /**
    * Gestisce il caso in cui nessun agente può gestire la richiesta
+   * Comportamento da venditore: proattivo, orienta verso prodotti e servizi
    */
   private handleNoAgentAvailable(context: CustomerContext, intent: Intent): AgentResponse {
+    const lang = context.metadata?.language || 'it';
+
+    const messages: Record<string, { message: string; actions: string[] }> = {
+      it: {
+        message: '🤔 Non ho capito esattamente cosa ti serve, ma sono qui per aiutarti!\n\n' +
+                 'LAPA è il tuo partner per i migliori prodotti alimentari italiani in Svizzera.\n\n' +
+                 'Posso aiutarti con:\n' +
+                 '🧀 **Prodotti** - Formaggi, salumi, pasta e molto altro\n' +
+                 '📦 **Ordini** - Effettua un ordine o verifica lo stato\n' +
+                 '🚚 **Consegne** - Informazioni su spedizioni e tempi\n' +
+                 '💼 **Diventa cliente B2B** - Vantaggi esclusivi per aziende\n\n' +
+                 'Come posso esserti utile?',
+        actions: ['Scopri i prodotti', 'Diventa cliente B2B', 'Parla con un operatore', 'Contattaci']
+      },
+      de: {
+        message: '🤔 Ich habe nicht genau verstanden, was Sie brauchen, aber ich bin hier, um zu helfen!\n\n' +
+                 'LAPA ist Ihr Partner für die besten italienischen Lebensmittel in der Schweiz.\n\n' +
+                 'Ich kann Ihnen helfen mit:\n' +
+                 '🧀 **Produkte** - Käse, Wurst, Pasta und vieles mehr\n' +
+                 '📦 **Bestellungen** - Bestellen oder Status prüfen\n' +
+                 '🚚 **Lieferungen** - Informationen zu Versand und Zeiten\n' +
+                 '💼 **B2B-Kunde werden** - Exklusive Vorteile für Unternehmen\n\n' +
+                 'Wie kann ich Ihnen helfen?',
+        actions: ['Produkte entdecken', 'B2B-Kunde werden', 'Mit Mitarbeiter sprechen', 'Kontakt']
+      },
+      fr: {
+        message: '🤔 Je n\'ai pas bien compris votre demande, mais je suis là pour vous aider!\n\n' +
+                 'LAPA est votre partenaire pour les meilleurs produits alimentaires italiens en Suisse.\n\n' +
+                 'Je peux vous aider avec:\n' +
+                 '🧀 **Produits** - Fromages, charcuterie, pâtes et bien plus\n' +
+                 '📦 **Commandes** - Passer une commande ou vérifier le statut\n' +
+                 '🚚 **Livraisons** - Informations sur les expéditions et délais\n' +
+                 '💼 **Devenir client B2B** - Avantages exclusifs pour entreprises\n\n' +
+                 'Comment puis-je vous aider?',
+        actions: ['Découvrir les produits', 'Devenir client B2B', 'Parler à un opérateur', 'Contact']
+      },
+      en: {
+        message: '🤔 I didn\'t quite understand what you need, but I\'m here to help!\n\n' +
+                 'LAPA is your partner for the finest Italian food products in Switzerland.\n\n' +
+                 'I can help you with:\n' +
+                 '🧀 **Products** - Cheese, cured meats, pasta and much more\n' +
+                 '📦 **Orders** - Place an order or check status\n' +
+                 '🚚 **Deliveries** - Shipping and delivery info\n' +
+                 '💼 **Become a B2B customer** - Exclusive benefits for businesses\n\n' +
+                 'How can I help you?',
+        actions: ['Discover products', 'Become B2B customer', 'Talk to an operator', 'Contact us']
+      }
+    };
+
+    const content = messages[lang] || messages['it'];
+
     return {
-      success: false,
-      message: 'Mi dispiace, al momento non posso gestire direttamente questa richiesta. ' +
-               'Un nostro operatore ti contatterà al più presto per assisterti.',
-      suggestedActions: [
-        'Chiamaci al +41 91 123 4567',
-        'Scrivi a info@lapa.ch',
-        'Visita la sezione FAQ'
-      ],
-      requiresHumanEscalation: true,
-      agentId: 'fallback',
-      confidence: 0
+      success: true, // Non è un errore, è un'opportunità di vendita!
+      message: content.message,
+      suggestedActions: content.actions,
+      requiresHumanEscalation: false,
+      agentId: 'sales_assistant',
+      confidence: 0.8
     };
   }
 
