@@ -10,12 +10,12 @@
  * - Notifiche via email al team
  *
  * INTEGRAZIONE ODOO:
- * - Usa createOdooRPCClient per connessione ai dati reali
+ * - Usa getOdooClient per connessione ai dati reali (stesso client usato dagli altri agenti)
  * - Modello principale: helpdesk.ticket
  * - Fallback a mail.message se helpdesk non disponibile
  */
 
-import { createOdooRPCClient } from '../../odoo/rpcClient';
+import { getOdooClient } from '@/lib/odoo-client';
 import { Resend } from 'resend';
 
 // Configurazione email - lazy initialization per evitare errori se RESEND_API_KEY non è configurato
@@ -153,12 +153,35 @@ const TRANSLATIONS = {
 
 type Language = 'it' | 'en' | 'de';
 
+// Wrapper per il client Odoo che mantiene la stessa interfaccia di prima
+class OdooRPCWrapper {
+  private client: Awaited<ReturnType<typeof getOdooClient>> | null = null;
+
+  async ensureClient() {
+    if (!this.client) {
+      this.client = await getOdooClient();
+    }
+    return this.client;
+  }
+
+  async searchRead(model: string, domain: any[], fields: string[], limit?: number, order?: string) {
+    const client = await this.ensureClient();
+    // Usa searchReadKw per supportare l'ordinamento
+    return client.searchReadKw(model, domain, fields, { limit: limit || 100, order: order || '' });
+  }
+
+  async callKw(model: string, method: string, args: any[], kwargs?: any) {
+    const client = await this.ensureClient();
+    return client.call(model, method, args, kwargs || {});
+  }
+}
+
 export class HelpdeskAgent {
-  private odooRPC: ReturnType<typeof createOdooRPCClient>;
+  private odooRPC: OdooRPCWrapper;
   private lang: Language = 'it';
 
   constructor(sessionId?: string, language: Language = 'it') {
-    this.odooRPC = createOdooRPCClient(sessionId);
+    this.odooRPC = new OdooRPCWrapper();
     this.lang = language;
   }
 
