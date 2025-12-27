@@ -902,7 +902,13 @@ IMPORTANTE:
       // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
       const wantsTicket = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt/i.test(userMessage);
 
-      console.log('🎫 Ticket check:', { wantsTicket, customerId: context.customerId, customerIdType: typeof context.customerId });
+      const ticketCheck = {
+        wantsTicket,
+        customerId: context.customerId,
+        customerIdType: typeof context.customerId,
+        customerType: context.customerType
+      };
+      console.log('🎫 Ticket check:', ticketCheck);
 
       // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
       if (wantsTicket && context.customerId) {
@@ -1046,7 +1052,8 @@ ${conversationSummary}
         suggestedActions: [
           'Apri un ticket di assistenza',
           'Hai altre domande?'
-        ]
+        ],
+        data: { debug: ticketCheck }  // DEBUG - rimuovere dopo
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
