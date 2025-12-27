@@ -294,6 +294,7 @@ function getGenericResponse(lang: string): string {
 export async function GET() {
   return NextResponse.json({
     status: 'online',
+    version: 'v2-debug-ticket',  // Per verificare deploy
     agents: [
       { id: 'orchestrator', status: 'active' },
       { id: 'orders', status: 'active' },
