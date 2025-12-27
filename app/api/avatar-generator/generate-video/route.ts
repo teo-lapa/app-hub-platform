@@ -4,11 +4,24 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { put } from '@vercel/blob';
 import { sql } from '@vercel/postgres';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to avoid build-time errors
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiClient;
+}
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+let genAIClient: GoogleGenerativeAI | null = null;
+function getGenAI(): GoogleGenerativeAI {
+  if (!genAIClient) {
+    genAIClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  }
+  return genAIClient;
+}
 
 // Initialize database table if not exists
 async function initDatabase() {
@@ -214,7 +227,7 @@ async function generateAvatarVideoAsync(
     // Step 2: Generate audio with OpenAI TTS
     await updateJobProgress(jobId, 15, 'Generazione voce AI...', provider as 'sora' | 'veo');
 
-    const audioResponse = await openai.audio.speech.create({
+    const audioResponse = await getOpenAI().audio.speech.create({
       model: 'tts-1-hd',
       voice: voice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
       input: script,
