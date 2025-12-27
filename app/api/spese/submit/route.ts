@@ -45,19 +45,39 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action') || 'categories';
 
     if (action === 'categories') {
-      // Lista categorie spese disponibili
+      // Lista categorie spese disponibili - FILTRATE per azienda dell'utente
       console.log('📂 [SPESE-SUBMIT] Caricamento categorie spese...');
 
+      // Prima trova l'azienda del dipendente
+      const employees = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['user_id', '=', uid]],
+        fields: ['id', 'name', 'company_id'],
+        limit: 1
+      });
+
+      let companyId: number | false = false;
+      if (employees && employees.length > 0 && employees[0].company_id) {
+        companyId = employees[0].company_id[0];
+        console.log('🏢 [SPESE-SUBMIT] Azienda dipendente:', employees[0].company_id[1]);
+      }
+
+      // Filtra le categorie per azienda (solo quelle dell'azienda o globali)
       const products = await callOdoo(cookies, 'product.product', 'search_read', [], {
-        domain: [['can_be_expensed', '=', true]],
-        fields: ['id', 'name', 'standard_price', 'default_code'],
+        domain: [
+          ['can_be_expensed', '=', true],
+          '|',
+          ['company_id', '=', companyId],
+          ['company_id', '=', false]
+        ],
+        fields: ['id', 'name', 'standard_price', 'default_code', 'company_id'],
         order: 'name'
       });
 
-      console.log(`✅ [SPESE-SUBMIT] Trovate ${products.length} categorie spese`);
+      console.log(`✅ [SPESE-SUBMIT] Trovate ${products.length} categorie spese per company_id ${companyId}`);
 
       return NextResponse.json({
         success: true,
+        companyId,
         categories: products.map((p: any) => ({
           id: p.id,
           name: p.name,
@@ -211,7 +231,29 @@ export async function POST(request: NextRequest) {
     // 2. Trova o determina la categoria spesa (product.product)
     // IMPORTANTE: Filtra per company_id per evitare errori multi-company
     const companyId = employee.company_id ? employee.company_id[0] : false;
-    let productId = categoryId;
+    let productId = null;
+
+    // Se è stato passato un categoryId, verifica che appartenga all'azienda corretta
+    if (categoryId) {
+      const categoryCheck = await callOdoo(cookies, 'product.product', 'search_read', [], {
+        domain: [
+          ['id', '=', categoryId],
+          ['can_be_expensed', '=', true],
+          '|',
+          ['company_id', '=', companyId],
+          ['company_id', '=', false]
+        ],
+        fields: ['id', 'name', 'company_id'],
+        limit: 1
+      });
+
+      if (categoryCheck && categoryCheck.length > 0) {
+        productId = categoryCheck[0].id;
+        console.log('✅ [SPESE-SUBMIT] Categoria verificata:', categoryCheck[0].name);
+      } else {
+        console.warn('⚠️ [SPESE-SUBMIT] Categoria ID', categoryId, 'non appartiene all\'azienda', companyId, '- cerco alternativa');
+      }
+    }
 
     // Ottieni i termini di ricerca basati sulla categoria AI
     const searchTerms = getCategorySearchTerms(categoryName || 'altro');
