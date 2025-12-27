@@ -218,27 +218,8 @@ export default function GestioneScadenzePage() {
     setProcessingAI(true);
 
     try {
-      // 1. Prima salva le foto come allegati su Odoo (sul lotto se esiste, altrimenti sul prodotto)
-      const uploadResponse = await fetch('/api/gestione-scadenze/save-expiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          action: 'upload_photos',
-          productId: selectedProduct.id,
-          lotId: selectedProduct.lot_id, // Allega al lotto se presente
-          photos: photos
-        })
-      });
-
-      const uploadData = await uploadResponse.json();
-      if (!uploadData.success) {
-        throw new Error(uploadData.error || 'Errore upload foto');
-      }
-
-      console.log('📸 Foto caricate su Odoo:', uploadData);
-
-      // 2. Chiama Gemini Vision per estrarre lotto e scadenza
+      // NON caricare le foto qui - le carichiamo DOPO la conferma sul lotto corretto
+      // Chiama Gemini Vision per estrarre lotto e scadenza
       const extractResponse = await fetch('/api/gestione-scadenze/extract-expiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,12 +240,12 @@ export default function GestioneScadenzePage() {
 
       console.log('🤖 Dati estratti da Gemini:', extractData);
 
-      // 3. Mostra modal di conferma con i dati estratti
+      // Mostra modal di conferma con i dati estratti (foto salvate per upload successivo)
       setExtractedData({
         lotNumber: extractData.lotNumber || '',
         expiryDate: extractData.expiryDate || '',
         confidence: extractData.confidence || 0,
-        photos: photos
+        photos: photos // Le foto verranno caricate dopo la conferma
       });
       setShowConfirmModal(true);
 
@@ -278,11 +259,12 @@ export default function GestioneScadenzePage() {
 
   // Conferma e salva i dati estratti
   const handleConfirmExpiry = async (lotNumber: string, expiryDate: string) => {
-    if (!selectedProduct) return;
+    if (!selectedProduct || !extractedData) return;
 
     try {
       setLoading(true);
 
+      // 1. Prima crea/aggiorna il lotto
       const response = await fetch('/api/gestione-scadenze/save-expiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,14 +284,43 @@ export default function GestioneScadenzePage() {
         throw new Error(data.error || 'Errore salvataggio');
       }
 
-      // Aggiorna prodotto nella lista locale - segna come verificato
+      console.log('✅ Lotto aggiornato/creato:', data);
+
+      // 2. Ora carica le foto sul lotto appena creato/aggiornato
+      const lotIdToUse = data.lotId || selectedProduct.lot_id;
+
+      if (extractedData.photos && extractedData.photos.length > 0) {
+        console.log(`📸 Caricando ${extractedData.photos.length} foto sul lotto ${lotIdToUse}...`);
+
+        const uploadResponse = await fetch('/api/gestione-scadenze/save-expiry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'upload_photos',
+            productId: selectedProduct.id,
+            lotId: lotIdToUse, // Usa il lotId appena creato/aggiornato
+            photos: extractedData.photos
+          })
+        });
+
+        const uploadData = await uploadResponse.json();
+        if (uploadData.success) {
+          console.log(`✅ Foto caricate su ${uploadData.targetModel} ID ${uploadData.targetId}`);
+        } else {
+          console.warn('⚠️ Errore upload foto:', uploadData.error);
+          // Non blocchiamo per errore foto, il lotto è già salvato
+        }
+      }
+
+      // 3. Aggiorna prodotto nella lista locale - segna come verificato
       setProducts(prev => prev.map(p => {
         if (selectedProduct.quant_id
           ? p.quant_id === selectedProduct.quant_id
           : p.id === selectedProduct.id) {
           return {
             ...p,
-            lot_id: data.lotId || p.lot_id,
+            lot_id: lotIdToUse,
             lot_name: lotNumber,
             lot_expiration_date: expiryDate,
             hasExpiry: !!expiryDate,
@@ -319,7 +330,7 @@ export default function GestioneScadenzePage() {
         return p;
       }));
 
-      toast.success(`✅ Scadenza aggiornata: ${selectedProduct.name}`);
+      toast.success(`✅ Scadenza e foto salvate: ${selectedProduct.name}`);
       setShowConfirmModal(false);
       setSelectedProduct(null);
       setExtractedData(null);
