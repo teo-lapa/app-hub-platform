@@ -1324,7 +1324,7 @@ IMPORTANTE:
       suggestedActions: [
         'Lascia i tuoi contatti',
         'Allega foto del problema',
-        'Chiamaci subito al +41 91 123 4567'
+        'Scrivici a info@lapa.ch'
       ]
     };
   }
@@ -1343,8 +1343,8 @@ INFORMAZIONI AZIENDA:
 
 CONTATTO:
 - Email: info@lapa.ch
-- Telefono: +41 91 XXX XXXX
 - Sito: https://www.lapa.ch
+- Indirizzo: Industriestrasse 18, 8424 Embrach, Svizzera
 
 TUO RUOLO:
 - Fornisci informazioni utili e accurate sui prodotti e servizi LAPA

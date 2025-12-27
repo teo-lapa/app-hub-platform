@@ -565,13 +565,24 @@ export class ShippingAgent {
 
       const customer = customers[0];
 
-      // Cerca tutte le consegne del cliente
+      // Prima ottieni tutti gli indirizzi (child) del cliente
+      const childPartners = await client.execute_kw(
+        'res.partner',
+        'search',
+        [[['parent_id', '=', customerId]]],
+        { limit: 50 }
+      );
+
+      // Costruisci la lista di tutti i partner IDs da cercare (cliente + indirizzi)
+      const allPartnerIds = [customerId, ...(childPartners || [])];
+
+      // Cerca tutte le consegne del cliente (inclusi indirizzi di consegna)
       const pickings = await client.execute_kw(
         'stock.picking',
         'search_read',
         [
           [
-            ['partner_id', '=', customerId],
+            ['partner_id', 'in', allPartnerIds],
             ['picking_type_code', '=', 'outgoing'],
             ['state', '!=', 'cancel']
           ]
