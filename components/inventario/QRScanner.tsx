@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, X, Flashlight, FlashlightOff } from 'lucide-react';
+import { Camera, X, Flashlight, FlashlightOff, RefreshCw } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 
 interface QRScannerProps {
@@ -16,14 +16,15 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [torchEnabled, setTorchEnabled] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
+  const [scanCount, setScanCount] = useState(0);
   const scannerRef = useRef<QrScanner | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
+      hasProcessedRef.current = false;
       startScanner();
-      setHasScanned(false);
     } else {
       stopScanner();
     }
@@ -36,20 +37,35 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
   const startScanner = async () => {
     try {
       setError(null);
-      setScanning(true);
+      setScanning(false);
+      setScanCount(0);
 
       if (!videoRef.current) {
         setError('Elemento video non trovato');
         return;
       }
 
+      // Stop any existing scanner
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.stop();
+          scannerRef.current.destroy();
+        } catch {}
+        scannerRef.current = null;
+      }
+
       const qrScanner = new QrScanner(
         videoRef.current,
         (result) => {
-          // Evita scansioni multiple dello stesso codice
-          if (!hasScanned) {
-            setHasScanned(true);
+          // Evita elaborazioni multiple
+          if (!hasProcessedRef.current && result.data) {
+            hasProcessedRef.current = true;
             console.log(`✅ QR Code scansionato: ${result.data}`);
+
+            // Feedback visivo
+            setScanCount(prev => prev + 1);
+
+            // Chiama callback e chiudi
             onScan(result.data);
             stopScanner();
             onClose();
@@ -58,23 +74,21 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
         {
           highlightScanRegion: true,
           highlightCodeOutline: true,
+          // Scansione continua piu frequente
+          maxScansPerSecond: 5,
+          // Preferisci camera posteriore
+          preferredCamera: 'environment',
         }
       );
 
       scannerRef.current = qrScanner;
 
-      // Prova prima con la camera posteriore
-      try {
-        await qrScanner.start();
-        qrScanner.setCamera('environment').catch(() => {
-          console.warn('Camera posteriore non disponibile, uso default');
-        });
-      } catch (err) {
-        console.warn('Errore camera posteriore, provo con anteriore');
-        await qrScanner.start();
-      }
+      // Avvia lo scanner
+      await qrScanner.start();
+      setScanning(true);
+      console.log('📷 Scanner QR avviato - scansione continua attiva');
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Errore avvio scanner:', err);
       setError('Impossibile accedere alla camera. Verifica i permessi.');
       setScanning(false);
@@ -162,8 +176,11 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
 
                   {/* Status Indicator */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
-                    <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-400">
-                      {scanning ? 'Scansione in corso...' : 'Avvio scanner...'}
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 ${
+                      scanning ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {scanning && <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
+                      {scanning ? 'Scansione attiva' : 'Avvio scanner...'}
                     </div>
 
                     <button
