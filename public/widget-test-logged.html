@@ -101,12 +101,16 @@
 
     <h3>Seleziona un cliente di test:</h3>
     <div class="customer-selector">
+      <button onclick="setCustomer(3282, 'Laura Teodorescu Privat', 'laura.teodorescu@lapa.ch')" id="btn-3282" class="active">Laura Teodorescu Privat</button>
       <button onclick="setCustomer(1, 'Cliente Test', 'test@lapa.ch')" id="btn-1">ID: 1</button>
       <button onclick="setCustomer(10, 'Ristorante Milano', 'info@ristorantemilano.ch')" id="btn-10">ID: 10</button>
-      <button onclick="setCustomer(100, 'Hotel Bellavista', 'ordini@hotelbellavista.ch')" id="btn-100">ID: 100</button>
-      <button onclick="setCustomer(1000, 'Supermercato Rossi', 'acquisti@superrossi.ch')" id="btn-1000">ID: 1000</button>
     </div>
-    <p><small>Nota: Usa un ID cliente reale dal tuo Odoo per vedere dati reali.</small></p>
+    <p><small>Nota: Se l'ID 3282 non funziona, inserisci l'ID cliente corretto di Laura Teodorescu Privat dal tuo Odoo.</small></p>
+    <div style="margin-top: 10px;">
+      <input type="number" id="custom-id" placeholder="ID personalizzato" style="padding: 8px; width: 150px;">
+      <input type="text" id="custom-name" placeholder="Nome" style="padding: 8px; width: 200px;">
+      <button onclick="setCustomer(document.getElementById('custom-id').value, document.getElementById('custom-name').value, 'custom@lapa.ch')" style="padding: 8px 16px; background: #9c27b0; color: white; border: none; border-radius: 4px; cursor: pointer;">Usa ID personalizzato</button>
+    </div>
   </div>
 
   <div class="info-box">
@@ -145,9 +149,9 @@
   <div id="widget-container"></div>
 
   <script>
-    let currentCustomerId = 1;
-    let currentCustomerName = 'Cliente Test';
-    let currentCustomerEmail = 'test@lapa.ch';
+    let currentCustomerId = 3282;
+    let currentCustomerName = 'Laura Teodorescu Privat';
+    let currentCustomerEmail = 'laura.teodorescu@lapa.ch';
 
     function setCustomer(id, name, email) {
       currentCustomerId = id;
@@ -199,8 +203,14 @@
 
     // Carica widget iniziale
     window.onload = function() {
+      // Aggiorna UI con valori di default
+      document.getElementById('customer-id').textContent = currentCustomerId;
+      document.getElementById('customer-name').textContent = currentCustomerName;
+      document.getElementById('customer-email').textContent = currentCustomerEmail;
+      document.getElementById('code-id').textContent = currentCustomerId;
+      document.getElementById('code-name').textContent = currentCustomerName;
+      document.getElementById('code-email').textContent = currentCustomerEmail;
       reloadWidget();
-      document.getElementById('btn-1').classList.add('active');
     };
   </script>
 </body>
