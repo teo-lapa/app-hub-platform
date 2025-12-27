@@ -101,11 +101,11 @@
 
     <h3>Seleziona un cliente di test:</h3>
     <div class="customer-selector">
-      <button onclick="setCustomer(3282, 'Laura Teodorescu Privat', 'laura.teodorescu@lapa.ch')" id="btn-3282" class="active">Laura Teodorescu Privat</button>
+      <button onclick="setCustomer(2421, 'LAURA TEODORESCU PRIVATO', 'lauraantoniettaelsaesser@gmail.com')" id="btn-2421" class="active">Laura Teodorescu Privato</button>
       <button onclick="setCustomer(1, 'Cliente Test', 'test@lapa.ch')" id="btn-1">ID: 1</button>
       <button onclick="setCustomer(10, 'Ristorante Milano', 'info@ristorantemilano.ch')" id="btn-10">ID: 10</button>
     </div>
-    <p><small>Nota: Se l'ID 3282 non funziona, inserisci l'ID cliente corretto di Laura Teodorescu Privat dal tuo Odoo.</small></p>
+    <p><small>ID cliente verificato da Odoo: 2421 = LAURA TEODORESCU PRIVATO</small></p>
     <div style="margin-top: 10px;">
       <input type="number" id="custom-id" placeholder="ID personalizzato" style="padding: 8px; width: 150px;">
       <input type="text" id="custom-name" placeholder="Nome" style="padding: 8px; width: 200px;">
@@ -149,9 +149,9 @@
   <div id="widget-container"></div>
 
   <script>
-    let currentCustomerId = 3282;
-    let currentCustomerName = 'Laura Teodorescu Privat';
-    let currentCustomerEmail = 'laura.teodorescu@lapa.ch';
+    let currentCustomerId = 2421;
+    let currentCustomerName = 'LAURA TEODORESCU PRIVATO';
+    let currentCustomerEmail = 'lauraantoniettaelsaesser@gmail.com';
 
     function setCustomer(id, name, email) {
       currentCustomerId = id;
