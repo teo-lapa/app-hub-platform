@@ -882,8 +882,17 @@ IMPORTANTE:
       const lastMessage = context.conversationHistory[context.conversationHistory.length - 1];
       const userMessage = lastMessage?.content?.toLowerCase() || '';
 
+      console.log('🔍 DEBUG helpdeskAgentHandler:', {
+        customerId: context.customerId,
+        customerType: context.customerType,
+        lastMessage: userMessage,
+        historyLength: context.conversationHistory.length
+      });
+
       // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
       const wantsOperator = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo/i.test(userMessage);
+
+      console.log('🔍 DEBUG wantsOperator:', wantsOperator, 'customerId:', context.customerId);
 
       // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
       if (wantsOperator && context.customerId) {
