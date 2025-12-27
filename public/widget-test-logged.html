@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test LAPA AI Widget - Cliente Loggato</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #ff0000;
+    }
+    .info-box {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+    .customer-info {
+      background: #e8f5e9;
+      border: 2px solid #4caf50;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .customer-info h3 {
+      color: #2e7d32;
+      margin-top: 0;
+    }
+    code {
+      background: #f1f1f1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    pre {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .test-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .test-btn {
+      padding: 12px 24px;
+      background: #ff0000;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .test-btn:hover {
+      background: #cc0000;
+    }
+    .customer-selector {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .customer-selector button {
+      padding: 10px 20px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .customer-selector button:hover {
+      background: #1976d2;
+    }
+    .customer-selector button.active {
+      background: #4caf50;
+    }
+  </style>
+</head>
+<body>
+  <h1>LAPA AI Widget - Test Cliente Loggato</h1>
+
+  <div class="info-box">
+    <div class="customer-info">
+      <h3>Cliente Simulato</h3>
+      <p><strong>ID Cliente:</strong> <span id="customer-id">1</span></p>
+      <p><strong>Nome:</strong> <span id="customer-name">Cliente Test</span></p>
+      <p><strong>Email:</strong> <span id="customer-email">test@lapa.ch</span></p>
+      <p><strong>Tipo:</strong> B2B</p>
+    </div>
+
+    <h3>Seleziona un cliente di test:</h3>
+    <div class="customer-selector">
+      <button onclick="setCustomer(1, 'Cliente Test', 'test@lapa.ch')" id="btn-1">ID: 1</button>
+      <button onclick="setCustomer(10, 'Ristorante Milano', 'info@ristorantemilano.ch')" id="btn-10">ID: 10</button>
+      <button onclick="setCustomer(100, 'Hotel Bellavista', 'ordini@hotelbellavista.ch')" id="btn-100">ID: 100</button>
+      <button onclick="setCustomer(1000, 'Supermercato Rossi', 'acquisti@superrossi.ch')" id="btn-1000">ID: 1000</button>
+    </div>
+    <p><small>Nota: Usa un ID cliente reale dal tuo Odoo per vedere dati reali.</small></p>
+  </div>
+
+  <div class="info-box">
+    <h2>Test funzionalita cliente loggato</h2>
+    <p>Con un cliente loggato, il chatbot puo:</p>
+    <ul>
+      <li><strong>Ordini:</strong> Mostrare lo storico ordini del cliente</li>
+      <li><strong>Fatture:</strong> Mostrare fatture aperte e pagate</li>
+      <li><strong>Spedizioni:</strong> Tracciare le consegne in corso</li>
+      <li><strong>Prodotti:</strong> Mostrare prezzi personalizzati B2B</li>
+    </ul>
+
+    <div class="test-buttons">
+      <button class="test-btn" onclick="testMessage('Mostrami i miei ultimi ordini')">I miei ordini</button>
+      <button class="test-btn" onclick="testMessage('Ho fatture da pagare?')">Le mie fatture</button>
+      <button class="test-btn" onclick="testMessage('Dove si trova la mia spedizione?')">Le mie spedizioni</button>
+      <button class="test-btn" onclick="testMessage('Quanto costa il parmigiano reggiano?')">Prezzi B2B</button>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <h2>Come funziona</h2>
+    <p>Questa pagina simula un cliente B2B loggato passando <code>data-customer-id</code> al widget.</p>
+    <p>In produzione, questi dati verrebbero passati dal sistema di autenticazione del sito.</p>
+    <pre>&lt;script
+  src="https://staging.hub.lapa.ch/lapa-ai-widget.js"
+  data-customer-type="b2b"
+  data-customer-id="<span id="code-id">1</span>"
+  data-customer-name="<span id="code-name">Cliente Test</span>"
+  data-customer-email="<span id="code-email">test@lapa.ch</span>"
+  data-language="it"&gt;
+&lt;/script&gt;</pre>
+  </div>
+
+  <!-- Container per il widget -->
+  <div id="widget-container"></div>
+
+  <script>
+    let currentCustomerId = 1;
+    let currentCustomerName = 'Cliente Test';
+    let currentCustomerEmail = 'test@lapa.ch';
+
+    function setCustomer(id, name, email) {
+      currentCustomerId = id;
+      currentCustomerName = name;
+      currentCustomerEmail = email;
+
+      // Aggiorna UI
+      document.getElementById('customer-id').textContent = id;
+      document.getElementById('customer-name').textContent = name;
+      document.getElementById('customer-email').textContent = email;
+      document.getElementById('code-id').textContent = id;
+      document.getElementById('code-name').textContent = name;
+      document.getElementById('code-email').textContent = email;
+
+      // Aggiorna pulsanti attivi
+      document.querySelectorAll('.customer-selector button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('btn-' + id).classList.add('active');
+
+      // Ricarica widget con nuovo cliente
+      reloadWidget();
+    }
+
+    function reloadWidget() {
+      // Rimuovi widget esistente
+      const existingWidget = document.getElementById('lapa-ai-widget-container');
+      if (existingWidget) {
+        existingWidget.remove();
+      }
+      const existingScript = document.getElementById('lapa-widget-script');
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      // Crea nuovo script
+      const script = document.createElement('script');
+      script.id = 'lapa-widget-script';
+      script.src = 'https://staging.hub.lapa.ch/lapa-ai-widget.js';
+      script.setAttribute('data-customer-type', 'b2b');
+      script.setAttribute('data-customer-id', currentCustomerId);
+      script.setAttribute('data-customer-name', currentCustomerName);
+      script.setAttribute('data-customer-email', currentCustomerEmail);
+      script.setAttribute('data-language', 'it');
+      document.body.appendChild(script);
+    }
+
+    function testMessage(msg) {
+      alert('Apri il widget e scrivi: ' + msg);
+    }
+
+    // Carica widget iniziale
+    window.onload = function() {
+      reloadWidget();
+      document.getElementById('btn-1').classList.add('active');
+    };
+  </script>
+</body>
+</html>
