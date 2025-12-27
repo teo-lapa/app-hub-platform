@@ -988,7 +988,7 @@ ${conversationSummary}
 ══════════════════════════════════════════════════════`.trim();
 
         const ticketResult = await helpdeskAgent.createTicket({
-          customerId: context.customerId,
+          customerId: context.customerId!,  // Non-null assertion - già verificato nell'if
           subject: `[Chat AI] ${nome} - Richiesta assistenza`,
           description: ticketDescription,
           priority
