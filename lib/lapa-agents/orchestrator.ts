@@ -987,12 +987,24 @@ ${conversationSummary}
 🔗 Sessione: ${context.sessionId}
 ══════════════════════════════════════════════════════`.trim();
 
-        const ticketResult = await helpdeskAgent.createTicket({
-          customerId: context.customerId!,  // Non-null assertion - già verificato nell'if
-          subject: `[Chat AI] ${nome} - Richiesta assistenza`,
-          description: ticketDescription,
-          priority
-        });
+        console.log('🎫 Chiamando createTicket con:', { customerId: context.customerId, subject: `[Chat AI] ${nome}`, priority });
+
+        let ticketResult;
+        try {
+          ticketResult = await helpdeskAgent.createTicket({
+            customerId: context.customerId!,  // Non-null assertion - già verificato nell'if
+            subject: `[Chat AI] ${nome} - Richiesta assistenza`,
+            description: ticketDescription,
+            priority
+          });
+          console.log('🎫 Risultato createTicket:', JSON.stringify(ticketResult));
+        } catch (ticketError) {
+          console.error('🎫 Eccezione in createTicket:', ticketError);
+          ticketResult = {
+            success: false,
+            message: ticketError instanceof Error ? ticketError.message : String(ticketError)
+          };
+        }
 
         if (ticketResult.success) {
           return {
@@ -1017,11 +1029,15 @@ ${conversationSummary}
                      `Per favore contattaci direttamente:\n` +
                      `📧 lapa@lapa.ch\n` +
                      `📞 +41 76 361 70 21\n\n` +
-                     `Errore: ${ticketResult.message || 'Errore sconosciuto'}`,
+                     `Errore: ${ticketResult.message || ticketResult.error || 'Errore sconosciuto'}`,
             agentId: 'helpdesk',
             confidence: 0.5,
             requiresHumanEscalation: true,
-            data: { error: ticketResult.message, debug: ticketCheck }
+            data: {
+              ticketError: ticketResult.message || ticketResult.error,
+              ticketResult: JSON.stringify(ticketResult),
+              debug: ticketCheck
+            }
           };
         }
       }
