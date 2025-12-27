@@ -22,7 +22,7 @@
  * - stock.move: product_id, product_uom_qty, quantity_done, product_uom
  */
 
-import { getOdooXMLRPCClient } from '@/lib/odoo-xmlrpc';
+import { getOdooClient } from '@/lib/odoo-client';
 
 // ============================================================================
 // TYPES
@@ -145,57 +145,45 @@ export class ShippingAgent {
    */
   async trackShipment(orderId: number | string): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
+
+      // Campi da recuperare
+      const fields = [
+        'id', 'name', 'state', 'scheduled_date', 'date_done',
+        'partner_id', 'origin', 'note', 'backorder_id',
+        'location_dest_id', 'batch_id', 'move_ids', 'sale_id',
+        'picking_type_code'
+      ];
 
       // Cerca il picking associato all'ordine di vendita
       let pickings;
 
       if (typeof orderId === 'number') {
         // Se è un numero, cerca prima per picking ID, poi per sale_id
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
-          ],
-          {
-            fields: [
-              'id', 'name', 'state', 'scheduled_date', 'date_done',
-              'partner_id', 'origin', 'note', 'backorder_id',
-              'location_dest_id', 'batch_id', 'move_ids', 'sale_id',
-              'picking_type_code'
-            ],
-            limit: 1
-          }
+          ['|', ['id', '=', orderId], ['sale_id', '=', orderId]],
+          fields,
+          { limit: 1 }
         );
       } else {
         // Se è una stringa, cerca per nome ordine (origin) o picking name
-        // Supporta vari formati: S36269, SO36269, S036269, etc.
+        // Supporta vari formati: S36269, SO36269, S036269, WH/OUT/xxxxx, etc.
         const orderIdStr = String(orderId).toUpperCase();
 
         // Prova a estrarre solo il numero per ricerca flessibile
         const numericPart = orderIdStr.replace(/[^0-9]/g, '');
 
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', '|', '|',
-              ['origin', 'ilike', orderIdStr],
-              ['origin', 'ilike', numericPart],
-              ['name', 'ilike', orderIdStr],
-              ['name', 'ilike', numericPart]
-            ]
+          ['|', '|', '|',
+            ['origin', 'ilike', orderIdStr],
+            ['origin', 'ilike', numericPart],
+            ['name', 'ilike', orderIdStr],
+            ['name', 'ilike', numericPart]
           ],
-          {
-            fields: [
-              'id', 'name', 'state', 'scheduled_date', 'date_done',
-              'partner_id', 'origin', 'note', 'backorder_id',
-              'location_dest_id', 'batch_id', 'move_ids', 'sale_id',
-              'picking_type_code'
-            ],
-            limit: 1
-          }
+          fields,
+          { limit: 1 }
         );
       }
 
@@ -217,13 +205,10 @@ export class ShippingAgent {
 
       if (picking.batch_id && Array.isArray(picking.batch_id)) {
         const batchId = picking.batch_id[0];
-        const batches = await client.execute_kw(
+        const batches = await client.read(
           'stock.picking.batch',
-          'read',
-          [[batchId]],
-          {
-            fields: ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
-          }
+          [batchId],
+          ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
         );
 
         if (batches && batches.length > 0) {
@@ -284,42 +269,34 @@ export class ShippingAgent {
    */
   async getDeliveryETA(orderId: number | string): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
+
+      const fields = ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'];
 
       // Cerca il picking
       let pickings;
       if (typeof orderId === 'number') {
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
-          ],
-          {
-            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'],
-            limit: 1
-          }
+          ['|', ['id', '=', orderId], ['sale_id', '=', orderId]],
+          fields,
+          { limit: 1 }
         );
       } else {
         // Ricerca flessibile per vari formati ordine
         const orderIdStr = String(orderId).toUpperCase();
         const numericPart = orderIdStr.replace(/[^0-9]/g, '');
 
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', '|', '|',
-              ['origin', 'ilike', orderIdStr],
-              ['origin', 'ilike', numericPart],
-              ['name', 'ilike', orderIdStr],
-              ['name', 'ilike', numericPart]
-            ]
+          ['|', '|', '|',
+            ['origin', 'ilike', orderIdStr],
+            ['origin', 'ilike', numericPart],
+            ['name', 'ilike', orderIdStr],
+            ['name', 'ilike', numericPart]
           ],
-          {
-            fields: ['id', 'name', 'state', 'scheduled_date', 'partner_id', 'batch_id'],
-            limit: 1
-          }
+          fields,
+          { limit: 1 }
         );
       }
 
@@ -370,16 +347,13 @@ export class ShippingAgent {
    */
   async getDriverInfo(pickingId: number): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
 
       // Cerca il picking
-      const pickings = await client.execute_kw(
+      const pickings = await client.read(
         'stock.picking',
-        'read',
-        [[pickingId]],
-        {
-          fields: ['batch_id', 'scheduled_date']
-        }
+        [pickingId],
+        ['batch_id', 'scheduled_date']
       );
 
       if (!pickings || pickings.length === 0) {
@@ -401,13 +375,10 @@ export class ShippingAgent {
       const batchId = picking.batch_id[0];
 
       // Ottieni info batch e autista
-      const batches = await client.execute_kw(
+      const batches = await client.read(
         'stock.picking.batch',
-        'read',
-        [[batchId]],
-        {
-          fields: ['x_studio_autista_del_giro', 'x_studio_auto_del_giro', 'picking_ids']
-        }
+        [batchId],
+        ['x_studio_autista_del_giro', 'x_studio_auto_del_giro', 'picking_ids']
       );
 
       if (!batches || batches.length === 0 || !batches[0].x_studio_autista_del_giro) {
@@ -423,28 +394,22 @@ export class ShippingAgent {
 
       // Conta consegne oggi per questo autista
       const today = new Date().toISOString().split('T')[0];
-      const todayPickings = await client.execute_kw(
+      const todayPickings = await client.searchCount(
         'stock.picking',
-        'search_count',
         [
-          [
-            ['batch_id.x_studio_autista_del_giro', '=', driverId],
-            ['scheduled_date', '>=', `${today} 00:00:00`],
-            ['scheduled_date', '<=', `${today} 23:59:59`]
-          ]
+          ['batch_id.x_studio_autista_del_giro', '=', driverId],
+          ['scheduled_date', '>=', `${today} 00:00:00`],
+          ['scheduled_date', '<=', `${today} 23:59:59`]
         ]
       );
 
-      const completedToday = await client.execute_kw(
+      const completedToday = await client.searchCount(
         'stock.picking',
-        'search_count',
         [
-          [
-            ['batch_id.x_studio_autista_del_giro', '=', driverId],
-            ['state', '=', 'done'],
-            ['date_done', '>=', `${today} 00:00:00`],
-            ['date_done', '<=', `${today} 23:59:59`]
-          ]
+          ['batch_id.x_studio_autista_del_giro', '=', driverId],
+          ['state', '=', 'done'],
+          ['date_done', '>=', `${today} 00:00:00`],
+          ['date_done', '<=', `${today} 23:59:59`]
         ]
       );
 
@@ -479,42 +444,32 @@ export class ShippingAgent {
    */
   async getDeliveryDriver(orderId: number | string): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
 
       // Cerca il picking
       let pickings;
       if (typeof orderId === 'number') {
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', ['id', '=', orderId], ['sale_id', '=', orderId]]
-          ],
-          {
-            fields: ['id'],
-            limit: 1
-          }
+          ['|', ['id', '=', orderId], ['sale_id', '=', orderId]],
+          ['id'],
+          { limit: 1 }
         );
       } else {
         // Ricerca flessibile per vari formati ordine
         const orderIdStr = String(orderId).toUpperCase();
         const numericPart = orderIdStr.replace(/[^0-9]/g, '');
 
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', '|', '|',
-              ['origin', 'ilike', orderIdStr],
-              ['origin', 'ilike', numericPart],
-              ['name', 'ilike', orderIdStr],
-              ['name', 'ilike', numericPart]
-            ]
+          ['|', '|', '|',
+            ['origin', 'ilike', orderIdStr],
+            ['origin', 'ilike', numericPart],
+            ['name', 'ilike', orderIdStr],
+            ['name', 'ilike', numericPart]
           ],
-          {
-            fields: ['id'],
-            limit: 1
-          }
+          ['id'],
+          { limit: 1 }
         );
       }
 
@@ -544,16 +499,13 @@ export class ShippingAgent {
    */
   async getDeliveryHistory(customerId: number, limit: number = 20): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
 
       // Ottieni info cliente
-      const customers = await client.execute_kw(
+      const customers = await client.read(
         'res.partner',
-        'read',
-        [[customerId]],
-        {
-          fields: ['name']
-        }
+        [customerId],
+        ['name']
       );
 
       if (!customers || customers.length === 0) {
@@ -565,22 +517,40 @@ export class ShippingAgent {
 
       const customer = customers[0];
 
-      // Cerca tutte le consegne del cliente
-      const pickings = await client.execute_kw(
+      // STRATEGIA: Cerca i picking tramite gli ordini di vendita del cliente
+      // Questo è più affidabile perché il partner_id del picking può essere un indirizzo di consegna diverso
+
+      // 1. Prima cerca tutti gli ordini di vendita del cliente
+      const saleOrders = await client.search(
+        'sale.order',
+        [['partner_id', '=', customerId]],
+        { limit: 100 }
+      );
+
+      if (!saleOrders || saleOrders.length === 0) {
+        return {
+          success: true,
+          data: {
+            customer_id: customerId,
+            customer_name: customer.name,
+            total_deliveries: 0,
+            last_delivery_date: null,
+            avg_delivery_time: null,
+            on_time_percentage: 0,
+            deliveries: []
+          }
+        };
+      }
+
+      // 2. Cerca tutti i picking collegati a questi ordini
+      const pickings = await client.searchReadKw(
         'stock.picking',
-        'search_read',
         [
-          [
-            ['partner_id', '=', customerId],
-            ['picking_type_code', '=', 'outgoing'],
-            ['state', '!=', 'cancel']
-          ]
+          ['sale_id', 'in', saleOrders],
+          ['state', '!=', 'cancel']
         ],
-        {
-          fields: ['id', 'name', 'state', 'scheduled_date', 'date_done', 'driver_id', 'move_ids'],
-          order: 'date_done DESC, scheduled_date DESC',
-          limit: limit
-        }
+        ['id', 'name', 'state', 'scheduled_date', 'date_done', 'driver_id', 'move_ids', 'origin', 'sale_id'],
+        { order: 'scheduled_date DESC', limit: limit }
       );
 
       const deliveries: DeliveryHistoryItem[] = [];
@@ -658,33 +628,23 @@ export class ShippingAgent {
     reportedBy: string = 'Sistema'
   ): Promise<ShippingAgentResponse> {
     try {
-      const client = await getOdooXMLRPCClient();
+      const client = await getOdooClient();
 
       // Cerca il picking
       let pickings;
       if (typeof orderId === 'number') {
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            [['id', '=', orderId]]
-          ],
-          {
-            fields: ['id', 'name', 'note'],
-            limit: 1
-          }
+          [['id', '=', orderId]],
+          ['id', 'name', 'note'],
+          { limit: 1 }
         );
       } else {
-        pickings = await client.execute_kw(
+        pickings = await client.searchReadKw(
           'stock.picking',
-          'search_read',
-          [
-            ['|', ['origin', '=', orderId], ['name', '=', orderId]]
-          ],
-          {
-            fields: ['id', 'name', 'note'],
-            limit: 1
-          }
+          ['|', ['origin', '=', orderId], ['name', '=', orderId]],
+          ['id', 'name', 'note'],
+          { limit: 1 }
         );
       }
 
@@ -706,10 +666,10 @@ export class ShippingAgent {
         ? `${currentNote}\n\n${issueMessage}`
         : issueMessage;
 
-      await client.execute_kw(
+      await client.write(
         'stock.picking',
-        'write',
-        [[picking.id], { note: updatedNote }]
+        [picking.id],
+        { note: updatedNote }
       );
 
       // Crea attività di follow-up (se possibile)
@@ -757,13 +717,10 @@ export class ShippingAgent {
   private async getPickingProducts(client: any, moveIds: number[]): Promise<ShipmentProduct[]> {
     if (!moveIds || moveIds.length === 0) return [];
 
-    const moves = await client.execute_kw(
+    const moves = await client.read(
       'stock.move',
-      'read',
-      [moveIds],
-      {
-        fields: ['product_id', 'product_uom_qty', 'quantity_done', 'product_uom']
-      }
+      moveIds,
+      ['product_id', 'product_uom_qty', 'quantity_done', 'product_uom']
     );
 
     return moves.map((move: any) => ({
@@ -780,13 +737,10 @@ export class ShippingAgent {
    * Ottiene indirizzo cliente formattato
    */
   private async getCustomerAddress(client: any, partnerId: number): Promise<string> {
-    const partners = await client.execute_kw(
+    const partners = await client.read(
       'res.partner',
-      'read',
-      [[partnerId]],
-      {
-        fields: ['street', 'street2', 'city', 'zip', 'country_id']
-      }
+      [partnerId],
+      ['street', 'street2', 'city', 'zip', 'country_id']
     );
 
     if (!partners || partners.length === 0) return '';
@@ -887,10 +841,9 @@ Descrizione: ${description}
     issueType: string,
     description: string
   ): Promise<void> {
-    const activityTypeIds = await client.execute_kw(
+    const activityTypeIds = await client.search(
       'mail.activity.type',
-      'search',
-      [[['name', '=', 'To Do']]],
+      [['name', '=', 'To Do']],
       { limit: 1 }
     );
 
@@ -901,9 +854,8 @@ Descrizione: ${description}
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    await client.execute_kw(
+    await client.create(
       'mail.activity',
-      'create',
       [{
         activity_type_id: activityTypeIds[0],
         res_model: 'stock.picking',

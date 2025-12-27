@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Search, Package, MapPin, Calculator, RotateCcw, Video, Sparkles } from 'lucide-react';
+import { Camera, Package, MapPin, Calculator, RotateCcw, Video, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 import { QRScanner } from '@/components/inventario/QRScanner';
 import { Calculator as CalculatorComponent } from '@/components/inventario/Calculator';
-import { ProductSearch } from '@/components/inventario/ProductSearch';
 import { BufferTransfer } from '@/components/inventario/BufferTransfer';
 import { LotManager } from '@/components/inventario/LotManager';
 import { ProductList } from '@/components/inventario/ProductList';
@@ -17,7 +16,7 @@ import { ConnectionStatus } from '@/components/inventario/ConnectionStatus';
 import { VerificationListModal } from '@/components/inventario/VerificationListModal';
 import { InventoryAIModal } from '@/components/inventario/InventoryAIModal';
 import { getInventoryClient } from '@/lib/odoo/inventoryClient';
-import { Location, Product, BasicProduct, AppState, InventoryConfig } from '@/lib/types/inventory';
+import { Location, Product, AppState, InventoryConfig } from '@/lib/types/inventory';
 import toast from 'react-hot-toast';
 
 // Configurazione app inventario
@@ -47,7 +46,6 @@ export default function InventarioPage() {
 
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showTransferSection, setShowTransferSection] = useState(false);
   const [showBottomPanel, setShowBottomPanel] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -55,7 +53,6 @@ export default function InventarioPage() {
   const [showBufferTransfer, setShowBufferTransfer] = useState(false);
   const [showLotManager, setShowLotManager] = useState(false);
   const [selectedProductForLot, setSelectedProductForLot] = useState<any>(null);
-  const [selectedNewProduct, setSelectedNewProduct] = useState<BasicProduct | null>(null);
   const [locationProducts, setLocationProducts] = useState<any[]>([]);
   const [showProductEditModal, setShowProductEditModal] = useState(false);
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<any>(null);
@@ -360,73 +357,7 @@ export default function InventarioPage() {
     setCountedQuantity(value);
     const quantity = parseFloat(value) || 0;
 
-    // Se stiamo aggiungendo un nuovo prodotto dalla ricerca
-    if (selectedNewProduct) {
-      console.log('➕ Aggiungendo nuovo prodotto con quantità:', quantity);
-
-      // Salva su Odoo
-      if (appState.currentLocation) {
-        try {
-          const saveResponse = await fetch('/api/inventory/update-quantity', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              productId: selectedNewProduct.id,
-              locationId: appState.currentLocation.id,
-              quantity: quantity
-            })
-          });
-
-          const saveData = await saveResponse.json();
-          if (!saveData.success) {
-            throw new Error(saveData.error || 'Errore salvataggio');
-          }
-
-          console.log('✅ Quantità salvata su Odoo:', saveData);
-        } catch (error: any) {
-          console.error('❌ Errore salvataggio su Odoo:', error);
-          toast.error('Errore salvataggio: ' + error.message);
-          return;
-        }
-      }
-
-      // Crea un nuovo oggetto Product dal BasicProduct
-      const newProduct: Product = {
-        id: selectedNewProduct.id,
-        name: selectedNewProduct.name,
-        code: selectedNewProduct.code || '',
-        barcode: selectedNewProduct.barcode || '',
-        image: selectedNewProduct.image,
-        uom: selectedNewProduct.uom || 'PZ',
-        quantity: 0, // Nuovo prodotto in inventario
-        reserved: 0,
-        totalQty: quantity,
-        lots: [],
-        isCounted: true,
-        isCountedRecent: true
-      };
-
-      // Aggiungi alla lista dei prodotti dell'ubicazione
-      setLocationProducts(prev => [...prev, {
-        ...newProduct,
-        stockQuantity: 0, // Nuovo prodotto, quindi stock iniziale 0
-        countedQuantity: quantity,
-        difference: quantity // Differenza positiva perché stiamo aggiungendo
-      }]);
-
-      // Aggiungi anche ad appState.products
-      setAppState(prev => ({
-        ...prev,
-        products: [...prev.products, newProduct]
-      }));
-
-      toast.success(`✅ ${selectedNewProduct.name} aggiunto con quantità: ${quantity}`);
-
-      // Reset
-      setSelectedNewProduct(null);
-
-    } else if (appState.selectedProduct) {
+    if (appState.selectedProduct) {
       // Salva su Odoo la quantità contata
       if (appState.currentLocation) {
         try {
@@ -464,31 +395,6 @@ export default function InventarioPage() {
     }
   };
 
-  const handleProductSelect = (product: BasicProduct) => {
-    console.log('🆕 Prodotto selezionato dalla ricerca:', product);
-
-    // Crea un oggetto compatibile con ProductEditModal
-    const productForEdit = {
-      id: product.id,
-      name: product.name,
-      code: product.code || '',
-      barcode: product.barcode || '',
-      image: product.image,
-      uom: product.uom || 'PZ',
-      stockQuantity: 0, // Nuovo prodotto, quindi stock 0
-      countedQuantity: 0,
-      difference: 0,
-      lot: undefined
-    };
-
-    // Apri il popup di modifica prodotto
-    setSelectedProductForEdit(productForEdit);
-    setCountedQuantity('0'); // Inizializza la quantità per il modal
-    setShowProductEditModal(true);
-    setShowSearchPanel(false); // Chiudi il pannello di ricerca
-
-    showNotification(`📦 Configura: ${product.name}`, 'info');
-  };
 
   const openQRScanner = () => {
     setShowQRScanner(true);
@@ -576,13 +482,6 @@ export default function InventarioPage() {
             >
               <Camera className="w-4 h-4" />
               <span className="hidden sm:inline">Camera</span>
-            </button>
-            <button
-              onClick={() => setShowSearchPanel(true)}
-              className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 transition-colors flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Aggiungi</span>
             </button>
           </div>
         </div>
@@ -846,13 +745,6 @@ export default function InventarioPage() {
         initialValue={countedQuantity || "0"}
       />
 
-      {/* Product Search */}
-      <ProductSearch
-        isOpen={showSearchPanel}
-        onClose={() => setShowSearchPanel(false)}
-        onSelectProduct={handleProductSelect}
-        currentLocationName={appState.currentLocation?.name}
-      />
 
       {/* Buffer Transfer */}
       <BufferTransfer
