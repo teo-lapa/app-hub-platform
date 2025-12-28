@@ -3,6 +3,19 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { PNG } from 'pngjs';
 import * as jpeg from 'jpeg-js';
 
+/**
+ * Genera un access_token casuale per gli attachment Odoo
+ * Necessario per rendere le immagini accessibili pubblicamente a Instagram/Facebook API
+ */
+function generateAccessToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
 // Funzione per convertire PNG a JPEG (compatibile con Vercel - no binari nativi)
 async function convertToJpeg(imageBuffer: ArrayBuffer): Promise<{ buffer: Buffer; mimetype: string; extension: string }> {
   const buffer = Buffer.from(imageBuffer);
@@ -211,7 +224,11 @@ export async function POST(req: NextRequest) {
 
         console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
 
-        // Crea attachment in Odoo
+        // Genera access_token per rendere l'immagine accessibile pubblicamente
+        // IMPORTANTE: Instagram/Facebook API deve poter scaricare l'immagine dal nostro server
+        const accessToken = generateAccessToken();
+
+        // Crea attachment in Odoo - DEVE essere public con access_token per Instagram!
         const attachmentResult = await callOdoo(
           odooCookies,
           'ir.attachment',
@@ -221,6 +238,8 @@ export async function POST(req: NextRequest) {
             type: 'binary',
             datas: imageBase64,
             mimetype: mimetype,
+            public: true,  // ✅ FIX: Rende l'immagine accessibile pubblicamente
+            access_token: accessToken,  // ✅ FIX: Token per accesso sicuro
           }]
         );
 

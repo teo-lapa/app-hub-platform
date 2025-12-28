@@ -1043,6 +1043,12 @@ export default function SocialAIStudioPage() {
 
       if (data.data?.blogPostUrl) {
         progressMessages.push(`📍 URL: ${data.data.blogPostUrl}`);
+        // Salva l'URL del blog in articleData per usarlo nel video YouTube
+        setArticleData((prev: any) => ({
+          ...prev,
+          blogPostUrl: data.data.blogPostUrl,
+          isPublished: true
+        }));
       }
 
       progressMessages.push('🎉 Pubblicazione completata con successo!');
@@ -3634,11 +3640,45 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
                       <span className="text-sm font-semibold text-red-400">Video YouTube</span>
                     </div>
 
+                    {/* Avviso: pubblica prima l'articolo */}
+                    {!articleData.isPublished && !articleVideoData?.dataUrl && (
+                      <div className="mb-3 p-3 bg-amber-900/30 border border-amber-500/50 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-amber-200 font-medium">Prima pubblica l'articolo!</p>
+                            <p className="text-xs text-amber-300/80 mt-1">
+                              Per includere il link all'articolo nella descrizione del video YouTube,
+                              devi prima pubblicare l'articolo sul blog.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URL articolo pubblicato */}
+                    {articleData.isPublished && articleData.blogPostUrl && (
+                      <div className="mb-3 p-2 bg-green-900/30 border border-green-500/50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                          <span className="text-xs text-green-300">Articolo pubblicato</span>
+                        </div>
+                        <a
+                          href={articleData.blogPostUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-green-400 hover:text-green-300 truncate block mt-1"
+                        >
+                          {articleData.blogPostUrl}
+                        </a>
+                      </div>
+                    )}
+
                     {/* Se non c'è video, mostra pulsante genera */}
                     {!articleVideoData?.dataUrl && (
                       <button
                         onClick={handleGenerateArticleVideo}
-                        disabled={isGeneratingArticleVideo || isPollingArticleVideo || !articleData.imageUrl}
+                        disabled={isGeneratingArticleVideo || isPollingArticleVideo || !articleData.imageUrl || !articleData.isPublished}
                         className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
                         {isGeneratingArticleVideo || isPollingArticleVideo ? (
