@@ -314,9 +314,14 @@ export class HelpdeskAgent {
       );
     } catch (createError: any) {
       console.error('🎫 Error creating helpdesk.ticket:', createError.message);
-      // Try fallback to mail.message
-      console.log('🎫 Falling back to mail.message...');
-      return await this.createMailMessage(params);
+      console.error('🎫 Full error:', JSON.stringify(createError));
+      // NON fare fallback - il modulo helpdesk è disponibile, l'errore è un altro problema
+      // Ritorna l'errore così possiamo capire cosa sta succedendo
+      return {
+        success: false,
+        error: `Errore creazione ticket: ${createError.message || 'Errore sconosciuto'}`,
+        message: `Non riesco a creare il ticket. Errore: ${createError.message}`
+      };
     }
 
     if (!ticketId) {
