@@ -1355,8 +1355,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         );
 
         if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
-          const productsList = searchResult.data
-            .slice(0, 5)
+          const products = searchResult.data.slice(0, 5);
+          const productsList = products
             .map((product: any, index: number) => {
               const name = product.name;
               const price = product.list_price?.toFixed(2) || '0.00';
@@ -1369,16 +1369,21 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
             })
             .join('\n\n');
 
+          // Crea suggested actions dinamici per i primi 3 prodotti
+          const orderActions = products.slice(0, 3).map((p: any, i: number) => {
+            const shortName = p.name.split(' ').slice(0, 3).join(' ');
+            return `Ordina ${shortName}`;
+          });
+
           return {
             success: true,
-            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}`,
+            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}\n\n🛒 Per ordinare, clicca uno dei pulsanti qui sotto o scrivi "Ordina [nome prodotto]"`,
             data: searchResult.data,
             agentId: 'product',
             confidence: 0.9,
             suggestedActions: [
-              'Ordina prodotto',
-              'Vedi altri prodotti',
-              'Richiedi preventivo'
+              ...orderActions,
+              'Cerca altro'
             ]
           };
         }
