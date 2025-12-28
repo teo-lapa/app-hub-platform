@@ -1564,7 +1564,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
   /**
    * Handler per la creazione ordini
-   * B2B: Avvia il processo di creazione ordine con l'orders agent
+   * B2B: Usa l'orders agent con Claude per gestire il flusso completo
    * B2C: Reindirizza al sito web per acquisti
    */
   private async orderCreateAgentHandler(
@@ -1593,31 +1593,48 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       };
     }
 
-    // B2B: Avvia il processo di creazione ordine
+    // B2B: Usa l'orders agent con Claude per gestire il flusso
     try {
-      // Estrai eventuale prodotto menzionato
-      const productMentioned = intent.entities?.product_name;
+      // Prendi il messaggio originale dell'utente
+      const userMessages = context.conversationHistory.filter(m => m.role === 'user');
+      const userQuery = userMessages[userMessages.length - 1]?.content || 'Voglio creare un ordine';
 
-      let message = `Perfetto ${context.customerName || ''}, posso aiutarti a creare un nuovo ordine! 📦\n\n`;
-
-      if (productMentioned) {
-        message += `Vedo che hai menzionato "${productMentioned}". Vuoi che lo cerchi nel catalogo?\n\n`;
-      }
-
-      message += `Come vuoi procedere?\n\n`;
-      message += `1️⃣ **Cerca prodotti** - Dimmi cosa cerchi e trovo le disponibilità\n`;
-      message += `2️⃣ **Riordina** - Posso mostrarti i prodotti che hai già acquistato\n`;
-      message += `3️⃣ **Listino** - Consulta il nostro catalogo completo`;
-
-      return {
-        success: true,
-        message,
-        agentId: 'order_create',
-        confidence: 0.95,
-        suggestedActions: productMentioned
-          ? [`Cerca ${productMentioned}`, 'Mostra prodotti acquistati', 'Cerca altro prodotto']
-          : ['Cerca prodotti', 'Mostra prodotti acquistati', 'Vedi listino']
+      // Costruisci il task per l'orders agent
+      const task = {
+        id: `order_create_${Date.now()}`,
+        user_query: userQuery,
+        salesperson_id: 0, // Non usato per clienti
+        context: {
+          customer_id: context.customerId,
+          customer_name: context.customerName,
+          customer_type: context.customerType,
+          conversation_id: context.sessionId,
+        },
+        created_at: new Date()
       };
+
+      console.log('🛒 Calling ordersAgent for order creation:', task);
+
+      // Esegui l'orders agent
+      const result = await this.ordersAgent.execute(task);
+
+      if (result.success) {
+        return {
+          success: true,
+          message: result.data || 'Come posso aiutarti con il tuo ordine?',
+          agentId: 'order_create',
+          confidence: 0.95,
+          data: result,
+          suggestedActions: ['Cerca un prodotto', 'Mostra prodotti acquistati', 'Annulla']
+        };
+      } else {
+        return {
+          success: false,
+          message: result.error || 'Si è verificato un errore nella creazione dell\'ordine.',
+          agentId: 'order_create',
+          requiresHumanEscalation: true
+        };
+      }
     } catch (error) {
       console.error('❌ Errore orderCreateAgentHandler:', error);
       return {
