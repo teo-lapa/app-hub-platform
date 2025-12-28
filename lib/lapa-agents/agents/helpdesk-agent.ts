@@ -315,8 +315,15 @@ export class HelpdeskAgent {
     } catch (createError: any) {
       console.error('🎫 Error creating helpdesk.ticket:', createError.message);
       console.error('🎫 Full error:', JSON.stringify(createError));
-      // NON fare fallback - il modulo helpdesk è disponibile, l'errore è un altro problema
-      // Ritorna l'errore così possiamo capire cosa sta succedendo
+
+      // Se l'errore è di permessi o server error, usa il fallback mail.message
+      const errorMsg = createError.message?.toLowerCase() || '';
+      if (errorMsg.includes('access') || errorMsg.includes('server error') || errorMsg.includes('permission')) {
+        console.log('🎫 Helpdesk creation failed, trying mail.message fallback...');
+        return await this.createMailMessage(params);
+      }
+
+      // Per altri errori, ritorna l'errore
       return {
         success: false,
         error: `Errore creazione ticket: ${createError.message || 'Errore sconosciuto'}`,
@@ -356,7 +363,7 @@ export class HelpdeskAgent {
   }
 
   /**
-   * Fallback: crea messaggio usando mail.message
+   * Fallback: crea messaggio usando mail.message o crm.lead
    */
   private async createMailMessage(params: CreateTicketParams): Promise<{
     success: boolean;
@@ -364,7 +371,7 @@ export class HelpdeskAgent {
     message?: string;
     error?: string;
   }> {
-    console.log('Using mail.message fallback for ticket creation');
+    console.log('🎫 Using fallback for ticket creation');
 
     const messageBody = `
       <h3>${params.subject}</h3>
@@ -373,41 +380,87 @@ export class HelpdeskAgent {
       <p><strong>Priority:</strong> ${params.priority || '1'}</p>
     `;
 
-    // Crea messaggio in mail.message
-    const messageId = await this.odooRPC.callKw(
-      'mail.message',
-      'create',
-      [{
-        subject: params.subject,
-        body: messageBody,
-        message_type: 'notification',
-        subtype_id: 1, // Note subtype
-        model: 'res.partner',
-        res_id: params.customerId,
-      }]
-    );
+    // Prima prova crm.lead che è più strutturato e visibile
+    try {
+      console.log('🎫 Trying crm.lead fallback...');
+      const leadId = await this.odooRPC.callKw(
+        'crm.lead',
+        'create',
+        [{
+          name: `[Ticket AI] ${params.subject}`,
+          description: params.description,
+          partner_id: params.customerId,
+          type: 'opportunity', // O 'lead' se preferisci
+          priority: params.priority || '1',
+          tag_ids: [[6, 0, []]], // Nessun tag iniziale
+        }]
+      );
 
-    console.log('Message created with ID:', messageId);
+      console.log('🎫 CRM Lead created with ID:', leadId);
 
-    // Gestisci allegati se presenti
-    if (params.attachments && params.attachments.length > 0) {
-      await this.attachFiles(messageId, params.attachments, 'mail.message');
+      // Invia notifica email al team
+      await this.sendTicketCreatedEmail({
+        ticketId: leadId,
+        subject: `[CRM Lead] ${params.subject}`,
+        description: params.description,
+        customerId: params.customerId,
+        priority: params.priority || '1',
+      });
+
+      return {
+        success: true,
+        ticketId: leadId,
+        message: `${this.t('ticketCreated')} (creato come Lead CRM #${leadId})`,
+      };
+    } catch (crmError: any) {
+      console.warn('🎫 CRM Lead creation failed:', crmError.message);
     }
 
-    // Invia notifica email al team
-    await this.sendTicketCreatedEmail({
-      ticketId: messageId,
-      subject: params.subject,
-      description: params.description,
-      customerId: params.customerId,
-      priority: params.priority || '1',
-    });
+    // Se crm.lead fallisce, prova mail.message
+    try {
+      console.log('🎫 Trying mail.message fallback...');
+      const messageId = await this.odooRPC.callKw(
+        'mail.message',
+        'create',
+        [{
+          subject: `[Ticket AI] ${params.subject}`,
+          body: messageBody,
+          message_type: 'notification',
+          subtype_id: 1, // Note subtype
+          model: 'res.partner',
+          res_id: params.customerId,
+        }]
+      );
 
-    return {
-      success: true,
-      ticketId: messageId,
-      message: this.t('ticketCreated'),
-    };
+      console.log('🎫 Mail message created with ID:', messageId);
+
+      // Gestisci allegati se presenti
+      if (params.attachments && params.attachments.length > 0) {
+        await this.attachFiles(messageId, params.attachments, 'mail.message');
+      }
+
+      // Invia notifica email al team
+      await this.sendTicketCreatedEmail({
+        ticketId: messageId,
+        subject: `[Messaggio] ${params.subject}`,
+        description: params.description,
+        customerId: params.customerId,
+        priority: params.priority || '1',
+      });
+
+      return {
+        success: true,
+        ticketId: messageId,
+        message: `${this.t('ticketCreated')} (creato come messaggio #${messageId})`,
+      };
+    } catch (mailError: any) {
+      console.error('🎫 Mail.message creation also failed:', mailError.message);
+      return {
+        success: false,
+        error: `Impossibile creare richiesta: ${mailError.message}`,
+        message: 'Non riesco a creare la richiesta di supporto. Per favore contatta direttamente lapa@lapa.ch'
+      };
+    }
   }
 
   /**

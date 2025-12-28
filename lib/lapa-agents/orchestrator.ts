@@ -400,11 +400,24 @@ IMPORTANTE:
       if (!context) {
         context = this.createContext(sessionId, customerContext);
         this.conversationStore.set(sessionId, context);
-        console.log('📝 New context created:', { customerId: context.customerId, customerType: context.customerType });
+        console.log('📝 New context created:', { customerId: context.customerId, customerType: context.customerType, historyLength: context.conversationHistory.length });
       } else {
         // Aggiorna context con nuove info se fornite
+        // IMPORTANTE: se customerContext ha conversationHistory (da KV), usa quella perché è la più completa
         if (customerContext) {
-          context = { ...context, ...customerContext };
+          const inMemoryHistoryLength = context.conversationHistory.length;
+          const kvHistoryLength = customerContext.conversationHistory?.length || 0;
+
+          // Usa la cronologia più lunga (KV dovrebbe essere sempre aggiornato)
+          if (kvHistoryLength >= inMemoryHistoryLength) {
+            context = { ...context, ...customerContext };
+            console.log(`📝 Context updated: usando cronologia da KV (${kvHistoryLength} messaggi) invece di in-memory (${inMemoryHistoryLength})`);
+          } else {
+            // Mantieni in-memory history ma aggiorna altri campi
+            const { conversationHistory, ...otherContext } = customerContext;
+            context = { ...context, ...otherContext };
+            console.log(`📝 Context updated: mantenendo cronologia in-memory (${inMemoryHistoryLength} messaggi), KV aveva solo ${kvHistoryLength}`);
+          }
         }
       }
 
@@ -483,6 +496,10 @@ IMPORTANTE:
     sessionId: string,
     customerContext?: Partial<CustomerContext>
   ): CustomerContext {
+    // Usa la cronologia conversazione passata (da KV) se disponibile, altrimenti array vuoto
+    const history = customerContext?.conversationHistory || [];
+    console.log(`📝 createContext: usando ${history.length} messaggi da conversationHistory`);
+
     return {
       sessionId,
       customerType: customerContext?.customerType || 'anonymous',
@@ -490,7 +507,7 @@ IMPORTANTE:
       customerName: customerContext?.customerName,
       customerEmail: customerContext?.customerEmail,
       odooSession: customerContext?.odooSession,
-      conversationHistory: [],
+      conversationHistory: history,
       metadata: {
         timestamp: new Date(),
         ...customerContext?.metadata

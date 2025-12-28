@@ -66,6 +66,18 @@ export async function POST(request: NextRequest) {
     // Se AI abilitata, usa l'orchestratore
     if (USE_AI_ORCHESTRATOR && process.env.ANTHROPIC_API_KEY) {
       try {
+        // IMPORTANTE: Carica la cronologia conversazione da KV per mantenere contesto tra invocazioni serverless
+        let conversationHistory: { role: 'user' | 'assistant'; content: string; timestamp: Date; agentId?: string }[] = [];
+        try {
+          const storedConversation = await loadConversation(sessionId);
+          if (storedConversation && storedConversation.messages.length > 0) {
+            conversationHistory = storedConversation.messages;
+            console.log(`📂 Conversazione caricata da KV: ${conversationHistory.length} messaggi`);
+          }
+        } catch (loadError) {
+          console.warn('⚠️ Errore caricamento conversazione da KV:', loadError);
+        }
+
         console.log('🔄 Inizializzazione Odoo client...');
         const odooClient = await getOdooClient();
         console.log('✅ Odoo client ottenuto');
@@ -80,6 +92,7 @@ export async function POST(request: NextRequest) {
           customerId,
           customerName,
           customerEmail,
+          conversationHistory, // Passa la cronologia caricata da KV
           metadata: { language }
         });
         console.log('✅ Risposta ottenuta');
