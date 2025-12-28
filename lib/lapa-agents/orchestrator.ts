@@ -1383,7 +1383,8 @@ ${conversationSummary}
       }
 
       // Analizza se l'utente chiede fatture da pagare
-      const messageLC = context.message.toLowerCase();
+      const lastMessage = context.conversationHistory[context.conversationHistory.length - 1];
+      const messageLC = (lastMessage?.content || '').toLowerCase();
       const wantsUnpaid = messageLC.includes('da pagare') || messageLC.includes('pagare') ||
                           messageLC.includes('aperte') || messageLC.includes('non pagate') ||
                           messageLC.includes('scadute') || messageLC.includes('saldo');
