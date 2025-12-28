@@ -300,13 +300,17 @@ export async function POST(req: NextRequest) {
 
         // Pubblica immediatamente se non programmato
         if (!scheduledDate) {
-          // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
-          // Instagram API richiede tempo per processare il media prima di poter pubblicare
+          // INSTAGRAM FIX: Instagram richiede più tempo per processare i media container
+          // Il problema: Odoo chiama action_post che crea il container e prova a pubblicare subito
+          // Ma Instagram API ha bisogno di ~3-10 secondi per avere il container in stato "FINISHED"
           // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
           const isInstagram = platformLabel.toLowerCase().includes('instagram');
-          const initialDelay = isInstagram ? 8000 : 3000; // 8s per Instagram, 3s per altri
 
-          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${initialDelay/1000}s for image processing...`);
+          // Per Instagram: aspetta 12s prima del primo tentativo (aumentato da 8s)
+          // Per altri: 3s è sufficiente
+          const initialDelay = isInstagram ? 12000 : 3000;
+
+          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${initialDelay/1000}s for media processing...`);
           await new Promise(resolve => setTimeout(resolve, initialDelay));
 
           // Riprova fino a 3 volte con pausa crescente tra i tentativi
@@ -314,14 +318,66 @@ export async function POST(req: NextRequest) {
           for (let attempt = 1; attempt <= 3 && !published; attempt++) {
             try {
               console.log(`🔄 [PUBLISH-ODOO] ${platformLabel}: Tentativo ${attempt}/3 per post ${postId}...`);
+
+              // INSTAGRAM FIX: Prima di ogni retry, resetta lo stato del live_post a "ready"
+              // Questo è necessario perché quando action_post fallisce, Odoo segna il live_post come "failed"
+              // e non riprova automaticamente. Dobbiamo resettare lo stato manualmente.
+              if (isInstagram && attempt > 1) {
+                try {
+                  // Trova il live_post per questo social.post e account Instagram
+                  const livePosts = await callOdoo(
+                    odooCookies,
+                    'social.live.post',
+                    'search_read',
+                    [[['post_id', '=', postId], ['account_id', '=', accountId]]],
+                    { fields: ['id', 'state'] }
+                  );
+
+                  if (livePosts && livePosts.length > 0 && livePosts[0].state === 'failed') {
+                    console.log(`🔧 [PUBLISH-ODOO] ${platformLabel}: Resetto live_post ${livePosts[0].id} da "failed" a "ready"...`);
+                    await callOdoo(
+                      odooCookies,
+                      'social.live.post',
+                      'write',
+                      [[livePosts[0].id], { state: 'ready', failure_reason: false }]
+                    );
+                  }
+                } catch (resetError: any) {
+                  console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel}: Errore reset live_post:`, resetError.message);
+                }
+              }
+
               await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
-              console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel}`);
-              published = true;
+
+              // Verifica se la pubblicazione è riuscita controllando lo stato del live_post
+              if (isInstagram) {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Attendi che Odoo aggiorni lo stato
+                const livePostsAfter = await callOdoo(
+                  odooCookies,
+                  'social.live.post',
+                  'search_read',
+                  [[['post_id', '=', postId], ['account_id', '=', accountId]]],
+                  { fields: ['id', 'state', 'instagram_post_id'] }
+                );
+
+                if (livePostsAfter && livePostsAfter.length > 0) {
+                  if (livePostsAfter[0].state === 'posted' && livePostsAfter[0].instagram_post_id) {
+                    console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel} (IG ID: ${livePostsAfter[0].instagram_post_id})`);
+                    published = true;
+                  } else if (livePostsAfter[0].state === 'failed') {
+                    throw new Error(`Live post in stato failed`);
+                  }
+                }
+              } else {
+                console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel}`);
+                published = true;
+              }
             } catch (e: any) {
               console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel} tentativo ${attempt} fallito:`, e.message);
               if (attempt < 3) {
-                // Aspetta più tempo per Instagram (5s, 10s) - altri social 2s
-                const retryDelay = isInstagram ? attempt * 5000 : 2000;
+                // Per Instagram: aspetta 8s, 12s tra i retry (aumentato per dare tempo al container)
+                // Per altri: 2s è sufficiente
+                const retryDelay = isInstagram ? (attempt + 1) * 4000 : 2000;
                 console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${retryDelay/1000}s before retry...`);
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
               }

@@ -248,7 +248,7 @@ async function createBlogPostWithTranslations(
   );
 
   // ==========================================
-  // TRADUZIONI BLOG
+  // TRADUZIONI BLOG (METODO DIRETTO)
   // ==========================================
 
   const langCodes = ['de_CH', 'fr_CH', 'en_US'];
@@ -258,61 +258,23 @@ async function createBlogPostWithTranslations(
     if (!translatedArticle) continue;
 
     try {
-      // Traduci titolo
+      // Genera HTML tradotto completo
+      const translatedHTML = generateArticleBlogHTML(translatedArticle);
+
+      // Scrivi TUTTI i campi tradotti in un'unica chiamata
       await callOdoo(
         odooCookies,
         'blog.post',
         'write',
-        [[postId], { name: translatedArticle.title }],
+        [[postId], {
+          name: translatedArticle.title,
+          subtitle: translatedArticle.subtitle,
+          content: translatedHTML
+        }],
         { context: { lang: langCode } }
       );
 
-      // Traduci sottotitolo
-      await callOdoo(
-        odooCookies,
-        'blog.post',
-        'write',
-        [[postId], { subtitle: translatedArticle.subtitle }],
-        { context: { lang: langCode } }
-      );
-
-      // Traduci contenuto via segmenti
-      const segmentData = await callOdoo(
-        odooCookies,
-        'blog.post',
-        'get_field_translations',
-        [[postId], 'content']
-      );
-
-      if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
-        const segments = segmentData[0];
-        const sourceTexts = Array.from(new Set(segments.map((s: any) => s.source))) as string[];
-        const segmentTranslations: Record<string, string> = {};
-
-        const italianArticleData = translations['it_IT'];
-
-        for (const srcText of sourceTexts) {
-          const translatedText = findArticleTranslationForSegment(
-            srcText,
-            italianArticleData,
-            translatedArticle
-          );
-
-          if (translatedText && translatedText !== srcText) {
-            segmentTranslations[srcText] = translatedText;
-          }
-        }
-
-        if (Object.keys(segmentTranslations).length > 0) {
-          await callOdoo(
-            odooCookies,
-            'blog.post',
-            'update_field_translations',
-            [[postId], 'content', { [langCode]: segmentTranslations }]
-          );
-          console.log(`  ✅ Traduzione ${langCode}: ${Object.keys(segmentTranslations).length} segmenti tradotti`);
-        }
-      }
+      console.log(`  ✅ Traduzione ${langCode}: titolo, sottotitolo e contenuto completo`);
 
     } catch (translationError: any) {
       console.error(`  ❌ Impossibile aggiungere traduzione ${langCode}:`, translationError.message);
