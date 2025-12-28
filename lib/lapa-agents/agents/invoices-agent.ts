@@ -104,6 +104,28 @@ export class InvoicesAgent {
     return this.odooClient;
   }
 
+  /**
+   * Ottieni tutti gli ID partner collegati (padre + figli)
+   * In Odoo B2B, le fatture possono essere intestate ai contatti figli (es. "fatturazione")
+   */
+  private async getPartnerIdsWithChildren(customerId: number): Promise<number[]> {
+    const client = await this.ensureOdooClient();
+
+    // Cerca tutti i contatti figli del cliente (parent_id = customerId)
+    const childContacts = await client.searchRead(
+      'res.partner',
+      [['parent_id', '=', customerId]],
+      ['id', 'name', 'type'],
+      100
+    );
+
+    // Crea lista di tutti gli ID da cercare: padre + figli
+    const partnerIds = [customerId, ...childContacts.map((c: any) => c.id)];
+    console.log(`🔍 [InvoicesAgent] Partner IDs (parent + children): ${partnerIds.join(', ')}`);
+
+    return partnerIds;
+  }
+
   // ============================================================================
   // PUBLIC METHODS - CORE FUNCTIONALITY
   // ============================================================================
@@ -171,9 +193,10 @@ export class InvoicesAgent {
         ['move_type', '=', 'out_invoice'], // Solo fatture clienti (non fornitori)
       ];
 
-      // Filtro per cliente
+      // Filtro per cliente - include anche i contatti figli (es. "fatturazione", "consegna")
       if (customerId) {
-        domain.push(['partner_id', '=', customerId]);
+        const partnerIds = await this.getPartnerIdsWithChildren(customerId);
+        domain.push(['partner_id', 'in', partnerIds]);
       }
 
       // Filtro per stato pagamento
@@ -376,11 +399,14 @@ export class InvoicesAgent {
     try {
       const client = await this.ensureOdooClient();
 
-      // Recupera tutte le fatture del cliente
+      // Ottieni tutti i partner IDs (padre + figli)
+      const partnerIds = await this.getPartnerIdsWithChildren(customerId);
+
+      // Recupera tutte le fatture del cliente (inclusi contatti figli)
       const invoices = await client.searchRead(
         'account.move',
         [
-          ['partner_id', '=', customerId],
+          ['partner_id', 'in', partnerIds],
           ['move_type', '=', 'out_invoice'],
           ['state', '=', 'posted'],
         ],
@@ -602,7 +628,8 @@ export class InvoicesAgent {
       ];
 
       if (customerId) {
-        domain.push(['partner_id', '=', customerId]);
+        const partnerIds = await this.getPartnerIdsWithChildren(customerId);
+        domain.push(['partner_id', 'in', partnerIds]);
       }
 
       const invoices = await client.searchRead(
@@ -852,7 +879,8 @@ Cordiali saluti`;
       ];
 
       if (customerId) {
-        domain.push(['partner_id', '=', customerId]);
+        const partnerIds = await this.getPartnerIdsWithChildren(customerId);
+        domain.push(['partner_id', 'in', partnerIds]);
       }
 
       const invoices = await client.searchRead(
