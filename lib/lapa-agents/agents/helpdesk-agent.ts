@@ -217,28 +217,27 @@ export class HelpdeskAgent {
       return true;
     } catch (error: any) {
       console.log('⚠️ Helpdesk check error:', error.message);
-      // Se è un errore di sessione, non è un problema del modulo
+      // Se è un errore di sessione, propaga
       if (error.message?.toLowerCase().includes('session')) {
         console.warn('⚠️ Session error checking helpdesk:', error.message);
-        throw error; // Propaga l'errore di sessione
+        throw error;
       }
-      // Se contiene "access" o "not found" o "does not exist", il modulo non è disponibile
-      if (error.message?.toLowerCase().includes('access') ||
-          error.message?.toLowerCase().includes('not found') ||
-          error.message?.toLowerCase().includes('does not exist')) {
-        console.log('⚠️ Helpdesk module not available, will use mail.message fallback');
+      // SOLO se il modello non esiste, usa fallback
+      if (error.message?.toLowerCase().includes('does not exist') ||
+          error.message?.toLowerCase().includes('model not found')) {
+        console.log('⚠️ Helpdesk module not installed, will use fallback');
         return false;
       }
-      // Per altri errori (es. Odoo Server Error) - prova il fallback
-      console.log('⚠️ Unknown error checking helpdesk, will try mail.message fallback');
-      return false;
+      // Per TUTTI gli altri errori (permessi, server error, ecc), assume che helpdesk esiste
+      // e lascia che l'errore venga gestito nella creazione del ticket
+      console.log('⚠️ Error during helpdesk check, but assuming module exists');
+      return true;
     }
   }
 
   /**
    * CREA TICKET
    * Crea un nuovo ticket helpdesk e invia notifica email
-   * Se helpdesk non disponibile, usa mail.message come fallback
    */
   async createTicket(params: CreateTicketParams): Promise<{
     success: boolean;
@@ -248,23 +247,17 @@ export class HelpdeskAgent {
     error?: string;
   }> {
     try {
-      console.log('Creating helpdesk ticket:', params);
+      console.log('🎫 Creating helpdesk ticket:', params);
 
-      const isHelpdeskAvailable = await this.checkHelpdeskAvailable();
-
-      if (isHelpdeskAvailable) {
-        // Usa il modulo helpdesk.ticket
-        return await this.createHelpdeskTicket(params);
-      } else {
-        // Fallback: crea un messaggio in mail.message
-        return await this.createMailMessage(params);
-      }
+      // Crea SEMPRE in helpdesk.ticket - niente fallback
+      return await this.createHelpdeskTicket(params);
 
     } catch (error: any) {
-      console.error('Error creating ticket:', error);
+      console.error('🎫 Error creating ticket:', error);
       return {
         success: false,
         error: error.message || this.t('error'),
+        message: `Errore nella creazione del ticket. Per favore contatta lapa@lapa.ch`
       };
     }
   }
@@ -316,18 +309,12 @@ export class HelpdeskAgent {
       console.error('🎫 Error creating helpdesk.ticket:', createError.message);
       console.error('🎫 Full error:', JSON.stringify(createError));
 
-      // Se l'errore è di permessi o server error, usa il fallback mail.message
-      const errorMsg = createError.message?.toLowerCase() || '';
-      if (errorMsg.includes('access') || errorMsg.includes('server error') || errorMsg.includes('permission')) {
-        console.log('🎫 Helpdesk creation failed, trying mail.message fallback...');
-        return await this.createMailMessage(params);
-      }
-
-      // Per altri errori, ritorna l'errore
+      // NON fare fallback - ritorna l'errore direttamente
+      // Il ticket DEVE essere creato in helpdesk.ticket
       return {
         success: false,
         error: `Errore creazione ticket: ${createError.message || 'Errore sconosciuto'}`,
-        message: `Non riesco a creare il ticket. Errore: ${createError.message}`
+        message: `Non riesco a creare il ticket. Errore: ${createError.message}. Per favore contatta lapa@lapa.ch`
       };
     }
 
