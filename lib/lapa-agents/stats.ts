@@ -80,6 +80,21 @@ class AgentStatsStore {
     try {
       // Usa rpush per aggiungere atomicamente alla lista (evita race condition)
       const key = getRequestsKey();
+
+      // Verifica il tipo della chiave e migra se necessario
+      const keyType = await kv.type(key);
+      if (keyType === 'string') {
+        // Migra dal vecchio formato stringa al nuovo formato lista
+        const oldData = await kv.get<any[]>(key);
+        await kv.del(key);
+        if (oldData && Array.isArray(oldData)) {
+          for (const r of oldData) {
+            await kv.rpush(key, JSON.stringify(r));
+          }
+        }
+        console.log(`📊 Migrated ${oldData?.length || 0} records from string to list format`);
+      }
+
       await kv.rpush(key, JSON.stringify(record));
 
       // Imposta TTL se non già impostato
