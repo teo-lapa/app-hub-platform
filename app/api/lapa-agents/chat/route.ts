@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
 import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
+import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
 
 // Tipi
 interface ChatRequest {
@@ -99,6 +100,26 @@ export async function POST(request: NextRequest) {
 
         if (response.requiresHumanEscalation) {
           recordEscalation();
+        }
+
+        // Salva la conversazione nel KV per persistenza
+        try {
+          // Salva messaggio utente
+          await addMessageToConversation(sessionId, {
+            role: 'user',
+            content: message,
+            timestamp: new Date()
+          }, { customerId, customerName, customerType });
+
+          // Salva risposta assistente
+          await addMessageToConversation(sessionId, {
+            role: 'assistant',
+            content: response.message,
+            timestamp: new Date(),
+            agentId: response.agentId
+          }, { customerId, customerName, customerType });
+        } catch (kvError) {
+          console.warn('⚠️ Errore salvataggio conversazione in KV:', kvError);
         }
 
         return NextResponse.json({
