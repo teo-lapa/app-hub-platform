@@ -7,7 +7,7 @@ import {
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
   AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe,
-  Calendar, Clock, FileText, PenTool
+  Calendar, Clock, FileText, PenTool, RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -124,6 +124,7 @@ export default function SocialAIStudioPage() {
   const [articleData, setArticleData] = useState<any | null>(null);
   const [isPublishingArticle, setIsPublishingArticle] = useState(false);
   const [articlePublishProgress, setArticlePublishProgress] = useState<string[]>([]);
+  const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
 
   // Scheduling states
   const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | 'article' | null>(null);
@@ -1048,6 +1049,82 @@ export default function SocialAIStudioPage() {
     } finally {
       setIsPublishingArticle(false);
     }
+  };
+
+  // ==========================================
+  // Rigenera Immagine Articolo
+  // ==========================================
+  const handleRegenerateArticleImage = async () => {
+    if (!articleData || !articleData.article) {
+      toast.error('Nessun articolo da cui rigenerare l\'immagine');
+      return;
+    }
+
+    setIsRegeneratingImage(true);
+    const loadingToast = toast.loading('Rigenerando immagine...');
+
+    try {
+      const response = await fetch('/api/social-ai/regenerate-article-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleTitle: articleData.article.title,
+          articleSubtitle: articleData.article.subtitle,
+          imagePrompt: articleData.article.imagePrompt || `Professional editorial photo for article about: ${articleData.article.title}`,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante rigenerazione');
+      }
+
+      // Aggiorna solo l'immagine nell'articleData
+      setArticleData((prev: any) => ({
+        ...prev,
+        imageUrl: data.imageUrl
+      }));
+
+      toast.success('Immagine rigenerata!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore rigenerazione immagine:', error);
+      toast.error(error.message || 'Errore durante rigenerazione', { id: loadingToast });
+    } finally {
+      setIsRegeneratingImage(false);
+    }
+  };
+
+  // ==========================================
+  // Aggiorna Campo Articolo (per editing inline)
+  // ==========================================
+  const updateArticleField = (field: string, value: any) => {
+    setArticleData((prev: any) => ({
+      ...prev,
+      article: {
+        ...prev.article,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateArticleSection = (index: number, field: 'title' | 'content', value: string) => {
+    setArticleData((prev: any) => {
+      const newSections = [...prev.article.sections];
+      newSections[index] = {
+        ...newSections[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        article: {
+          ...prev.article,
+          sections: newSections
+        }
+      };
+    });
   };
 
   // Helper per aprire il modal di scheduling
@@ -3154,54 +3231,100 @@ export default function SocialAIStudioPage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
                 </div>
 
-                {/* Immagine di copertina */}
+                {/* Immagine di copertina con pulsante rigenera */}
                 {articleData.imageUrl && (
-                  <img
-                    src={articleData.imageUrl}
-                    alt="Copertina articolo"
-                    className="w-full h-auto rounded-lg border border-violet-500/50 mb-4"
-                  />
+                  <div className="mb-4">
+                    <img
+                      src={articleData.imageUrl}
+                      alt="Copertina articolo"
+                      className="w-full h-auto rounded-lg border border-violet-500/50"
+                    />
+                    <button
+                      onClick={handleRegenerateArticleImage}
+                      disabled={isRegeneratingImage}
+                      className="mt-2 flex items-center justify-center space-x-2 w-full px-3 py-2 bg-violet-600/30 hover:bg-violet-600/50 text-violet-200 text-sm rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {isRegeneratingImage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Rigenerando immagine...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          <span>Rigenera Immagine</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
 
-                {/* Titolo e Sottotitolo */}
+                {/* Titolo (editabile) */}
                 <div className="mb-4">
-                  <h4 className="text-xl font-bold text-violet-200 mb-2">
-                    {articleData.article.title}
-                  </h4>
-                  <p className="text-sm text-violet-300/90 italic">
-                    {articleData.article.subtitle}
-                  </p>
+                  <label className="text-xs text-violet-400 mb-1 block">Titolo</label>
+                  <input
+                    type="text"
+                    value={articleData.article.title}
+                    onChange={(e) => updateArticleField('title', e.target.value)}
+                    className="w-full bg-slate-800/50 border border-violet-500/30 rounded-lg px-3 py-2 text-lg font-bold text-violet-200 focus:outline-none focus:border-violet-400"
+                  />
                 </div>
 
-                {/* Introduzione */}
+                {/* Sottotitolo (editabile) */}
+                <div className="mb-4">
+                  <label className="text-xs text-violet-400 mb-1 block">Sottotitolo</label>
+                  <input
+                    type="text"
+                    value={articleData.article.subtitle}
+                    onChange={(e) => updateArticleField('subtitle', e.target.value)}
+                    className="w-full bg-slate-800/50 border border-violet-500/30 rounded-lg px-3 py-2 text-sm italic text-violet-300 focus:outline-none focus:border-violet-400"
+                  />
+                </div>
+
+                {/* Introduzione (editabile) */}
                 <div className="mb-4 p-3 bg-violet-900/20 border border-violet-500/30 rounded-lg">
-                  <div className="text-sm font-semibold text-violet-200 mb-2">Introduzione</div>
-                  <p className="text-sm text-violet-200/90 whitespace-pre-line">
-                    {articleData.article.introduction}
-                  </p>
+                  <label className="text-sm font-semibold text-violet-200 mb-2 block">Introduzione</label>
+                  <textarea
+                    value={articleData.article.introduction}
+                    onChange={(e) => updateArticleField('introduction', e.target.value)}
+                    rows={4}
+                    className="w-full bg-slate-800/50 border border-violet-500/20 rounded-lg px-3 py-2 text-sm text-violet-200/90 focus:outline-none focus:border-violet-400 resize-none"
+                  />
                 </div>
 
-                {/* Sezioni */}
+                {/* Sezioni (editabili) */}
                 <div className="mb-4 space-y-3">
                   <div className="text-sm font-semibold text-violet-200">Sezioni dell'articolo</div>
                   {articleData.article.sections.map((section: any, idx: number) => (
                     <div key={idx} className="p-3 bg-slate-900/50 border border-violet-500/20 rounded-lg">
-                      <h5 className="text-sm font-semibold text-violet-300 mb-2">
-                        {idx + 1}. {section.title}
-                      </h5>
-                      <p className="text-xs text-violet-200/80 whitespace-pre-line">
-                        {section.content.substring(0, 200)}...
-                      </p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-violet-400 text-sm font-medium">{idx + 1}.</span>
+                        <input
+                          type="text"
+                          value={section.title}
+                          onChange={(e) => updateArticleSection(idx, 'title', e.target.value)}
+                          className="flex-1 bg-slate-800/50 border border-violet-500/20 rounded px-2 py-1 text-sm font-semibold text-violet-300 focus:outline-none focus:border-violet-400"
+                        />
+                      </div>
+                      <textarea
+                        value={section.content}
+                        onChange={(e) => updateArticleSection(idx, 'content', e.target.value)}
+                        rows={4}
+                        className="w-full bg-slate-800/30 border border-violet-500/10 rounded px-2 py-1 text-xs text-violet-200/80 focus:outline-none focus:border-violet-400 resize-none"
+                      />
                     </div>
                   ))}
                 </div>
 
-                {/* Conclusione */}
+                {/* Conclusione (editabile) */}
                 <div className="mb-4 p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg">
-                  <div className="text-sm font-semibold text-indigo-200 mb-2">🎯 Conclusione</div>
-                  <p className="text-sm text-indigo-200/90 whitespace-pre-line">
-                    {articleData.article.conclusion}
-                  </p>
+                  <label className="text-sm font-semibold text-indigo-200 mb-2 block">🎯 Conclusione</label>
+                  <textarea
+                    value={articleData.article.conclusion}
+                    onChange={(e) => updateArticleField('conclusion', e.target.value)}
+                    rows={4}
+                    className="w-full bg-slate-800/50 border border-indigo-500/20 rounded-lg px-3 py-2 text-sm text-indigo-200/90 focus:outline-none focus:border-indigo-400 resize-none"
+                  />
                 </div>
 
                 {/* Keywords SEO */}
