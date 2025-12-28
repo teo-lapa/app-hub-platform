@@ -92,6 +92,19 @@ Rispondi SOLO con JSON valido (no markdown):`;
   return JSON.parse(translatedText);
 }
 
+/**
+ * Genera un access_token casuale per gli attachment Odoo
+ * Necessario per rendere le immagini accessibili pubblicamente a Instagram/Facebook API
+ */
+function generateAccessToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
 // ==========================================
 // UPLOAD IMMAGINE SU ODOO
 // ==========================================
@@ -118,6 +131,9 @@ async function uploadImageToOdoo(
     filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
   }
 
+  // Genera access_token per Instagram/Facebook API (solo per social posts)
+  const accessToken = forSocial ? generateAccessToken() : undefined;
+
   // Usa callOdoo con sessione utente loggato
   const attachmentId = await callOdoo(
     odooCookies,
@@ -129,6 +145,7 @@ async function uploadImageToOdoo(
       datas: cleanBase64,
       mimetype: mimetype,
       public: true,
+      access_token: accessToken,  // ✅ FIX: Token per accesso pubblico Instagram
       res_model: forSocial ? 'social.post' : 'blog.post',
       res_id: 0 // Verrà aggiornato dopo
     }]
