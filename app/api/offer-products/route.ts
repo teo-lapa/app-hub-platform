@@ -14,13 +14,14 @@ const OFFER_PRODUCTS_KEY = 'offer_products';
 /**
  * Calcola quantità totale e prenotata per un prodotto con lotto/ubicazione specifici
  * Legge da stock.quant di Odoo e restituisce total, reserved e available
+ * Inoltre recupera la data di scadenza aggiornata dal lotto
  */
 async function calculateStockQuantities(
   cookies: string,
   productId: number,
   lotId?: number,
   locationId?: number
-): Promise<{ total: number; reserved: number; available: number }> {
+): Promise<{ total: number; reserved: number; available: number; expirationDate?: string; daysUntilExpiry?: number }> {
   try {
     if (!lotId && !locationId) {
       // Se non c'è lotto/ubicazione specifica, non possiamo calcolare
@@ -73,7 +74,40 @@ async function calculateStockQuantities(
 
     const available = totalQty - totalReserved;
     console.log(`📊 Product ${productId}: ${totalQty} total, ${totalReserved} reserved, ${available} available`);
-    return { total: totalQty, reserved: totalReserved, available };
+
+    // Recupera data scadenza aggiornata dal lotto
+    let expirationDate: string | undefined;
+    let daysUntilExpiry: number | undefined;
+
+    if (lotId) {
+      try {
+        const lots = await callOdoo(
+          cookies,
+          'stock.lot',
+          'search_read',
+          [],
+          {
+            domain: [['id', '=', lotId]],
+            fields: ['id', 'expiration_date']
+          }
+        );
+
+        if (lots && lots.length > 0 && lots[0].expiration_date) {
+          const expDateStr = lots[0].expiration_date.split(' ')[0]; // YYYY-MM-DD
+          expirationDate = expDateStr;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const expDate = new Date(expDateStr);
+          expDate.setHours(0, 0, 0, 0);
+          daysUntilExpiry = Math.floor((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          console.log(`📅 Lot ${lotId}: expiration ${expDateStr}, ${daysUntilExpiry} days until expiry`);
+        }
+      } catch (lotError) {
+        console.error('❌ Error fetching lot expiration:', lotError);
+      }
+    }
+
+    return { total: totalQty, reserved: totalReserved, available, expirationDate, daysUntilExpiry };
   } catch (error) {
     console.error('❌ Error calculating reserved quantity:', error);
     return { total: 0, reserved: 0, available: 0 }; // In caso di errore
@@ -125,7 +159,13 @@ export async function GET(request: NextRequest) {
         (product as any).availableQuantity = stockQty.available;
         (product as any).totalQuantity = stockQty.total;
 
-        console.log(`📊 Prodotto ${product.productName}: ${stockQty.total} totali da Odoo, ${stockQty.reserved} prenotati, ${stockQty.available} disponibili`);
+        // Aggiorna scadenza con dati live da Odoo
+        if (stockQty.expirationDate) {
+          (product as any).expirationDate = stockQty.expirationDate;
+          (product as any).daysUntilExpiry = stockQty.daysUntilExpiry;
+        }
+
+        console.log(`📊 Prodotto ${product.productName}: ${stockQty.total} totali da Odoo, ${stockQty.reserved} prenotati, ${stockQty.available} disponibili, scadenza: ${stockQty.expirationDate || 'N/A'}`);
       }
     }
 

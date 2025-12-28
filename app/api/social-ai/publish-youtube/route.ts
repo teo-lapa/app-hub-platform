@@ -30,6 +30,7 @@ interface PublishYouTubeRequest {
   productDescription?: string;
   caption: string;
   hashtags: string[];
+  articleUrl?: string; // URL specifico dell'articolo blog per la descrizione YouTube
 }
 
 interface PublishYouTubeResult {
@@ -132,7 +133,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
       productName,
       productDescription,
       caption,
-      hashtags
+      hashtags,
+      articleUrl
     } = await request.json() as PublishYouTubeRequest;
 
     if (!videoDataUrl || !productName) {
@@ -258,7 +260,50 @@ Rispondi SOLO con il titolo (no spiegazioni, no markdown):`;
 
     console.log('[Publish YouTube] Generating YouTube description...');
 
-    const descriptionPrompt = `Sei un esperto di YouTube content marketing.
+    // Se c'è un articleUrl specifico, usa un template diverso per articoli blog
+    const isArticle = !!articleUrl;
+
+    const descriptionPrompt = isArticle
+      ? `Sei un esperto di YouTube content marketing.
+
+ARTICOLO BLOG: ${productName}
+${productDescription ? `SOTTOTITOLO: ${productDescription}` : ''}
+CAPTION SOCIAL: ${caption}
+HASHTAGS: ${hashtags.join(' ')}
+LINK ARTICOLO: ${articleUrl}
+
+COMPITO:
+Crea una DESCRIZIONE YouTube per promuovere questo ARTICOLO DEL BLOG.
+L'obiettivo principale è far cliccare sul link dell'articolo!
+
+STRUTTURA OBBLIGATORIA:
+1. Hook iniziale che incuriosisce sul contenuto dell'articolo (1-2 righe)
+2. Breve descrizione di cosa troveranno nell'articolo (2-3 righe)
+3. CALL-TO-ACTION PRINCIPALE: Link all'articolo (DEVE essere ben visibile!)
+4. Call-to-Action secondaria (iscriviti al canale)
+5. Hashtags rilevanti (max 5)
+6. Footer LAPA
+
+TEMPLATE:
+[Hook emotivo sull'articolo]
+
+[Cosa scoprirai leggendo l'articolo]
+
+📖 LEGGI L'ARTICOLO COMPLETO:
+${articleUrl}
+
+👆 Clicca sul link per scoprire tutti i dettagli!
+
+Iscriviti al canale per non perderti i prossimi contenuti!
+
+${hashtags.slice(0, 5).join(' ')}
+
+---
+LAPA - Finest Italian Food
+www.lapa.ch
+
+Rispondi SOLO con la descrizione (no markdown, no code blocks):`
+      : `Sei un esperto di YouTube content marketing.
 
 PRODOTTO: ${productName}
 ${productDescription ? `DESCRIZIONE: ${productDescription}` : ''}

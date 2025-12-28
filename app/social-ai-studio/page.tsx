@@ -1307,7 +1307,8 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
           productName: articleData.article.title,
           productDescription: articleData.article.subtitle,
           caption: caption,
-          hashtags: articleData.article.socialSuggestions?.hashtags || ['#LAPA', '#ItalianFood', '#Gourmet']
+          hashtags: articleData.article.socialSuggestions?.hashtags || ['#LAPA', '#ItalianFood', '#Gourmet'],
+          articleUrl: articleUrl // Passa l'URL specifico dell'articolo per la descrizione YouTube
         })
       });
 

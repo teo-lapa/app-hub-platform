@@ -137,3 +137,4 @@ test-*.html
 *.env.local
 .env*.local
 seo-geo-optimizer/scripts/chatbot-config.json
+seo-geo-optimizer/data/odoo-products-catalog.json

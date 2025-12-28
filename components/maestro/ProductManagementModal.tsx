@@ -336,11 +336,15 @@ export function ProductManagementModal({ isOpen, onClose }: ProductManagementMod
 
                           {/* Dettagli in griglia */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            {/* Quantità */}
+                            {/* Quantità - usa totalQuantity da Odoo se disponibile */}
                             <div className="flex items-center gap-1">
                               <Package className="w-4 h-4 text-green-400 flex-shrink-0" />
                               <span className="text-slate-400 text-xs">Qty:</span>
-                              <span className="font-semibold text-green-400">{product.quantity} {product.uom}</span>
+                              <span className="font-semibold text-green-400">
+                                {(product as any).totalQuantity !== undefined
+                                  ? (product as any).totalQuantity.toFixed(2)
+                                  : product.quantity} {product.uom}
+                              </span>
                             </div>
 
                             {/* Scadenza (solo urgenti) */}
@@ -546,13 +550,33 @@ export function ProductManagementModal({ isOpen, onClose }: ProductManagementMod
                   </div>
                 )}
 
-                {/* Quantità */}
-                <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-green-400" />
-                  <span className="text-slate-400">Quantità:</span>
-                  <span className="font-semibold text-green-400">
-                    {selectedProduct.quantity} {selectedProduct.uom}
-                  </span>
+                {/* Quantità - mostra dati live da Odoo se disponibili */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-green-400" />
+                    <span className="text-slate-400">Quantità Totale:</span>
+                    <span className="font-semibold text-green-400">
+                      {(selectedProduct as any).totalQuantity !== undefined
+                        ? (selectedProduct as any).totalQuantity.toFixed(2)
+                        : selectedProduct.quantity} {selectedProduct.uom}
+                    </span>
+                  </div>
+                  {(selectedProduct as any).reservedQuantity !== undefined && (selectedProduct as any).reservedQuantity > 0 && (
+                    <div className="flex items-center gap-2 ml-6">
+                      <span className="text-slate-400 text-sm">Prenotata:</span>
+                      <span className="font-semibold text-orange-400 text-sm">
+                        {(selectedProduct as any).reservedQuantity.toFixed(2)} {selectedProduct.uom}
+                      </span>
+                    </div>
+                  )}
+                  {(selectedProduct as any).availableQuantity !== undefined && (
+                    <div className="flex items-center gap-2 ml-6">
+                      <span className="text-slate-400 text-sm">Disponibile:</span>
+                      <span className="font-semibold text-blue-400 text-sm">
+                        {(selectedProduct as any).availableQuantity.toFixed(2)} {selectedProduct.uom}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Prezzo suggerito/offerta */}
