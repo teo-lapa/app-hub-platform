@@ -21,6 +21,11 @@ interface ChatRequest {
   customerEmail?: string;
   sessionId: string;
   language?: string;
+  attachments?: Array<{
+    name: string;
+    content: string; // base64 encoded
+    mimetype: string;
+  }>;
 }
 
 // Flag per usare orchestratore AI vs fallback semplice
@@ -48,7 +53,7 @@ function normalizeAgentId(agentId: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, customerType, customerId, customerName, customerEmail, sessionId, language = 'it' } = body;
+    const { message, customerType, customerId, customerName, customerEmail, sessionId, language = 'it', attachments } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -59,7 +64,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`\n📨 LAPA AI Chat: "${message.substring(0, 100)}..."`);
     console.log(`   Customer: ${customerType}, customerId: ${customerId} (type: ${typeof customerId}), Session: ${sessionId}`);
-    console.log('   Full body received:', JSON.stringify(body));
+    console.log(`   Attachments: ${attachments?.length || 0} files`);
+    console.log('   Full body received:', JSON.stringify({ ...body, attachments: attachments?.map(a => ({ name: a.name, mimetype: a.mimetype, size: a.content?.length || 0 })) }));
 
     const startTime = Date.now();
 
@@ -93,7 +99,10 @@ export async function POST(request: NextRequest) {
           customerName,
           customerEmail,
           conversationHistory, // Passa la cronologia caricata da KV
-          metadata: { language }
+          metadata: {
+            language,
+            attachments: attachments // Pass attachments to orchestrator for ticket creation
+          }
         });
         console.log('✅ Risposta ottenuta');
 
@@ -117,11 +126,12 @@ export async function POST(request: NextRequest) {
 
         // Salva la conversazione nel KV per persistenza
         try {
-          // Salva messaggio utente
+          // Salva messaggio utente (include attachments in metadata if present)
           await addMessageToConversation(sessionId, {
             role: 'user',
             content: message,
-            timestamp: new Date()
+            timestamp: new Date(),
+            metadata: attachments && attachments.length > 0 ? { attachments } : undefined
           }, { customerId, customerName, customerType });
 
           // Salva risposta assistente

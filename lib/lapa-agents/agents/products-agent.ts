@@ -228,23 +228,44 @@ export class ProductsAgent {
       }
 
       // Ricerca testuale intelligente
-      // Se la query ha più parole, cerca prodotti che contengono TUTTE le parole
-      // Es: "carciofi grigliati" trova "CARCIOFI A SPICCHI GRIGLIATI"
+      // Se la query ha più parole, cerca prodotti che contengono TUTTE le parole SIGNIFICATIVE
+      // Es: "mozzarella di bufala" cerca prodotti con "mozzarella" E "bufala" nel nome
+      // Stop words italiane vengono filtrate per evitare match troppo generici
       if (filters.query) {
-        const queryWords = filters.query.trim().split(/\s+/).filter(w => w.length >= 2);
+        // Stop words italiane comuni da ignorare nella ricerca
+        const italianStopWords = new Set([
+          'di', 'da', 'del', 'della', 'dello', 'dei', 'degli', 'delle',
+          'il', 'la', 'lo', 'i', 'gli', 'le', 'un', 'una', 'uno',
+          'a', 'al', 'alla', 'allo', 'ai', 'agli', 'alle',
+          'in', 'nel', 'nella', 'nello', 'nei', 'negli', 'nelle',
+          'con', 'su', 'per', 'tra', 'fra', 'e', 'o', 'ma', 'che', 'non',
+          'kg', 'gr', 'lt', 'ml', 'pz', 'conf'
+        ]);
+
+        const allWords = filters.query.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        // Filtra stop words - mantieni solo parole significative
+        const significantWords = allWords.filter(w => !italianStopWords.has(w));
+
+        // Se non rimangono parole significative, usa tutte le parole originali
+        const queryWords = significantWords.length > 0 ? significantWords : allWords;
 
         if (queryWords.length > 1) {
-          // Ricerca multi-parola: ogni parola deve essere presente nel nome o descrizione
-          // Costruiamo: (name ilike word1 OR desc ilike word1) AND (name ilike word2 OR desc ilike word2)
+          // Ricerca multi-parola: TUTTE le parole devono essere presenti nel NOME
+          // Questo evita match generici come "fior di latte" per "mozzarella di bufala"
           for (const word of queryWords) {
-            domain.push('|', '|');
+            // Ogni parola significativa DEVE essere nel nome del prodotto
             domain.push(['name', 'ilike', word]);
-            domain.push(['default_code', 'ilike', word]);
-            domain.push(['description_sale', 'ilike', word]);
           }
-          console.log(`🔍 Ricerca multi-parola: ${queryWords.join(' + ')}`);
-        } else {
+          console.log(`🔍 Ricerca multi-parola (stop words filtrate): ${queryWords.join(' + ')}`);
+        } else if (queryWords.length === 1) {
           // Ricerca singola parola: cerca in tutti i campi
+          domain.push('|', '|', '|');
+          domain.push(['name', 'ilike', queryWords[0]]);
+          domain.push(['default_code', 'ilike', queryWords[0]]);
+          domain.push(['barcode', 'ilike', queryWords[0]]);
+          domain.push(['description_sale', 'ilike', queryWords[0]]);
+        } else {
+          // Fallback: ricerca con query originale
           domain.push('|', '|', '|');
           domain.push(['name', 'ilike', filters.query]);
           domain.push(['default_code', 'ilike', filters.query]);

@@ -352,6 +352,242 @@ const ordersTools: AgentTool[] = [
   },
 
   {
+    name: 'get_purchased_products',
+    description: 'Recupera la lista dei prodotti acquistati da un cliente (storico acquisti)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente (Odoo partner_id)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Numero massimo di prodotti da restituire (default: 20)',
+        },
+      },
+      required: ['customer_id'],
+    },
+    handler: async ({ customer_id, limit = 20 }): Promise<{
+      products: Array<{
+        product_id: number;
+        product_name: string;
+        product_code?: string;
+        total_quantity: number;
+        last_purchase_date: string;
+        last_order_name: string;
+        purchase_count: number;
+      }>;
+      total_orders: number;
+    }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // Trova tutti gli ordini del cliente (confermati o completati)
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', 'in', ['sale', 'done']]
+          ],
+          ['id', 'name', 'date_order'],
+          100 // Limita a ultimi 100 ordini
+        );
+
+        if (orders.length === 0) {
+          return { products: [], total_orders: 0 };
+        }
+
+        const orderIds = orders.map((o: any) => o.id);
+        const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+
+        // Recupera tutte le righe d'ordine
+        const orderLines = await odoo.searchRead(
+          'sale.order.line',
+          [['order_id', 'in', orderIds]],
+          ['product_id', 'order_id', 'product_uom_qty', 'price_unit'],
+          1000
+        );
+
+        // Aggrega per prodotto
+        const productMap = new Map<number, {
+          product_id: number;
+          product_name: string;
+          total_quantity: number;
+          last_purchase_date: string;
+          last_order_name: string;
+          purchase_count: number;
+          orders: Set<number>;
+        }>();
+
+        for (const line of orderLines) {
+          if (!line.product_id) continue;
+
+          const productId = line.product_id[0];
+          const productName = line.product_id[1];
+          const order = orderMap.get(line.order_id[0]);
+
+          if (!order) continue;
+
+          if (!productMap.has(productId)) {
+            productMap.set(productId, {
+              product_id: productId,
+              product_name: productName,
+              total_quantity: 0,
+              last_purchase_date: order.date_order,
+              last_order_name: order.name,
+              purchase_count: 0,
+              orders: new Set()
+            });
+          }
+
+          const product = productMap.get(productId)!;
+          product.total_quantity += line.product_uom_qty;
+          product.orders.add(line.order_id[0]);
+
+          // Aggiorna ultima data se più recente
+          if (order.date_order > product.last_purchase_date) {
+            product.last_purchase_date = order.date_order;
+            product.last_order_name = order.name;
+          }
+        }
+
+        // Converti in array e ordina per data ultimo acquisto
+        const products = Array.from(productMap.values())
+          .map(p => ({
+            product_id: p.product_id,
+            product_name: p.product_name,
+            total_quantity: p.total_quantity,
+            last_purchase_date: p.last_purchase_date,
+            last_order_name: p.last_order_name,
+            purchase_count: p.orders.size
+          }))
+          .sort((a, b) => b.last_purchase_date.localeCompare(a.last_purchase_date))
+          .slice(0, limit);
+
+        return {
+          products,
+          total_orders: orders.length
+        };
+      } catch (error) {
+        throw new Error(`Errore recupero prodotti acquistati: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
+    name: 'get_product_purchase_history',
+    description: 'Recupera lo storico acquisti di un prodotto specifico per un cliente',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente (Odoo partner_id)',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Nome o parte del nome del prodotto da cercare',
+        },
+      },
+      required: ['customer_id', 'product_name'],
+    },
+    handler: async ({ customer_id, product_name }): Promise<{
+      found: boolean;
+      product_name?: string;
+      purchases: Array<{
+        order_name: string;
+        date: string;
+        quantity: number;
+        price_unit: number;
+        total: number;
+      }>;
+      summary?: {
+        total_quantity: number;
+        total_spent: number;
+        first_purchase: string;
+        last_purchase: string;
+        purchase_count: number;
+      };
+    }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // Trova ordini del cliente
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', 'in', ['sale', 'done']]
+          ],
+          ['id', 'name', 'date_order'],
+          100
+        );
+
+        if (orders.length === 0) {
+          return { found: false, purchases: [] };
+        }
+
+        const orderIds = orders.map((o: any) => o.id);
+        const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+
+        // Cerca righe con il prodotto
+        const searchTerms = product_name.toLowerCase().split(/\s+/);
+
+        const orderLines = await odoo.searchRead(
+          'sale.order.line',
+          [['order_id', 'in', orderIds]],
+          ['product_id', 'order_id', 'product_uom_qty', 'price_unit', 'price_subtotal'],
+          1000
+        );
+
+        // Filtra per nome prodotto
+        const matchingLines = orderLines.filter((line: any) => {
+          if (!line.product_id) return false;
+          const productNameLower = line.product_id[1].toLowerCase();
+          return searchTerms.every(term => productNameLower.includes(term));
+        });
+
+        if (matchingLines.length === 0) {
+          return { found: false, purchases: [] };
+        }
+
+        // Raggruppa acquisti
+        const purchases = matchingLines.map((line: any) => {
+          const order = orderMap.get(line.order_id[0]);
+          return {
+            order_name: order?.name || line.order_id[1],
+            date: order?.date_order || '',
+            quantity: line.product_uom_qty,
+            price_unit: line.price_unit,
+            total: line.price_subtotal
+          };
+        }).sort((a, b) => b.date.localeCompare(a.date));
+
+        // Calcola summary
+        const totalQuantity = purchases.reduce((sum, p) => sum + p.quantity, 0);
+        const totalSpent = purchases.reduce((sum, p) => sum + p.total, 0);
+        const dates = purchases.map(p => p.date).filter(d => d);
+
+        return {
+          found: true,
+          product_name: matchingLines[0].product_id[1],
+          purchases,
+          summary: {
+            total_quantity: totalQuantity,
+            total_spent: totalSpent,
+            first_purchase: dates[dates.length - 1] || '',
+            last_purchase: dates[0] || '',
+            purchase_count: purchases.length
+          }
+        };
+      } catch (error) {
+        throw new Error(`Errore recupero storico prodotto: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
     name: 'create_order',
     description: 'Crea un nuovo ordine per un cliente B2B',
     input_schema: {
@@ -683,6 +919,8 @@ export class OrdersAgent extends BaseAgent {
         'Modificare ordini non ancora spediti',
         'Annullare ordini non ancora spediti',
         'Cercare prodotti disponibili',
+        'Mostrare prodotti acquistati dal cliente',
+        'Mostrare storico acquisti di un prodotto specifico',
         'Guidare clienti B2C all\'acquisto sul sito web',
         'Fornire informazioni su pagamenti e spedizioni',
       ],
@@ -735,14 +973,31 @@ Per clienti B2B puoi:
 - **cancel**: Annullato
 
 ## 3. SUPPORTO CLIENTI B2C
-Per clienti B2C:
-- ❌ NON creare ordini direttamente
+Per clienti B2C distingui tra AUTENTICATI e VISITATORI:
+
+### B2C Autenticati (hanno customerId):
+- ✅ Mostra storico prodotti acquistati (get_purchased_products)
+- ✅ Mostra quando hanno comprato un prodotto (get_product_purchase_history)
+- ✅ Visualizza storico ordini (get_order_history)
+- ✅ Dettagli ordini specifici (get_order_status)
+- ❌ NON creare ordini direttamente (devono usare il sito)
+
+Esempio risposta B2C autenticato:
+"Ecco i tuoi ultimi prodotti acquistati:
+1. 🧀 Parmigiano Reggiano 24 mesi - ultimo acquisto: 15/12/2024
+2. 🫒 Olio EVO Toscano - ultimo acquisto: 10/12/2024
+3. 🍝 Pasta di Gragnano - ultimo acquisto: 05/12/2024
+
+Vuoi vedere i dettagli di un ordine specifico?"
+
+### B2C Visitatori (non autenticati):
+- ❌ NON accesso a storico (non hanno account)
 - ✅ Guidali al sito: https://lapa.ch
 - ✅ Spiega processo acquisto online
 - ✅ Assistili con domande su prodotti
 - ✅ Fornisci info su spedizioni e pagamenti
 
-Esempio risposta B2C:
+Esempio risposta B2C visitatore:
 "Ciao! Per acquisti privati, puoi ordinare comodamente sul nostro sito:
 🌐 https://lapa.ch
 

@@ -12,6 +12,14 @@ export interface Message {
   content: string;
   timestamp: Date;
   agentId?: string;
+  metadata?: {
+    attachments?: Array<{
+      name: string;
+      content: string; // base64
+      mimetype: string;
+    }>;
+    [key: string]: any;
+  };
 }
 
 export interface StoredConversation {

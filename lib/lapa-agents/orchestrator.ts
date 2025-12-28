@@ -13,6 +13,42 @@ import { ShippingAgent } from './agents/shipping-agent';
 import { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 import { getOdooClient } from '@/lib/odoo-client';
 
+// URL base per il sito e-commerce
+const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
+
+/**
+ * Genera un URL per un prodotto sul sito web
+ * Formato Odoo standard: /shop/product-slug-ID
+ */
+function generateProductUrl(productId: number, productName: string): string {
+  // Crea uno slug dal nome prodotto (Odoo style)
+  const slug = productName
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 50);
+  return `${LAPA_SHOP_URL}/shop/${slug}-${productId}`;
+}
+
+/**
+ * Genera un URL per un ordine/preventivo
+ */
+function generateOrderUrl(orderId: number, orderName: string): string {
+  return `${LAPA_SHOP_URL}/my/orders/${orderId}`;
+}
+
+/**
+ * Genera un URL per una fattura
+ */
+function generateInvoiceUrl(invoiceId: number): string {
+  return `${LAPA_SHOP_URL}/my/invoices/${invoiceId}`;
+}
+
 // Interface minima per OdooClient - compatibile con entrambe le implementazioni
 export interface OdooClientInterface {
   searchRead?: (model: string, domain: any[], fields: string[], limit?: number, offset?: number) => Promise<any[]>;
@@ -45,6 +81,11 @@ export interface CustomerContext {
     source?: string;
     deviceType?: string;
     timestamp?: Date;
+    attachments?: Array<{
+      name: string;
+      content: string; // base64
+      mimetype: string;
+    }>;
   };
 }
 
@@ -188,6 +229,8 @@ export class LapaAiOrchestrator {
   private buildIntentAnalysisPrompt(context: CustomerContext): string {
     const customerInfo = context.customerType === 'b2b'
       ? `Cliente B2B autenticato: ${context.customerName} (${context.customerEmail})`
+      : context.customerType === 'b2c' && context.customerId
+      ? `Cliente B2C autenticato: ${context.customerName} (${context.customerEmail})`
       : context.customerType === 'b2c'
       ? 'Cliente B2C visitatore del sito'
       : 'Visitatore anonimo';
@@ -213,7 +256,7 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
-- order_inquiry: Domande su ordini esistenti, stato ordini, modifiche (Keywords: ordine, ordini, ordinato, acquisto, SO, order, Bestellung, commande)
+- order_inquiry: Domande su ordini esistenti, stato ordini, modifiche, prodotti acquistati, storico acquisti (Keywords: ordine, ordini, ordinato, acquisto, acquistato, comprato, storico, ultimi prodotti, cosa ho comprato, quando ho comprato, SO, order, Bestellung, commande, purchased, gekauft, acheté)
 - order_detail: Richiesta DETTAGLI di un ordine specifico (Keywords: dettagli ordine, mostrami l'ordine, più info su ordine)
 - invoice_inquiry: Domande su fatture, pagamenti, estratti conto, saldo (Keywords: fattura, fatture, pagamento, saldo, INV, invoice, Rechnung, facture)
 - invoice_detail: Richiesta DETTAGLI di una fattura specifica (Keywords: dettagli fattura, mostrami la fattura)
@@ -357,8 +400,8 @@ IMPORTANTE:
    * Seleziona l'agente appropriato per gestire l'intento
    */
   private selectAgent(intent: Intent, context: CustomerContext): AgentConfig | null {
-    // Un utente è veramente autenticato solo se ha customerType='b2b' E un customerId valido
-    const isAuthenticated = context.customerType === 'b2b' && context.customerId;
+    // Un utente è autenticato se ha customerType='b2b' O 'b2c' E un customerId valido
+    const isAuthenticated = (context.customerType === 'b2b' || context.customerType === 'b2c') && context.customerId;
 
     // Filter agents che possono gestire questo intento
     const capableAgents = Array.from(this.agents.values())
@@ -433,8 +476,8 @@ IMPORTANTE:
       console.log('📊 Intento identificato:', intent);
 
       // 2. Verifica se richiede autenticazione
-      // Un utente è considerato "loggato" solo se ha customerType='b2b' E un customerId valido
-      const isAuthenticated = context.customerType === 'b2b' && context.customerId;
+      // Un utente è considerato "loggato" se ha customerType='b2b' O 'b2c' E un customerId valido
+      const isAuthenticated = (context.customerType === 'b2b' || context.customerType === 'b2c') && context.customerId;
 
       if (intent.requiresAuth && !isAuthenticated) {
         return this.handleAuthRequired(context, intent);
@@ -525,6 +568,42 @@ IMPORTANTE:
     if (context.conversationHistory.length > 50) {
       context.conversationHistory = context.conversationHistory.slice(-50);
     }
+  }
+
+  /**
+   * Collects all attachments from context metadata and conversation history
+   * Returns a combined array of all attachments ready to be attached to a ticket
+   */
+  private collectAttachments(context: CustomerContext): Array<{
+    name: string;
+    content: string;
+    mimetype: string;
+  }> {
+    const attachments: Array<{ name: string; content: string; mimetype: string }> = [];
+
+    // Add attachments from context metadata
+    if (context.metadata?.attachments) {
+      attachments.push(...context.metadata.attachments);
+    }
+
+    // Also collect attachments from conversation history messages
+    for (const message of context.conversationHistory) {
+      if (message.metadata?.attachments && Array.isArray(message.metadata.attachments)) {
+        for (const att of message.metadata.attachments) {
+          // Ensure attachment has required fields
+          if (att.name && att.content && att.mimetype) {
+            attachments.push({
+              name: att.name,
+              content: att.content,
+              mimetype: att.mimetype
+            });
+          }
+        }
+      }
+    }
+
+    console.log(`📎 Collected ${attachments.length} attachments for ticket`);
+    return attachments;
   }
 
   /**
@@ -1007,7 +1086,9 @@ ${conversationSummary}
 🔗 Sessione: ${context.sessionId}
 ══════════════════════════════════════════════════════`.trim();
 
-        console.log('🎫 Chiamando createTicket con:', { customerId: context.customerId, subject: `[Chat AI] ${nome}`, priority });
+        // Collect all attachments from context and conversation history
+        const attachments = this.collectAttachments(context);
+        console.log('🎫 Chiamando createTicket con:', { customerId: context.customerId, subject: `[Chat AI] ${nome}`, priority, attachmentsCount: attachments.length });
 
         let ticketResult;
         try {
@@ -1015,7 +1096,8 @@ ${conversationSummary}
             customerId: context.customerId!,  // Non-null assertion - già verificato nell'if
             subject: `[Chat AI] ${nome} - Richiesta assistenza`,
             description: ticketDescription,
-            priority
+            priority,
+            attachments: attachments.length > 0 ? attachments : undefined
           });
           console.log('🎫 Risultato createTicket:', JSON.stringify(ticketResult));
         } catch (ticketError) {
@@ -1168,16 +1250,18 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
             console.warn('⚠️ Errore gestione partner:', partnerError);
           }
 
-          // Crea il ticket
+          // Crea il ticket with attachments collected from context and conversation
           try {
+            const anonAttachments = this.collectAttachments(context);
             const ticketResult = await helpdeskAgent.createTicket({
               customerId: partnerId || 1, // Usa partner trovato/creato o fallback a 1
               subject: `[Chat AI] ${extractedName || extractedEmail}`,
               description: ticketDescription,
-              priority: '1'
+              priority: '1',
+              attachments: anonAttachments.length > 0 ? anonAttachments : undefined
             });
 
-            console.log('🎫 Risultato ticket anonimo:', ticketResult);
+            console.log('🎫 Risultato ticket anonimo:', ticketResult, 'allegati:', anonAttachments.length);
 
             if (ticketResult.success) {
               return {
@@ -1262,7 +1346,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
               const price = product.list_price?.toFixed(2) || '0.00';
               const qty = product.qty_available !== undefined ? product.qty_available : 'N/D';
               const unit = product.uom_id ? product.uom_id[1] : 'pz';
-              return `${index + 1}. **${name}**\n   💰 ${price} CHF | 📦 Disponibili: ${qty} ${unit}`;
+              const url = generateProductUrl(product.id, product.name);
+              return `${index + 1}. **${name}**\n   💰 ${price} CHF | 📦 Disponibili: ${qty} ${unit}\n   🔗 [Vedi prodotto](${url})`;
             })
             .join('\n\n');
 
@@ -1340,9 +1425,21 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     try {
       // Verifica il tipo di richiesta dall'intento
       const entities = intent.entities || {};
+      const lowerMessage = context.conversationHistory
+        .filter(m => m.role === 'user')
+        .slice(-1)[0]?.content?.toLowerCase() || '';
 
       // Usa Odoo direttamente per recuperare gli ordini
       const odoo = await getOdooClient();
+
+      // Rileva richiesta "prodotti acquistati"
+      const isProductsQuery = lowerMessage.match(
+        /prodott[io].*comprat|cosa.*comprat|ultim[io].*prodott|quando.*comprat|storico.*acquist|purchased|gekauft|acheté/i
+      );
+
+      if (isProductsQuery) {
+        return await this.handlePurchasedProductsQuery(context, odoo, lowerMessage);
+      }
 
       // Se c'è un order_id specifico, mostra i dettagli
       if (entities.order_id) {
@@ -1392,7 +1489,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const orders = await odoo.searchRead(
         'sale.order',
         [['partner_id', '=', context.customerId]],
-        ['name', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
+        ['id', 'name', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
         10
       );
 
@@ -1403,10 +1500,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         };
 
         const ordersList = orders
-          .map((order: any, index: number) =>
-            `${index + 1}. ${order.name} - ${stateLabels[order.state] || order.state} - ${order.currency_id[1]} ${order.amount_total.toFixed(2)} (${order.date_order})`
-          )
-          .join('\n');
+          .map((order: any, index: number) => {
+            const url = generateOrderUrl(order.id, order.name);
+            return `${index + 1}. ${order.name} - ${stateLabels[order.state] || order.state} - ${order.currency_id[1]} ${order.amount_total.toFixed(2)} (${order.date_order})\n   🔗 [Vedi ordine](${url})`;
+          })
+          .join('\n\n');
 
         return {
           success: true,
@@ -1442,6 +1540,226 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         message: 'Si è verificato un errore recuperando le informazioni sugli ordini. Riprova più tardi.',
         requiresHumanEscalation: true,
         agentId: 'order'
+      };
+    }
+  }
+
+  /**
+   * Handler per query sui prodotti acquistati
+   */
+  private async handlePurchasedProductsQuery(
+    context: CustomerContext,
+    odoo: any,
+    lowerMessage: string
+  ): Promise<AgentResponse> {
+    try {
+      const customerId = context.customerId!;
+
+      // Controlla se cerca un prodotto specifico
+      const specificProductMatch = lowerMessage.match(
+        /quando.*(?:comprat|acquist).*(?:l[ao]|il|i|gli)\s+(.+)|(?:storico|ultim).*(?:acquist|comprat).*(?:di|del|della)\s+(.+)/i
+      );
+
+      if (specificProductMatch) {
+        // Ricerca storico di un prodotto specifico
+        const productSearch = (specificProductMatch[1] || specificProductMatch[2] || '').trim();
+
+        if (productSearch && productSearch.length > 2) {
+          // Trova ordini del cliente
+          const orders = await odoo.searchRead(
+            'sale.order',
+            [
+              ['partner_id', '=', customerId],
+              ['state', 'in', ['sale', 'done']]
+            ],
+            ['id', 'name', 'date_order'],
+            100
+          );
+
+          if (orders.length === 0) {
+            return {
+              success: true,
+              message: 'Non hai ancora ordini nel tuo storico.',
+              agentId: 'order_products'
+            };
+          }
+
+          const orderIds = orders.map((o: any) => o.id);
+          const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+
+          // Recupera le righe d'ordine
+          const orderLines = await odoo.searchRead(
+            'sale.order.line',
+            [['order_id', 'in', orderIds]],
+            ['product_id', 'order_id', 'product_uom_qty', 'price_unit', 'price_subtotal'],
+            1000
+          );
+
+          // Filtra per nome prodotto (ricerca multi-parola)
+          const searchTerms = productSearch.toLowerCase().split(/\s+/);
+          const matchingLines = orderLines.filter((line: any) => {
+            if (!line.product_id) return false;
+            const productName = line.product_id[1].toLowerCase();
+            return searchTerms.every((term: string) => productName.includes(term));
+          });
+
+          if (matchingLines.length === 0) {
+            return {
+              success: true,
+              message: `Non ho trovato "${productSearch}" nei tuoi ordini precedenti.\n\n` +
+                       'Vuoi che ti mostri tutti i prodotti che hai acquistato?',
+              agentId: 'order_products',
+              suggestedActions: ['Mostra tutti i prodotti acquistati', 'Cerca un altro prodotto']
+            };
+          }
+
+          // Raggruppa e ordina per data
+          const purchases = matchingLines.map((line: any) => {
+            const order = orderMap.get(line.order_id[0]);
+            return {
+              orderName: order?.name || '',
+              date: order?.date_order || '',
+              productId: line.product_id[0],
+              productName: line.product_id[1],
+              quantity: line.product_uom_qty,
+              price: line.price_unit,
+              total: line.price_subtotal
+            };
+          }).sort((a: any, b: any) => b.date.localeCompare(a.date));
+
+          const productName = purchases[0].productName;
+          const productId = purchases[0].productId;
+          const productUrl = generateProductUrl(productId, productName);
+          const totalQty = purchases.reduce((sum: number, p: any) => sum + p.quantity, 0);
+          const totalSpent = purchases.reduce((sum: number, p: any) => sum + p.total, 0);
+
+          const purchaseList = purchases.slice(0, 5).map((p: any, idx: number) =>
+            `   ${idx + 1}. ${p.date.split(' ')[0]} - Ordine ${p.orderName}\n` +
+            `      Qtà: ${p.quantity} × CHF ${p.price.toFixed(2)} = CHF ${p.total.toFixed(2)}`
+          ).join('\n');
+
+          return {
+            success: true,
+            message: `📦 **Storico acquisti: ${productName}**\n\n` +
+                     `🔗 [Vedi prodotto](${productUrl})\n\n` +
+                     `🔢 Totale acquistato: ${totalQty} unità\n` +
+                     `💰 Totale speso: CHF ${totalSpent.toFixed(2)}\n` +
+                     `📅 Primo acquisto: ${purchases[purchases.length - 1].date.split(' ')[0]}\n` +
+                     `📅 Ultimo acquisto: ${purchases[0].date.split(' ')[0]}\n\n` +
+                     `**Ultimi ${Math.min(5, purchases.length)} acquisti:**\n${purchaseList}\n\n` +
+                     (purchases.length > 5 ? `E altri ${purchases.length - 5} acquisti precedenti.\n\n` : '') +
+                     'Vuoi ordinare di nuovo questo prodotto?',
+            data: { productName, productId, purchases, summary: { totalQty, totalSpent } },
+            agentId: 'order_products',
+            suggestedActions: ['Ordina di nuovo', 'Altri prodotti acquistati', 'Dettagli ordine']
+          };
+        }
+      }
+
+      // Mostra lista prodotti acquistati (query generica)
+      const orders = await odoo.searchRead(
+        'sale.order',
+        [
+          ['partner_id', '=', customerId],
+          ['state', 'in', ['sale', 'done']]
+        ],
+        ['id', 'name', 'date_order'],
+        100
+      );
+
+      if (orders.length === 0) {
+        return {
+          success: true,
+          message: 'Non hai ancora ordini nel tuo storico.',
+          agentId: 'order_products',
+          suggestedActions: ['Cerca prodotti', 'Contatta supporto']
+        };
+      }
+
+      const orderIds = orders.map((o: any) => o.id);
+      const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+
+      // Recupera tutte le righe d'ordine
+      const orderLines = await odoo.searchRead(
+        'sale.order.line',
+        [['order_id', 'in', orderIds]],
+        ['product_id', 'order_id', 'product_uom_qty'],
+        1000
+      );
+
+      // Aggrega per prodotto
+      const productMap = new Map<number, {
+        id: number;
+        name: string;
+        totalQty: number;
+        lastDate: string;
+        lastOrder: string;
+        orderCount: number;
+        orderSet: Set<number>;
+      }>();
+
+      for (const line of orderLines) {
+        if (!line.product_id) continue;
+
+        const productId = line.product_id[0];
+        const productName = line.product_id[1];
+        const order = orderMap.get(line.order_id[0]);
+
+        if (!order) continue;
+
+        if (!productMap.has(productId)) {
+          productMap.set(productId, {
+            id: productId,
+            name: productName,
+            totalQty: 0,
+            lastDate: order.date_order,
+            lastOrder: order.name,
+            orderCount: 0,
+            orderSet: new Set()
+          });
+        }
+
+        const prod = productMap.get(productId)!;
+        prod.totalQty += line.product_uom_qty;
+        prod.orderSet.add(line.order_id[0]);
+
+        if (order.date_order > prod.lastDate) {
+          prod.lastDate = order.date_order;
+          prod.lastOrder = order.name;
+        }
+      }
+
+      // Ordina per ultimo acquisto e prendi i primi 10
+      const products = Array.from(productMap.values())
+        .map(p => ({ ...p, orderCount: p.orderSet.size }))
+        .sort((a, b) => b.lastDate.localeCompare(a.lastDate))
+        .slice(0, 10);
+
+      const productList = products.map((p, idx) => {
+        const url = generateProductUrl(p.id, p.name);
+        return `${idx + 1}. **${p.name}**\n` +
+          `   Ultimo acquisto: ${p.lastDate.split(' ')[0]} (${p.lastOrder})\n` +
+          `   Totale acquistato: ${p.totalQty} unità in ${p.orderCount} ordini\n` +
+          `   🔗 [Vedi prodotto](${url})`;
+      }).join('\n\n');
+
+      return {
+        success: true,
+        message: `📦 **I tuoi prodotti acquistati**\n\n` +
+                 `Totale ordini: ${orders.length} | Prodotti diversi: ${productMap.size}\n\n` +
+                 `**Ultimi 10 prodotti acquistati:**\n\n${productList}\n\n` +
+                 'Vuoi vedere lo storico dettagliato di un prodotto specifico?',
+        data: { products, totalOrders: orders.length, totalProducts: productMap.size },
+        agentId: 'order_products',
+        suggestedActions: ['Storico prodotto specifico', 'Vedi tutti gli ordini', 'Ordina di nuovo']
+      };
+
+    } catch (error) {
+      console.error('❌ Errore handlePurchasedProductsQuery:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore recuperando i prodotti acquistati. Riprova più tardi.',
+        agentId: 'order_products'
       };
     }
   }
@@ -1538,10 +1856,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         };
 
         const invoicesList = invoicesResult.data
-          .map((inv: any, index: number) =>
-            `${index + 1}. ${inv.name} - ${paymentStateLabels[inv.payment_state] || inv.payment_state} - ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}`
-          )
-          .join('\n');
+          .map((inv: any, index: number) => {
+            const invUrl = generateInvoiceUrl(inv.id);
+            return `${index + 1}. ${inv.name} - ${paymentStateLabels[inv.payment_state] || inv.payment_state} - ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n   🔗 [Vedi fattura](${invUrl})`;
+          })
+          .join('\n\n');
 
         // Calcola il saldo aperto
         const balanceResult = await this.invoicesAgent.getOpenBalance(context.customerId);
@@ -1866,7 +2185,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         })
         .join('\n');
 
+      const orderUrl = generateOrderUrl(orderToShow.id, orderToShow.name);
       const message = `📦 **Dettagli Ordine ${orderToShow.name}**\n\n` +
+        `🔗 [Vedi ordine sul portale](${orderUrl})\n\n` +
         `👤 Cliente: ${orderToShow.partner_id[1]}\n` +
         `📅 Data: ${orderToShow.date_order}\n` +
         `📊 Stato: ${stateLabels[orderToShow.state] || orderToShow.state}\n` +
@@ -1877,7 +2198,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       return {
         success: true,
         message,
-        data: { order: orderToShow, lines: orderLines },
+        data: { order: orderToShow, lines: orderLines, orderUrl },
         agentId: 'order_detail',
         confidence: 0.95,
         suggestedActions: [
@@ -2127,7 +2448,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         )
         .join('\n');
 
+      const invoiceUrl = generateInvoiceUrl(inv.id);
       const message = `📄 **Dettagli Fattura ${inv.name}**\n\n` +
+        `🔗 [Vedi/Scarica fattura sul portale](${invoiceUrl})\n\n` +
         `👤 Cliente: ${inv.partner_name}\n` +
         `📅 Data: ${inv.invoice_date || 'N/A'}\n` +
         `⏰ Scadenza: ${inv.invoice_date_due || 'N/A'}\n` +
@@ -2141,7 +2464,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       return {
         success: true,
         message,
-        data: inv,
+        data: { ...inv, invoiceUrl },
         agentId: 'invoice_detail',
         confidence: 0.95,
         suggestedActions: [
@@ -2186,7 +2509,7 @@ REGOLE:
 5. Se non sei sicuro, chiedi chiarimenti in modo gentile
 6. Rispondi in italiano a meno che il cliente non usi un'altra lingua
 
-CLIENTE: ${context.customerType === 'b2b' ? `B2B - ${context.customerName}` : 'Visitatore'}
+CLIENTE: ${(context.customerType === 'b2b' || (context.customerType === 'b2c' && context.customerId)) ? `${context.customerType.toUpperCase()} - ${context.customerName}` : 'Visitatore'}
 
 Rispondi in modo naturale e conversazionale.`;
 
@@ -2258,7 +2581,7 @@ TUO RUOLO:
 - Non inventare informazioni sui prodotti o prezzi
 - Rispondi nella lingua del cliente (italiano, tedesco, francese, inglese)
 
-TIPO CLIENTE: ${context.customerType === 'b2b' ? 'Cliente B2B autenticato' : 'Visitatore del sito'}
+TIPO CLIENTE: ${(context.customerType === 'b2b' || (context.customerType === 'b2c' && context.customerId)) ? `Cliente ${context.customerType.toUpperCase()} autenticato` : 'Visitatore del sito'}
 
 Rispondi in modo naturale e conversazionale.`;
   }

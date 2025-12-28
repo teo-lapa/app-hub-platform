@@ -24,8 +24,23 @@ import {
   Search,
   Building2,
   UserCircle,
-  XCircle
+  XCircle,
+  Paperclip,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  FileText,
+  Image as ImageIcon,
+  File
 } from 'lucide-react';
+
+interface Attachment {
+  name: string;
+  content: string; // base64
+  mimetype: string;
+  size?: number;
+}
 
 interface Message {
   id: string;
@@ -34,6 +49,7 @@ interface Message {
   timestamp: Date;
   agentId?: string;
   suggestedActions?: string[];
+  attachments?: Attachment[];
 }
 
 interface ChatResponse {
@@ -74,6 +90,17 @@ export default function LapaAgentsTestPage() {
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  // File upload states
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Voice chat states
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -137,6 +164,161 @@ export default function LapaAgentsTestPage() {
     return () => clearTimeout(timer);
   }, [customerSearch]);
 
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'it-IT';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+
+        if (event.results[0].isFinal) {
+          setInput(transcript);
+          setIsListening(false);
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  // File upload handler
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+    const newAttachments: Attachment[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (file.size > maxSize) {
+        alert(`Il file "${file.name}" è troppo grande. Massimo 5MB.`);
+        continue;
+      }
+
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Il tipo di file "${file.type}" non è supportato.`);
+        continue;
+      }
+
+      // Convert to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data:*/*;base64, prefix
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      newAttachments.push({
+        name: file.name,
+        content: base64,
+        mimetype: file.type,
+        size: file.size
+      });
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove attachment
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Toggle voice listening
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('Il riconoscimento vocale non è supportato dal tuo browser.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  // Text-to-speech for assistant messages
+  const speakMessage = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert('La sintesi vocale non è supportata dal tuo browser.');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'it-IT';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    synthesisRef.current = utterance;
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Get file icon based on mimetype
+  const getFileIcon = (mimetype: string) => {
+    if (mimetype.startsWith('image/')) return ImageIcon;
+    if (mimetype === 'application/pdf') return FileText;
+    return File;
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   // Select customer
   const selectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -167,12 +349,17 @@ export default function LapaAgentsTestPage() {
     const text = messageText || input.trim();
     if (!text || isLoading) return;
 
-    // Add user message
+    // Capture current attachments and clear them
+    const currentAttachments = [...attachments];
+    setAttachments([]);
+
+    // Add user message with attachments
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: text,
-      timestamp: new Date()
+      timestamp: new Date(),
+      attachments: currentAttachments.length > 0 ? currentAttachments : undefined
     };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -189,7 +376,12 @@ export default function LapaAgentsTestPage() {
           customerName: selectedCustomer?.name,
           customerEmail: selectedCustomer?.email,
           sessionId,
-          language: 'it'
+          language: 'it',
+          attachments: currentAttachments.length > 0 ? currentAttachments.map(a => ({
+            name: a.name,
+            content: a.content,
+            mimetype: a.mimetype
+          })) : undefined
         })
       });
 
@@ -205,6 +397,11 @@ export default function LapaAgentsTestPage() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Auto-speak response if voice is enabled
+      if (voiceEnabled && data.message) {
+        speakMessage(data.message);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
@@ -457,9 +654,19 @@ export default function LapaAgentsTestPage() {
                         )}
                         <div className={`max-w-[75%] ${msg.role === 'user' ? 'order-1' : ''}`}>
                           {msg.role === 'assistant' && (
-                            <span className="text-xs text-gray-500 ml-1 mb-1 block">
-                              {getAgentName(msg.agentId)}
-                            </span>
+                            <div className="flex items-center gap-2 ml-1 mb-1">
+                              <span className="text-xs text-gray-500">
+                                {getAgentName(msg.agentId)}
+                              </span>
+                              {/* TTS Button for assistant messages */}
+                              <button
+                                onClick={() => speakMessage(msg.content)}
+                                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                title="Ascolta messaggio"
+                              >
+                                <Volume2 className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+                              </button>
+                            </div>
                           )}
                           <div
                             className={`p-3 rounded-2xl ${
@@ -469,6 +676,24 @@ export default function LapaAgentsTestPage() {
                             }`}
                           >
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+
+                            {/* Show attachments in user messages */}
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-red-500/20 flex flex-wrap gap-2">
+                                {msg.attachments.map((att, i) => {
+                                  const FileIcon = getFileIcon(att.mimetype);
+                                  return (
+                                    <div
+                                      key={i}
+                                      className="flex items-center gap-1 px-2 py-1 bg-red-500/20 rounded text-xs"
+                                    >
+                                      <FileIcon className="w-3 h-3" />
+                                      <span className="max-w-[80px] truncate">{att.name}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
 
                           {/* Suggested Actions */}
@@ -519,21 +744,106 @@ export default function LapaAgentsTestPage() {
 
                   {/* Input Area */}
                   <div className="p-4 border-t border-gray-200 bg-white">
+                    {/* Attachments Preview */}
+                    {attachments.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        {attachments.map((att, index) => {
+                          const FileIcon = getFileIcon(att.mimetype);
+                          return (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg group"
+                            >
+                              <FileIcon className="w-4 h-4 text-gray-500" />
+                              <span className="text-xs text-gray-700 max-w-[100px] truncate">
+                                {att.name}
+                              </span>
+                              {att.size && (
+                                <span className="text-[10px] text-gray-400">
+                                  {formatFileSize(att.size)}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => removeAttachment(index)}
+                                className="p-0.5 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3 text-gray-500" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2">
+                      {/* File Upload Button */}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        multiple
+                        accept="image/*,.pdf,.txt,.doc,.docx"
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading}
+                        className="p-2.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-full transition-colors disabled:opacity-50"
+                        title="Allega file"
+                      >
+                        <Paperclip className="w-5 h-5" />
+                      </button>
+
+                      {/* Voice Input Button */}
+                      <button
+                        onClick={toggleListening}
+                        disabled={isLoading}
+                        className={`p-2.5 rounded-full transition-colors ${
+                          isListening
+                            ? 'bg-red-100 text-red-600 animate-pulse'
+                            : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                        } disabled:opacity-50`}
+                        title={isListening ? 'Ferma registrazione' : 'Parla'}
+                      >
+                        {isListening ? (
+                          <MicOff className="w-5 h-5" />
+                        ) : (
+                          <Mic className="w-5 h-5" />
+                        )}
+                      </button>
+
                       <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
-                        placeholder="Scrivi un messaggio..."
+                        placeholder={isListening ? 'Sto ascoltando...' : 'Scrivi un messaggio...'}
                         disabled={isLoading}
                         className="flex-1 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
                       />
+
+                      {/* Voice Output Toggle */}
+                      <button
+                        onClick={() => setVoiceEnabled(!voiceEnabled)}
+                        className={`p-2.5 rounded-full transition-colors ${
+                          voiceEnabled
+                            ? 'bg-blue-100 text-blue-600'
+                            : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                        }`}
+                        title={voiceEnabled ? 'Disattiva voce' : 'Attiva voce'}
+                      >
+                        {voiceEnabled ? (
+                          <Volume2 className="w-5 h-5" />
+                        ) : (
+                          <VolumeX className="w-5 h-5" />
+                        )}
+                      </button>
+
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => sendMessage()}
-                        disabled={isLoading || !input.trim()}
+                        disabled={isLoading || (!input.trim() && attachments.length === 0)}
                         className="p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isLoading ? (
@@ -544,7 +854,7 @@ export default function LapaAgentsTestPage() {
                       </motion.button>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-2 text-center">
-                      Powered by LAPA AI Agents
+                      Powered by LAPA AI Agents • {attachments.length > 0 ? `${attachments.length} file allegati` : 'Puoi allegare file'}
                     </p>
                   </div>
                 </>
