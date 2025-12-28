@@ -1382,8 +1382,18 @@ ${conversationSummary}
         };
       }
 
-      // Altrimenti mostra le fatture aperte o recenti
-      const invoicesResult = await this.invoicesAgent.getInvoices(context.customerId, 'all', 10);
+      // Analizza se l'utente chiede fatture da pagare
+      const messageLC = context.message.toLowerCase();
+      const wantsUnpaid = messageLC.includes('da pagare') || messageLC.includes('pagare') ||
+                          messageLC.includes('aperte') || messageLC.includes('non pagate') ||
+                          messageLC.includes('scadute') || messageLC.includes('saldo');
+
+      // Se chiede fatture da pagare, filtra solo quelle non pagate
+      const invoicesResult = await this.invoicesAgent.getInvoices(
+        context.customerId,
+        wantsUnpaid ? 'open' : 'all',
+        20
+      );
 
       if (invoicesResult.success && invoicesResult.data && invoicesResult.data.length > 0) {
         const paymentStateLabels: Record<string, string> = {
@@ -1404,9 +1414,13 @@ ${conversationSummary}
           ? `\n\nSaldo aperto totale: ${balanceResult.data.currency} ${balanceResult.data.total_due.toFixed(2)}`
           : '';
 
+        const headerText = wantsUnpaid
+          ? `Ecco le tue ${invoicesResult.data.length} fatture da pagare:`
+          : `Ecco le tue ultime ${invoicesResult.data.length} fatture:`;
+
         return {
           success: true,
-          message: `Ecco le tue ultime ${invoicesResult.data.length} fatture:\n\n${invoicesList}${balanceInfo}\n\n` +
+          message: `${headerText}\n\n${invoicesList}${balanceInfo}\n\n` +
                    'Vuoi vedere i dettagli di una fattura specifica?',
           data: {
             invoices: invoicesResult.data,
@@ -1414,23 +1428,22 @@ ${conversationSummary}
           },
           agentId: 'invoice',
           confidence: 0.9,
-          suggestedActions: [
-            'Dettagli fattura specifica',
-            'Fatture non pagate',
-            'Scarica fattura'
-          ]
+          suggestedActions: wantsUnpaid
+            ? ['Dettagli fattura specifica', 'Link pagamento', 'Scarica fattura']
+            : ['Dettagli fattura specifica', 'Fatture non pagate', 'Scarica fattura']
         };
       }
 
       return {
         success: true,
-        message: 'Non ho trovato fatture nel tuo account.',
+        message: wantsUnpaid
+          ? 'Non hai fatture da pagare al momento. Ottimo! 🎉'
+          : 'Non ho trovato fatture nel tuo account.',
         agentId: 'invoice',
         confidence: 0.8,
-        suggestedActions: [
-          'Verifica storico ordini',
-          'Contatta amministrazione'
-        ]
+        suggestedActions: wantsUnpaid
+          ? ['Vedi tutte le fatture', 'I miei ordini']
+          : ['Verifica storico ordini', 'Contatta amministrazione']
       };
 
     } catch (error) {
