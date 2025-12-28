@@ -78,17 +78,15 @@ class AgentStatsStore {
     };
 
     try {
-      // Aggiungi alla lista delle richieste di oggi
+      // Usa rpush per aggiungere atomicamente alla lista (evita race condition)
       const key = getRequestsKey();
-      const existing = await kv.get<RequestRecord[]>(key) || [];
-      existing.push(record);
+      await kv.rpush(key, JSON.stringify(record));
 
-      // Mantieni solo gli ultimi 1000 record per giorno
-      if (existing.length > 1000) {
-        existing.splice(0, existing.length - 1000);
+      // Imposta TTL se non già impostato
+      const ttl = await kv.ttl(key);
+      if (ttl === -1) {
+        await kv.expire(key, 86400 * 7); // Scade dopo 7 giorni
       }
-
-      await kv.set(key, existing, { ex: 86400 * 7 }); // Scade dopo 7 giorni
 
       // Aggiungi sessione
       await kv.sadd(getSessionsKey(), sessionId);
@@ -143,7 +141,25 @@ class AgentStatsStore {
   async getTodayRequests(): Promise<RequestRecord[]> {
     try {
       const key = getRequestsKey();
-      return await kv.get<RequestRecord[]>(key) || [];
+      // Controlla se la chiave è una lista o un valore
+      const keyType = await kv.type(key);
+
+      if (keyType === 'list') {
+        // Leggi dalla lista Redis
+        const items = await kv.lrange(key, 0, -1);
+        return items.map(item => {
+          if (typeof item === 'string') {
+            return JSON.parse(item);
+          }
+          return item as RequestRecord;
+        });
+      } else if (keyType === 'string' || keyType === 'none') {
+        // Fallback al vecchio formato o chiave non esistente
+        const data = await kv.get<RequestRecord[]>(key);
+        return data || [];
+      }
+
+      return [];
     } catch (error) {
       console.error('❌ Error getting today requests from KV:', error);
       return this.localCache.requests;
@@ -280,7 +296,7 @@ class AgentStatsStore {
    */
   async syncFromKV() {
     try {
-      const todayRequests = await kv.get<RequestRecord[]>(getRequestsKey()) || [];
+      const todayRequests = await this.getTodayRequests();
       const escalations = await kv.get<number>(getEscalationsKey()) || 0;
 
       this.localCache.requests = todayRequests;

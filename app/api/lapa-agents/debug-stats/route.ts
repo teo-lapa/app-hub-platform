@@ -19,8 +19,20 @@ export async function GET() {
     const escalationsKey = `lapa_stats:escalations:${today}`;
     const sessionsKey = `lapa_stats:sessions`;
 
-    const [requests, escalations, sessionsCount] = await Promise.all([
-      kv.get<any[]>(requestsKey),
+    // Verifica il tipo della chiave requests (può essere lista o stringa)
+    const keyType = await kv.type(requestsKey);
+    let requests: any[] = [];
+
+    if (keyType === 'list') {
+      // Nuovo formato: lista Redis
+      const items = await kv.lrange(requestsKey, 0, -1);
+      requests = items.map(item => typeof item === 'string' ? JSON.parse(item) : item);
+    } else if (keyType === 'string') {
+      // Vecchio formato: JSON array
+      requests = await kv.get<any[]>(requestsKey) || [];
+    }
+
+    const [escalations, sessionsCount] = await Promise.all([
       kv.get<number>(escalationsKey),
       kv.scard(sessionsKey)
     ]);
@@ -39,24 +51,23 @@ export async function GET() {
 
     // Analizza richieste di oggi per agente
     const requestsByAgent: Record<string, number> = {};
-    if (requests && Array.isArray(requests)) {
-      for (const req of requests) {
-        const agentId = req.agentId || 'unknown';
-        requestsByAgent[agentId] = (requestsByAgent[agentId] || 0) + 1;
-      }
+    for (const req of requests) {
+      const agentId = req.agentId || 'unknown';
+      requestsByAgent[agentId] = (requestsByAgent[agentId] || 0) + 1;
     }
 
     return NextResponse.json({
       success: true,
       date: today,
+      keyType,
       summary: {
-        totalRequestsToday: requests?.length || 0,
+        totalRequestsToday: requests.length,
         totalEscalationsToday: escalations || 0,
         totalSessions: sessionsCount || 0,
         requestsByAgent
       },
       agentTotals,
-      rawRequests: requests?.slice(-20) || [], // Ultimi 20 per non sovraccaricare
+      rawRequests: requests.slice(-20), // Ultimi 20 per non sovraccaricare
       keys: {
         requests: requestsKey,
         escalations: escalationsKey,
