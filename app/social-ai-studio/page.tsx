@@ -1150,6 +1150,7 @@ export default function SocialAIStudioPage() {
 
     try {
       // Usa generate-marketing con contentType='video' e l'immagine dell'articolo
+      // Usiamo 'linkedin' perché ha aspect ratio 16:9, perfetto per YouTube
       const response = await fetch('/api/social-ai/generate-marketing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1157,7 +1158,7 @@ export default function SocialAIStudioPage() {
           productImage: articleData.imageUrl,
           productName: articleData.article.title,
           productDescription: articleData.article.introduction,
-          socialPlatform: 'youtube',
+          socialPlatform: 'linkedin', // 16:9 aspect ratio, perfetto per YouTube
           contentType: 'video',
           tone: tone,
           targetAudience: targetAudience || 'Ristoratori, chef, food lovers',
