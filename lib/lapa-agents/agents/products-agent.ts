@@ -227,13 +227,30 @@ export class ProductsAgent {
         domain.push(['active', '=', true]);
       }
 
-      // Ricerca testuale (nome o codice)
+      // Ricerca testuale intelligente
+      // Se la query ha più parole, cerca prodotti che contengono TUTTE le parole
+      // Es: "carciofi grigliati" trova "CARCIOFI A SPICCHI GRIGLIATI"
       if (filters.query) {
-        domain.push('|', '|', '|');
-        domain.push(['name', 'ilike', filters.query]);
-        domain.push(['default_code', 'ilike', filters.query]);
-        domain.push(['barcode', 'ilike', filters.query]);
-        domain.push(['description_sale', 'ilike', filters.query]);
+        const queryWords = filters.query.trim().split(/\s+/).filter(w => w.length >= 2);
+
+        if (queryWords.length > 1) {
+          // Ricerca multi-parola: ogni parola deve essere presente nel nome o descrizione
+          // Costruiamo: (name ilike word1 OR desc ilike word1) AND (name ilike word2 OR desc ilike word2)
+          for (const word of queryWords) {
+            domain.push('|', '|');
+            domain.push(['name', 'ilike', word]);
+            domain.push(['default_code', 'ilike', word]);
+            domain.push(['description_sale', 'ilike', word]);
+          }
+          console.log(`🔍 Ricerca multi-parola: ${queryWords.join(' + ')}`);
+        } else {
+          // Ricerca singola parola: cerca in tutti i campi
+          domain.push('|', '|', '|');
+          domain.push(['name', 'ilike', filters.query]);
+          domain.push(['default_code', 'ilike', filters.query]);
+          domain.push(['barcode', 'ilike', filters.query]);
+          domain.push(['description_sale', 'ilike', filters.query]);
+        }
       }
 
       // Filtro categoria
