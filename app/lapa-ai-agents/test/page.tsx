@@ -230,8 +230,8 @@ export default function LapaAgentsTestPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="absolute bottom-4 right-4 w-[380px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
-              style={{ maxHeight: isMinimized ? '60px' : '550px' }}
+              className="absolute bottom-4 right-4 w-[450px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+              style={{ maxHeight: isMinimized ? '60px' : '650px' }}
             >
               {/* Chat Header */}
               <div className="bg-gradient-to-r from-red-600 to-red-700 p-4 flex items-center justify-between">
@@ -271,7 +271,7 @@ export default function LapaAgentsTestPage() {
               {!isMinimized && (
                 <>
                   {/* Messages */}
-                  <div className="h-[350px] overflow-y-auto p-4 space-y-4 bg-gray-50">
+                  <div className="h-[450px] overflow-y-auto p-4 space-y-4 bg-gray-50">
                     {messages.map((msg) => (
                       <motion.div
                         key={msg.id}
@@ -356,7 +356,7 @@ export default function LapaAgentsTestPage() {
                         onKeyPress={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
                         placeholder="Scrivi un messaggio..."
                         disabled={isLoading}
-                        className="flex-1 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+                        className="flex-1 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
                       />
                       <motion.button
                         whileHover={{ scale: 1.05 }}
