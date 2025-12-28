@@ -7,7 +7,7 @@ import {
   CheckCircle2, Wand2, MessageSquare, Hash, Target,
   Play, X, Package, Share2, BarChart3, TrendingUp, Award,
   AlertCircle, Zap, Youtube, BookOpen, Search, Lightbulb, Globe,
-  Calendar, Clock
+  Calendar, Clock, FileText, PenTool
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -116,8 +116,17 @@ export default function SocialAIStudioPage() {
   const [isGeneratingCuriosityImage, setIsGeneratingCuriosityImage] = useState(false);
   const [curiosityPreviewImage, setCuriosityPreviewImage] = useState<string | null>(null);
 
+  // Free Article states (Idea Libera → Articolo AI)
+  const [includeFreeArticle, setIncludeFreeArticle] = useState(false);
+  const [freeArticleIdea, setFreeArticleIdea] = useState('');
+  const [articleObjective, setArticleObjective] = useState<'blog_seo' | 'inspirational' | 'b2b' | 'storytelling'>('blog_seo');
+  const [isGeneratingArticle, setIsGeneratingArticle] = useState(false);
+  const [articleData, setArticleData] = useState<any | null>(null);
+  const [isPublishingArticle, setIsPublishingArticle] = useState(false);
+  const [articlePublishProgress, setArticlePublishProgress] = useState<string[]>([]);
+
   // Scheduling states
-  const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | 'article' | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>('');
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [isScheduling, setIsScheduling] = useState(false);
@@ -813,7 +822,7 @@ export default function SocialAIStudioPage() {
   // ==========================================
   // Programmazione Post sui Social
   // ==========================================
-  const handleSchedulePost = async (type: 'curiosity' | 'story' | 'recipe') => {
+  const handleSchedulePost = async (type: 'curiosity' | 'story' | 'recipe' | 'article') => {
     if (!scheduledDate || !scheduledTime) {
       toast.error('Seleziona data e ora per la programmazione!');
       return;
@@ -887,6 +896,22 @@ export default function SocialAIStudioPage() {
           sources: recipeData.sources || [],
           scheduledDate: scheduledDateTime
         };
+      } else if (type === 'article') {
+        if (!articleData || !articleData.imageUrl) {
+          toast.error('Genera prima l\'articolo completo!');
+          setIsScheduling(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+
+        endpoint = '/api/social-ai/publish-article';
+        body = {
+          articleData: articleData.article,
+          articleImage: articleData.imageUrl,
+          productName: productName || undefined,
+          productImage: productImage || undefined,
+          scheduledDate: scheduledDateTime
+        };
       }
 
       response = await fetch(endpoint!, {
@@ -914,8 +939,119 @@ export default function SocialAIStudioPage() {
     }
   };
 
+  // ==========================================
+  // Genera Articolo da Idea Libera
+  // ==========================================
+  const handleGenerateArticle = async () => {
+    if (!freeArticleIdea || freeArticleIdea.trim().length < 10) {
+      toast.error('Inserisci un\'idea di almeno 10 caratteri!');
+      return;
+    }
+
+    setIsGeneratingArticle(true);
+    setArticleData(null);
+
+    const loadingToast = toast.loading('Generazione articolo in corso...');
+
+    try {
+      const response = await fetch('/api/social-ai/free-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idea: freeArticleIdea,
+          objective: articleObjective,
+          tone,
+          targetAudience: targetAudience || undefined,
+          productName: productName || undefined,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione articolo');
+      }
+
+      setArticleData(data.data);
+      toast.success('Articolo generato con successo!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore generazione articolo:', error);
+      toast.error(error.message || 'Errore durante generazione articolo', { id: loadingToast });
+    } finally {
+      setIsGeneratingArticle(false);
+    }
+  };
+
+  // ==========================================
+  // Pubblica Articolo su Blog + Social
+  // ==========================================
+  const handlePublishArticle = async () => {
+    if (!articleData || !articleData.imageUrl) {
+      toast.error('Genera prima l\'articolo completo!');
+      return;
+    }
+
+    setIsPublishingArticle(true);
+    setArticlePublishProgress([]);
+
+    const loadingToast = toast.loading('Pubblicazione in corso...');
+
+    try {
+      setArticlePublishProgress(['🚀 Inizio pubblicazione...']);
+
+      const response = await fetch('/api/social-ai/publish-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleData: articleData.article,
+          articleImage: articleData.imageUrl,
+          productName: productName || undefined,
+          productImage: productImage || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione');
+      }
+
+      const progressMessages: string[] = [];
+
+      if (data.data?.translations && data.data.translations.length > 0) {
+        progressMessages.push(`✅ Articolo tradotto in ${data.data.translations.length} lingue!`);
+      }
+
+      if (data.data?.blogPostId) {
+        progressMessages.push('✅ Blog post creato!');
+      }
+
+      if (data.data?.socialPostIds && data.data.socialPostIds.length > 0) {
+        progressMessages.push(`✅ ${data.data.socialPostIds.length} post social pubblicati!`);
+      }
+
+      if (data.data?.blogPostUrl) {
+        progressMessages.push(`📍 URL: ${data.data.blogPostUrl}`);
+      }
+
+      progressMessages.push('🎉 Pubblicazione completata con successo!');
+
+      setArticlePublishProgress(prev => [...prev, ...progressMessages]);
+      toast.success('Articolo pubblicato su Blog e Social!', { id: loadingToast });
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione articolo:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+      setArticlePublishProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+    } finally {
+      setIsPublishingArticle(false);
+    }
+  };
+
   // Helper per aprire il modal di scheduling
-  const openScheduleModal = (type: 'curiosity' | 'story' | 'recipe') => {
+  const openScheduleModal = (type: 'curiosity' | 'story' | 'recipe' | 'article') => {
     // Imposta data/ora di default: domani alle 10:00
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1834,6 +1970,85 @@ export default function SocialAIStudioPage() {
                       <>
                         <Search className="h-5 w-5" />
                         <span>Cerca Curiosità</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Idea Libera → Articolo AI */}
+            <div className="bg-gradient-to-br from-violet-900/20 to-indigo-900/20 backdrop-blur-sm rounded-xl border border-violet-500/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <PenTool className="h-6 w-6 text-violet-400" />
+                  <h3 className="text-lg font-semibold text-violet-300">Idea Libera → Articolo AI</h3>
+                </div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeFreeArticle}
+                    onChange={(e) => setIncludeFreeArticle(e.target.checked)}
+                    disabled={isGenerating || isGeneratingArticle}
+                    className="w-4 h-4 rounded border-violet-500/50 bg-slate-900/50 text-violet-500 focus:ring-2 focus:ring-violet-500"
+                  />
+                  <span className="text-xs text-violet-300">Genera articolo</span>
+                </label>
+              </div>
+              <p className="text-xs text-violet-300/70 mb-3">
+                💡 Trasforma una tua idea in un articolo completo professionale (blog + social), modificabile passo-passo con l'AI
+              </p>
+
+              {includeFreeArticle && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-violet-300 mb-2">
+                      Scrivi la tua idea
+                    </label>
+                    <textarea
+                      value={freeArticleIdea}
+                      onChange={(e) => setFreeArticleIdea(e.target.value)}
+                      placeholder="Es: I segreti della mozzarella di bufala campana, come riconoscere quella autentica e abbinarla al meglio..."
+                      rows={3}
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-violet-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder:text-slate-500 text-sm resize-none"
+                      disabled={isGeneratingArticle}
+                    />
+                    <p className="text-xs text-violet-300/50 mt-1">
+                      Descrivi il concetto, l'argomento o l'idea che vuoi sviluppare in un articolo completo
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-violet-300 mb-2">
+                      Obiettivo Articolo
+                    </label>
+                    <select
+                      value={articleObjective}
+                      onChange={(e) => setArticleObjective(e.target.value as any)}
+                      className="w-full px-4 py-2 bg-slate-900/50 border border-violet-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white text-sm"
+                      disabled={isGeneratingArticle}
+                    >
+                      <option value="blog_seo">📊 Blog SEO - Ottimizzato per motori di ricerca</option>
+                      <option value="inspirational">✨ Ispirazionale - Emozionale e coinvolgente</option>
+                      <option value="b2b">💼 B2B Commerciale - Per professionisti HoReCa</option>
+                      <option value="storytelling">📖 Storytelling - Narrativo e avvincente</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleGenerateArticle}
+                    disabled={isGeneratingArticle || !freeArticleIdea.trim() || freeArticleIdea.length < 10}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingArticle ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Generazione in corso...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-5 w-5" />
+                        <span>Genera Articolo</span>
                       </>
                     )}
                   </button>
@@ -2927,6 +3142,179 @@ export default function SocialAIStudioPage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Articolo AI - Mostrato indipendentemente */}
+            {articleData && (
+              <div className="bg-gradient-to-br from-violet-900/20 to-indigo-900/20 backdrop-blur-sm rounded-xl border border-violet-500/30 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <FileText className="h-6 w-6 text-violet-400" />
+                  <h3 className="text-white font-semibold">Articolo Generato</h3>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto" />
+                </div>
+
+                {/* Immagine di copertina */}
+                {articleData.imageUrl && (
+                  <img
+                    src={articleData.imageUrl}
+                    alt="Copertina articolo"
+                    className="w-full h-auto rounded-lg border border-violet-500/50 mb-4"
+                  />
+                )}
+
+                {/* Titolo e Sottotitolo */}
+                <div className="mb-4">
+                  <h4 className="text-xl font-bold text-violet-200 mb-2">
+                    {articleData.article.title}
+                  </h4>
+                  <p className="text-sm text-violet-300/90 italic">
+                    {articleData.article.subtitle}
+                  </p>
+                </div>
+
+                {/* Introduzione */}
+                <div className="mb-4 p-3 bg-violet-900/20 border border-violet-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-violet-200 mb-2">Introduzione</div>
+                  <p className="text-sm text-violet-200/90 whitespace-pre-line">
+                    {articleData.article.introduction}
+                  </p>
+                </div>
+
+                {/* Sezioni */}
+                <div className="mb-4 space-y-3">
+                  <div className="text-sm font-semibold text-violet-200">Sezioni dell'articolo</div>
+                  {articleData.article.sections.map((section: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-slate-900/50 border border-violet-500/20 rounded-lg">
+                      <h5 className="text-sm font-semibold text-violet-300 mb-2">
+                        {idx + 1}. {section.title}
+                      </h5>
+                      <p className="text-xs text-violet-200/80 whitespace-pre-line">
+                        {section.content.substring(0, 200)}...
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Conclusione */}
+                <div className="mb-4 p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg">
+                  <div className="text-sm font-semibold text-indigo-200 mb-2">🎯 Conclusione</div>
+                  <p className="text-sm text-indigo-200/90 whitespace-pre-line">
+                    {articleData.article.conclusion}
+                  </p>
+                </div>
+
+                {/* Keywords SEO */}
+                <div className="mb-4">
+                  <div className="text-xs text-violet-400 mb-2">Keywords SEO</div>
+                  <div className="flex flex-wrap gap-1">
+                    {articleData.article.seoKeywords.map((keyword: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-violet-500/20 text-violet-300 rounded-full text-xs"
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Social Suggestions */}
+                <details className="mb-4">
+                  <summary className="text-xs text-violet-400 cursor-pointer hover:text-violet-300 font-medium">
+                    📱 Post Social Suggeriti
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <div className="p-2 bg-pink-900/20 border border-pink-500/30 rounded-lg">
+                      <div className="text-xs text-pink-400 mb-1">Instagram</div>
+                      <p className="text-xs text-pink-200/80">{articleData.article.socialSuggestions.instagram.substring(0, 150)}...</p>
+                    </div>
+                    <div className="p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                      <div className="text-xs text-blue-400 mb-1">Facebook</div>
+                      <p className="text-xs text-blue-200/80">{articleData.article.socialSuggestions.facebook.substring(0, 150)}...</p>
+                    </div>
+                    <div className="p-2 bg-sky-900/20 border border-sky-500/30 rounded-lg">
+                      <div className="text-xs text-sky-400 mb-1">LinkedIn</div>
+                      <p className="text-xs text-sky-200/80">{articleData.article.socialSuggestions.linkedin.substring(0, 150)}...</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Hashtags */}
+                <div className="mb-4">
+                  <div className="text-xs text-violet-400 mb-2">Hashtags</div>
+                  <div className="flex flex-wrap gap-1">
+                    {articleData.article.socialSuggestions.hashtags.map((hashtag: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs"
+                      >
+                        {hashtag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pulsanti Download e Pubblica */}
+                <div className="space-y-3">
+                  {articleData.imageUrl && (
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = articleData.imageUrl;
+                        link.download = `articolo-${Date.now()}.png`;
+                        link.click();
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download Immagine Copertina</span>
+                    </button>
+                  )}
+
+                  {/* Pulsanti Pubblica e Programma */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handlePublishArticle}
+                      disabled={isPublishingArticle || !articleData.imageUrl}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                      {isPublishingArticle ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Pubblicazione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-5 w-5" />
+                          <span>Pubblica Subito</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openScheduleModal('article')}
+                      disabled={!articleData.imageUrl}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      title="Programma pubblicazione"
+                    >
+                      <Calendar className="h-5 w-5" />
+                      <span>Programma</span>
+                    </button>
+                  </div>
+
+                  {/* Progress Pubblicazione */}
+                  {articlePublishProgress.length > 0 && (
+                    <div className="bg-slate-900/50 rounded-lg p-3 border border-violet-500/30">
+                      <div className="space-y-1">
+                        {articlePublishProgress.map((msg, idx) => (
+                          <div key={idx} className="text-xs text-violet-200">
+                            {msg}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
