@@ -305,7 +305,8 @@ export class ProductsAgent {
           'id', 'name', 'default_code', 'barcode', 'categ_id',
           'list_price', 'standard_price', 'type', 'description',
           'description_sale', 'uom_id', 'active',
-          'qty_available', 'virtual_available'
+          'qty_available', 'virtual_available',
+          'product_tmpl_id'  // ID del template per URL sito web
         ],
         limit,
         'name asc'

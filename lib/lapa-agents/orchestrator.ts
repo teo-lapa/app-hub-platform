@@ -18,9 +18,10 @@ const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
 
 /**
  * Genera un URL per un prodotto sul sito web
- * Formato Odoo standard: /shop/product-slug-ID
+ * Formato Odoo standard: /shop/product-slug-TEMPLATE_ID
+ * IMPORTANTE: Odoo usa product_tmpl_id per gli URL, non product.product.id
  */
-function generateProductUrl(productId: number, productName: string): string {
+function generateProductUrl(templateId: number, productName: string): string {
   // Crea uno slug dal nome prodotto (Odoo style)
   const slug = productName
     .toLowerCase()
@@ -32,7 +33,7 @@ function generateProductUrl(productId: number, productName: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 50);
-  return `${LAPA_SHOP_URL}/shop/${slug}-${productId}`;
+  return `${LAPA_SHOP_URL}/shop/${slug}-${templateId}`;
 }
 
 /**
@@ -1361,7 +1362,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
               const price = product.list_price?.toFixed(2) || '0.00';
               const qty = product.qty_available !== undefined ? product.qty_available : 'N/D';
               const unit = product.uom_id ? product.uom_id[1] : 'pz';
-              const url = generateProductUrl(product.id, product.name);
+              // Usa product_tmpl_id per l'URL (Odoo website usa template ID, non variant ID)
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const url = generateProductUrl(templateId, product.name);
               return `${index + 1}. **${name}**\n   💰 ${price} CHF | 📦 Disponibili: ${qty} ${unit}\n   🔗 [Vedi prodotto](${url})`;
             })
             .join('\n\n');
@@ -1713,7 +1716,23 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
           const productName = purchases[0].productName;
           const productId = purchases[0].productId;
-          const productUrl = generateProductUrl(productId, productName);
+
+          // Recupera product_tmpl_id per l'URL corretto del sito web
+          let templateId = productId; // Fallback al product ID
+          try {
+            const productData = await odoo.searchRead(
+              'product.product',
+              [['id', '=', productId]],
+              ['product_tmpl_id'],
+              1
+            );
+            if (productData.length > 0 && productData[0].product_tmpl_id) {
+              templateId = productData[0].product_tmpl_id[0];
+            }
+          } catch (e) {
+            console.warn('Impossibile recuperare product_tmpl_id, uso product_id');
+          }
+          const productUrl = generateProductUrl(templateId, productName);
           const totalQty = purchases.reduce((sum: number, p: any) => sum + p.quantity, 0);
           const totalSpent = purchases.reduce((sum: number, p: any) => sum + p.total, 0);
 
@@ -1821,8 +1840,29 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         .sort((a, b) => b.lastDate.localeCompare(a.lastDate))
         .slice(0, 10);
 
+      // Recupera product_tmpl_id per tutti i prodotti in una singola query
+      const productIds = products.map(p => p.id);
+      const templateIdMap = new Map<number, number>();
+      try {
+        const productData = await odoo.searchRead(
+          'product.product',
+          [['id', 'in', productIds]],
+          ['id', 'product_tmpl_id'],
+          productIds.length
+        );
+        for (const p of productData) {
+          if (p.product_tmpl_id) {
+            templateIdMap.set(p.id, p.product_tmpl_id[0]);
+          }
+        }
+      } catch (e) {
+        console.warn('Impossibile recuperare product_tmpl_id per prodotti acquistati');
+      }
+
       const productList = products.map((p, idx) => {
-        const url = generateProductUrl(p.id, p.name);
+        // Usa template ID se disponibile, altrimenti fallback al product ID
+        const templateId = templateIdMap.get(p.id) || p.id;
+        const url = generateProductUrl(templateId, p.name);
         return `${idx + 1}. **${p.name}**\n` +
           `   Ultimo acquisto: ${p.lastDate.split(' ')[0]} (${p.lastOrder})\n` +
           `   Totale acquistato: ${p.totalQty} unità in ${p.orderCount} ordini\n` +
