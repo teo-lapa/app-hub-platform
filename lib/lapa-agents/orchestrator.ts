@@ -108,6 +108,7 @@ export interface AgentResponse {
 }
 
 export type IntentType =
+  | 'order_create'         // Creare un nuovo ordine
   | 'order_inquiry'        // Domande su ordini
   | 'order_detail'         // Dettagli di un ordine specifico
   | 'invoice_inquiry'      // Domande su fatture
@@ -244,7 +245,7 @@ COMPITO:
 Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOLO con un JSON valido nel seguente formato:
 
 {
-  "type": "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
+  "type": "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
   "confidence": 0.0-1.0,
   "entities": {
     "order_id": "SO123" (se menzionato),
@@ -256,6 +257,7 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
+- order_create: Richiesta di CREARE un nuovo ordine, fare un ordine, ordinare prodotti (Keywords: creare ordine, fare ordine, voglio ordinare, vorrei ordinare, mi puoi creare, crea ordine, nuovo ordine, ordinare, order erstellen, passer commande, place order, bestellen)
 - order_inquiry: Domande su ordini esistenti, stato ordini, modifiche, prodotti acquistati, storico acquisti (Keywords: ordine, ordini, ordinato, acquisto, acquistato, comprato, storico, ultimi prodotti, cosa ho comprato, quando ho comprato, SO, order, Bestellung, commande, purchased, gekauft, acheté)
 - order_detail: Richiesta DETTAGLI di un ordine specifico (Keywords: dettagli ordine, mostrami l'ordine, più info su ordine)
 - invoice_inquiry: Domande su fatture, pagamenti, estratti conto, saldo (Keywords: fattura, fatture, pagamento, saldo, INV, invoice, Rechnung, facture)
@@ -875,6 +877,19 @@ IMPORTANTE:
       priority: 8,
       handler: async (context, intent) => {
         return await this.orderAgentHandler(context, intent);
+      }
+    });
+
+    // ORDER CREATE AGENT - Crea nuovi ordini (richiede auth)
+    this.registerAgent({
+      id: 'order_create',
+      name: 'Order Create Agent',
+      description: 'Crea nuovi ordini per clienti',
+      intents: ['order_create'],
+      requiresAuth: true,
+      priority: 9,
+      handler: async (context, intent) => {
+        return await this.orderCreateAgentHandler(context, intent);
       }
     });
 
@@ -1540,6 +1555,73 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         message: 'Si è verificato un errore recuperando le informazioni sugli ordini. Riprova più tardi.',
         requiresHumanEscalation: true,
         agentId: 'order'
+      };
+    }
+  }
+
+  /**
+   * Handler per la creazione ordini
+   * B2B: Avvia il processo di creazione ordine con l'orders agent
+   * B2C: Reindirizza al sito web per acquisti
+   */
+  private async orderCreateAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    // Verifica autenticazione
+    if (!context.customerId) {
+      return {
+        success: false,
+        message: 'Per creare un ordine devi prima identificarti. Sei un cliente B2B o preferisci acquistare sul nostro sito?',
+        requiresHumanEscalation: false,
+        agentId: 'order_create',
+        suggestedActions: ['Sono un cliente B2B', 'Vai al sito web']
+      };
+    }
+
+    // B2C: Reindirizza al sito web
+    if (context.customerType === 'b2c') {
+      return {
+        success: true,
+        message: `Ciao ${context.customerName || ''}! Per acquistare i nostri prodotti, ti invito a visitare il nostro shop online:\n\n🛒 **https://lapa.ch**\n\nTroverai:\n- Catalogo completo dei prodotti\n- Pagamento sicuro (carta, bonifico)\n- Consegna a domicilio in tutta la Svizzera\n- Tracciamento della spedizione\n\nHai domande su un prodotto specifico? Posso aiutarti!`,
+        agentId: 'order_create',
+        confidence: 0.9,
+        suggestedActions: ['Cerca un prodotto', 'Info spedizioni', 'Contatta supporto']
+      };
+    }
+
+    // B2B: Avvia il processo di creazione ordine
+    try {
+      // Estrai eventuale prodotto menzionato
+      const productMentioned = intent.entities?.product_name;
+
+      let message = `Perfetto ${context.customerName || ''}, posso aiutarti a creare un nuovo ordine! 📦\n\n`;
+
+      if (productMentioned) {
+        message += `Vedo che hai menzionato "${productMentioned}". Vuoi che lo cerchi nel catalogo?\n\n`;
+      }
+
+      message += `Come vuoi procedere?\n\n`;
+      message += `1️⃣ **Cerca prodotti** - Dimmi cosa cerchi e trovo le disponibilità\n`;
+      message += `2️⃣ **Riordina** - Posso mostrarti i prodotti che hai già acquistato\n`;
+      message += `3️⃣ **Listino** - Consulta il nostro catalogo completo`;
+
+      return {
+        success: true,
+        message,
+        agentId: 'order_create',
+        confidence: 0.95,
+        suggestedActions: productMentioned
+          ? [`Cerca ${productMentioned}`, 'Mostra prodotti acquistati', 'Cerca altro prodotto']
+          : ['Cerca prodotti', 'Mostra prodotti acquistati', 'Vedi listino']
+      };
+    } catch (error) {
+      console.error('❌ Errore orderCreateAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore. Riprova o contatta il supporto.',
+        requiresHumanEscalation: true,
+        agentId: 'order_create'
       };
     }
   }
