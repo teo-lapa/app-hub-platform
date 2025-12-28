@@ -1073,26 +1073,145 @@ ${conversationSummary}
         throw new Error('Unexpected response type');
       }
 
-      // Se il cliente NON è loggato ma vuole assistenza - chiedi i dati di contatto
-      if (wantsTicket && !context.customerId) {
-        return {
-          success: true,
-          message: `Per poterti aiutare e aprire un ticket di assistenza, ho bisogno dei tuoi dati:\n\n` +
-                   `📝 Per favore scrivi:\n` +
-                   `• Nome e Cognome\n` +
-                   `• Email\n` +
-                   `• Telefono\n` +
-                   `• Descrizione del problema\n\n` +
-                   `Oppure contattaci direttamente:\n` +
-                   `📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
-          agentId: 'helpdesk',
-          confidence: 0.9,
-          suggestedActions: [
-            'Fornisci i tuoi dati',
-            'Contatta via email',
-            'Accedi al tuo account'
-          ]
-        };
+      // Se il cliente NON è loggato - controlla se ha fornito i dati di contatto
+      if (!context.customerId) {
+        // Cerca di estrarre dati di contatto dal messaggio dell'utente
+        const fullUserMessage = lastUserMessage?.content || '';
+
+        // Pattern per email
+        const emailMatch = fullUserMessage.match(/[\w.-]+@[\w.-]+\.\w+/i);
+        const extractedEmail = emailMatch ? emailMatch[0] : null;
+
+        // Pattern per nome (parole con maiuscola iniziale)
+        const nameMatch = fullUserMessage.match(/(?:nome|mi chiamo|sono)\s*[:\-]?\s*([A-Z][a-zA-ZàèéìòùÀÈÉÌÒÙ]+(?:\s+[A-Z][a-zA-ZàèéìòùÀÈÉÌÒÙ]+)*)/i);
+        let extractedName = nameMatch ? nameMatch[1].trim() : null;
+
+        // Se non trovato con pattern, cerca nomi propri all'inizio
+        if (!extractedName) {
+          const words = fullUserMessage.split(/\s+/);
+          const potentialNames = words.filter(w => /^[A-Z][a-zA-ZàèéìòùÀÈÉÌÒÙ]+$/.test(w) && w.length > 2);
+          if (potentialNames.length >= 2) {
+            extractedName = potentialNames.slice(0, 2).join(' ');
+          }
+        }
+
+        // Estrai descrizione problema (tutto ciò che non è nome/email/telefono)
+        let problemDescription = fullUserMessage
+          .replace(/[\w.-]+@[\w.-]+\.\w+/gi, '')  // rimuovi email
+          .replace(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{2,4}/g, '') // rimuovi telefono
+          .replace(/(?:nome|mi chiamo|sono|email|telefono|indirizzo)[:\-]?\s*/gi, '')
+          .trim();
+
+        console.log('🔍 Dati estratti utente anonimo:', { extractedName, extractedEmail, problemDescription: problemDescription.substring(0, 100) });
+
+        // Se abbiamo almeno email E una descrizione del problema, crea il ticket
+        if (extractedEmail && problemDescription.length > 10) {
+          console.log('✅ Utente anonimo ha fornito dati sufficienti - creazione ticket');
+
+          const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
+
+          // Costruisci descrizione ticket
+          const ticketDescription = `
+══════════════════════════════════════════════════════
+📋 RICHIESTA ASSISTENZA - CHAT AI LAPA (UTENTE NON REGISTRATO)
+══════════════════════════════════════════════════════
+
+👤 DATI FORNITI:
+• Nome: ${extractedName || 'Non fornito'}
+• Email: ${extractedEmail}
+
+📝 RICHIESTA:
+${problemDescription}
+
+══════════════════════════════════════════════════════
+💬 CONVERSAZIONE CHAT (${context.conversationHistory.length} messaggi):
+══════════════════════════════════════════════════════
+${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}]: ${m.content}`).join('\n\n')}
+          `.trim();
+
+          // Prima cerca o crea il partner in Odoo con l'email fornita
+          let partnerId: number | null = null;
+          try {
+            const odooClient = await getOdooClient();
+
+            // Cerca partner esistente con questa email
+            const existingPartners = await odooClient.searchRead(
+              'res.partner',
+              [['email', '=ilike', extractedEmail]],
+              ['id', 'name'],
+              1
+            );
+
+            if (existingPartners && existingPartners.length > 0) {
+              partnerId = existingPartners[0].id;
+              console.log('🔍 Partner esistente trovato:', partnerId);
+            } else {
+              // Crea nuovo partner
+              const newPartnerId = await odooClient.call('res.partner', 'create', [{
+                name: extractedName || extractedEmail,
+                email: extractedEmail,
+                customer_rank: 1,
+                comment: 'Creato automaticamente da Chat AI LAPA'
+              }]);
+              partnerId = newPartnerId as number;
+              console.log('✅ Nuovo partner creato:', partnerId);
+            }
+          } catch (partnerError) {
+            console.warn('⚠️ Errore gestione partner:', partnerError);
+          }
+
+          // Crea il ticket
+          try {
+            const ticketResult = await helpdeskAgent.createTicket({
+              customerId: partnerId || 1, // Usa partner trovato/creato o fallback a 1
+              subject: `[Chat AI] ${extractedName || extractedEmail}`,
+              description: ticketDescription,
+              priority: '1'
+            });
+
+            console.log('🎫 Risultato ticket anonimo:', ticketResult);
+
+            if (ticketResult.success) {
+              return {
+                success: true,
+                message: `✅ Ho creato il ticket **#${ticketResult.ticketId}**!\n\n` +
+                         `Il nostro team ti contatterà presto all'indirizzo **${extractedEmail}**.\n\n` +
+                         `Per qualsiasi urgenza:\n📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
+                agentId: 'helpdesk',
+                confidence: 0.95,
+                data: { ticketId: ticketResult.ticketId, email: extractedEmail }
+              };
+            }
+          } catch (ticketError) {
+            console.error('❌ Errore creazione ticket anonimo:', ticketError);
+          }
+        }
+
+        // Se non ha fornito dati sufficienti, chiedi i dati
+        const alreadyAskedForData = context.conversationHistory.some(m =>
+          m.role === 'assistant' && m.content.includes('ho bisogno dei tuoi dati')
+        );
+
+        if (wantsTicket || alreadyAskedForData) {
+          return {
+            success: true,
+            message: `Per poterti aiutare e aprire un ticket di assistenza, ho bisogno dei tuoi dati:\n\n` +
+                     `📝 Per favore scrivi:\n` +
+                     `• Nome e Cognome\n` +
+                     `• Email\n` +
+                     `• Telefono\n` +
+                     `• Descrizione del problema\n\n` +
+                     `Oppure contattaci direttamente:\n` +
+                     `📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
+            agentId: 'helpdesk',
+            confidence: 0.9,
+            suggestedActions: [
+              'Fornisci i tuoi dati',
+              'Contatta via email',
+              'Accedi al tuo account'
+            ]
+          };
+        }
       }
 
       return {
