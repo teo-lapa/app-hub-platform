@@ -272,19 +272,9 @@ export class HelpdeskAgent {
     message?: string;
     error?: string;
   }> {
-    // Prima verifica se esistono team disponibili
-    let teamId = 1;
-    try {
-      const teams = await this.odooRPC.searchRead('helpdesk.team', [], ['id', 'name'], 1);
-      if (teams && teams.length > 0) {
-        teamId = teams[0].id;
-        console.log('🎫 Using helpdesk team:', teams[0].name, 'ID:', teamId);
-      } else {
-        console.warn('⚠️ No helpdesk teams found, using default team_id: 1');
-      }
-    } catch (teamError) {
-      console.warn('⚠️ Could not fetch helpdesk teams:', teamError);
-    }
+    // Usa sempre il team "Servizio clienti" (support@lapa.ch) - ID 1
+    const teamId = 1;
+    console.log('🎫 Using helpdesk team: Servizio clienti (ID: 1)');
 
     // Prepara i valori per il ticket
     const ticketValues: Record<string, any> = {
