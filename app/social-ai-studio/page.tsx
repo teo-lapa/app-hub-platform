@@ -126,6 +126,14 @@ export default function SocialAIStudioPage() {
   const [articlePublishProgress, setArticlePublishProgress] = useState<string[]>([]);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
 
+  // Article YouTube Video states
+  const [isGeneratingArticleVideo, setIsGeneratingArticleVideo] = useState(false);
+  const [articleVideoData, setArticleVideoData] = useState<{ operationId?: string; status?: string; dataUrl?: string } | null>(null);
+  const [isPollingArticleVideo, setIsPollingArticleVideo] = useState(false);
+  const [isPublishingArticleYouTube, setIsPublishingArticleYouTube] = useState(false);
+  const [articleYoutubeResult, setArticleYoutubeResult] = useState<any | null>(null);
+  const [articleVideoProgress, setArticleVideoProgress] = useState<string[]>([]);
+
   // Scheduling states
   const [showScheduleModal, setShowScheduleModal] = useState<'curiosity' | 'story' | 'recipe' | 'article' | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>('');
@@ -1125,6 +1133,199 @@ export default function SocialAIStudioPage() {
         }
       };
     });
+  };
+
+  // ==========================================
+  // Genera Video YouTube dall'Articolo
+  // ==========================================
+  const handleGenerateArticleVideo = async () => {
+    if (!articleData || !articleData.imageUrl) {
+      toast.error('Genera prima l\'articolo con immagine!');
+      return;
+    }
+
+    setIsGeneratingArticleVideo(true);
+    setArticleVideoProgress(['🎬 Avvio generazione video...']);
+    const loadingToast = toast.loading('Generazione video in corso...');
+
+    try {
+      // Usa generate-marketing con contentType='video' e l'immagine dell'articolo
+      const response = await fetch('/api/social-ai/generate-marketing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productImage: articleData.imageUrl,
+          productName: articleData.article.title,
+          productDescription: articleData.article.introduction,
+          socialPlatform: 'youtube',
+          contentType: 'video',
+          tone: tone,
+          targetAudience: targetAudience || 'Ristoratori, chef, food lovers',
+          videoStyle: 'cinematic',
+          videoDuration: 8
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante generazione video');
+      }
+
+      setArticleVideoProgress(prev => [...prev, '⏳ Video in generazione con Veo 3.1...']);
+
+      // Controlla se c'è un video in generazione
+      if (data.data?.video?.operationId && data.data.video.status === 'generating') {
+        setArticleVideoData({
+          operationId: data.data.video.operationId,
+          status: 'generating'
+        });
+        toast.success('Video in generazione...', { id: loadingToast });
+        startArticleVideoPolling(data.data.video.operationId);
+      } else {
+        throw new Error('Generazione video non avviata');
+      }
+
+    } catch (error: any) {
+      console.error('Errore generazione video articolo:', error);
+      toast.error(error.message || 'Errore durante generazione video', { id: loadingToast });
+      setArticleVideoProgress(prev => [...prev, '❌ Errore: ' + error.message]);
+      setIsGeneratingArticleVideo(false);
+    }
+  };
+
+  // Polling Video Articolo
+  const startArticleVideoPolling = async (operationId: string) => {
+    if (!operationId || operationId.trim().length === 0) {
+      console.error('operationId non valido');
+      setIsGeneratingArticleVideo(false);
+      return;
+    }
+
+    setIsPollingArticleVideo(true);
+    const maxAttempts = 120;
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/social-ai/check-video-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operationId })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error('Errore video polling:', data.error);
+          setArticleVideoProgress(prev => [...prev, '❌ Polling fallito: ' + data.error]);
+          setIsPollingArticleVideo(false);
+          setIsGeneratingArticleVideo(false);
+          return;
+        }
+
+        if (data.done && data.video) {
+          // Video completato!
+          setArticleVideoData(prev => ({
+            ...prev,
+            status: 'completed',
+            dataUrl: data.video.dataUrl
+          }));
+          setArticleVideoProgress(prev => [...prev, '✅ Video completato!']);
+          toast.success('Video generato con successo!');
+          setIsPollingArticleVideo(false);
+          setIsGeneratingArticleVideo(false);
+          return;
+        }
+
+        // Continua polling
+        attempts++;
+        const progress = data.progress || Math.round((attempts / maxAttempts) * 100);
+        setArticleVideoProgress(prev => {
+          const filtered = prev.filter(p => !p.includes('Progresso:'));
+          return [...filtered, `⏳ Progresso: ${progress}%`];
+        });
+
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000);
+        } else {
+          toast.error('Timeout: il video sta impiegando troppo tempo');
+          setIsPollingArticleVideo(false);
+          setIsGeneratingArticleVideo(false);
+        }
+
+      } catch (error) {
+        console.error('Errore polling video:', error);
+        setIsPollingArticleVideo(false);
+        setIsGeneratingArticleVideo(false);
+      }
+    };
+
+    poll();
+  };
+
+  // ==========================================
+  // Pubblica Video Articolo su YouTube
+  // ==========================================
+  const handlePublishArticleYouTube = async () => {
+    if (!articleVideoData?.dataUrl) {
+      toast.error('Genera prima il video!');
+      return;
+    }
+
+    if (!articleData?.article) {
+      toast.error('Dati articolo non disponibili');
+      return;
+    }
+
+    setIsPublishingArticleYouTube(true);
+    const loadingToast = toast.loading('Pubblicazione su YouTube in corso...');
+
+    try {
+      // Costruisci caption con link all'articolo
+      const articleUrl = articleData.blogPostUrl || 'https://www.lapa.ch/blog';
+      const caption = `${articleData.article.title}
+
+${articleData.article.introduction.substring(0, 300)}...
+
+📖 Leggi l'articolo completo: ${articleUrl}
+
+${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LAPA #ItalianFood'}`;
+
+      const response = await fetch('/api/social-ai/publish-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoDataUrl: articleVideoData.dataUrl,
+          productName: articleData.article.title,
+          productDescription: articleData.article.subtitle,
+          caption: caption,
+          hashtags: articleData.article.socialSuggestions?.hashtags || ['#LAPA', '#ItalianFood', '#Gourmet']
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore durante pubblicazione YouTube');
+      }
+
+      setArticleYoutubeResult(data.data);
+
+      toast.success(
+        <div>
+          <div className="font-bold">Video pubblicato su YouTube!</div>
+          <div className="text-sm mt-1">{data.data.youtubeTitle}</div>
+        </div>,
+        { id: loadingToast, duration: 6000 }
+      );
+
+    } catch (error: any) {
+      console.error('Errore pubblicazione YouTube:', error);
+      toast.error(error.message || 'Errore durante pubblicazione', { id: loadingToast });
+    } finally {
+      setIsPublishingArticleYouTube(false);
+    }
   };
 
   // Helper per aprire il modal di scheduling
@@ -3423,6 +3624,133 @@ export default function SocialAIStudioPage() {
                       <Calendar className="h-5 w-5" />
                       <span>Programma</span>
                     </button>
+                  </div>
+
+                  {/* Separatore YouTube */}
+                  <div className="border-t border-red-500/30 pt-4 mt-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Youtube className="h-5 w-5 text-red-500" />
+                      <span className="text-sm font-semibold text-red-400">Video YouTube</span>
+                    </div>
+
+                    {/* Se non c'è video, mostra pulsante genera */}
+                    {!articleVideoData?.dataUrl && (
+                      <button
+                        onClick={handleGenerateArticleVideo}
+                        disabled={isGeneratingArticleVideo || isPollingArticleVideo || !articleData.imageUrl}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      >
+                        {isGeneratingArticleVideo || isPollingArticleVideo ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>{isPollingArticleVideo ? 'Generazione video...' : 'Avvio...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Video className="h-5 w-5" />
+                            <span>Genera Video per YouTube</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Progress generazione video */}
+                    {articleVideoProgress.length > 0 && !articleVideoData?.dataUrl && (
+                      <div className="mt-2 bg-slate-900/50 rounded-lg p-3 border border-red-500/30">
+                        <div className="space-y-1">
+                          {articleVideoProgress.map((msg, idx) => (
+                            <div key={idx} className="text-xs text-red-200">
+                              {msg}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Video generato - preview e pubblica */}
+                    {articleVideoData?.dataUrl && (
+                      <div className="space-y-3">
+                        {/* Preview Video */}
+                        <div className="relative">
+                          <video
+                            src={articleVideoData.dataUrl}
+                            controls
+                            className="w-full rounded-lg border border-red-500/50"
+                          />
+                          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                            Video Pronto
+                          </div>
+                        </div>
+
+                        {/* Pulsanti Download e Pubblica YouTube */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = articleVideoData.dataUrl!;
+                              link.download = `articolo-video-${Date.now()}.mp4`;
+                              link.click();
+                            }}
+                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            <span>Download</span>
+                          </button>
+                          <button
+                            onClick={handlePublishArticleYouTube}
+                            disabled={isPublishingArticleYouTube}
+                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                          >
+                            {isPublishingArticleYouTube ? (
+                              <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Pubblicando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Youtube className="h-5 w-5" />
+                                <span>Pubblica su YouTube</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Risultato pubblicazione YouTube */}
+                        {articleYoutubeResult && (
+                          <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-3">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <CheckCircle2 className="h-5 w-5 text-green-400" />
+                              <span className="text-sm font-semibold text-green-300">Pubblicato su YouTube!</span>
+                            </div>
+                            <p className="text-xs text-green-200 mb-2">{articleYoutubeResult.youtubeTitle}</p>
+                            {articleYoutubeResult.videoUrl && (
+                              <a
+                                href={articleYoutubeResult.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center space-x-1 text-xs text-red-400 hover:text-red-300"
+                              >
+                                <Youtube className="h-3 w-3" />
+                                <span>Guarda su YouTube</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Pulsante per rigenerare video */}
+                        <button
+                          onClick={() => {
+                            setArticleVideoData(null);
+                            setArticleVideoProgress([]);
+                            setArticleYoutubeResult(null);
+                          }}
+                          className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-700/50 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          <span>Rigenera Video</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Progress Pubblicazione */}
