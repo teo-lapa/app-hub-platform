@@ -319,6 +319,54 @@ export default function LapaAgentsTestPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Render message content with clickable links
+  // Converts markdown links [text](url) to clickable links
+  const renderMessageContent = (content: string) => {
+    // Regex to match markdown links: [text](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let keyIndex = 0;
+
+    while ((match = linkRegex.exec(content)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+
+      // Add the clickable link
+      const linkText = match[1];
+      const linkUrl = match[2];
+      parts.push(
+        <a
+          key={`link-${keyIndex++}`}
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-red-600 hover:text-red-700 underline font-medium hover:bg-red-50 px-1 py-0.5 rounded transition-colors"
+        >
+          {linkText}
+        </a>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last link
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
+    // If no links found, return original content
+    if (parts.length === 0) {
+      return content;
+    }
+
+    return parts;
+  };
+
   // Select customer
   const selectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -675,7 +723,7 @@ export default function LapaAgentsTestPage() {
                                 : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <p className="text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>
 
                             {/* Show attachments in user messages */}
                             {msg.attachments && msg.attachments.length > 0 && (
