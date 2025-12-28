@@ -916,20 +916,23 @@ IMPORTANTE:
         userMessagesCount: userMessages.length
       });
 
-      // Controlla se il cliente vuole parlare con un operatore o aprire un ticket
-      const wantsTicket = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt/i.test(userMessage);
+      // IMPORTANTE: Se siamo nel helpdesk handler, il cliente ha un problema
+      // Crea SEMPRE il ticket per passare a un umano - è il meccanismo di handoff fondamentale
+      const hasKeywords = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt|non funziona|errore|sbagliato/i.test(userMessage);
 
       const ticketCheck = {
-        wantsTicket,
+        hasKeywords,
         customerId: context.customerId,
         customerIdType: typeof context.customerId,
-        customerType: context.customerType
+        customerType: context.customerType,
+        historyLength: context.conversationHistory.length
       };
       console.log('🎫 Ticket check:', ticketCheck);
 
-      // Se il cliente è loggato (B2B) e vuole assistenza, crea un ticket COMPLETO con tutti i dati
-      const shouldCreateTicket = wantsTicket && context.customerId;
-      console.log('🎟️ shouldCreateTicket:', shouldCreateTicket, 'wantsTicket:', wantsTicket, 'customerId:', context.customerId);
+      // Se il cliente è loggato (B2B), crea SEMPRE il ticket - abbiamo già tutti i dati
+      // Non aspettare keyword specifiche, se è arrivato qui ha bisogno di aiuto
+      const shouldCreateTicket = context.customerId && context.conversationHistory.length >= 1;
+      console.log('🎟️ shouldCreateTicket:', shouldCreateTicket, 'customerId:', context.customerId, 'historyLen:', context.conversationHistory.length);
 
       if (shouldCreateTicket) {
         console.log('✅ Condizioni soddisfatte - creazione ticket in corso...');
@@ -1102,10 +1105,15 @@ ${conversationSummary}
           .replace(/(?:nome|mi chiamo|sono|email|telefono|indirizzo)[:\-]?\s*/gi, '')
           .trim();
 
+        // Se non c'è descrizione, usa l'intero messaggio
+        if (!problemDescription || problemDescription.length < 5) {
+          problemDescription = fullUserMessage;
+        }
+
         console.log('🔍 Dati estratti utente anonimo:', { extractedName, extractedEmail, problemDescription: problemDescription.substring(0, 100) });
 
-        // Se abbiamo almeno email E una descrizione del problema, crea il ticket
-        if (extractedEmail && problemDescription.length > 10) {
+        // Se abbiamo l'email, crea il ticket - l'email è sufficiente per contattare il cliente
+        if (extractedEmail) {
           console.log('✅ Utente anonimo ha fornito dati sufficienti - creazione ticket');
 
           const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
@@ -1187,31 +1195,21 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           }
         }
 
-        // Se non ha fornito dati sufficienti, chiedi i dati
-        const alreadyAskedForData = context.conversationHistory.some(m =>
-          m.role === 'assistant' && m.content.includes('ho bisogno dei tuoi dati')
-        );
-
-        if (wantsTicket || alreadyAskedForData) {
-          return {
-            success: true,
-            message: `Per poterti aiutare e aprire un ticket di assistenza, ho bisogno dei tuoi dati:\n\n` +
-                     `📝 Per favore scrivi:\n` +
-                     `• Nome e Cognome\n` +
-                     `• Email\n` +
-                     `• Telefono\n` +
-                     `• Descrizione del problema\n\n` +
-                     `Oppure contattaci direttamente:\n` +
-                     `📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
-            agentId: 'helpdesk',
-            confidence: 0.9,
-            suggestedActions: [
-              'Fornisci i tuoi dati',
-              'Contatta via email',
-              'Accedi al tuo account'
-            ]
-          };
-        }
+        // Utente anonimo senza email - chiedi l'email per creare il ticket
+        return {
+          success: true,
+          message: `Per aprire subito un ticket e farti aiutare da un nostro operatore, ho bisogno della tua **email**.\n\n` +
+                   `📧 Scrivi la tua email e descrivi brevemente il problema.\n\n` +
+                   `Esempio: "mario.rossi@email.com - non riesco a trovare il mio ordine"\n\n` +
+                   `Oppure contattaci direttamente:\n📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
+          agentId: 'helpdesk',
+          confidence: 0.9,
+          suggestedActions: [
+            'Fornisci la tua email',
+            'Contatta via email',
+            'Accedi al tuo account'
+          ]
+        };
       }
 
       return {
