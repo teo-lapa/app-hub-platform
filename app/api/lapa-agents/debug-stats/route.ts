@@ -19,17 +19,27 @@ export async function GET() {
     const escalationsKey = `lapa_stats:escalations:${today}`;
     const sessionsKey = `lapa_stats:sessions`;
 
-    // Verifica il tipo della chiave requests (può essere lista o stringa)
-    const keyType = await kv.type(requestsKey);
+    // Prima prova a leggere come lista (nuovo formato)
     let requests: any[] = [];
+    let keyType = 'none';
 
-    if (keyType === 'list') {
-      // Nuovo formato: lista Redis
+    try {
       const items = await kv.lrange(requestsKey, 0, -1);
-      requests = items.map(item => typeof item === 'string' ? JSON.parse(item) : item);
-    } else if (keyType === 'string') {
-      // Vecchio formato: JSON array
-      requests = await kv.get<any[]>(requestsKey) || [];
+      if (items && items.length > 0) {
+        requests = items.map(item => typeof item === 'string' ? JSON.parse(item) : item);
+        keyType = 'list';
+      }
+    } catch {
+      // Se lrange fallisce, potrebbe essere un valore stringa
+    }
+
+    // Se nessun risultato dalla lista, prova come stringa
+    if (requests.length === 0) {
+      const data = await kv.get<any[]>(requestsKey);
+      if (data && data.length > 0) {
+        requests = data;
+        keyType = 'string';
+      }
     }
 
     const [escalations, sessionsCount] = await Promise.all([

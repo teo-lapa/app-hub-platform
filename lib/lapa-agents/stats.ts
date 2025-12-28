@@ -78,23 +78,9 @@ class AgentStatsStore {
     };
 
     try {
-      // Usa rpush per aggiungere atomicamente alla lista (evita race condition)
       const key = getRequestsKey();
 
-      // Verifica il tipo della chiave e migra se necessario
-      const keyType = await kv.type(key);
-      if (keyType === 'string') {
-        // Migra dal vecchio formato stringa al nuovo formato lista
-        const oldData = await kv.get<any[]>(key);
-        await kv.del(key);
-        if (oldData && Array.isArray(oldData)) {
-          for (const r of oldData) {
-            await kv.rpush(key, JSON.stringify(r));
-          }
-        }
-        console.log(`📊 Migrated ${oldData?.length || 0} records from string to list format`);
-      }
-
+      // Usa rpush per aggiungere atomicamente alla lista
       await kv.rpush(key, JSON.stringify(record));
 
       // Imposta TTL se non già impostato
@@ -156,25 +142,25 @@ class AgentStatsStore {
   async getTodayRequests(): Promise<RequestRecord[]> {
     try {
       const key = getRequestsKey();
-      // Controlla se la chiave è una lista o un valore
-      const keyType = await kv.type(key);
 
-      if (keyType === 'list') {
-        // Leggi dalla lista Redis
+      // Prima prova a leggere come lista (nuovo formato)
+      try {
         const items = await kv.lrange(key, 0, -1);
-        return items.map(item => {
-          if (typeof item === 'string') {
-            return JSON.parse(item);
-          }
-          return item as RequestRecord;
-        });
-      } else if (keyType === 'string' || keyType === 'none') {
-        // Fallback al vecchio formato o chiave non esistente
-        const data = await kv.get<RequestRecord[]>(key);
-        return data || [];
+        if (items && items.length > 0) {
+          return items.map(item => {
+            if (typeof item === 'string') {
+              return JSON.parse(item);
+            }
+            return item as RequestRecord;
+          });
+        }
+      } catch {
+        // Se lrange fallisce, potrebbe essere un valore stringa
       }
 
-      return [];
+      // Fallback al vecchio formato stringa
+      const data = await kv.get<RequestRecord[]>(key);
+      return data || [];
     } catch (error) {
       console.error('❌ Error getting today requests from KV:', error);
       return this.localCache.requests;
