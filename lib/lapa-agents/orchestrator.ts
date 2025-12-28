@@ -1585,7 +1585,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           }
 
           const orderIds = orders.map((o: any) => o.id);
-          const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+          const orderMap = new Map<number, { id: number; name: string; date_order: string }>(
+            orders.map((o: any) => [o.id, { id: o.id, name: o.name, date_order: o.date_order }])
+          );
 
           // Recupera le righe d'ordine
           const orderLines = await odoo.searchRead(
@@ -1677,7 +1679,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       }
 
       const orderIds = orders.map((o: any) => o.id);
-      const orderMap = new Map(orders.map((o: any) => [o.id, o]));
+      const orderMap = new Map<number, { id: number; name: string; date_order: string }>(
+        orders.map((o: any) => [o.id, { id: o.id, name: o.name, date_order: o.date_order }])
+      );
 
       // Recupera tutte le righe d'ordine
       const orderLines = await odoo.searchRead(

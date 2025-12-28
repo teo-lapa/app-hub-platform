@@ -545,7 +545,7 @@ const ordersTools: AgentTool[] = [
         const matchingLines = orderLines.filter((line: any) => {
           if (!line.product_id) return false;
           const productNameLower = line.product_id[1].toLowerCase();
-          return searchTerms.every(term => productNameLower.includes(term));
+          return searchTerms.every((term: string) => productNameLower.includes(term));
         });
 
         if (matchingLines.length === 0) {
