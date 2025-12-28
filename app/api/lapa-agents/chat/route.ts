@@ -25,6 +25,25 @@ interface ChatRequest {
 // Flag per usare orchestratore AI vs fallback semplice
 const USE_AI_ORCHESTRATOR = process.env.LAPA_AI_ENABLED !== 'false';
 
+// Normalizza gli agentId per matchare quelli della dashboard
+function normalizeAgentId(agentId: string): string {
+  const mapping: Record<string, string> = {
+    'order': 'orders',
+    'order_detail': 'orders',
+    'invoice': 'invoices',
+    'invoice_filter': 'invoices',
+    'invoice_detail': 'invoices',
+    'product': 'products',
+    'shipping': 'shipping',
+    'helpdesk': 'helpdesk',
+    'sales_assistant': 'orders',
+    'complaint': 'helpdesk',
+    'followup': 'orchestrator',
+    'error_handler': 'helpdesk'
+  };
+  return mapping[agentId] || agentId;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
@@ -67,8 +86,17 @@ export async function POST(request: NextRequest) {
         const duration = Date.now() - startTime;
         console.log(`✅ AI Response generated in ${duration}ms by agent: ${response.agentId}`);
 
-        // Registra statistiche
-        recordRequest(response.agentId, duration, response.success !== false, sessionId);
+        // Registra statistiche - prima l'orchestratore, poi l'agente specifico
+        // L'orchestratore ha sempre processato il messaggio per smistarlo
+        recordRequest('orchestrator', duration, response.success !== false, sessionId);
+
+        // Poi registra l'agente specifico che ha gestito la richiesta
+        if (response.agentId && response.agentId !== 'orchestrator') {
+          // Normalizza gli agentId per matchare la dashboard
+          const normalizedAgentId = normalizeAgentId(response.agentId);
+          recordRequest(normalizedAgentId, duration, response.success !== false, sessionId);
+        }
+
         if (response.requiresHumanEscalation) {
           recordEscalation();
         }
