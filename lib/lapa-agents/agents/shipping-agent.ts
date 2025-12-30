@@ -96,6 +96,7 @@ export interface DeliveryHistoryItem {
   date: string;
   state: string;
   driver_name: string | null;
+  vehicle_name?: string | null;
   products_count: number;
   was_on_time: boolean;
 }
