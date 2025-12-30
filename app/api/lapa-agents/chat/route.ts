@@ -12,6 +12,26 @@ import { getOdooClient } from '@/lib/odoo-client';
 import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
 import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
 
+// CORS headers per permettere chiamate da lapa.ch
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Helper per aggiungere CORS headers alle risposte
+function jsonResponse(data: unknown, init?: { status?: number }) {
+  return NextResponse.json(data, {
+    ...init,
+    headers: corsHeaders
+  });
+}
+
+// Handle OPTIONS preflight request
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 // Tipi
 interface ChatRequest {
   message: string;
@@ -56,7 +76,7 @@ export async function POST(request: NextRequest) {
     const { message, customerType, customerId, customerName, customerEmail, sessionId, language = 'it', attachments } = body;
 
     if (!message || typeof message !== 'string') {
-      return NextResponse.json(
+      return jsonResponse(
         { error: 'Message is required' },
         { status: 400 }
       );
@@ -145,7 +165,7 @@ export async function POST(request: NextRequest) {
           console.warn('⚠️ Errore salvataggio conversazione in KV:', kvError);
         }
 
-        return NextResponse.json({
+        return jsonResponse({
           ...response,
           metadata: {
             duration,
@@ -166,7 +186,7 @@ export async function POST(request: NextRequest) {
         recordRequest('error', errorDuration, false, sessionId);
 
         // Ritorna errore dettagliato invece di fallback silenzioso
-        return NextResponse.json({
+        return jsonResponse({
           success: false,
           message: `Errore AI: ${aiError instanceof Error ? aiError.message : 'Errore sconosciuto'}`,
           error: aiError instanceof Error ? aiError.message : String(aiError),
@@ -192,7 +212,7 @@ export async function POST(request: NextRequest) {
     // Registra statistiche fallback
     recordRequest(response.agentId, duration, true, sessionId);
 
-    return NextResponse.json({
+    return jsonResponse({
       ...response,
       metadata: {
         duration,
@@ -205,7 +225,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ LAPA AI Chat error:', error);
 
-    return NextResponse.json(
+    return jsonResponse(
       {
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -364,9 +384,9 @@ function getGenericResponse(lang: string): string {
 
 // GET: Status degli agenti
 export async function GET() {
-  return NextResponse.json({
+  return jsonResponse({
     status: 'online',
-    version: 'v7-cookie-fix',  // Per verificare deploy
+    version: 'v8-cors-fix',  // Per verificare deploy
     agents: [
       { id: 'orchestrator', status: 'active' },
       { id: 'orders', status: 'active' },

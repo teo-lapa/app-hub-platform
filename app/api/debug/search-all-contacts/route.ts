@@ -3,6 +3,21 @@ import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
+// CORS headers per permettere chiamate da lapa.ch
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+function jsonResponse(data: unknown, init?: { status?: number }) {
+  return NextResponse.json(data, { ...init, headers: corsHeaders });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 /**
  * DEBUG: Cerca in TUTTI i contatti, non solo fornitori
  */
@@ -12,7 +27,7 @@ export async function POST(request: NextRequest) {
     const { cookies, uid } = await getOdooSession(cookieHeader || undefined);
 
     if (!uid) {
-      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
+      return jsonResponse({ error: 'Sessione non valida' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -28,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`   Trovati ${allContacts.length} contatti`);
 
-    return NextResponse.json({
+    return jsonResponse({
       success: true,
       query: name,
       total_found: allContacts.length,
@@ -45,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Error:', error);
-    return NextResponse.json({
+    return jsonResponse({
       error: error.message,
       details: error.toString()
     }, { status: 500 });
