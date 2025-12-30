@@ -1347,6 +1347,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     try {
       const entities = intent.entities || {};
 
+      // Ottieni l'ultimo messaggio dell'utente per contesto
+      const lastUserMsg = context.conversationHistory
+        .filter(m => m.role === 'user')
+        .pop()?.content || 'Cerca prodotto';
+
       // Se c'è un nome prodotto o query, cerca prodotti
       if (entities.product_name) {
         const searchResult = await this.productsAgent.searchProducts(
@@ -1356,28 +1361,41 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
         if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
           const products = searchResult.data.slice(0, 5);
-          const productsList = products
-            .map((product: any, index: number) => {
-              const name = product.name;
-              const price = product.list_price?.toFixed(2) || '0.00';
-              const qty = product.qty_available !== undefined ? product.qty_available : 'N/D';
-              const unit = product.uom_id ? product.uom_id[1] : 'pz';
-              // Usa product_tmpl_id per l'URL (Odoo website usa template ID, non variant ID)
-              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
-              const url = generateProductUrl(templateId, product.name);
-              return `${index + 1}. **${name}**\n   💰 ${price} CHF | 📦 Disponibili: ${qty} ${unit}\n   🔗 [Vedi prodotto](${url})`;
-            })
-            .join('\n\n');
+
+          // Prepara dati per la risposta conversazionale
+          const productsData = products.map((product: any) => {
+            const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+            return {
+              name: product.name,
+              price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+              qty_available: product.qty_available !== undefined ? product.qty_available : 'N/D',
+              unit: product.uom_id ? product.uom_id[1] : 'pz',
+              url: generateProductUrl(templateId, product.name)
+            };
+          });
+
+          // Genera risposta conversazionale
+          const conversationalMessage = await this.generateConversationalResponse(
+            context,
+            'ricerca prodotti',
+            {
+              search_query: entities.product_name,
+              products: productsData,
+              total_found: searchResult.data.length,
+              customer_name: context.customerName
+            },
+            lastUserMsg
+          );
 
           // Crea suggested actions dinamici per i primi 3 prodotti
-          const orderActions = products.slice(0, 3).map((p: any, i: number) => {
+          const orderActions = products.slice(0, 3).map((p: any) => {
             const shortName = p.name.split(' ').slice(0, 3).join(' ');
             return `Ordina ${shortName}`;
           });
 
           return {
             success: true,
-            message: `Ho trovato ${searchResult.data.length} prodotti:\n\n${productsList}\n\n🛒 Per ordinare, clicca uno dei pulsanti qui sotto o scrivi "Ordina [nome prodotto]"`,
+            message: conversationalMessage,
             data: searchResult.data,
             agentId: 'product',
             confidence: 0.9,
@@ -1388,30 +1406,51 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           };
         }
 
+        // Nessun risultato - risposta conversazionale
+        const noResultsMessage = await this.generateConversationalResponse(
+          context,
+          'ricerca prodotti',
+          {
+            search_query: entities.product_name,
+            products: [],
+            total_found: 0,
+            customer_name: context.customerName
+          },
+          lastUserMsg
+        );
+
         return {
           success: false,
-          message: `Non ho trovato prodotti che corrispondono a "${entities.product_name}". ` +
-                   'Prova a cercare con un altro termine o esplora il catalogo per categoria.',
+          message: noResultsMessage,
           agentId: 'product',
           confidence: 0.7,
           suggestedActions: [
-            'Visualizza catalogo completo',
+            'Visualizza catalogo',
             'Cerca per categoria',
             'Richiedi assistenza'
           ]
         };
       }
 
-      // Risposta generica per richieste di informazioni sui prodotti
+      // Risposta generica conversazionale
+      const genericMessage = await this.generateConversationalResponse(
+        context,
+        'catalogo prodotti',
+        {
+          products: [],
+          customer_name: context.customerName,
+          action_needed: 'ricerca prodotto'
+        },
+        lastUserMsg
+      );
+
       return {
         success: true,
-        message: 'Sono qui per aiutarti a trovare i prodotti che cerchi. ' +
-                 'Posso fornirti informazioni su disponibilità, prezzi e caratteristiche. ' +
-                 'Quale prodotto ti interessa?',
+        message: genericMessage,
         agentId: 'product',
         confidence: 0.7,
         suggestedActions: [
-          'Visualizza catalogo completo',
+          'Visualizza catalogo',
           'Cerca per categoria',
           'Richiedi un preventivo'
         ]
@@ -1516,37 +1555,66 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         10
       );
 
+      // Ottieni l'ultimo messaggio dell'utente per contesto
+      const lastUserMsg = lowerMessage || 'I miei ordini';
+
       if (orders && orders.length > 0) {
         const stateLabels: Record<string, string> = {
           draft: 'Bozza', sent: 'Inviato', sale: 'Confermato',
           done: 'Completato', cancel: 'Annullato'
         };
 
-        const ordersList = orders
-          .map((order: any, index: number) => {
-            const url = generateOrderUrl(order.id, order.name);
-            return `${index + 1}. ${order.name} - ${stateLabels[order.state] || order.state} - ${order.currency_id[1]} ${order.amount_total.toFixed(2)} (${order.date_order})\n   🔗 [Vedi ordine](${url})`;
-          })
-          .join('\n\n');
+        // Prepara dati per la risposta conversazionale
+        const ordersData = orders.map((order: any) => ({
+          name: order.name,
+          date: order.date_order,
+          state: stateLabels[order.state] || order.state,
+          total: `${order.currency_id[1]} ${order.amount_total.toFixed(2)}`,
+          products_count: Array.isArray(order.order_line) ? order.order_line.length : 0,
+          url: generateOrderUrl(order.id, order.name)
+        }));
+
+        // Genera risposta conversazionale
+        const conversationalMessage = await this.generateConversationalResponse(
+          context,
+          'ordini e acquisti',
+          {
+            orders: ordersData,
+            total_count: orders.length,
+            customer_name: context.customerName
+          },
+          lastUserMsg
+        );
 
         return {
           success: true,
-          message: `Ecco i tuoi ultimi ${orders.length} ordini:\n\n${ordersList}\n\n` +
-                   'Vuoi vedere i dettagli di un ordine specifico?',
+          message: conversationalMessage,
           data: orders,
           agentId: 'order',
           confidence: 0.9,
           suggestedActions: [
-            'Dettagli ordine specifico',
-            'Filtra per stato',
-            'Crea nuovo ordine'
+            'Dettagli ordine',
+            'Crea nuovo ordine',
+            'Cerca prodotti'
           ]
         };
       }
 
+      // Genera risposta conversazionale anche per caso "nessun ordine"
+      const noOrdersMessage = await this.generateConversationalResponse(
+        context,
+        'ordini e acquisti',
+        {
+          orders: [],
+          total_count: 0,
+          customer_name: context.customerName
+        },
+        lastUserMsg
+      );
+
       return {
         success: true,
-        message: 'Non ho trovato ordini recenti per il tuo account. Vuoi creare un nuovo ordine?',
+        message: noOrdersMessage,
         agentId: 'order',
         confidence: 0.8,
         suggestedActions: [
@@ -2003,27 +2071,39 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           reversed: 'Stornata', invoicing_legacy: 'Legacy'
         };
 
-        const invoicesList = invoicesResult.data
-          .map((inv: any, index: number) => {
-            const invUrl = generateInvoiceUrl(inv.id);
-            return `${index + 1}. ${inv.name} - ${paymentStateLabels[inv.payment_state] || inv.payment_state} - ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n   🔗 [Vedi fattura](${invUrl})`;
-          })
-          .join('\n\n');
-
         // Calcola il saldo aperto
         const balanceResult = await this.invoicesAgent.getOpenBalance(context.customerId);
-        const balanceInfo = balanceResult.success && balanceResult.data
-          ? `\n\nSaldo aperto totale: ${balanceResult.data.currency} ${balanceResult.data.total_due.toFixed(2)}`
-          : '';
 
-        const headerText = wantsUnpaid
-          ? `Ecco le tue ${invoicesResult.data.length} fatture da pagare:`
-          : `Ecco le tue ultime ${invoicesResult.data.length} fatture:`;
+        // Prepara dati per la risposta conversazionale
+        const invoicesData = invoicesResult.data.map((inv: any) => ({
+          name: inv.name,
+          date: inv.invoice_date,
+          due_date: inv.invoice_date_due,
+          state: paymentStateLabels[inv.payment_state] || inv.payment_state,
+          total: `${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}`,
+          residual: `${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}`,
+          url: generateInvoiceUrl(inv.id)
+        }));
+
+        // Genera risposta conversazionale
+        const conversationalMessage = await this.generateConversationalResponse(
+          context,
+          wantsUnpaid ? 'fatture da pagare' : 'fatture',
+          {
+            invoices: invoicesData,
+            total_count: invoicesResult.data.length,
+            open_balance: balanceResult.success && balanceResult.data
+              ? `${balanceResult.data.currency} ${balanceResult.data.total_due.toFixed(2)}`
+              : null,
+            filter: wantsUnpaid ? 'non pagate' : 'tutte',
+            customer_name: context.customerName
+          },
+          messageLC
+        );
 
         return {
           success: true,
-          message: `${headerText}\n\n${invoicesList}${balanceInfo}\n\n` +
-                   'Vuoi vedere i dettagli di una fattura specifica?',
+          message: conversationalMessage,
           data: {
             invoices: invoicesResult.data,
             balance: balanceResult.data
@@ -2031,16 +2111,27 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           agentId: 'invoice',
           confidence: 0.9,
           suggestedActions: wantsUnpaid
-            ? ['Dettagli fattura specifica', 'Link pagamento', 'Scarica fattura']
-            : ['Dettagli fattura specifica', 'Fatture non pagate', 'Scarica fattura']
+            ? ['Dettagli fattura', 'Link pagamento', 'Scarica fattura']
+            : ['Dettagli fattura', 'Fatture da pagare', 'Scarica fattura']
         };
       }
 
+      // Genera risposta conversazionale anche per caso "nessuna fattura"
+      const noInvoicesMessage = await this.generateConversationalResponse(
+        context,
+        wantsUnpaid ? 'fatture da pagare' : 'fatture',
+        {
+          invoices: [],
+          total_count: 0,
+          filter: wantsUnpaid ? 'non pagate' : 'tutte',
+          customer_name: context.customerName
+        },
+        messageLC
+      );
+
       return {
         success: true,
-        message: wantsUnpaid
-          ? 'Non hai fatture da pagare al momento. Ottimo! 🎉'
-          : 'Non ho trovato fatture nel tuo account.',
+        message: noInvoicesMessage,
         agentId: 'invoice',
         confidence: 0.8,
         suggestedActions: wantsUnpaid
