@@ -2143,63 +2143,40 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         if (activeResult.success && activeResult.data) {
           const activeData = activeResult.data;
 
-          // Se ci sono consegne oggi, mostrare quelle
-          if (activeData.has_delivery_today && activeData.today_deliveries.length > 0) {
-            const deliveriesList = activeData.today_deliveries
-              .map((delivery: any, index: number) => {
-                let info = `${index + 1}. **${delivery.order_name}** - ${delivery.state}`;
-                if (delivery.driver_name) {
-                  info += `\n   🚚 Autista: ${delivery.driver_name}`;
-                  if (delivery.driver_phone) info += ` (${delivery.driver_phone})`;
-                }
-                if (delivery.salesperson_name) {
-                  info += `\n   👤 Venditore: ${delivery.salesperson_name}`;
-                  if (delivery.salesperson_phone) info += ` (${delivery.salesperson_phone})`;
-                }
-                return info;
-              })
-              .join('\n\n');
+          // Ottieni l'ultimo messaggio dell'utente per contesto
+          const lastUserMsg = context.conversationHistory
+            .filter(m => m.role === 'user')
+            .pop()?.content || 'Dove sono le mie consegne?';
 
-            const suggestedActions = [];
-            if (activeData.future_deliveries_count > 0) {
-              suggestedActions.push(`Ordini futuri (${activeData.future_deliveries_count})`);
-            }
-            if (activeData.past_deliveries_count > 0) {
-              suggestedActions.push(`Storico passato (${activeData.past_deliveries_count})`);
-            }
+          // Genera risposta conversazionale con Claude
+          const conversationalMessage = await this.generateConversationalResponse(
+            context,
+            'consegne e spedizioni',
+            {
+              has_delivery_today: activeData.has_delivery_today,
+              today_deliveries: activeData.today_deliveries,
+              future_count: activeData.future_deliveries_count,
+              past_count: activeData.past_deliveries_count,
+              customer_name: context.customerName
+            },
+            lastUserMsg
+          );
 
-            return {
-              success: true,
-              message: `📦 **Consegne di oggi (${activeData.today_deliveries.length}):**\n\n${deliveriesList}`,
-              data: activeData,
-              agentId: 'shipping',
-              confidence: 0.9,
-              suggestedActions: suggestedActions.length > 0 ? suggestedActions : ['Traccia ordine']
-            };
-          }
-
-          // Nessuna consegna oggi, ma ci sono future o passate
-          let message = '📦 Non ci sono consegne previste per oggi.';
+          // Prepara azioni suggerite
           const suggestedActions = [];
-
           if (activeData.future_deliveries_count > 0) {
-            message += `\n\nHai **${activeData.future_deliveries_count}** consegne programmate per i prossimi giorni.`;
-            suggestedActions.push('Vedi ordini futuri');
+            suggestedActions.push(`Ordini futuri (${activeData.future_deliveries_count})`);
           }
-
           if (activeData.past_deliveries_count > 0) {
-            message += `\n\nHai **${activeData.past_deliveries_count}** consegne completate in passato.`;
-            suggestedActions.push('Vedi storico passato');
+            suggestedActions.push(`Storico passato (${activeData.past_deliveries_count})`);
           }
-
           if (suggestedActions.length === 0) {
-            message = '📦 Non ci sono consegne registrate per questo account.';
             suggestedActions.push('Traccia ordine');
           }
 
           return {
             success: true,
-            message,
+            message: conversationalMessage,
             data: activeData,
             agentId: 'shipping',
             confidence: 0.9,
@@ -2742,6 +2719,68 @@ Rispondi in modo naturale e conversazionale.`;
           'Cerca prodotti'
         ]
       };
+    }
+  }
+
+  /**
+   * Genera una risposta conversazionale usando Claude basata sui dati forniti
+   */
+  private async generateConversationalResponse(
+    context: CustomerContext,
+    topic: string,
+    data: any,
+    userMessage: string
+  ): Promise<string> {
+    try {
+      const systemPrompt = `Sei l'assistente AI di LAPA, distributore di prodotti alimentari italiani in Svizzera.
+Hai appena recuperato dei dati per il cliente e devi comunicarglieli in modo NATURALE e CONVERSAZIONALE.
+
+CLIENTE: ${context.customerName || 'Cliente'}
+TIPO: ${context.customerType === 'b2b' ? 'B2B (ristorante/negozio)' : 'B2C (consumatore)'}
+
+ARGOMENTO: ${topic}
+
+DATI RECUPERATI:
+${JSON.stringify(data, null, 2)}
+
+REGOLE IMPORTANTI:
+1. NON essere robotico o troppo formale
+2. Usa un tono amichevole ma professionale
+3. Personalizza la risposta usando il nome del cliente se disponibile
+4. Se ci sono numeri di telefono, presentali come contatti utili
+5. Se ci sono azioni suggerite, menzionale naturalmente nella conversazione
+6. NON dire "I dati mostrano..." o "Secondo i dati..." - parla come una persona
+7. Usa emoji con moderazione (1-2 max)
+8. Se non ci sono dati oggi, sii empatico e offri alternative
+9. Fai domande di follow-up per continuare la conversazione
+10. Rispondi in italiano a meno che il cliente non usi un'altra lingua
+
+MESSAGGIO ORIGINALE DEL CLIENTE:
+"${userMessage}"
+
+Rispondi in modo naturale come se stessi parlando con un amico/cliente.`;
+
+      const response = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        temperature: 0.8,
+        system: systemPrompt,
+        messages: [
+          ...this.buildConversationHistory(context).slice(-4), // Ultimi 4 messaggi per contesto
+          { role: 'user', content: userMessage }
+        ]
+      });
+
+      const content = response.content[0];
+      if (content.type !== 'text') {
+        throw new Error('Unexpected response type');
+      }
+
+      return content.text;
+    } catch (error) {
+      console.error('❌ Errore generazione risposta conversazionale:', error);
+      // Fallback: ritorna un messaggio generico
+      return `Ho trovato le informazioni che cercavi su ${topic}. Come posso aiutarti ulteriormente?`;
     }
   }
 
