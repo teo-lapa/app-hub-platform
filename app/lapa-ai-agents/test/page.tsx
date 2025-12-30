@@ -646,8 +646,8 @@ export default function LapaAgentsTestPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="absolute bottom-4 right-4 w-[450px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
-              style={{ maxHeight: isMinimized ? '60px' : '650px' }}
+              className="absolute bottom-4 right-4 w-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+              style={{ maxHeight: isMinimized ? '60px' : '750px' }}
             >
               {/* Chat Header */}
               <div className="bg-gradient-to-r from-red-600 to-red-700 p-4 flex items-center justify-between">
@@ -687,7 +687,7 @@ export default function LapaAgentsTestPage() {
               {!isMinimized && (
                 <>
                   {/* Messages */}
-                  <div className="h-[450px] overflow-y-auto p-4 space-y-4 bg-gray-50">
+                  <div className="h-[550px] overflow-y-auto p-4 space-y-4 bg-gray-50">
                     {messages.map((msg) => (
                       <motion.div
                         key={msg.id}
