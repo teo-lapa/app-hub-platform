@@ -423,9 +423,14 @@ FORMATO OUTPUT (restituisci SOLO il JSON, nessun testo prima o dopo):
 
     try {
       // Combina dati OCR + web search
+      // IMPORTANTE: I dati OCR hanno priorità per il nome dell'azienda!
+      // Il web search arricchisce solo con info aggiuntive (telefono, orari, ecc.)
+      // ma NON sovrascrive il nome estratto dal documento
       const finalData = {
-        ...extractedData,
-        ...(webSearchData?.found ? webSearchData : {})
+        ...(webSearchData?.found ? webSearchData : {}),  // Prima web search (base)
+        ...extractedData,  // Poi OCR (priorità) - così companyName da OCR vince
+        // Mantieni esplicitamente il nome OCR come prioritario
+        companyName: extractedData.companyName || extractedData.name || webSearchData?.legalName,
       };
 
       const odooPrompt = `
@@ -481,8 +486,9 @@ Rispondi con JSON:
       if (contactType === 'company') {
         partnerData.is_company = true;
         // Se c'è un nome azienda, usa quello come nome del partner
+        // PRIORITÀ: companyName (OCR) > legalName (web search)
         if (finalData.companyName || finalData.legalName) {
-          partnerData.name = finalData.legalName || finalData.companyName;
+          partnerData.name = finalData.companyName || finalData.legalName;
         }
       } else {
         partnerData.is_company = false;
