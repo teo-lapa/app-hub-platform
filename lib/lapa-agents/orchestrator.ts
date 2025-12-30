@@ -2136,34 +2136,74 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         };
       }
 
-      // Se c'è un customerId, mostra lo storico consegne
+      // Se c'è un customerId, mostra prima le consegne di OGGI
       if (context.customerId) {
-        const historyResult = await this.shippingAgent.getDeliveryHistory(context.customerId, 10);
+        const activeResult = await this.shippingAgent.getActiveDeliveries(context.customerId);
 
-        if (historyResult.success && historyResult.data) {
-          const history = historyResult.data;
+        if (activeResult.success && activeResult.data) {
+          const activeData = activeResult.data;
 
-          const deliveriesList = history.deliveries
-            .slice(0, 5)
-            .map((delivery: any, index: number) =>
-              `${index + 1}. ${delivery.name} - ${delivery.state} - ${delivery.date}`
-            )
-            .join('\n');
+          // Se ci sono consegne oggi, mostrare quelle
+          if (activeData.has_delivery_today && activeData.today_deliveries.length > 0) {
+            const deliveriesList = activeData.today_deliveries
+              .map((delivery: any, index: number) => {
+                let info = `${index + 1}. **${delivery.order_name}** - ${delivery.state}`;
+                if (delivery.driver_name) {
+                  info += `\n   🚚 Autista: ${delivery.driver_name}`;
+                  if (delivery.driver_phone) info += ` (${delivery.driver_phone})`;
+                }
+                if (delivery.salesperson_name) {
+                  info += `\n   👤 Venditore: ${delivery.salesperson_name}`;
+                  if (delivery.salesperson_phone) info += ` (${delivery.salesperson_phone})`;
+                }
+                return info;
+              })
+              .join('\n\n');
+
+            const suggestedActions = [];
+            if (activeData.future_deliveries_count > 0) {
+              suggestedActions.push(`Ordini futuri (${activeData.future_deliveries_count})`);
+            }
+            if (activeData.past_deliveries_count > 0) {
+              suggestedActions.push(`Storico passato (${activeData.past_deliveries_count})`);
+            }
+
+            return {
+              success: true,
+              message: `📦 **Consegne di oggi (${activeData.today_deliveries.length}):**\n\n${deliveriesList}`,
+              data: activeData,
+              agentId: 'shipping',
+              confidence: 0.9,
+              suggestedActions: suggestedActions.length > 0 ? suggestedActions : ['Traccia ordine']
+            };
+          }
+
+          // Nessuna consegna oggi, ma ci sono future o passate
+          let message = '📦 Non ci sono consegne previste per oggi.';
+          const suggestedActions = [];
+
+          if (activeData.future_deliveries_count > 0) {
+            message += `\n\nHai **${activeData.future_deliveries_count}** consegne programmate per i prossimi giorni.`;
+            suggestedActions.push('Vedi ordini futuri');
+          }
+
+          if (activeData.past_deliveries_count > 0) {
+            message += `\n\nHai **${activeData.past_deliveries_count}** consegne completate in passato.`;
+            suggestedActions.push('Vedi storico passato');
+          }
+
+          if (suggestedActions.length === 0) {
+            message = '📦 Non ci sono consegne registrate per questo account.';
+            suggestedActions.push('Traccia ordine');
+          }
 
           return {
             success: true,
-            message: `Storico consegne:\n\n${deliveriesList}\n\n` +
-                     `Totale consegne: ${history.total_deliveries}\n` +
-                     `Puntualità: ${history.on_time_percentage}%\n` +
-                     `Ultima consegna: ${history.last_delivery_date || 'N/A'}`,
-            data: history,
+            message,
+            data: activeData,
             agentId: 'shipping',
             confidence: 0.9,
-            suggestedActions: [
-              'Traccia spedizione',
-              'Tempi di consegna',
-              'Zone di consegna'
-            ]
+            suggestedActions
           };
         }
       }
