@@ -496,8 +496,9 @@ export class ShippingAgent {
 
   /**
    * Ottiene lo storico consegne di un cliente
+   * NOTA: Mostra solo WH/OUT (spedizioni al cliente), non i picking interni
    */
-  async getDeliveryHistory(customerId: number, limit: number = 20): Promise<ShippingAgentResponse> {
+  async getDeliveryHistory(customerId: number, limit: number = 10): Promise<ShippingAgentResponse> {
     try {
       const client = await getOdooClient();
 
@@ -542,14 +543,16 @@ export class ShippingAgent {
         };
       }
 
-      // 2. Cerca tutti i picking collegati a questi ordini
+      // 2. Cerca SOLO i picking WH/OUT (spedizioni al cliente, non i picking interni)
+      // picking_type_code = 'outgoing' filtra solo le spedizioni in uscita
       const pickings = await client.searchReadKw(
         'stock.picking',
         [
           ['sale_id', 'in', saleOrders],
-          ['state', '!=', 'cancel']
+          ['state', '!=', 'cancel'],
+          ['picking_type_code', '=', 'outgoing']  // Solo WH/OUT, no WH/PICK
         ],
-        ['id', 'name', 'state', 'scheduled_date', 'date_done', 'driver_id', 'move_ids', 'origin', 'sale_id'],
+        ['id', 'name', 'state', 'scheduled_date', 'date_done', 'move_ids', 'origin', 'sale_id', 'batch_id'],
         { order: 'scheduled_date DESC', limit: limit }
       );
 
@@ -563,12 +566,46 @@ export class ShippingAgent {
         // Conta prodotti
         const productsCount = picking.move_ids ? picking.move_ids.length : 0;
 
+        // Ottieni info autista e veicolo dal batch
+        let driverName = null;
+        let vehicleName = null;
+
+        if (picking.batch_id && Array.isArray(picking.batch_id)) {
+          try {
+            const batches = await client.read(
+              'stock.picking.batch',
+              [picking.batch_id[0]],
+              ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
+            );
+            if (batches && batches.length > 0) {
+              const batch = batches[0];
+              if (batch.x_studio_autista_del_giro) {
+                driverName = batch.x_studio_autista_del_giro[1];
+              }
+              if (batch.x_studio_auto_del_giro) {
+                vehicleName = batch.x_studio_auto_del_giro[1];
+              }
+            }
+          } catch (e) {
+            // Ignora errori nel recupero batch
+          }
+        }
+
+        // Formatta data senza orario
+        let dateOnly = '';
+        const rawDate = picking.date_done || picking.scheduled_date;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          dateOnly = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
         deliveries.push({
           id: picking.id,
-          name: picking.name,
-          date: picking.date_done || picking.scheduled_date || '',
+          name: picking.origin || picking.name,  // Mostra ordine (SO) se disponibile
+          date: dateOnly,
           state: this.getStateLabel(picking.state),
-          driver_name: picking.driver_id ? picking.driver_id[1] : null,
+          driver_name: driverName,
+          vehicle_name: vehicleName,
           products_count: productsCount,
           was_on_time: wasOnTime
         });
