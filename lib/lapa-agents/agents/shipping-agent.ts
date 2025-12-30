@@ -96,9 +96,30 @@ export interface DeliveryHistoryItem {
   date: string;
   state: string;
   driver_name: string | null;
+  driver_phone?: string | null;
+  salesperson_name?: string | null;
+  salesperson_phone?: string | null;
   vehicle_name?: string | null;
   products_count: number;
   was_on_time: boolean;
+}
+
+// Nuova interfaccia per consegna attiva
+export interface ActiveDeliveryInfo {
+  has_delivery_today: boolean;
+  today_deliveries: ActiveDelivery[];
+  future_deliveries_count: number;
+  past_deliveries_count: number;
+}
+
+export interface ActiveDelivery {
+  order_name: string;
+  date: string;
+  state: string;
+  driver_name: string | null;
+  driver_phone: string | null;
+  salesperson_name: string | null;
+  salesperson_phone: string | null;
 }
 
 export interface DeliveryIssue {
@@ -657,6 +678,223 @@ export class ShippingAgent {
   }
 
   /**
+   * Ottiene le consegne attive per un cliente
+   * Priorità: consegne di OGGI (da fare e completate)
+   * Se non ci sono oggi, informa e suggerisce future/passate
+   */
+  async getActiveDeliveries(customerId: number): Promise<ShippingAgentResponse> {
+    try {
+      const client = await getOdooClient();
+
+      // Ottieni info cliente
+      const customers = await client.read(
+        'res.partner',
+        [customerId],
+        ['name']
+      );
+
+      if (!customers || customers.length === 0) {
+        return {
+          success: false,
+          error: this.t('customer_not_found', { customerId })
+        };
+      }
+
+      const customer = customers[0];
+
+      // Cerca gli ordini di vendita del cliente
+      const saleOrders = await client.search(
+        'sale.order',
+        [['partner_id', '=', customerId]],
+        { limit: 100 }
+      );
+
+      if (!saleOrders || saleOrders.length === 0) {
+        return {
+          success: true,
+          data: {
+            has_delivery_today: false,
+            today_deliveries: [],
+            future_deliveries_count: 0,
+            past_deliveries_count: 0,
+            message: 'Non ci sono ordini per questo cliente.'
+          } as ActiveDeliveryInfo
+        };
+      }
+
+      // Data di oggi (inizio e fine giornata)
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      const todayStartStr = todayStart.toISOString().replace('T', ' ').substring(0, 19);
+      const todayEndStr = todayEnd.toISOString().replace('T', ' ').substring(0, 19);
+
+      // Cerca consegne di OGGI (WH/OUT)
+      // Logica: (scheduled_date tra oggi) OPPURE (date_done tra oggi)
+      const todayPickings = await client.searchReadKw(
+        'stock.picking',
+        [
+          ['sale_id', 'in', saleOrders],
+          ['state', '!=', 'cancel'],
+          ['picking_type_code', '=', 'outgoing'],
+          '|',
+          '&', ['scheduled_date', '>=', todayStartStr], ['scheduled_date', '<=', todayEndStr],
+          '&', ['date_done', '>=', todayStartStr], ['date_done', '<=', todayEndStr]
+        ],
+        ['id', 'name', 'state', 'scheduled_date', 'date_done', 'origin', 'sale_id', 'batch_id'],
+        { order: 'scheduled_date ASC' }
+      );
+
+      // Conta consegne future (dopo oggi)
+      const futureCount = await client.searchCount(
+        'stock.picking',
+        [
+          ['sale_id', 'in', saleOrders],
+          ['state', 'in', ['draft', 'waiting', 'confirmed', 'assigned']],
+          ['picking_type_code', '=', 'outgoing'],
+          ['scheduled_date', '>', todayEndStr]
+        ]
+      );
+
+      // Conta consegne passate (prima di oggi)
+      const pastCount = await client.searchCount(
+        'stock.picking',
+        [
+          ['sale_id', 'in', saleOrders],
+          ['state', '=', 'done'],
+          ['picking_type_code', '=', 'outgoing'],
+          ['date_done', '<', todayStartStr]
+        ]
+      );
+
+      // Prepara le consegne di oggi con info dettagliate
+      const todayDeliveries: ActiveDelivery[] = [];
+
+      for (const picking of todayPickings) {
+        // Ottieni info autista e telefono dal batch
+        let driverName: string | null = null;
+        let driverPhone: string | null = null;
+        let driverId: number | null = null;
+
+        if (picking.batch_id && Array.isArray(picking.batch_id)) {
+          try {
+            const batches = await client.read(
+              'stock.picking.batch',
+              [picking.batch_id[0]],
+              ['x_studio_autista_del_giro', 'x_studio_auto_del_giro']
+            );
+            if (batches && batches.length > 0) {
+              const batch = batches[0];
+              if (batch.x_studio_autista_del_giro) {
+                driverId = batch.x_studio_autista_del_giro[0];
+                driverName = batch.x_studio_autista_del_giro[1];
+              }
+            }
+          } catch (e) {
+            console.warn('[ShippingAgent] Errore recupero batch:', e);
+          }
+        }
+
+        // Se abbiamo l'ID autista, recupera il telefono
+        if (driverId) {
+          try {
+            const driverPartners = await client.read(
+              'res.partner',
+              [driverId],
+              ['phone', 'mobile']
+            );
+            if (driverPartners && driverPartners.length > 0) {
+              const driverPartner = driverPartners[0];
+              driverPhone = driverPartner.mobile || driverPartner.phone || null;
+            }
+          } catch (e) {
+            console.warn('[ShippingAgent] Errore recupero telefono autista:', e);
+          }
+        }
+
+        // Ottieni info venditore e telefono dall'ordine di vendita
+        let salespersonName: string | null = null;
+        let salespersonPhone: string | null = null;
+
+        if (picking.sale_id && Array.isArray(picking.sale_id)) {
+          try {
+            const orders = await client.read(
+              'sale.order',
+              [picking.sale_id[0]],
+              ['user_id']
+            );
+            if (orders && orders.length > 0 && orders[0].user_id) {
+              const userId = orders[0].user_id[0];
+              salespersonName = orders[0].user_id[1];
+
+              // Recupera il telefono del venditore (res.users -> partner_id)
+              const users = await client.read(
+                'res.users',
+                [userId],
+                ['partner_id']
+              );
+              if (users && users.length > 0 && users[0].partner_id) {
+                const userPartnerId = users[0].partner_id[0];
+                const userPartners = await client.read(
+                  'res.partner',
+                  [userPartnerId],
+                  ['phone', 'mobile']
+                );
+                if (userPartners && userPartners.length > 0) {
+                  const userPartner = userPartners[0];
+                  salespersonPhone = userPartner.mobile || userPartner.phone || null;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[ShippingAgent] Errore recupero venditore:', e);
+          }
+        }
+
+        // Formatta data (solo giorno, no orario)
+        let dateOnly = '';
+        const rawDate = picking.date_done || picking.scheduled_date;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          dateOnly = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        todayDeliveries.push({
+          order_name: picking.origin || picking.name,
+          date: dateOnly,
+          state: this.getStateLabel(picking.state),
+          driver_name: driverName,
+          driver_phone: driverPhone,
+          salesperson_name: salespersonName,
+          salesperson_phone: salespersonPhone
+        });
+      }
+
+      const result: ActiveDeliveryInfo = {
+        has_delivery_today: todayDeliveries.length > 0,
+        today_deliveries: todayDeliveries,
+        future_deliveries_count: futureCount,
+        past_deliveries_count: pastCount
+      };
+
+      return {
+        success: true,
+        data: result,
+        message: todayDeliveries.length > 0
+          ? `Trovate ${todayDeliveries.length} consegne per oggi`
+          : 'Nessuna consegna prevista per oggi'
+      };
+
+    } catch (error) {
+      console.error('[ShippingAgent] Errore getActiveDeliveries:', error);
+      return {
+        success: false,
+        error: this.t('error_getting_history', { error: (error as Error).message })
+      };
+    }
+  }
+
+  /**
    * Segnala un problema di consegna
    */
   async reportDeliveryIssue(
@@ -1016,4 +1254,13 @@ export async function reportDeliveryIssue(
   reportedBy?: string
 ) {
   return shippingAgent.reportDeliveryIssue(orderId, issueType, description, reportedBy);
+}
+
+/**
+ * Ottieni consegne attive (oggi) per un cliente
+ * Mostra: ordine, data, autista+telefono, venditore+telefono
+ * Indica anche quante consegne future e passate ci sono
+ */
+export async function getActiveDeliveries(customerId: number) {
+  return shippingAgent.getActiveDeliveries(customerId);
 }
