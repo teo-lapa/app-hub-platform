@@ -222,9 +222,11 @@ export class ProductsAgent {
       // Costruisci dominio Odoo
       const domain: any[] = [];
 
-      // Filtro attivi
+      // Filtro attivi E vendibili
+      // IMPORTANTE: sale_ok = true significa che il prodotto può essere venduto ai clienti
       if (filters.active_only !== false) {
         domain.push(['active', '=', true]);
+        domain.push(['sale_ok', '=', true]);  // Solo prodotti vendibili!
       }
 
       // Ricerca testuale intelligente

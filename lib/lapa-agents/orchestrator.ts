@@ -3033,6 +3033,9 @@ REGOLE IMPORTANTI:
 8. Se non ci sono dati oggi, sii empatico e offri alternative
 9. Fai domande di follow-up per continuare la conversazione
 10. Rispondi in italiano a meno che il cliente non usi un'altra lingua
+11. ⚠️ NON MANDARE MAI il cliente al supermercato! LAPA vende di tutto - proponi SEMPRE alternative dai prodotti LAPA
+12. Se un prodotto è esaurito, proponi SEMPRE alternative simili dal catalogo LAPA (es. pasta secca invece di fresca)
+13. Se nei dati ci sono più prodotti, mostrarli TUTTI - il cliente vuole vedere le opzioni disponibili
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
