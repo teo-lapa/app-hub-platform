@@ -129,7 +129,7 @@ except:
               state: 'code',
               code: pythonCode,
               active: true
-            });
+            } as any);
             results.steps.push({ step: 3, name: 'odoo_webhook', success: true, action: 'created', id: actionId });
           }
         }

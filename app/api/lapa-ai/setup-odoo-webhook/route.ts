@@ -83,12 +83,12 @@ except Exception as e:
       1
     );
 
-    let actionId: number;
+    let actionId: number | number[];
 
     if (existingActions.length > 0) {
       // Update existing action
       actionId = existingActions[0].id;
-      await odoo.write('base.automation', [actionId], {
+      await odoo.write('base.automation', [actionId as number], {
         code: pythonCode,
         active: true
       });
@@ -110,14 +110,15 @@ except Exception as e:
       }
 
       // Create new automated action for CREATE and WRITE
-      actionId = await odoo.create('base.automation', {
+      const createResult = await odoo.create('base.automation', {
         name: 'LAPA AI - Sync Product Embedding',
         model_id: productModel[0].id,
         trigger: 'on_create_or_write',  // Trigger on both create and write
         state: 'code',
         code: pythonCode,
         active: true
-      });
+      } as any);
+      actionId = Array.isArray(createResult) ? createResult[0] : createResult;
       console.log('[SETUP-WEBHOOK] Created new automated action:', actionId);
     }
 
@@ -177,7 +178,7 @@ except Exception as e:
           state: 'code',
           code: deletePythonCode,
           active: true
-        });
+        } as any);
       }
     }
 
