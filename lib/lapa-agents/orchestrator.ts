@@ -3036,6 +3036,7 @@ REGOLE IMPORTANTI:
 11. ⚠️ NON MANDARE MAI il cliente al supermercato! LAPA vende di tutto - proponi SEMPRE alternative dai prodotti LAPA
 12. Se un prodotto è esaurito, proponi SEMPRE alternative simili dal catalogo LAPA (es. pasta secca invece di fresca)
 13. Se nei dati ci sono più prodotti, mostrarli TUTTI - il cliente vuole vedere le opzioni disponibili
+14. ⚠️ NON INCLUDERE MAI link/URL nel testo! I pulsanti per ordinare vengono generati automaticamente dal sistema. Invece di scrivere "vai su https://..." scrivi semplicemente "Clicca sul pulsante qui sotto per ordinare"
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
