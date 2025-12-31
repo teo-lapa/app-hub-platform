@@ -2233,17 +2233,56 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         };
       }
 
-      // Se c'è un customerId, mostra prima le consegne di OGGI
+      // Se c'è un customerId, controlla se chiede consegne passate/recenti o di oggi
       if (context.customerId) {
+        // Ottieni l'ultimo messaggio dell'utente per contesto
+        const lastUserMsg = context.conversationHistory
+          .filter(m => m.role === 'user')
+          .pop()?.content || '';
+
+        // Verifica se chiede consegne passate/recenti (ieri, ultimo ordine, storico, etc.)
+        const asksPastDeliveries = /\b(ieri|ultimo|ultim[oa]|passato|passata|storico|recente|recent[ei]|settimana|giorni fa|non.*consegnato|non.*arrivato)\b/i.test(lastUserMsg);
+
+        if (asksPastDeliveries) {
+          // Utente chiede di consegne passate - usa getRecentDeliveries
+          const recentResult = await this.shippingAgent.getRecentDeliveries(context.customerId, 14);
+
+          if (recentResult.success && recentResult.data) {
+            const recentData = recentResult.data;
+
+            // Genera risposta conversazionale con Claude
+            const conversationalMessage = await this.generateConversationalResponse(
+              context,
+              'consegne recenti/passate',
+              {
+                deliveries: recentData.deliveries,
+                total: recentData.total,
+                customer_name: context.customerName,
+                period: 'ultimi 14 giorni'
+              },
+              lastUserMsg
+            );
+
+            return {
+              success: true,
+              message: conversationalMessage,
+              data: recentData,
+              agentId: 'shipping',
+              confidence: 0.9,
+              suggestedActions: [
+                'Consegne di oggi',
+                'Ordini futuri',
+                'Traccia ordine specifico'
+              ]
+            };
+          }
+        }
+
+        // Default: mostra le consegne di OGGI
         const activeResult = await this.shippingAgent.getActiveDeliveries(context.customerId);
 
         if (activeResult.success && activeResult.data) {
           const activeData = activeResult.data;
-
-          // Ottieni l'ultimo messaggio dell'utente per contesto
-          const lastUserMsg = context.conversationHistory
-            .filter(m => m.role === 'user')
-            .pop()?.content || 'Dove sono le mie consegne?';
 
           // Genera risposta conversazionale con Claude
           const conversationalMessage = await this.generateConversationalResponse(
@@ -2256,7 +2295,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
               past_count: activeData.past_deliveries_count,
               customer_name: context.customerName
             },
-            lastUserMsg
+            lastUserMsg || 'Dove sono le mie consegne?'
           );
 
           // Prepara azioni suggerite

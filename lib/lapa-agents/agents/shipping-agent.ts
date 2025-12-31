@@ -895,6 +895,155 @@ export class ShippingAgent {
   }
 
   /**
+   * Ottiene le consegne recenti (ultimi N giorni) per un cliente
+   * Utile quando l'utente chiede "ieri", "ultima consegna", "storico recente"
+   */
+  async getRecentDeliveries(customerId: number, days: number = 7): Promise<ShippingAgentResponse> {
+    try {
+      const client = await getOdooClient();
+
+      // Ottieni info cliente
+      const customers = await client.read(
+        'res.partner',
+        [customerId],
+        ['name']
+      );
+
+      if (!customers || customers.length === 0) {
+        return {
+          success: false,
+          error: this.t('customer_not_found', { customerId })
+        };
+      }
+
+      // Cerca gli ordini di vendita del cliente
+      const saleOrders = await client.search(
+        'sale.order',
+        [['partner_id', '=', customerId]],
+        { limit: 100 }
+      );
+
+      if (!saleOrders || saleOrders.length === 0) {
+        return {
+          success: true,
+          data: { deliveries: [], total: 0 }
+        };
+      }
+
+      // Data di N giorni fa
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - days);
+      const pastDateStr = pastDate.toISOString().replace('T', ' ').substring(0, 19);
+
+      // Cerca consegne degli ultimi N giorni (WH/OUT)
+      const recentPickings = await client.searchReadKw(
+        'stock.picking',
+        [
+          ['sale_id', 'in', saleOrders],
+          ['state', '!=', 'cancel'],
+          ['picking_type_code', '=', 'outgoing'],
+          '|',
+          ['scheduled_date', '>=', pastDateStr],
+          ['date_done', '>=', pastDateStr]
+        ],
+        ['id', 'name', 'state', 'scheduled_date', 'date_done', 'origin', 'sale_id', 'batch_id'],
+        { order: 'scheduled_date DESC', limit: 20 }
+      );
+
+      const deliveries: ActiveDelivery[] = [];
+
+      for (const picking of recentPickings) {
+        // Ottieni info autista dal batch
+        let driverName: string | null = null;
+        let driverPhone: string | null = null;
+        let driverId: number | null = null;
+
+        if (picking.batch_id && Array.isArray(picking.batch_id)) {
+          try {
+            const batches = await client.read(
+              'stock.picking.batch',
+              [picking.batch_id[0]],
+              ['x_studio_autista_del_giro']
+            );
+            if (batches && batches.length > 0 && batches[0].x_studio_autista_del_giro) {
+              driverId = batches[0].x_studio_autista_del_giro[0];
+              driverName = batches[0].x_studio_autista_del_giro[1];
+            }
+          } catch (e) {
+            // Ignora errori
+          }
+        }
+
+        // Recupera telefono autista
+        if (driverId) {
+          try {
+            const driverPartners = await client.read('res.partner', [driverId], ['phone', 'mobile']);
+            if (driverPartners && driverPartners.length > 0) {
+              driverPhone = driverPartners[0].mobile || driverPartners[0].phone || null;
+            }
+          } catch (e) {
+            // Ignora
+          }
+        }
+
+        // Ottieni info venditore
+        let salespersonName: string | null = null;
+        let salespersonPhone: string | null = null;
+
+        if (picking.sale_id && Array.isArray(picking.sale_id)) {
+          try {
+            const orders = await client.read('sale.order', [picking.sale_id[0]], ['user_id']);
+            if (orders && orders.length > 0 && orders[0].user_id) {
+              salespersonName = orders[0].user_id[1];
+              const userId = orders[0].user_id[0];
+              const users = await client.read('res.users', [userId], ['partner_id']);
+              if (users && users.length > 0 && users[0].partner_id) {
+                const userPartners = await client.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+                if (userPartners && userPartners.length > 0) {
+                  salespersonPhone = userPartners[0].mobile || userPartners[0].phone || null;
+                }
+              }
+            }
+          } catch (e) {
+            // Ignora
+          }
+        }
+
+        // Formatta data
+        let dateOnly = '';
+        const rawDate = picking.date_done || picking.scheduled_date;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          dateOnly = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        deliveries.push({
+          order_name: picking.origin || picking.name,
+          date: dateOnly,
+          state: this.getStateLabel(picking.state),
+          driver_name: driverName,
+          driver_phone: driverPhone,
+          salesperson_name: salespersonName,
+          salesperson_phone: salespersonPhone
+        });
+      }
+
+      return {
+        success: true,
+        data: { deliveries, total: deliveries.length },
+        message: `Trovate ${deliveries.length} consegne negli ultimi ${days} giorni`
+      };
+
+    } catch (error) {
+      console.error('[ShippingAgent] Errore getRecentDeliveries:', error);
+      return {
+        success: false,
+        error: this.t('error_getting_history', { error: (error as Error).message })
+      };
+    }
+  }
+
+  /**
    * Segnala un problema di consegna
    */
   async reportDeliveryIssue(
@@ -1263,4 +1412,12 @@ export async function reportDeliveryIssue(
  */
 export async function getActiveDeliveries(customerId: number) {
   return shippingAgent.getActiveDeliveries(customerId);
+}
+
+/**
+ * Ottieni consegne recenti (ultimi N giorni) per un cliente
+ * Utile per: "ieri", "ultima consegna", "storico recente"
+ */
+export async function getRecentDeliveries(customerId: number, days: number = 7) {
+  return shippingAgent.getRecentDeliveries(customerId, days);
 }
