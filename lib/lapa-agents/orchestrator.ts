@@ -323,17 +323,17 @@ export class LapaAiOrchestrator {
   // ============================================================================
 
   /**
-   * Inizializza il servizio di memoria persistente
+   * Inizializza il servizio di memoria persistente (Vercel KV)
    */
   private initializeMemory(): void {
     try {
-      // Check if Supabase is configured
-      if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+      // Check if Vercel KV is configured (KV_REST_API_URL is set automatically by Vercel)
+      if (process.env.KV_REST_API_URL || process.env.KV_URL) {
         this.memoryService = getMemoryService();
         this.memoryEnabled = true;
-        console.log('🧠 Memoria persistente ATTIVATA');
+        console.log('🧠 Memoria persistente ATTIVATA (Vercel KV)');
       } else {
-        console.log('⚠️ Memoria persistente DISATTIVATA (Supabase non configurato)');
+        console.log('⚠️ Memoria persistente DISATTIVATA (Vercel KV non configurato)');
         this.memoryEnabled = false;
       }
     } catch (error) {

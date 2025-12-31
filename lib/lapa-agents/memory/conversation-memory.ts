@@ -2,10 +2,10 @@
  * LAPA AI - Conversation Memory Service
  *
  * Gestisce la memoria persistente delle conversazioni per ogni cliente.
- * Salva su Supabase e mantiene contesto tra sessioni.
+ * Usa Vercel KV (Redis) per storage veloce e persistente.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { kv } from '@vercel/kv';
 import Anthropic from '@anthropic-ai/sdk';
 
 // ============================================================================
@@ -50,32 +50,37 @@ export interface CustomerMemory {
 }
 
 export interface MemoryConfig {
-  supabaseUrl: string;
-  supabaseKey: string;
   anthropicApiKey: string;
   maxMessagesInContext: number;  // Quanti messaggi tenere nel contesto immediato
   summarizeAfterMessages: number; // Dopo quanti messaggi fare un riassunto
 }
 
 // ============================================================================
-// CONVERSATION MEMORY SERVICE
+// CONVERSATION MEMORY SERVICE (Vercel KV)
 // ============================================================================
 
 export class ConversationMemoryService {
-  private supabase: SupabaseClient;
   private anthropic: Anthropic;
   private config: MemoryConfig;
 
   // Cache in-memory per performance
   private memoryCache: Map<number, CustomerMemory> = new Map();
 
+  // Prefix per le chiavi KV
+  private readonly KEY_PREFIX = 'lapa:memory:';
+
   constructor(config: MemoryConfig) {
     this.config = config;
-
-    this.supabase = createClient(config.supabaseUrl, config.supabaseKey);
     this.anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+    console.log('🧠 ConversationMemoryService inizializzato (Vercel KV)');
+  }
 
-    console.log('🧠 ConversationMemoryService inizializzato');
+  // ============================================================================
+  // KEY HELPERS
+  // ============================================================================
+
+  private getKey(customerId: number): string {
+    return `${this.KEY_PREFIX}${customerId}`;
   }
 
   // ============================================================================
@@ -83,7 +88,7 @@ export class ConversationMemoryService {
   // ============================================================================
 
   /**
-   * Carica la memoria di un cliente da Supabase
+   * Carica la memoria di un cliente da Vercel KV
    */
   async loadMemory(customerId: number): Promise<CustomerMemory | null> {
     // Check cache first
@@ -93,70 +98,34 @@ export class ConversationMemoryService {
     }
 
     try {
-      const { data, error } = await this.supabase
-        .from('customer_memories')
-        .select('*')
-        .eq('customer_id', customerId)
-        .single();
+      const data = await kv.get<CustomerMemory>(this.getKey(customerId));
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No row found - customer has no memory yet
-          console.log(`🧠 No memory found for customer ${customerId}`);
-          return null;
-        }
-        throw error;
+      if (!data) {
+        console.log(`🧠 No memory found for customer ${customerId}`);
+        return null;
       }
 
-      const memory: CustomerMemory = {
-        customer_id: data.customer_id,
-        customer_name: data.customer_name,
-        customer_type: data.customer_type,
-        current_session_id: data.current_session_id,
-        messages: data.messages || [],
-        conversation_summary: data.conversation_summary || '',
-        customer_facts: data.customer_facts || [],
-        favorite_products: data.favorite_products || [],
-        last_interaction: data.last_interaction,
-        total_sessions: data.total_sessions || 1
-      };
-
       // Cache it
-      this.memoryCache.set(customerId, memory);
-      console.log(`🧠 Memory loaded from DB for customer ${customerId} (${memory.messages.length} messages, ${memory.total_sessions} sessions)`);
+      this.memoryCache.set(customerId, data);
+      console.log(`🧠 Memory loaded from KV for customer ${customerId} (${data.messages?.length || 0} messages, ${data.total_sessions || 1} sessions)`);
 
-      return memory;
+      return data;
 
     } catch (error) {
-      console.error('❌ Error loading memory:', error);
+      console.error('❌ Error loading memory from KV:', error);
       return null;
     }
   }
 
   /**
-   * Salva la memoria di un cliente su Supabase
+   * Salva la memoria di un cliente su Vercel KV
    */
   async saveMemory(memory: CustomerMemory): Promise<boolean> {
     try {
-      const { error } = await this.supabase
-        .from('customer_memories')
-        .upsert({
-          customer_id: memory.customer_id,
-          customer_name: memory.customer_name,
-          customer_type: memory.customer_type,
-          current_session_id: memory.current_session_id,
-          messages: memory.messages,
-          conversation_summary: memory.conversation_summary,
-          customer_facts: memory.customer_facts,
-          favorite_products: memory.favorite_products,
-          last_interaction: memory.last_interaction,
-          total_sessions: memory.total_sessions,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'customer_id'
-        });
-
-      if (error) throw error;
+      // Salva su KV con TTL di 90 giorni (7776000 secondi)
+      await kv.set(this.getKey(memory.customer_id), memory, {
+        ex: 7776000 // 90 giorni
+      });
 
       // Update cache
       this.memoryCache.set(memory.customer_id, memory);
@@ -165,7 +134,7 @@ export class ConversationMemoryService {
       return true;
 
     } catch (error) {
-      console.error('❌ Error saving memory:', error);
+      console.error('❌ Error saving memory to KV:', error);
       return false;
     }
   }
@@ -217,7 +186,7 @@ export class ConversationMemoryService {
 
     // Extract facts from message if it's a user message
     if (message.role === 'user') {
-      await this.extractFacts(memory, message.content);
+      this.extractFacts(memory, message.content);
     }
 
     // Extract products shown if it's an assistant message
@@ -230,7 +199,7 @@ export class ConversationMemoryService {
       await this.summarizeConversation(memory);
     }
 
-    // Save to DB
+    // Save to KV
     await this.saveMemory(memory);
 
     return memory;
@@ -245,35 +214,35 @@ export class ConversationMemoryService {
     // 1. Customer info
     parts.push(`CLIENTE: ${memory.customer_name} (${memory.customer_type.toUpperCase()})`);
     parts.push(`Sessioni totali: ${memory.total_sessions}`);
-    parts.push(`Ultima interazione: ${memory.last_interaction}`);
 
     // 2. Customer facts (learned from past conversations)
     if (memory.customer_facts.length > 0) {
-      parts.push('\nFATTI IMPORTANTI SUL CLIENTE:');
-      memory.customer_facts.forEach(fact => {
+      parts.push('\nFATTI SUL CLIENTE:');
+      memory.customer_facts.slice(-5).forEach(fact => {
         parts.push(`- ${fact}`);
       });
     }
 
-    // 3. Favorite products
+    // 3. Favorite products (recently shown/requested)
     if (memory.favorite_products.length > 0) {
-      parts.push('\nPRODOTTI PREFERITI/FREQUENTI:');
-      parts.push(memory.favorite_products.join(', '));
+      parts.push('\nPRODOTTI GIÀ VISTI/RICHIESTI:');
+      parts.push(memory.favorite_products.slice(-10).join(', '));
     }
 
     // 4. Conversation summary (past conversations)
     if (memory.conversation_summary) {
-      parts.push('\nRIASSUNTO CONVERSAZIONI PRECEDENTI:');
+      parts.push('\nRIASSUNTO PRECEDENTI:');
       parts.push(memory.conversation_summary);
     }
 
-    // 5. Recent messages (current session)
+    // 5. Recent messages (current session) - only last few
     const recentMessages = memory.messages.slice(-this.config.maxMessagesInContext);
     if (recentMessages.length > 0) {
-      parts.push('\nCONVERSAZIONE RECENTE:');
+      parts.push('\nULTIMI MESSAGGI:');
       recentMessages.forEach(msg => {
         const role = msg.role === 'user' ? 'Cliente' : 'AI';
-        parts.push(`${role}: ${msg.content.substring(0, 500)}${msg.content.length > 500 ? '...' : ''}`);
+        const shortContent = msg.content.substring(0, 300) + (msg.content.length > 300 ? '...' : '');
+        parts.push(`${role}: ${shortContent}`);
       });
     }
 
@@ -281,14 +250,13 @@ export class ConversationMemoryService {
   }
 
   // ============================================================================
-  // AI-POWERED MEMORY FEATURES
+  // FACT EXTRACTION (Simple, no AI call)
   // ============================================================================
 
   /**
-   * Estrae fatti importanti dal messaggio dell'utente
+   * Estrae fatti importanti dal messaggio dell'utente (senza chiamata AI)
    */
-  private async extractFacts(memory: CustomerMemory, userMessage: string): Promise<void> {
-    // Quick checks for common facts
+  private extractFacts(memory: CustomerMemory, userMessage: string): void {
     const lowerMessage = userMessage.toLowerCase();
 
     // Restaurant/business type
@@ -312,10 +280,10 @@ export class ConversationMemoryService {
 
     // Cooking preferences
     if (lowerMessage.includes('carbonara') || lowerMessage.includes('amatriciana') || lowerMessage.includes('gricia')) {
-      this.addFactIfNew(memory, 'Appassionato di pasta romana tradizionale');
+      this.addFactIfNew(memory, 'Appassionato di pasta romana');
     }
     if (lowerMessage.includes('pizza')) {
-      this.addFactIfNew(memory, 'Fa/vende pizza');
+      this.addFactIfNew(memory, 'Interessato a prodotti per pizza');
     }
 
     // Quantity indicators
@@ -327,7 +295,11 @@ export class ConversationMemoryService {
   private addFactIfNew(memory: CustomerMemory, fact: string): void {
     if (!memory.customer_facts.includes(fact)) {
       memory.customer_facts.push(fact);
-      console.log(`🧠 New fact learned about customer ${memory.customer_id}: ${fact}`);
+      // Keep only last 10 facts
+      if (memory.customer_facts.length > 10) {
+        memory.customer_facts.shift();
+      }
+      console.log(`🧠 New fact: ${fact}`);
     }
   }
 
@@ -336,12 +308,16 @@ export class ConversationMemoryService {
    */
   private updateFavoriteProducts(memory: CustomerMemory, products: string[]): void {
     products.forEach(product => {
-      if (!memory.favorite_products.includes(product)) {
-        memory.favorite_products.push(product);
-        // Keep only last 20 favorite products
-        if (memory.favorite_products.length > 20) {
-          memory.favorite_products.shift();
-        }
+      // Remove if exists (to move to end)
+      const index = memory.favorite_products.indexOf(product);
+      if (index > -1) {
+        memory.favorite_products.splice(index, 1);
+      }
+      // Add to end
+      memory.favorite_products.push(product);
+      // Keep only last 20
+      if (memory.favorite_products.length > 20) {
+        memory.favorite_products.shift();
       }
     });
   }
@@ -361,24 +337,17 @@ export class ConversationMemoryService {
 
     try {
       const conversationText = messagesToSummarize
-        .map(m => `${m.role === 'user' ? 'Cliente' : 'AI'}: ${m.content}`)
+        .map(m => `${m.role === 'user' ? 'Cliente' : 'AI'}: ${m.content.substring(0, 200)}`)
         .join('\n');
 
       const response = await this.anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 300,
         temperature: 0.3,
-        system: `Sei un assistente che crea riassunti concisi di conversazioni.
-Estrai SOLO le informazioni importanti:
-- Cosa ha cercato/ordinato il cliente
-- Problemi riscontrati
-- Preferenze espresse
-- Decisioni prese
-
-NON includere saluti o convenevoli. Sii conciso (max 200 parole).`,
+        system: `Riassumi questa conversazione in 2-3 frasi. Focus su: cosa ha cercato/chiesto il cliente, problemi, preferenze. Sii conciso.`,
         messages: [{
           role: 'user',
-          content: `Riassumi questa conversazione:\n\n${conversationText}`
+          content: conversationText
         }]
       });
 
@@ -386,23 +355,23 @@ NON includere saluti o convenevoli. Sii conciso (max 200 parole).`,
 
       // Append to existing summary
       if (memory.conversation_summary) {
-        memory.conversation_summary = `${memory.conversation_summary}\n\n--- Sessione precedente ---\n${summary}`;
+        memory.conversation_summary = `${memory.conversation_summary} | ${summary}`;
       } else {
         memory.conversation_summary = summary;
       }
 
-      // Keep summary under 2000 chars
-      if (memory.conversation_summary.length > 2000) {
-        memory.conversation_summary = memory.conversation_summary.slice(-2000);
+      // Keep summary under 1000 chars
+      if (memory.conversation_summary.length > 1000) {
+        memory.conversation_summary = memory.conversation_summary.slice(-1000);
       }
 
       // Remove summarized messages, keep only recent ones
       memory.messages = memory.messages.slice(-this.config.maxMessagesInContext);
 
-      console.log(`🧠 Conversation summarized. New summary length: ${memory.conversation_summary.length} chars`);
+      console.log(`🧠 Summarized. New length: ${memory.conversation_summary.length} chars`);
 
     } catch (error) {
-      console.error('❌ Error summarizing conversation:', error);
+      console.error('❌ Error summarizing:', error);
     }
   }
 
@@ -423,17 +392,10 @@ NON includere saluti o convenevoli. Sii conciso (max 200 parole).`,
    */
   async deleteMemory(customerId: number): Promise<boolean> {
     try {
-      const { error } = await this.supabase
-        .from('customer_memories')
-        .delete()
-        .eq('customer_id', customerId);
-
-      if (error) throw error;
-
+      await kv.del(this.getKey(customerId));
       this.memoryCache.delete(customerId);
       console.log(`🧠 Memory deleted for customer ${customerId}`);
       return true;
-
     } catch (error) {
       console.error('❌ Error deleting memory:', error);
       return false;
@@ -449,20 +411,16 @@ let memoryServiceInstance: ConversationMemoryService | null = null;
 
 export function getMemoryService(): ConversationMemoryService {
   if (!memoryServiceInstance) {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
-    if (!supabaseUrl || !supabaseKey || !anthropicApiKey) {
-      throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, ANTHROPIC_API_KEY');
+    if (!anthropicApiKey) {
+      throw new Error('Missing ANTHROPIC_API_KEY');
     }
 
     memoryServiceInstance = new ConversationMemoryService({
-      supabaseUrl,
-      supabaseKey,
       anthropicApiKey,
-      maxMessagesInContext: 10,  // Keep last 10 messages in immediate context
-      summarizeAfterMessages: 20  // Summarize after 20 messages
+      maxMessagesInContext: 8,   // Keep last 8 messages in immediate context
+      summarizeAfterMessages: 16 // Summarize after 16 messages
     });
   }
   return memoryServiceInstance;
