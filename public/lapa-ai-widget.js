@@ -246,8 +246,98 @@
       background: white;
       border-top: 1px solid #e9ecef;
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #lapa-ai-attachments-preview {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 12px;
+    }
+
+    #lapa-ai-attachments-preview.has-files {
+      display: flex;
+    }
+
+    .lapa-ai-attachment-item {
+      display: flex;
       align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      font-size: 12px;
+      max-width: 150px;
+    }
+
+    .lapa-ai-attachment-item img {
+      width: 24px;
+      height: 24px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .lapa-ai-attachment-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #495057;
+    }
+
+    .lapa-ai-attachment-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lapa-ai-attachment-remove:hover {
+      color: #dc3545;
+    }
+
+    #lapa-ai-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #lapa-ai-attach-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f1f3f5;
+      border: 1px solid #dee2e6;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    #lapa-ai-attach-btn:hover {
+      background: #e9ecef;
+      border-color: ${CONFIG.primaryColor};
+    }
+
+    #lapa-ai-attach-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: #495057;
+    }
+
+    #lapa-ai-file-input {
+      display: none;
     }
 
     #lapa-ai-input {
@@ -265,8 +355,8 @@
     }
 
     #lapa-ai-send-btn {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: ${CONFIG.primaryColor};
       border: none;
@@ -275,6 +365,7 @@
       align-items: center;
       justify-content: center;
       transition: transform 0.2s, opacity 0.2s;
+      flex-shrink: 0;
     }
 
     #lapa-ai-send-btn:hover {
@@ -287,8 +378,8 @@
     }
 
     #lapa-ai-send-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: white;
     }
 
@@ -307,6 +398,43 @@
 
     .lapa-ai-message.user a {
       color: white;
+    }
+
+    .lapa-ai-message-attachments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .lapa-ai-message-image {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 8px;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
+    .lapa-ai-message-image:hover {
+      opacity: 0.9;
+    }
+
+    .lapa-ai-message-file {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .lapa-ai-message.bot .lapa-ai-message-file {
+      background: #f1f3f5;
+    }
+
+    .lapa-ai-message-text {
+      white-space: pre-wrap;
     }
 
     /* Responsive */
@@ -345,12 +473,21 @@
         <div id="lapa-ai-messages"></div>
         <div id="lapa-ai-suggestions"></div>
         <div id="lapa-ai-input-container">
-          <input type="text" id="lapa-ai-input" placeholder="${CONFIG.placeholder}" autocomplete="off">
-          <button id="lapa-ai-send-btn" aria-label="Invia messaggio">
-            <svg viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-          </button>
+          <div id="lapa-ai-attachments-preview"></div>
+          <div id="lapa-ai-input-row">
+            <input type="file" id="lapa-ai-file-input" multiple accept="image/*,.pdf,.doc,.docx,.txt">
+            <button id="lapa-ai-attach-btn" aria-label="Allega file">
+              <svg viewBox="0 0 24 24">
+                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+              </svg>
+            </button>
+            <input type="text" id="lapa-ai-input" placeholder="${CONFIG.placeholder}" autocomplete="off">
+            <button id="lapa-ai-send-btn" aria-label="Invia messaggio">
+              <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="lapa-ai-powered-by">Powered by LAPA AI</div>
       </div>
@@ -368,8 +505,12 @@
     isTyping: false,
     sessionId: generateSessionId(),
     config: null,
-    messages: []
+    messages: [],
+    attachments: []  // Array di file allegati { name, content (base64), mimetype }
   };
+
+  // Dimensione massima file (10MB)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
   // Inizializza il widget
   function init() {
@@ -401,6 +542,8 @@
     const closeBtn = document.getElementById('lapa-ai-close-btn');
     const input = document.getElementById('lapa-ai-input');
     const sendBtn = document.getElementById('lapa-ai-send-btn');
+    const attachBtn = document.getElementById('lapa-ai-attach-btn');
+    const fileInput = document.getElementById('lapa-ai-file-input');
     const chatWindow = document.getElementById('lapa-ai-chat-window');
 
     toggleBtn.addEventListener('click', () => toggleChat());
@@ -410,9 +553,91 @@
       if (e.key === 'Enter') sendMessage();
     });
 
+    // Gestione allegati
+    attachBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
+
     // Chiudi con ESC
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && state.isOpen) toggleChat(false);
+    });
+  }
+
+  // Gestisce selezione file
+  async function handleFileSelect(e) {
+    const files = Array.from(e.target.files);
+
+    for (const file of files) {
+      // Verifica dimensione
+      if (file.size > MAX_FILE_SIZE) {
+        alert('Il file "' + file.name + '" e troppo grande. Massimo 10MB.');
+        continue;
+      }
+
+      try {
+        const base64 = await fileToBase64(file);
+        state.attachments.push({
+          name: file.name,
+          content: base64,
+          mimetype: file.type || 'application/octet-stream'
+        });
+      } catch (err) {
+        console.error('Errore lettura file:', err);
+      }
+    }
+
+    // Reset input e aggiorna preview
+    e.target.value = '';
+    updateAttachmentsPreview();
+  }
+
+  // Converte file in base64
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Rimuovi il prefisso "data:...;base64,"
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Aggiorna preview allegati
+  function updateAttachmentsPreview() {
+    const previewEl = document.getElementById('lapa-ai-attachments-preview');
+
+    if (state.attachments.length === 0) {
+      previewEl.classList.remove('has-files');
+      previewEl.innerHTML = '';
+      return;
+    }
+
+    previewEl.classList.add('has-files');
+    previewEl.innerHTML = state.attachments.map((att, index) => {
+      const isImage = att.mimetype.startsWith('image/');
+      const icon = isImage
+        ? '<img src="data:' + att.mimetype + ';base64,' + att.content + '" alt="">'
+        : '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#6c757d" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>';
+
+      return '<div class="lapa-ai-attachment-item">' +
+        icon +
+        '<span class="lapa-ai-attachment-name">' + att.name + '</span>' +
+        '<button class="lapa-ai-attachment-remove" data-index="' + index + '" aria-label="Rimuovi">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>' +
+        '</button>' +
+      '</div>';
+    }).join('');
+
+    // Bind rimozione allegati
+    previewEl.querySelectorAll('.lapa-ai-attachment-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.dataset.index);
+        state.attachments.splice(index, 1);
+        updateAttachmentsPreview();
+      });
     });
   }
 
@@ -430,22 +655,39 @@
   }
 
   // Aggiungi messaggio
-  function addMessage(text, sender = 'user') {
+  function addMessage(text, sender = 'user', attachments = []) {
     const messagesEl = document.getElementById('lapa-ai-messages');
     const messageEl = document.createElement('div');
-    messageEl.className = `lapa-ai-message ${sender}`;
+    messageEl.className = 'lapa-ai-message ' + sender;
+
+    let html = '';
+
+    // Mostra thumbnail allegati per messaggi utente
+    if (attachments && attachments.length > 0) {
+      html += '<div class="lapa-ai-message-attachments">';
+      attachments.forEach(att => {
+        if (att.mimetype.startsWith('image/')) {
+          html += '<img src="data:' + att.mimetype + ';base64,' + att.content + '" alt="' + att.name + '" class="lapa-ai-message-image">';
+        } else {
+          html += '<div class="lapa-ai-message-file"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg> ' + att.name + '</div>';
+        }
+      });
+      html += '</div>';
+    }
 
     // Converti link in anchor tags
     const linkedText = text.replace(
       /(https?:\/\/[^\s]+)/g,
       '<a href="$1" target="_blank" rel="noopener">$1</a>'
     );
-    messageEl.innerHTML = linkedText;
+    html += '<div class="lapa-ai-message-text">' + linkedText + '</div>';
+
+    messageEl.innerHTML = html;
 
     messagesEl.appendChild(messageEl);
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
-    state.messages.push({ text, sender, timestamp: Date.now() });
+    state.messages.push({ text, sender, timestamp: Date.now(), attachments });
   }
 
   // Mostra indicatore typing
@@ -492,10 +734,20 @@
     const input = document.getElementById('lapa-ai-input');
     const message = input.value.trim();
 
-    if (!message || state.isTyping) return;
+    // Permetti invio solo con messaggio O allegati
+    if ((!message && state.attachments.length === 0) || state.isTyping) return;
+
+    // Prepara messaggio con info allegati per la UI
+    const displayMessage = message || ('Allegato: ' + state.attachments.map(a => a.name).join(', '));
 
     input.value = '';
-    addMessage(message, 'user');
+    addMessage(displayMessage, 'user', state.attachments);
+
+    // Salva allegati per invio e poi resetta
+    const attachmentsToSend = [...state.attachments];
+    state.attachments = [];
+    updateAttachmentsPreview();
+
     showTyping();
 
     try {
@@ -505,14 +757,15 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message,
+          message: message || 'Analizza questo file',
           customerType: state.config.customerType,
           customerId: state.config.customerId ? parseInt(state.config.customerId) : undefined,
-          parentId: state.config.parentId ? parseInt(state.config.parentId) : undefined,  // ID azienda padre
+          parentId: state.config.parentId ? parseInt(state.config.parentId) : undefined,
           customerName: state.config.customerName,
           customerEmail: state.config.customerEmail,
-          sessionId: state.sessionId,  // Fallback per utenti anonimi
-          language: state.config.language
+          sessionId: state.sessionId,
+          language: state.config.language,
+          attachments: attachmentsToSend.length > 0 ? attachmentsToSend : undefined
         })
       });
 
