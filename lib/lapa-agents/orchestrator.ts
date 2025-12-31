@@ -764,6 +764,126 @@ Rispondi SOLO con un JSON array di stringhe, esempio: ["astice", "spaghetti alla
   }
 
   /**
+   * Recupera i prodotti acquistati dal cliente che matchano una keyword
+   * Usato per prioritizzare prodotti già acquistati nella ricerca
+   */
+  private async getCustomerPurchasedProductsMatching(
+    context: CustomerContext,
+    keyword: string
+  ): Promise<Array<{
+    id: number;
+    name: string;
+    totalQty: number;
+    orderCount: number;
+    lastDate: string;
+  }>> {
+    if (!context.customerId) {
+      return [];
+    }
+
+    try {
+      const odooClient = this.odooClient;
+      if (!odooClient || !odooClient.searchRead) {
+        console.warn('⚠️ Odoo client non disponibile per storico acquisti');
+        return [];
+      }
+
+      // Trova ordini del cliente
+      const orders = await odooClient.searchRead(
+        'sale.order',
+        [
+          ['partner_id', '=', context.customerId],
+          ['state', 'in', ['sale', 'done']]
+        ],
+        ['id', 'name', 'date_order'],
+        100
+      );
+
+      if (orders.length === 0) {
+        return [];
+      }
+
+      const orderIds = orders.map((o: any) => o.id);
+      const orderMap = new Map<number, { date_order: string }>(
+        orders.map((o: any) => [o.id, { date_order: o.date_order }])
+      );
+
+      // Recupera le righe d'ordine
+      const orderLines = await odooClient.searchRead(
+        'sale.order.line',
+        [['order_id', 'in', orderIds]],
+        ['product_id', 'order_id', 'product_uom_qty'],
+        1000
+      );
+
+      // Filtra per keyword nel nome prodotto
+      const lowerKeyword = keyword.toLowerCase();
+      const matchingLines = orderLines.filter((line: any) => {
+        if (!line.product_id) return false;
+        const productName = line.product_id[1].toLowerCase();
+        return productName.includes(lowerKeyword);
+      });
+
+      if (matchingLines.length === 0) {
+        return [];
+      }
+
+      // Aggrega per prodotto
+      const productMap = new Map<number, {
+        id: number;
+        name: string;
+        totalQty: number;
+        lastDate: string;
+        orderSet: Set<number>;
+      }>();
+
+      for (const line of matchingLines) {
+        const productId = line.product_id[0];
+        const productName = line.product_id[1];
+        const order = orderMap.get(line.order_id[0]);
+
+        if (!order) continue;
+
+        if (!productMap.has(productId)) {
+          productMap.set(productId, {
+            id: productId,
+            name: productName,
+            totalQty: 0,
+            lastDate: order.date_order,
+            orderSet: new Set()
+          });
+        }
+
+        const prod = productMap.get(productId)!;
+        prod.totalQty += line.product_uom_qty;
+        prod.orderSet.add(line.order_id[0]);
+
+        if (order.date_order > prod.lastDate) {
+          prod.lastDate = order.date_order;
+        }
+      }
+
+      // Ordina per frequenza acquisti (più ordinati prima)
+      const results = Array.from(productMap.values())
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          totalQty: p.totalQty,
+          orderCount: p.orderSet.size,
+          lastDate: p.lastDate
+        }))
+        .sort((a, b) => b.orderCount - a.orderCount);
+
+      console.log(`📦 Trovati ${results.length} prodotti acquistati per "${keyword}": ${results.map(p => p.name).join(', ')}`);
+      return results;
+
+    } catch (error) {
+      console.error('⚠️ Errore recupero storico acquisti:', error);
+      return [];
+    }
+  }
+
+  /**
    * Costruisce il prompt di sistema per l'analisi dell'intento
    */
   private buildIntentAnalysisPrompt(context: CustomerContext): string {
@@ -2103,28 +2223,75 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       if (extractedKeywords.length > 0) {
         console.log(`✅ Keywords estratte: ${extractedKeywords.join(', ')}`);
 
-        // Cerca prodotti per ogni keyword
+        // Cerca prodotti per ogni keyword - PRIORITA' STORICO ACQUISTI
         const allProducts: any[] = [];
         const keywordResults: Record<string, any[]> = {};
+        const purchasedProductIds = new Set<number>(); // Per evitare duplicati
 
         for (const keyword of extractedKeywords) {
+          // 1️⃣ PRIMA: Cerca nello storico acquisti del cliente
+          const purchasedProducts = await this.getCustomerPurchasedProductsMatching(context, keyword);
+          const prioritizedProducts: any[] = [];
+
+          if (purchasedProducts.length > 0) {
+            console.log(`📦 Priorità storico: trovati ${purchasedProducts.length} prodotti già acquistati per "${keyword}"`);
+
+            // Recupera dettagli completi (prezzo, disponibilità) per prodotti già acquistati
+            for (const purchased of purchasedProducts) {
+              if (purchasedProductIds.has(purchased.id)) continue; // Skip duplicati
+
+              // Cerca dettagli prodotto nel catalogo
+              const detailResult = await this.productsAgent.searchProducts(
+                { query: purchased.name, active_only: true },
+                5
+              );
+
+              if (detailResult.success && detailResult.data) {
+                // Trova il prodotto esatto per ID o nome
+                const exactMatch = detailResult.data.find((p: any) =>
+                  p.id === purchased.id || p.name === purchased.name
+                );
+
+                if (exactMatch) {
+                  // Aggiungi info storico acquisti (cast a any per proprietà custom)
+                  const enrichedProduct = exactMatch as any;
+                  enrichedProduct._fromPurchaseHistory = true;
+                  enrichedProduct._purchaseCount = purchased.orderCount;
+                  enrichedProduct._totalPurchased = purchased.totalQty;
+                  prioritizedProducts.push(enrichedProduct);
+                  purchasedProductIds.add(enrichedProduct.id);
+                }
+              }
+            }
+          }
+
+          // 2️⃣ POI: Cerca nel catalogo generale
           const searchResult = await this.productsAgent.searchProducts(
             { query: keyword, active_only: true },
-            10
+            20
           );
 
           if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
-            // Filtra SOLO prodotti disponibili (qty > 0)
-            const availableProducts = searchResult.data.filter((p: any) => p.qty_available > 0);
+            // Filtra prodotti non già inclusi dallo storico
+            const catalogProducts = searchResult.data.filter((p: any) =>
+              !purchasedProductIds.has(p.id) && p.qty_available > 0
+            );
 
-            if (availableProducts.length > 0) {
-              keywordResults[keyword] = availableProducts;
-              allProducts.push(...availableProducts);
-            } else {
+            // Combina: prima prodotti acquistati, poi catalogo
+            const combinedProducts = [...prioritizedProducts, ...catalogProducts];
+
+            if (combinedProducts.length > 0) {
+              keywordResults[keyword] = combinedProducts;
+              allProducts.push(...combinedProducts);
+            } else if (searchResult.data.length > 0) {
               // Se nessun prodotto disponibile, mostra comunque i primi ma come "ordinabili"
               keywordResults[keyword] = searchResult.data.slice(0, 3);
               allProducts.push(...searchResult.data.slice(0, 3));
             }
+          } else if (prioritizedProducts.length > 0) {
+            // Solo prodotti dallo storico
+            keywordResults[keyword] = prioritizedProducts;
+            allProducts.push(...prioritizedProducts);
           } else {
             keywordResults[keyword] = [];
           }
@@ -2138,11 +2305,24 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         for (const [keyword, products] of Object.entries(keywordResults)) {
           if (products.length > 0) {
             foundKeywords.push(keyword);
-            // Aggiungi i primi 3 prodotti per ogni keyword
-            products.slice(0, 3).forEach((product: any) => {
+            // Aggiungi TUTTI i prodotti per ogni keyword (max 8 per non sovraccaricare)
+            products.slice(0, 8).forEach((product: any) => {
               const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
               const qty = product.qty_available || 0;
               const isAvailable = qty > 0;
+              const fromHistory = product._fromPurchaseHistory === true;
+              const purchaseCount = product._purchaseCount || 0;
+
+              // Costruisci testo disponibilità con info storico acquisti
+              let disponibilita = isAvailable
+                ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                : `⏳ Ordinabile su richiesta`;
+
+              // Aggiungi badge se già acquistato
+              if (fromHistory && purchaseCount > 0) {
+                disponibilita = `⭐ GIÀ ACQUISTATO (${purchaseCount} volte) - ${disponibilita}`;
+              }
+
               productsData.push({
                 name: product.name,
                 keyword: keyword,
@@ -2151,9 +2331,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
                 unit: product.uom_id ? product.uom_id[1] : 'pz',
                 url: generateProductUrl(templateId, product.name),
                 disponibile_subito: isAvailable,
-                disponibilita_testo: isAvailable
-                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
-                  : `⏳ Ordinabile su richiesta`
+                gia_acquistato: fromHistory,
+                volte_acquistato: purchaseCount,
+                disponibilita_testo: disponibilita
               });
             });
           } else {
@@ -4626,28 +4806,82 @@ MESSAGGIO ORIGINALE DEL CLIENTE:
 
 Rispondi in modo naturale come se stessi parlando con un amico/cliente.`;
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        temperature: 0.8,
-        system: systemPrompt,
-        messages: [
-          ...this.buildConversationHistory(context).slice(-4), // Ultimi 4 messaggi per contesto
-          { role: 'user', content: userMessage }
-        ]
-      });
+      // Retry logic - fino a 2 tentativi
+      let lastError: Error | null = null;
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type');
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(`🔄 Tentativo ${attempt}/2 per generazione risposta...`);
+
+          const response = await this.anthropic.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            temperature: 0.8,
+            system: systemPrompt,
+            messages: [
+              ...this.buildConversationHistory(context).slice(-4), // Ultimi 4 messaggi per contesto
+              { role: 'user', content: userMessage }
+            ]
+          });
+
+          const content = response.content[0];
+          if (content.type !== 'text') {
+            throw new Error('Unexpected response type');
+          }
+
+          console.log(`✅ Risposta generata con successo al tentativo ${attempt}`);
+          return content.text;
+        } catch (attemptError) {
+          lastError = attemptError as Error;
+          console.error(`⚠️ Tentativo ${attempt} fallito:`, attemptError);
+
+          // Aspetta 500ms prima del retry
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
       }
 
-      return content.text;
+      // Se tutti i tentativi falliscono, usa fallback con dati formattati
+      console.error('❌ Tutti i tentativi di generazione risposta falliti:', lastError);
+
+      // Genera una risposta strutturata dai dati invece del messaggio generico
+      if (data && data.products && data.products.length > 0) {
+        return this.formatProductsAsFallback(data.products, topic);
+      }
+
+      return `Ho trovato le informazioni che cercavi su ${topic}. Come posso aiutarti ulteriormente?`;
     } catch (error) {
-      console.error('❌ Errore generazione risposta conversazionale:', error);
-      // Fallback: ritorna un messaggio generico
+      console.error('❌ Errore critico in generateConversationalResponse:', error);
       return `Ho trovato le informazioni che cercavi su ${topic}. Come posso aiutarti ulteriormente?`;
     }
+  }
+
+  /**
+   * Formatta i prodotti come fallback quando la generazione AI fallisce
+   */
+  private formatProductsAsFallback(products: any[], topic: string): string {
+    const lines: string[] = [];
+    lines.push(`Ecco i prodotti disponibili per "${topic}":\n`);
+
+    for (const product of products) {
+      const name = product.name || 'Prodotto';
+      const price = product.price || 'N/A';
+      const disponibilita = product.disponibilita_testo || '';
+      const url = product.url || '';
+
+      lines.push(`• **${name}** - ${price}`);
+      if (disponibilita) {
+        lines.push(`  ${disponibilita}`);
+      }
+      if (url) {
+        lines.push(`  [👉 Vedi prodotto](${url})`);
+      }
+      lines.push('');
+    }
+
+    lines.push('Posso aiutarti con altro?');
+    return lines.join('\n');
   }
 
   /**
