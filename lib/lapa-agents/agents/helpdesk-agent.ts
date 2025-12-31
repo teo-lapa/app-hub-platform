@@ -264,6 +264,7 @@ export class HelpdeskAgent {
 
   /**
    * Crea ticket usando il modulo helpdesk.ticket
+   * IMPORTANTE: Il ticket viene SEMPRE assegnato al venditore del cliente (user_id del partner)
    */
   private async createHelpdeskTicket(params: CreateTicketParams): Promise<{
     success: boolean;
@@ -276,6 +277,24 @@ export class HelpdeskAgent {
     const teamId = 1;
     console.log('🎫 Using helpdesk team: Servizio clienti (ID: 1)');
 
+    // Recupera il venditore (user_id) del cliente per assegnare il ticket
+    let salespersonId: number | null = null;
+    let salespersonName: string | null = null;
+    try {
+      const customers = await this.odooRPC.callKw(
+        'res.partner',
+        'read',
+        [[params.customerId], ['user_id', 'name']]
+      );
+      if (customers && customers.length > 0 && customers[0].user_id) {
+        salespersonId = customers[0].user_id[0];
+        salespersonName = customers[0].user_id[1];
+        console.log(`🎫 Ticket will be assigned to salesperson: ${salespersonName} (ID: ${salespersonId})`);
+      }
+    } catch (e) {
+      console.warn('🎫 Could not retrieve salesperson for customer:', e);
+    }
+
     // Prepara i valori per il ticket
     const ticketValues: Record<string, any> = {
       name: params.subject,
@@ -284,6 +303,11 @@ export class HelpdeskAgent {
       priority: params.priority || '1',
       team_id: teamId,
     };
+
+    // Assegna al venditore del cliente se disponibile
+    if (salespersonId) {
+      ticketValues.user_id = salespersonId;
+    }
 
     console.log('🎫 Creating ticket with values:', JSON.stringify(ticketValues));
 

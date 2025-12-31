@@ -1039,18 +1039,36 @@ IMPORTANTE:
         console.log('✅ Condizioni soddisfatte - creazione ticket in corso...');
         console.log('📝 Cliente B2B richiede assistenza - recupero dati completi e creazione ticket');
 
-        // 1. Recupera TUTTI i dati del cliente da Odoo
+        // 1. Recupera TUTTI i dati del cliente da Odoo (incluso venditore)
         let customerData: any = null;
+        let salespersonName: string | null = null;
+        let salespersonPhone: string | null = null;
         try {
           const odooClient = await getOdooClient();
           const partners = await odooClient.searchRead(
             'res.partner',
             [['id', '=', context.customerId]],
-            ['name', 'email', 'phone', 'mobile', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 'ref', 'company_id', 'parent_id', 'category_id', 'property_payment_term_id', 'sale_order_count', 'total_invoiced', 'comment'],
+            ['name', 'email', 'phone', 'mobile', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 'ref', 'company_id', 'parent_id', 'category_id', 'property_payment_term_id', 'sale_order_count', 'total_invoiced', 'comment', 'user_id'],
             1
           );
           if (partners && partners.length > 0) {
             customerData = partners[0];
+            // Recupera nome e telefono del venditore
+            if (customerData.user_id) {
+              salespersonName = customerData.user_id[1];
+              const salespersonId = customerData.user_id[0];
+              try {
+                const users = await odooClient.read('res.users', [salespersonId], ['partner_id']);
+                if (users && users.length > 0 && users[0].partner_id) {
+                  const salesPartners = await odooClient.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+                  if (salesPartners && salesPartners.length > 0) {
+                    salespersonPhone = salesPartners[0].mobile || salesPartners[0].phone;
+                  }
+                }
+              } catch (e) {
+                console.warn('⚠️ Impossibile recuperare telefono venditore:', e);
+              }
+            }
           }
         } catch (odooError) {
           console.warn('⚠️ Impossibile recuperare dati cliente:', odooError);
@@ -1131,17 +1149,25 @@ ${conversationSummary}
         }
 
         if (ticketResult.success) {
+          // Messaggio personalizzato con nome venditore
+          const salespersonInfo = salespersonName
+            ? `${salespersonName}, il tuo referente commerciale,`
+            : 'Il nostro team';
+          const salespersonContact = salespersonPhone
+            ? `\n• 📞 ${salespersonName}: ${salespersonPhone}`
+            : '';
+
           return {
             success: true,
             message: `✅ Ho creato il ticket **#${ticketResult.ticketId}** con tutti i tuoi dati.\n\n` +
-                     `Il nostro team ti contatterà presto a:\n` +
+                     `${salespersonInfo} ti contatterà presto a:\n` +
                      `• 📧 ${email}\n` +
-                     `• 📞 ${telefono}\n\n` +
+                     `• 📞 ${telefono}${salespersonContact}\n\n` +
                      `Per urgenze: lapa@lapa.ch | +41 76 361 70 21`,
             agentId: 'helpdesk',
             confidence: 1.0,
             requiresHumanEscalation: true,
-            data: { ticketId: ticketResult.ticketId, customerId: context.customerId, customerName: nome, customerEmail: email },
+            data: { ticketId: ticketResult.ticketId, customerId: context.customerId, customerName: nome, customerEmail: email, salesperson: salespersonName },
             suggestedActions: ['Ho altre domande', 'Torna al menu principale']
           };
         } else {
@@ -2348,24 +2374,141 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
   /**
    * Handler per l'agente Complaint
+   * LOGICA: Prima cerca di risolvere, poi escalation al venditore se necessario
    */
   private async complaintAgentHandler(
     context: CustomerContext,
     intent: Intent
   ): Promise<AgentResponse> {
-    // I reclami richiedono sempre escalation a umano
+    const lastUserMsg = context.conversationHistory
+      .filter(m => m.role === 'user')
+      .pop()?.content || '';
+
+    // Verifica se il cliente vuole ESPLICITAMENTE parlare con qualcuno
+    const wantsHuman = /\b(parlare con|operatore|umano|persona|chiama|ticket|assistenza)\b/i.test(lastUserMsg);
+
+    // Se il cliente è identificato e NON chiede esplicitamente un umano,
+    // proviamo prima a risolvere mostrando le consegne recenti
+    if (context.customerId && !wantsHuman) {
+      // Problema con prodotto/consegna? Mostra le consegne recenti
+      const isProdottoIssue = /\b(prodotto|arrivato|consegna|manca|mancante|non.*ricevuto|ordine)\b/i.test(lastUserMsg);
+
+      if (isProdottoIssue) {
+        // Recupera consegne recenti per aiutare
+        const recentResult = await this.shippingAgent.getRecentDeliveries(context.customerId, 14);
+
+        if (recentResult.success && recentResult.data && recentResult.data.deliveries?.length > 0) {
+          const deliveries = recentResult.data.deliveries;
+
+          // Genera risposta conversazionale
+          const conversationalMessage = await this.generateConversationalResponse(
+            context,
+            'problema con prodotto/consegna',
+            {
+              issue_type: 'prodotto non arrivato',
+              deliveries: deliveries,
+              total: deliveries.length,
+              customer_name: context.customerName
+            },
+            lastUserMsg
+          );
+
+          return {
+            success: true,
+            message: conversationalMessage,
+            data: { deliveries, attempted_resolution: true },
+            agentId: 'complaint',
+            confidence: 0.85,
+            suggestedActions: [
+              'Quale ordine ha il problema?',
+              'Voglio parlare con qualcuno',
+              'Apri un ticket'
+            ]
+          };
+        }
+      }
+    }
+
+    // Se il cliente vuole parlare con qualcuno O non siamo riusciti a risolvere
+    // Recupera il venditore del cliente e crea ticket
+    if (context.customerId) {
+      try {
+        const odoo = await getOdooClient();
+
+        // Recupera il venditore assegnato al cliente
+        const customers = await odoo.read(
+          'res.partner',
+          [context.customerId],
+          ['user_id', 'name']
+        );
+
+        if (customers && customers.length > 0 && customers[0].user_id) {
+          const salespersonId = customers[0].user_id[0];
+          const salespersonName = customers[0].user_id[1];
+
+          // Recupera telefono del venditore
+          let salespersonPhone = null;
+          try {
+            const users = await odoo.read('res.users', [salespersonId], ['partner_id']);
+            if (users && users.length > 0 && users[0].partner_id) {
+              const partners = await odoo.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+              if (partners && partners.length > 0) {
+                salespersonPhone = partners[0].mobile || partners[0].phone;
+              }
+            }
+          } catch (e) {
+            console.warn('[Complaint] Errore recupero telefono venditore:', e);
+          }
+
+          // Crea ticket assegnato al venditore
+          try {
+            const ticketData = {
+              name: `[Chat AI] ${context.customerName || 'Cliente'} - Problema prodotto`,
+              partner_id: context.customerId,
+              user_id: salespersonId,
+              description: `Problema segnalato via chat:\n${lastUserMsg}\n\nConversazione:\n${context.conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+              priority: '2'
+            };
+
+            // Cerca il modello helpdesk.ticket
+            const ticketId = await odoo.create('helpdesk.ticket', [ticketData]);
+            console.log(`[Complaint] Ticket #${ticketId} creato e assegnato a ${salespersonName}`);
+          } catch (ticketError) {
+            console.warn('[Complaint] Non è stato possibile creare il ticket:', ticketError);
+          }
+
+          // Risposta personalizzata con nome venditore
+          const phoneInfo = salespersonPhone ? ` al ${salespersonPhone}` : '';
+
+          return {
+            success: true,
+            message: `Mi dispiace per il problema. Ho inoltrato la tua segnalazione a ${salespersonName}, il tuo referente commerciale. Ti contatterà a breve${phoneInfo} per risolvere la situazione.`,
+            requiresHumanEscalation: true,
+            agentId: 'complaint',
+            confidence: 1.0,
+            data: { salesperson: salespersonName, salesperson_phone: salespersonPhone },
+            suggestedActions: [
+              `Chiama ${salespersonName}${phoneInfo}`,
+              'Scrivi a lapa@lapa.ch'
+            ]
+          };
+        }
+      } catch (error) {
+        console.error('[Complaint] Errore recupero venditore:', error);
+      }
+    }
+
+    // Fallback se non c'è cliente o venditore
     return {
       success: true,
       message: 'Mi dispiace per il problema riscontrato. ' +
-               'La tua segnalazione è importante per noi. ' +
-               'Un nostro responsabile del servizio clienti ti contatterà al più presto per risolvere la situazione.',
+               'Puoi contattarci direttamente a lapa@lapa.ch o chiamare il nostro servizio clienti.',
       requiresHumanEscalation: true,
       agentId: 'complaint',
       confidence: 1.0,
       suggestedActions: [
-        'Lascia i tuoi contatti',
-        'Allega foto del problema',
-        'Scrivici a lapa@lapa.ch'
+        'Scrivi a lapa@lapa.ch',
+        'Chiama +41 91 123 45 67'
       ]
     };
   }
