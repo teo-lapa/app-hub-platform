@@ -323,17 +323,24 @@ export class LapaAiOrchestrator {
   // ============================================================================
 
   /**
-   * Inizializza il servizio di memoria persistente (Vercel KV)
+   * Inizializza il servizio di memoria persistente (Vercel KV / Upstash Redis)
    */
   private initializeMemory(): void {
     try {
-      // Check if Vercel KV is configured (KV_REST_API_URL is set automatically by Vercel)
-      if (process.env.KV_REST_API_URL || process.env.KV_URL) {
+      // Check if any Redis/KV is configured:
+      // - Vercel KV: KV_REST_API_URL, KV_URL
+      // - Upstash: UPSTASH_REDIS_REST_URL, KV_REST_API_URL
+      const hasKV = process.env.KV_REST_API_URL ||
+                    process.env.KV_URL ||
+                    process.env.UPSTASH_REDIS_REST_URL ||
+                    process.env.REDIS_URL;
+
+      if (hasKV) {
         this.memoryService = getMemoryService();
         this.memoryEnabled = true;
-        console.log('🧠 Memoria persistente ATTIVATA (Vercel KV)');
+        console.log('🧠 Memoria persistente ATTIVATA (Redis/KV)');
       } else {
-        console.log('⚠️ Memoria persistente DISATTIVATA (Vercel KV non configurato)');
+        console.log('⚠️ Memoria persistente DISATTIVATA (Redis/KV non configurato)');
         this.memoryEnabled = false;
       }
     } catch (error) {
