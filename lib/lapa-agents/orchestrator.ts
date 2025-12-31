@@ -12,6 +12,7 @@ import { ProductsAgent } from './agents/products-agent';
 import { ShippingAgent } from './agents/shipping-agent';
 import { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 import { getOdooClient } from '@/lib/odoo-client';
+import { getMemoryService, ConversationMemoryService, CustomerMemory } from './memory/conversation-memory';
 
 // URL base per il sito e-commerce
 const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
@@ -288,6 +289,10 @@ export class LapaAiOrchestrator {
   private productsAgent: ProductsAgent;
   private shippingAgent: ShippingAgent;
 
+  // Memoria persistente
+  private memoryService: ConversationMemoryService | null = null;
+  private memoryEnabled: boolean = false;
+
   constructor(odooClient: OdooClientInterface) {
     // Initialize Anthropic SDK
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -306,8 +311,90 @@ export class LapaAiOrchestrator {
     this.productsAgent = new ProductsAgent('it');
     this.shippingAgent = ShippingAgent.getInstance();
 
+    // Inizializza memoria persistente (se configurata)
+    this.initializeMemory();
+
     // Register default agents
     this.registerDefaultAgents();
+  }
+
+  // ============================================================================
+  // MEMORY MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Inizializza il servizio di memoria persistente
+   */
+  private initializeMemory(): void {
+    try {
+      // Check if Supabase is configured
+      if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+        this.memoryService = getMemoryService();
+        this.memoryEnabled = true;
+        console.log('🧠 Memoria persistente ATTIVATA');
+      } else {
+        console.log('⚠️ Memoria persistente DISATTIVATA (Supabase non configurato)');
+        this.memoryEnabled = false;
+      }
+    } catch (error) {
+      console.error('❌ Errore inizializzazione memoria:', error);
+      this.memoryEnabled = false;
+    }
+  }
+
+  /**
+   * Carica la memoria del cliente e arricchisce il contesto
+   */
+  private async loadCustomerMemory(context: CustomerContext): Promise<string> {
+    if (!this.memoryEnabled || !this.memoryService || !context.customerId) {
+      return '';
+    }
+
+    try {
+      const memory = await this.memoryService.loadMemory(context.customerId);
+      if (memory) {
+        return this.memoryService.getContextForAI(memory);
+      }
+    } catch (error) {
+      console.error('❌ Errore caricamento memoria:', error);
+    }
+    return '';
+  }
+
+  /**
+   * Salva un messaggio nella memoria persistente
+   */
+  private async saveToMemory(
+    context: CustomerContext,
+    role: 'user' | 'assistant',
+    content: string,
+    metadata?: {
+      agentId?: string;
+      intent?: string;
+      products_shown?: string[];
+      recipe_detected?: string;
+    }
+  ): Promise<void> {
+    if (!this.memoryEnabled || !this.memoryService || !context.customerId) {
+      return;
+    }
+
+    try {
+      await this.memoryService.addMessage(
+        context.customerId,
+        context.customerName || 'Cliente',
+        context.customerType,
+        context.sessionId,
+        {
+          role,
+          content,
+          timestamp: new Date().toISOString(),
+          metadata
+        }
+      );
+    } catch (error) {
+      console.error('❌ Errore salvataggio memoria:', error);
+    }
   }
 
   // ============================================================================
@@ -600,6 +687,9 @@ IMPORTANTE:
         timestamp: new Date()
       });
 
+      // 🧠 Salva messaggio utente nella memoria persistente
+      await this.saveToMemory(context, 'user', message);
+
       // 1. Analizza l'intento
       const intent = await this.analyzeIntent(message, context);
       console.log('📊 Intento identificato:', intent);
@@ -630,6 +720,13 @@ IMPORTANTE:
         content: response.message,
         timestamp: new Date(),
         agentId: response.agentId
+      });
+
+      // 🧠 Salva risposta AI nella memoria persistente
+      await this.saveToMemory(context, 'assistant', response.message, {
+        agentId: response.agentId,
+        intent: intent.type,
+        products_shown: response.data?.map?.((p: any) => p.name)?.slice?.(0, 5)
       });
 
       // 6. Aggiorna il context store
@@ -3237,12 +3334,15 @@ Rispondi in modo naturale e conversazionale.`;
     userMessage: string
   ): Promise<string> {
     try {
+      // 🧠 Carica memoria persistente del cliente
+      const customerMemory = await this.loadCustomerMemory(context);
+
       const systemPrompt = `Sei l'assistente AI di LAPA, distributore di prodotti alimentari italiani in Svizzera.
 Hai appena recuperato dei dati per il cliente e devi comunicarglieli in modo NATURALE e CONVERSAZIONALE.
 
 CLIENTE: ${context.customerName || 'Cliente'}
 TIPO: ${context.customerType === 'b2b' ? 'B2B (ristorante/negozio)' : 'B2C (consumatore)'}
-
+${customerMemory ? `\n🧠 MEMORIA CLIENTE (conversazioni precedenti):\n${customerMemory}\n` : ''}
 ARGOMENTO: ${topic}
 
 DATI RECUPERATI:
@@ -3265,6 +3365,7 @@ REGOLE IMPORTANTI:
 14. 🔗 Per i PRODOTTI: usa SEMPRE link markdown cliccabili! Formato: [👉 Vedi NOME_PRODOTTO](URL_PRODOTTO) - il cliente deve poter cliccare!
 15. 📦 DISPONIBILITÀ: usa sempre il campo "disponibilita_testo" per indicare se è disponibile subito (consegna domani) o ordinabile (2-7 giorni)
 16. 🍝 RICETTE: Se l'argomento è "ricetta ingredienti", mostra TUTTI i prodotti raggruppati per ingrediente. Esempio: "Per la **Amatriciana** ti servono: **Guanciale**: [prodotto1], [prodotto2]... **Pecorino**: [prodotto1]..." etc. Mostra TUTTO quello che abbiamo!
+17. 🧠 MEMORIA: Se c'è la sezione "MEMORIA CLIENTE", USALA! Ricorda quello che il cliente ha cercato/comprato prima. Se ha già visto un prodotto prima, menzionalo ("Come ti avevo mostrato prima...", "Hai già visto il nostro guanciale..."). Questo rende la conversazione FLUIDA come con un umano che si ricorda di te!
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
