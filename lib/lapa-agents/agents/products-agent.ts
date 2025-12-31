@@ -229,6 +229,23 @@ export class ProductsAgent {
         domain.push(['sale_ok', '=', true]);  // Solo prodotti vendibili!
       }
 
+      // Mappa sinonimi/alias per espandere ricerche comuni
+      // Se l'utente cerca "spaghetti" ma in Odoo sono catalogati come "SPAGHETTO", trova comunque
+      const synonymsMap: Record<string, string[]> = {
+        'spaghetti': ['spaghetto', 'spaghettini', 'spaghettoni', 'spaghet'],
+        'spaghetto': ['spaghetti', 'spaghettini', 'spaghettoni'],
+        'pasta': ['penne', 'rigatoni', 'fusilli', 'linguine', 'tagliatelle', 'paccheri'],
+        'prosciutto': ['prosciut'],
+        'mozzarella': ['mozzarel', 'fior di latte'],
+        'parmigiano': ['parmigian', 'grana'],
+        'pecorino': ['pecorin'],
+        'guanciale': ['guancial', 'pancetta'],
+        'pancetta': ['pancett', 'guanciale'],
+        'pomodoro': ['pomodor', 'pelati', 'passata'],
+        'olio': ['extravergine', 'evo'],
+        'aceto': ['balsamico'],
+      };
+
       // Ricerca testuale intelligente
       // Se la query ha più parole, cerca prodotti che contengono TUTTE le parole SIGNIFICATIVE
       // Es: "mozzarella di bufala" cerca prodotti con "mozzarella" E "bufala" nel nome
@@ -260,12 +277,30 @@ export class ProductsAgent {
           }
           console.log(`🔍 Ricerca multi-parola (stop words filtrate): ${queryWords.join(' + ')}`);
         } else if (queryWords.length === 1) {
-          // Ricerca singola parola: cerca in tutti i campi
-          domain.push('|', '|', '|');
-          domain.push(['name', 'ilike', queryWords[0]]);
-          domain.push(['default_code', 'ilike', queryWords[0]]);
-          domain.push(['barcode', 'ilike', queryWords[0]]);
-          domain.push(['description_sale', 'ilike', queryWords[0]]);
+          // Ricerca singola parola: espandi con sinonimi se disponibili
+          const searchWord = queryWords[0].toLowerCase();
+          const synonyms = synonymsMap[searchWord] || [];
+          const allTerms = [searchWord, ...synonyms];
+
+          // Costruisci OR per tutti i termini (inclusi sinonimi)
+          // Es: spaghetti -> cerca "spaghetti" OR "spaghetto" OR "spaghettini" OR "spaghettoni"
+          if (allTerms.length > 1) {
+            // Aggiungi N-1 operatori '|' per l'OR
+            for (let i = 0; i < allTerms.length - 1; i++) {
+              domain.push('|');
+            }
+            for (const term of allTerms) {
+              domain.push(['name', 'ilike', term]);
+            }
+            console.log(`🔍 Ricerca con sinonimi: ${allTerms.join(' | ')}`);
+          } else {
+            // Nessun sinonimo - cerca in tutti i campi
+            domain.push('|', '|', '|');
+            domain.push(['name', 'ilike', searchWord]);
+            domain.push(['default_code', 'ilike', searchWord]);
+            domain.push(['barcode', 'ilike', searchWord]);
+            domain.push(['description_sale', 'ilike', searchWord]);
+          }
         } else {
           // Fallback: ricerca con query originale
           domain.push('|', '|', '|');
