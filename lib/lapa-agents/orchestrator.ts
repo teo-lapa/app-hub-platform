@@ -396,6 +396,33 @@ function generateInvoiceUrl(invoiceId: number): string {
   return `${LAPA_SHOP_URL}/my/invoices/${invoiceId}`;
 }
 
+/**
+ * Formatta una data ISO (YYYY-MM-DD) in formato italiano leggibile (es. "31 dic 2025")
+ * IMPORTANTE: Questa funzione pre-formatta le date per evitare errori di interpretazione da parte di Claude
+ */
+function formatDateIT(isoDate: string | false | null | undefined): string {
+  if (!isoDate) return 'N/A';
+
+  try {
+    // Parse della data ISO (es. "2025-12-31")
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    const day = parseInt(parts[2], 10);
+
+    // Mesi in italiano abbreviati
+    const mesiIT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+
+    // Formato: "31 dic 2025"
+    return `${day} ${mesiIT[month]} ${year}`;
+  } catch (error) {
+    console.error('Errore formattazione data:', error);
+    return isoDate;
+  }
+}
+
 // Interface minima per OdooClient - compatibile con entrambe le implementazioni
 export interface OdooClientInterface {
   searchRead?: (model: string, domain: any[], fields: string[], limit?: number, offset?: number) => Promise<any[]>;
@@ -3609,8 +3636,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
               success: true,
               message: `Fattura ${inv.name}:\n` +
                        `Cliente: ${inv.partner_name}\n` +
-                       `Data: ${inv.invoice_date || 'N/A'}\n` +
-                       `Scadenza: ${inv.invoice_date_due || 'N/A'}\n` +
+                       `Data: ${formatDateIT(inv.invoice_date)}\n` +
+                       `Scadenza: ${formatDateIT(inv.invoice_date_due)}\n` +
                        `Stato: ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
                        `Totale: ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n` +
                        `Residuo: ${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}\n` +
@@ -3657,8 +3684,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         // Prepara dati per la risposta conversazionale
         const invoicesData = invoicesResult.data.map((inv: any) => ({
           name: inv.name,
-          date: inv.invoice_date,
-          due_date: inv.invoice_date_due,
+          date: formatDateIT(inv.invoice_date),           // Pre-formattato per evitare errori Claude
+          due_date: formatDateIT(inv.invoice_date_due),   // Pre-formattato per evitare errori Claude
           state: paymentStateLabels[inv.payment_state] || inv.payment_state,
           total: `${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}`,
           residual: `${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}`,
@@ -4291,7 +4318,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const invoicesList = invoicesResult.data
         .map((inv: any, index: number) =>
           `${index + 1}. **${inv.name}** - ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
-          `   📅 Scadenza: ${inv.invoice_date_due || 'N/A'} | 💰 ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)} | ` +
+          `   📅 Scadenza: ${formatDateIT(inv.invoice_date_due)} | 💰 ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)} | ` +
           `Residuo: ${inv.amount_residual.toFixed(2)}`
         )
         .join('\n');
@@ -4432,20 +4459,22 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         paid: 'Pagata', partial: 'Parzialmente pagata'
       };
 
-      // Formatta le righe
+      // Formatta le righe - usa solo il nome prodotto, senza descrizione lunga
       const lines = inv.lines
         .slice(0, 10)
-        .map((line: any, idx: number) =>
-          `   ${idx + 1}. ${line.name || line.product_id?.[1] || 'Prodotto'}\n      ${line.quantity} × ${line.price_unit.toFixed(2)} = ${line.price_subtotal.toFixed(2)} CHF`
-        )
+        .map((line: any, idx: number) => {
+          // Usa il nome prodotto dal campo product_id, oppure solo la prima riga di line.name
+          const productName = line.product_id?.[1] || line.name?.split('\n')[0] || 'Prodotto';
+          return `   ${idx + 1}. ${productName}\n      ${line.quantity} × ${line.price_unit.toFixed(2)} = ${line.price_subtotal.toFixed(2)} CHF`;
+        })
         .join('\n');
 
       const invoiceUrl = generateInvoiceUrl(inv.id);
       const message = `📄 **Dettagli Fattura ${inv.name}**\n\n` +
         `🔗 [Vedi/Scarica fattura sul portale](${invoiceUrl})\n\n` +
         `👤 Cliente: ${inv.partner_name}\n` +
-        `📅 Data: ${inv.invoice_date || 'N/A'}\n` +
-        `⏰ Scadenza: ${inv.invoice_date_due || 'N/A'}\n` +
+        `📅 Data: ${formatDateIT(inv.invoice_date)}\n` +
+        `⏰ Scadenza: ${formatDateIT(inv.invoice_date_due)}\n` +
         `📊 Stato: ${paymentStateLabels[inv.payment_state] || inv.payment_state}\n` +
         `💰 Totale: ${inv.currency_id[1]} ${inv.amount_total.toFixed(2)}\n` +
         `💳 Residuo: ${inv.currency_id[1]} ${inv.amount_residual.toFixed(2)}\n\n` +
