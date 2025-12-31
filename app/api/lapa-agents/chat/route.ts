@@ -11,6 +11,7 @@ import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
 import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
 import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
+import { enrichMessageWithAttachments, type Attachment } from '@/lib/lapa-agents/attachment-analyzer';
 
 // CORS headers per permettere chiamate da lapa.ch
 const corsHeaders = {
@@ -135,6 +136,26 @@ export async function POST(request: NextRequest) {
           console.warn('⚠️ Errore caricamento conversazione da KV:', loadError);
         }
 
+        // ANALISI ALLEGATI CON GEMINI
+        // Se ci sono allegati, analizzali con Gemini Vision e arricchisci il messaggio
+        let enrichedMessage = message;
+        let analyzedAttachments: Attachment[] | undefined = attachments as Attachment[] | undefined;
+
+        if (attachments && attachments.length > 0) {
+          console.log('🔍 Analisi allegati con Gemini...');
+          try {
+            const enrichResult = await enrichMessageWithAttachments(message, attachments as Attachment[]);
+            enrichedMessage = enrichResult.enrichedMessage;
+            if (enrichResult.analyzedAttachments) {
+              analyzedAttachments = enrichResult.analyzedAttachments;
+            }
+            console.log(`✅ Allegati analizzati. Messaggio arricchito (+${enrichedMessage.length - message.length} chars)`);
+          } catch (analyzeError) {
+            console.warn('⚠️ Errore analisi allegati, continuo senza:', analyzeError);
+            // Continua senza analisi allegati
+          }
+        }
+
         console.log('🔄 Inizializzazione Odoo client...');
         const odooClient = await getOdooClient();
         console.log('✅ Odoo client ottenuto');
@@ -144,7 +165,8 @@ export async function POST(request: NextRequest) {
         console.log('✅ Orchestratore ottenuto');
 
         console.log('🔄 Processamento messaggio...');
-        const response = await orchestrator.processMessage(message, conversationId, {
+        // Usa il messaggio arricchito con l'analisi degli allegati
+        const response = await orchestrator.processMessage(enrichedMessage, conversationId, {
           customerType,
           customerId,
           customerName,
@@ -152,7 +174,8 @@ export async function POST(request: NextRequest) {
           conversationHistory, // Passa la cronologia caricata da KV
           metadata: {
             language,
-            attachments: attachments // Pass attachments to orchestrator for ticket creation
+            attachments: analyzedAttachments, // Passa allegati (analizzati se possibile)
+            originalMessage: message // Salva anche il messaggio originale
           }
         });
         console.log('✅ Risposta ottenuta');
