@@ -124,6 +124,139 @@ const RECIPE_MAP: Record<string, RecipeInfo> = {
     name: 'Bruschetta',
     ingredients: ['pomodoro', 'basilico', 'aglio', 'olio extravergine', 'pane'],
     description: 'Bruschetta al pomodoro fresco'
+  },
+  // ======== PIATTI DI PESCE E FRUTTI DI MARE ========
+  'astice': {
+    name: 'Pasta all\'Astice',
+    ingredients: ['astice', 'spaghetti alla chitarra', 'pomodoro', 'aglio', 'prezzemolo', 'vino bianco'],
+    description: 'Spaghetti alla chitarra con astice fresco'
+  },
+  'aragosta': {
+    name: 'Linguine all\'Aragosta',
+    ingredients: ['aragosta', 'linguine', 'pomodorini', 'aglio', 'prezzemolo'],
+    description: 'Linguine all\'aragosta catalana'
+  },
+  'scoglio': {
+    name: 'Spaghetti allo Scoglio',
+    ingredients: ['cozze', 'vongole', 'gamberi', 'calamari', 'spaghetti', 'pomodoro'],
+    description: 'Spaghetti ai frutti di mare misti'
+  },
+  'frutti di mare': {
+    name: 'Pasta ai Frutti di Mare',
+    ingredients: ['cozze', 'vongole', 'gamberi', 'calamari', 'spaghetti'],
+    description: 'Pasta con mix di frutti di mare'
+  },
+  'vongole': {
+    name: 'Spaghetti alle Vongole',
+    ingredients: ['vongole', 'spaghetti', 'aglio', 'prezzemolo', 'vino bianco'],
+    description: 'Spaghetti alle vongole veraci'
+  },
+  'gamberi': {
+    name: 'Linguine ai Gamberi',
+    ingredients: ['gamberi', 'linguine', 'aglio', 'pomodorini', 'prezzemolo'],
+    description: 'Linguine ai gamberi freschi'
+  },
+  'scampi': {
+    name: 'Risotto agli Scampi',
+    ingredients: ['scampi', 'riso', 'prosecco', 'scalogno', 'brodo pesce'],
+    description: 'Risotto cremoso agli scampi'
+  },
+  'cozze': {
+    name: 'Cozze alla Marinara',
+    ingredients: ['cozze', 'pomodoro', 'aglio', 'prezzemolo', 'vino bianco'],
+    description: 'Cozze alla marinara con crostini'
+  },
+  'salmone': {
+    name: 'Pasta al Salmone',
+    ingredients: ['salmone', 'penne', 'panna', 'aneto', 'limone'],
+    description: 'Penne al salmone affumicato'
+  },
+  'tonno': {
+    name: 'Pasta al Tonno',
+    ingredients: ['tonno', 'spaghetti', 'pomodoro', 'olive', 'capperi'],
+    description: 'Spaghetti al tonno fresco'
+  },
+  'polpo': {
+    name: 'Insalata di Polpo',
+    ingredients: ['polpo', 'patate', 'sedano', 'limone', 'prezzemolo'],
+    description: 'Insalata tiepida di polpo e patate'
+  },
+  'calamari': {
+    name: 'Calamari Ripieni',
+    ingredients: ['calamari', 'pangrattato', 'prezzemolo', 'aglio', 'pomodoro'],
+    description: 'Calamari ripieni al forno'
+  },
+  'baccalà': {
+    name: 'Baccalà alla Vicentina',
+    ingredients: ['baccalà', 'latte', 'cipolla', 'parmigiano', 'polenta'],
+    description: 'Baccalà mantecato con polenta'
+  },
+  'orata': {
+    name: 'Orata al Forno',
+    ingredients: ['orata', 'patate', 'pomodorini', 'olive', 'capperi'],
+    description: 'Orata al forno con patate'
+  },
+  'branzino': {
+    name: 'Branzino al Sale',
+    ingredients: ['branzino', 'sale grosso', 'limone', 'erbe aromatiche'],
+    description: 'Branzino in crosta di sale'
+  },
+  // ======== PIATTI DI CARNE ========
+  'ossobuco': {
+    name: 'Ossobuco alla Milanese',
+    ingredients: ['ossobuco', 'risotto', 'zafferano', 'gremolada'],
+    description: 'Ossobuco con risotto giallo'
+  },
+  'saltimbocca': {
+    name: 'Saltimbocca alla Romana',
+    ingredients: ['vitello', 'prosciutto crudo', 'salvia', 'vino bianco'],
+    description: 'Scaloppine di vitello con prosciutto e salvia'
+  },
+  'bistecca fiorentina': {
+    name: 'Bistecca alla Fiorentina',
+    ingredients: ['bistecca', 'olio extravergine', 'rosmarino', 'sale grosso'],
+    description: 'Bistecca di manzo alla brace'
+  },
+  'cotoletta': {
+    name: 'Cotoletta alla Milanese',
+    ingredients: ['vitello', 'uova', 'pangrattato', 'burro'],
+    description: 'Cotoletta impanata e fritta'
+  },
+  'porchetta': {
+    name: 'Porchetta',
+    ingredients: ['maiale', 'finocchio', 'aglio', 'rosmarino'],
+    description: 'Porchetta di Ariccia'
+  },
+  'brasato': {
+    name: 'Brasato al Barolo',
+    ingredients: ['manzo', 'barolo', 'carote', 'sedano', 'cipolla'],
+    description: 'Brasato di manzo al vino rosso'
+  },
+  // ======== PRIMI PIATTI AGGIUNTIVI ========
+  'gnocchi': {
+    name: 'Gnocchi al Pomodoro',
+    ingredients: ['gnocchi', 'pomodoro', 'basilico', 'parmigiano'],
+    description: 'Gnocchi di patate al sugo'
+  },
+  'ravioli': {
+    name: 'Ravioli Ricotta e Spinaci',
+    ingredients: ['ravioli', 'ricotta', 'spinaci', 'burro', 'salvia'],
+    description: 'Ravioli ripieni burro e salvia'
+  },
+  'tortellini': {
+    name: 'Tortellini in Brodo',
+    ingredients: ['tortellini', 'brodo', 'parmigiano'],
+    description: 'Tortellini bolognesi in brodo di cappone'
+  },
+  'tagliatelle': {
+    name: 'Tagliatelle ai Funghi',
+    ingredients: ['tagliatelle', 'funghi porcini', 'panna', 'parmigiano'],
+    description: 'Tagliatelle ai porcini freschi'
+  },
+  'risotto funghi': {
+    name: 'Risotto ai Funghi',
+    ingredients: ['riso', 'funghi porcini', 'parmigiano', 'burro', 'brodo'],
+    description: 'Risotto cremoso ai porcini'
   }
 };
 
@@ -141,6 +274,92 @@ function detectRecipe(message: string): RecipeInfo | null {
   }
 
   return null;
+}
+
+/**
+ * FOOD KEYWORDS - Lista di termini alimentari comuni per rilevamento veloce
+ * Usato per determinare se un messaggio riguarda cibo/prodotti senza chiamare Claude
+ */
+const FOOD_KEYWORDS = new Set([
+  // Pasta e carboidrati
+  'pasta', 'spaghetti', 'penne', 'rigatoni', 'tagliatelle', 'linguine', 'fusilli',
+  'lasagna', 'gnocchi', 'riso', 'risotto', 'ravioli', 'tortellini', 'fettuccine',
+  'paccheri', 'orecchiette', 'pappardelle', 'chitarra',
+  // Pesce e frutti di mare
+  'pesce', 'astice', 'aragosta', 'gamberi', 'scampi', 'vongole', 'cozze',
+  'calamari', 'polpo', 'salmone', 'tonno', 'baccalà', 'orata', 'branzino',
+  'merluzzo', 'sogliola', 'spigola', 'seppia', 'frutti di mare',
+  // Carne
+  'carne', 'manzo', 'vitello', 'maiale', 'pollo', 'tacchino', 'agnello',
+  'prosciutto', 'guanciale', 'pancetta', 'salame', 'bresaola', 'speck',
+  'bistecca', 'cotoletta', 'ossobuco', 'porchetta',
+  // Formaggi
+  'formaggio', 'mozzarella', 'parmigiano', 'pecorino', 'gorgonzola', 'ricotta',
+  'mascarpone', 'burrata', 'grana', 'taleggio', 'fontina', 'provolone',
+  // Verdure
+  'pomodoro', 'pomodorini', 'basilico', 'aglio', 'cipolla', 'melanzana',
+  'zucchine', 'peperoni', 'funghi', 'porcini', 'spinaci', 'carciofi',
+  'patate', 'carote', 'sedano', 'rucola', 'insalata',
+  // Altri ingredienti
+  'olio', 'extravergine', 'aceto', 'balsamico', 'burro', 'panna',
+  'uova', 'farina', 'lievito', 'olive', 'capperi', 'peperoncino',
+  // Termini generici
+  'cucinare', 'preparare', 'ricetta', 'piatto', 'cena', 'pranzo',
+  'ingredienti', 'fare', 'voglio fare', 'mi serve', 'ho bisogno'
+]);
+
+/**
+ * Rileva se un messaggio riguarda cibo/prodotti alimentari
+ * Controllo veloce senza chiamare Claude
+ */
+function isFoodRelatedMessage(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  const keywordsArray = Array.from(FOOD_KEYWORDS);
+  for (let i = 0; i < keywordsArray.length; i++) {
+    if (lowerMessage.includes(keywordsArray[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Estrae keywords di prodotti/ingredienti da un messaggio usando pattern matching
+ * Fallback veloce quando Claude non è disponibile o per ottimizzazione
+ */
+function extractFoodKeywordsLocal(message: string): string[] {
+  const lowerMessage = message.toLowerCase();
+  const foundKeywords: string[] = [];
+
+  // Pattern per estrarre termini alimentari specifici
+  const foodPatterns = [
+    // Frutti di mare specifici
+    /\b(astice|aragosta|gamberi?|scampi?|vongole?|cozze?|calamari?|polpo|salmone|tonno|baccalà|orata|branzino|merluzzo)\b/gi,
+    // Tipi di pasta
+    /\b(spaghetti?|penne|rigatoni|tagliatelle|linguine|fusilli|lasagne?|gnocchi|ravioli|tortellini|fettuccine|paccheri|orecchiette|pappardelle)\b/gi,
+    // Spaghetti alla chitarra - pattern specifico
+    /\b(spaghetti?\s+alla\s+chitarra|chitarra)\b/gi,
+    // Formaggi
+    /\b(mozzarella|parmigiano|pecorino|gorgonzola|ricotta|mascarpone|burrata|grana)\b/gi,
+    // Carni e salumi
+    /\b(guanciale|pancetta|prosciutto|bresaola|speck|vitello|manzo|maiale|pollo|agnello)\b/gi,
+    // Verdure comuni
+    /\b(pomodor[oi]|pomodorini|funghi|porcini|melanzane?|zucchine?|carciofi?|spinaci)\b/gi,
+  ];
+
+  for (const pattern of foodPatterns) {
+    const matches = lowerMessage.match(pattern);
+    if (matches) {
+      for (const match of matches) {
+        const normalized = match.toLowerCase().trim();
+        if (!foundKeywords.includes(normalized)) {
+          foundKeywords.push(normalized);
+        }
+      }
+    }
+  }
+
+  return foundKeywords;
 }
 
 /**
@@ -452,6 +671,72 @@ export class LapaAiOrchestrator {
   }
 
   /**
+   * ESTRAZIONE DINAMICA KEYWORDS ALIMENTARI
+   * Usa Claude (modello veloce) per estrarre termini di prodotti da cercare in Odoo
+   *
+   * Esempio: "voglio fare astice con spaghetti alla chitarra per domani"
+   * Output: ["astice", "spaghetti alla chitarra"]
+   */
+  async extractFoodKeywordsWithAI(message: string): Promise<string[]> {
+    // Prima prova con estrazione locale veloce
+    const localKeywords = extractFoodKeywordsLocal(message);
+
+    // Se troviamo keywords locali, usiamole (più veloce)
+    if (localKeywords.length > 0) {
+      console.log(`🔍 Keywords estratte localmente: ${localKeywords.join(', ')}`);
+      return localKeywords;
+    }
+
+    // Se nessun match locale e il messaggio sembra food-related, usa Claude
+    if (!isFoodRelatedMessage(message)) {
+      return [];
+    }
+
+    try {
+      console.log('🤖 Estrazione keywords con Claude...');
+
+      const response = await this.anthropic.messages.create({
+        model: 'claude-3-5-haiku-20241022', // Modello veloce e economico
+        max_tokens: 256,
+        temperature: 0,
+        system: `Sei un assistente per un negozio di prodotti alimentari italiani.
+Estrai i nomi di prodotti alimentari, ingredienti o tipi di cibo dal messaggio dell'utente.
+
+REGOLE:
+- Estrai SOLO termini di cibo/prodotti che l'utente vuole acquistare o cercare
+- Mantieni i termini nella forma che useresti per cercare in un catalogo (es. "spaghetti alla chitarra", non "spaghetti")
+- NON includere quantità, date, o azioni (es. "domani", "fare", "preparare")
+- Se non ci sono prodotti alimentari, rispondi con array vuoto
+
+Rispondi SOLO con un JSON array di stringhe, esempio: ["astice", "spaghetti alla chitarra"]`,
+        messages: [{
+          role: 'user',
+          content: message
+        }]
+      });
+
+      const content = response.content[0];
+      if (content.type !== 'text') {
+        return [];
+      }
+
+      // Parse JSON response
+      const text = content.text.trim();
+      const jsonMatch = text.match(/\[.*\]/s);
+      if (jsonMatch) {
+        const keywords = JSON.parse(jsonMatch[0]) as string[];
+        console.log(`🤖 Keywords estratte con Claude: ${keywords.join(', ')}`);
+        return keywords.filter(k => k && k.length > 1);
+      }
+
+      return [];
+    } catch (error) {
+      console.error('⚠️ Errore estrazione keywords AI:', error);
+      return [];
+    }
+  }
+
+  /**
    * Costruisce il prompt di sistema per l'analisi dell'intento
    */
   private buildIntentAnalysisPrompt(context: CustomerContext): string {
@@ -495,7 +780,7 @@ DEFINIZIONI INTENTI (con parole chiave tipiche):
 - invoice_detail: Richiesta DETTAGLI di una fattura specifica (Keywords: dettagli fattura, mostrami la fattura)
 - invoice_filter: Richiesta di FILTRARE le fatture (Keywords: da pagare, non pagate, aperte, pagate, scadute)
 - shipping_inquiry: Domande su spedizioni, tracking, consegne, dove si trova la merce (Keywords: spedizione, spedizioni, consegna, tracking, traccia, tracciare, DDT, dove, arriva, delivery, Lieferung, livraison)
-- product_inquiry: Domande su prodotti, catalogo, disponibilità, prezzi prodotti (Keywords: prodotto, prodotti, catalogo, disponibile, mozzarella, parmigiano, prosciutto, formaggio)
+- product_inquiry: Domande su prodotti, catalogo, disponibilità, prezzi prodotti, QUALSIASI richiesta di cibo/ingredienti per cucinare, ricette, preparazione piatti. USA QUESTO INTENTO quando l'utente chiede ingredienti o vuole preparare un piatto! (Keywords: prodotto, prodotti, catalogo, disponibile, cerco, mi serve, ho bisogno, voglio fare, preparare, cucinare, ricetta, ingredienti, pasta, spaghetti, penne, lasagna, risotto, mozzarella, parmigiano, prosciutto, formaggio, astice, aragosta, gamberi, scampi, pesce, carne, verdure, pomodoro, olio)
 - account_management: Gestione account, dati personali, password (Keywords: account, password, profilo, dati personali)
 - helpdesk: Supporto tecnico, problemi generali, assistenza (Keywords: aiuto, help, problema, supporto, operatore, assistenza)
 - pricing_quote: Richiesta preventivi, listini prezzi B2B (Keywords: preventivo, listino, prezzi all'ingrosso)
@@ -646,11 +931,20 @@ IMPORTANTE:
       };
     }
 
-    // Product keywords
+    // Product keywords - include food/ingredient terms
     if (lowerMessage.match(/prodotto|catalogo|disponibil|prezzo|product|price/i)) {
       return {
         type: 'product_inquiry',
         confidence: 0.7,
+        requiresAuth: false
+      };
+    }
+
+    // Food/cooking related - should trigger product search
+    if (isFoodRelatedMessage(message)) {
+      return {
+        type: 'product_inquiry',
+        confidence: 0.75,
         requiresAuth: false
       };
     }
@@ -1774,7 +2068,110 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       }
 
       // ========================================
-      // STANDARD PRODUCT SEARCH (no recipe)
+      // DYNAMIC KEYWORD EXTRACTION - Estrae keywords quando non c'è ricetta specifica
+      // ========================================
+      console.log('🔍 Tentativo estrazione dinamica keywords...');
+      const extractedKeywords = await this.extractFoodKeywordsWithAI(lastUserMsg);
+
+      if (extractedKeywords.length > 0) {
+        console.log(`✅ Keywords estratte: ${extractedKeywords.join(', ')}`);
+
+        // Cerca prodotti per ogni keyword
+        const allProducts: any[] = [];
+        const keywordResults: Record<string, any[]> = {};
+
+        for (const keyword of extractedKeywords) {
+          const searchResult = await this.productsAgent.searchProducts(
+            { query: keyword, active_only: true },
+            10
+          );
+
+          if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+            // Filtra SOLO prodotti disponibili (qty > 0)
+            const availableProducts = searchResult.data.filter((p: any) => p.qty_available > 0);
+
+            if (availableProducts.length > 0) {
+              keywordResults[keyword] = availableProducts;
+              allProducts.push(...availableProducts);
+            } else {
+              // Se nessun prodotto disponibile, mostra comunque i primi ma come "ordinabili"
+              keywordResults[keyword] = searchResult.data.slice(0, 3);
+              allProducts.push(...searchResult.data.slice(0, 3));
+            }
+          } else {
+            keywordResults[keyword] = [];
+          }
+        }
+
+        // Prepara dati per la risposta - raggruppa per keyword
+        const productsData: any[] = [];
+        const foundKeywords: string[] = [];
+        const missingKeywords: string[] = [];
+
+        for (const [keyword, products] of Object.entries(keywordResults)) {
+          if (products.length > 0) {
+            foundKeywords.push(keyword);
+            // Aggiungi i primi 3 prodotti per ogni keyword
+            products.slice(0, 3).forEach((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              productsData.push({
+                name: product.name,
+                keyword: keyword,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              });
+            });
+          } else {
+            missingKeywords.push(keyword);
+          }
+        }
+
+        // Genera risposta conversazionale
+        const keywordsMessage = await this.generateConversationalResponse(
+          context,
+          'ricerca prodotti multipla',
+          {
+            search_keywords: extractedKeywords,
+            products: productsData,
+            found_keywords: foundKeywords,
+            missing_keywords: missingKeywords,
+            total_products: productsData.length,
+            customer_name: context.customerName
+          },
+          lastUserMsg
+        );
+
+        // Crea suggested actions per i prodotti disponibili
+        const availableForOrder = productsData.filter(p => p.disponibile_subito);
+        const orderActions = availableForOrder.slice(0, 2).map((p: any) => {
+          const shortName = p.name.split(' ').slice(0, 3).join(' ');
+          return `Aggiungi ${shortName}`;
+        });
+
+        return {
+          success: true,
+          message: keywordsMessage,
+          data: allProducts,
+          agentId: 'product',
+          confidence: 0.9,
+          suggestedActions: [
+            ...orderActions,
+            'Aggiungi tutto al carrello',
+            'Cerca altro'
+          ]
+        };
+      }
+
+      // ========================================
+      // STANDARD PRODUCT SEARCH (no recipe, no dynamic keywords)
       // ========================================
 
       // Se c'è un nome prodotto o query, cerca prodotti
