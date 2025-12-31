@@ -1011,12 +1011,19 @@ IMPORTANTE:
         userMessagesCount: userMessages.length
       });
 
-      // IMPORTANTE: Se siamo nel helpdesk handler, il cliente ha un problema
-      // Crea SEMPRE il ticket per passare a un umano - è il meccanismo di handoff fondamentale
-      const hasKeywords = /operatore|umano|persona|assistenza|ticket|problema|aiuto|help|supporto|reclamo|contatt|non funziona|errore|sbagliato/i.test(userMessage);
+      // Verifica se l'utente chiede ESPLICITAMENTE di parlare con un operatore o creare un ticket
+      // NON creare ticket automaticamente - solo su richiesta esplicita
+      const wantsHumanOperator = /operatore|umano|persona reale|parlare con qualcuno|ticket|contatt.*umano|voglio.*assistenza|passami.*operatore/i.test(userMessage);
+      const hasExplicitProblem = /reclamo|non funziona|errore grave|urgente|emergenza/i.test(userMessage);
+
+      // Keyword generiche che NON devono creare ticket automatico
+      // "aiuto", "help", "problema", "assistenza" sono troppo generiche
+      const hasKeywords = wantsHumanOperator || hasExplicitProblem;
 
       const ticketCheck = {
         hasKeywords,
+        wantsHumanOperator,
+        hasExplicitProblem,
         customerId: context.customerId,
         customerIdType: typeof context.customerId,
         customerType: context.customerType,
@@ -1024,10 +1031,9 @@ IMPORTANTE:
       };
       console.log('🎫 Ticket check:', ticketCheck);
 
-      // Se il cliente è loggato (B2B), crea SEMPRE il ticket - abbiamo già tutti i dati
-      // Non aspettare keyword specifiche, se è arrivato qui ha bisogno di aiuto
-      const shouldCreateTicket = context.customerId && context.conversationHistory.length >= 1;
-      console.log('🎟️ shouldCreateTicket:', shouldCreateTicket, 'customerId:', context.customerId, 'historyLen:', context.conversationHistory.length);
+      // Crea ticket SOLO se l'utente lo chiede esplicitamente
+      const shouldCreateTicket = context.customerId && hasKeywords;
+      console.log('🎟️ shouldCreateTicket:', shouldCreateTicket, 'hasKeywords:', hasKeywords);
 
       if (shouldCreateTicket) {
         console.log('✅ Condizioni soddisfatte - creazione ticket in corso...');
