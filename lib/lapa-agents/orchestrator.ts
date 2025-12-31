@@ -223,6 +223,7 @@ export interface Message {
   timestamp: Date;
   agentId?: string;
   metadata?: Record<string, any>;
+  data?: any;  // Per salvare dati come pending_products per selezioni successive
 }
 
 export interface AgentResponse {
@@ -482,7 +483,7 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
-- cart_add: AGGIUNGERE prodotto al carrello, mettere prodotto nel carrello. PRIORITÀ MASSIMA quando l'utente dice "aggiungimi", "mettimi", "aggiungi al carrello" (Keywords: aggiungimi, mettimi, aggiungi, aggiungi al carrello, metti nel carrello, lo voglio, lo prendo, me lo metti, aggiungi questo, add to cart, in den Warenkorb, ajouter au panier)
+- cart_add: AGGIUNGERE prodotto al carrello, mettere prodotto nel carrello. PRIORITÀ MASSIMA quando l'utente dice "aggiungimi", "mettimi", "aggiungi al carrello", O quando seleziona un prodotto con "il primo", "1", "secondo", etc. (Keywords: aggiungimi, mettimi, aggiungi, aggiungi al carrello, metti nel carrello, lo voglio, lo prendo, me lo metti, aggiungi questo, add to cart, in den Warenkorb, ajouter au panier, il primo, primo, secondo, terzo, 1, 2, 3)
 - cart_view: VEDERE il carrello, cosa c'è nel carrello (Keywords: carrello, vedi carrello, mostra carrello, cosa ho nel carrello, cosa c'è nel carrello, my cart, Warenkorb anzeigen, voir panier)
 - cart_remove: RIMUOVERE prodotto dal carrello (Keywords: togli, rimuovi, elimina dal carrello, remove from cart, aus dem Warenkorb entfernen, retirer du panier)
 - cart_confirm: CONFERMARE l'ordine/carrello, procedere all'acquisto (Keywords: conferma ordine, conferma carrello, procedi, checkout, finalizza, conferma, bestätigen, confirmer)
@@ -570,6 +571,16 @@ IMPORTANTE:
    */
   private fallbackIntentAnalysis(message: string): Intent {
     const lowerMessage = message.toLowerCase();
+
+    // Ordinal selection (for cart product selection: "il primo", "1", "secondo", etc.)
+    // HIGHEST PRIORITY - users selecting from a product list
+    if (lowerMessage.match(/^(il |la )?(primo|prima|secondo|seconda|terzo|terza|quarto|quarta|quinto|quinta|1|2|3|4|5|uno|due|tre|quattro|cinque)\.?$/i)) {
+      return {
+        type: 'cart_add',
+        confidence: 0.95,
+        requiresAuth: true
+      };
+    }
 
     // Cart add keywords (HIGHEST PRIORITY - must come first)
     if (lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
@@ -765,13 +776,14 @@ IMPORTANTE:
       // 4. Esegui l'agente
       const response = await agent.handler(context, intent);
 
-      // 5. Aggiungi la risposta alla cronologia
+      // 5. Aggiungi la risposta alla cronologia (includi data per pending_products, ecc.)
       this.addMessage(context, {
         role: 'assistant',
         content: response.message,
         timestamp: new Date(),
-        agentId: response.agentId
-      });
+        agentId: response.agentId,
+        data: response.data  // Salva anche data per selezioni successive (pending_products)
+      } as Message);
 
       // 🧠 Salva risposta AI nella memoria persistente
       await this.saveToMemory(context, 'assistant', response.message, {
@@ -2210,6 +2222,39 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 handleCartAdd - userMessage:', userMessage);
 
+    // PRIMA: Controlla se l'utente sta selezionando da pending_products (es: "il primo", "1", "2")
+    const ordinalSelection = this.parseOrdinalSelection(userMessage);
+    if (ordinalSelection >= 0) {
+      const pendingProducts = this.extractPendingProductsFromConversation(context);
+      console.log('🛒 Ordinal selection:', ordinalSelection, 'pendingProducts:', pendingProducts.length);
+
+      if (pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
+        const selectedProduct = pendingProducts[ordinalSelection];
+        console.log('🛒 Selected product from pending:', selectedProduct.name);
+
+        try {
+          const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
+          const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+
+          return {
+            success: true,
+            message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
+            agentId: 'cart',
+            data: result.data,
+            suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+          };
+        } catch (err) {
+          console.error('❌ Errore aggiunta prodotto selezionato:', err);
+          return {
+            success: false,
+            message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
+            agentId: 'cart',
+            suggestedActions: ['Riprova', 'Cerca altro prodotto']
+          };
+        }
+      }
+    }
+
     // Estrai i prodotti menzionati dal messaggio usando parsing intelligente
     const extractedProducts = this.extractProductsFromMessage(userMessage);
 
@@ -2798,6 +2843,58 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     }
 
     return products;
+  }
+
+  /**
+   * Estrae pending_products dalla risposta precedente (per selezione con "il primo", "1", ecc.)
+   */
+  private extractPendingProductsFromConversation(context: CustomerContext): any[] {
+    // Cerca l'ultimo messaggio assistant che ha pending_products nei data
+    const recentMessages = context.conversationHistory.slice(-5).reverse();
+
+    for (const msg of recentMessages) {
+      if (msg.role === 'assistant' && msg.data) {
+        // Cerca pending_products nei data del messaggio
+        if (msg.data.pending_products && Array.isArray(msg.data.pending_products)) {
+          console.log('🛒 Found pending_products in conversation:', msg.data.pending_products.length);
+          return msg.data.pending_products;
+        }
+      }
+    }
+
+    console.log('🛒 No pending_products found in conversation');
+    return [];
+  }
+
+  /**
+   * Interpreta una selezione ordinale o numerica
+   * "il primo" -> 0, "il secondo" -> 1, "1" -> 0, "2" -> 1, etc.
+   * Returns -1 if no ordinal found
+   */
+  private parseOrdinalSelection(message: string): number {
+    const lower = message.toLowerCase().trim();
+
+    // Direct numbers
+    if (/^[1-9]$/.test(lower)) {
+      return parseInt(lower) - 1;
+    }
+
+    // Italian ordinals
+    const ordinalMap: Record<string, number> = {
+      'primo': 0, 'il primo': 0, 'la prima': 0, '1°': 0, 'uno': 0,
+      'secondo': 1, 'il secondo': 1, 'la seconda': 1, '2°': 1, 'due': 1,
+      'terzo': 2, 'il terzo': 2, 'la terza': 2, '3°': 2, 'tre': 2,
+      'quarto': 3, 'il quarto': 3, 'la quarta': 3, '4°': 3, 'quattro': 3,
+      'quinto': 4, 'il quinto': 4, 'la quinta': 4, '5°': 4, 'cinque': 4,
+    };
+
+    for (const [key, value] of Object.entries(ordinalMap)) {
+      if (lower === key || lower.includes(key)) {
+        return value;
+      }
+    }
+
+    return -1;
   }
 
   /**
