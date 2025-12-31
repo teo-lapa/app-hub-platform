@@ -37,15 +37,42 @@ interface ChatRequest {
   message: string;
   customerType: 'b2b' | 'b2c' | 'anonymous';
   customerId?: number;
+  parentId?: number;  // ID del partner padre (azienda) in Odoo - per condividere conversazioni tra figli
   customerName?: string;
   customerEmail?: string;
-  sessionId: string;
+  sessionId: string;  // Usato come fallback per utenti anonimi
   language?: string;
   attachments?: Array<{
     name: string;
     content: string; // base64 encoded
     mimetype: string;
   }>;
+}
+
+/**
+ * Calcola l'ID conversazione consistente per un cliente
+ *
+ * LOGICA:
+ * - Se c'è un parentId (figlio di un'azienda), usa il parentId
+ * - Se c'è un customerId (cliente diretto), usa il customerId
+ * - Altrimenti usa il sessionId passato dal frontend (utenti anonimi)
+ *
+ * Questo garantisce che:
+ * - Tutti i figli di un'azienda vedono la stessa conversazione
+ * - Lo stesso cliente vede sempre la sua cronologia anche dopo refresh
+ * - Utenti anonimi hanno sessioni separate
+ */
+function getConversationId(customerId?: number, parentId?: number, sessionId?: string): string {
+  if (parentId) {
+    // Figlio di un'azienda: usa l'ID del padre per condividere conversazione
+    return `customer-${parentId}`;
+  }
+  if (customerId) {
+    // Cliente diretto (o azienda padre): usa il suo ID
+    return `customer-${customerId}`;
+  }
+  // Utente anonimo: usa il sessionId del frontend
+  return sessionId || `anon-${Date.now()}`;
 }
 
 // Flag per usare orchestratore AI vs fallback semplice
@@ -73,7 +100,7 @@ function normalizeAgentId(agentId: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, customerType, customerId, customerName, customerEmail, sessionId, language = 'it', attachments } = body;
+    const { message, customerType, customerId, parentId, customerName, customerEmail, sessionId, language = 'it', attachments } = body;
 
     if (!message || typeof message !== 'string') {
       return jsonResponse(
@@ -82,23 +109,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calcola l'ID conversazione consistente basato su customerId/parentId
+    // Questo garantisce che lo stesso cliente veda sempre la sua cronologia
+    const conversationId = getConversationId(customerId, parentId, sessionId);
+
     console.log(`\n📨 LAPA AI Chat: "${message.substring(0, 100)}..."`);
-    console.log(`   Customer: ${customerType}, customerId: ${customerId} (type: ${typeof customerId}), Session: ${sessionId}`);
+    console.log(`   Customer: ${customerType}, customerId: ${customerId}, parentId: ${parentId}`);
+    console.log(`   ConversationId: ${conversationId} (from sessionId: ${sessionId})`);
     console.log(`   Attachments: ${attachments?.length || 0} files`);
-    console.log('   Full body received:', JSON.stringify({ ...body, attachments: attachments?.map(a => ({ name: a.name, mimetype: a.mimetype, size: a.content?.length || 0 })) }));
 
     const startTime = Date.now();
 
     // Se AI abilitata, usa l'orchestratore
     if (USE_AI_ORCHESTRATOR && process.env.ANTHROPIC_API_KEY) {
       try {
-        // IMPORTANTE: Carica la cronologia conversazione da KV per mantenere contesto tra invocazioni serverless
+        // IMPORTANTE: Carica la cronologia conversazione da KV usando conversationId (non sessionId!)
         let conversationHistory: { role: 'user' | 'assistant'; content: string; timestamp: Date; agentId?: string }[] = [];
         try {
-          const storedConversation = await loadConversation(sessionId);
+          const storedConversation = await loadConversation(conversationId);
           if (storedConversation && storedConversation.messages.length > 0) {
             conversationHistory = storedConversation.messages;
-            console.log(`📂 Conversazione caricata da KV: ${conversationHistory.length} messaggi`);
+            console.log(`📂 Conversazione caricata da KV: ${conversationHistory.length} messaggi per ${conversationId}`);
           }
         } catch (loadError) {
           console.warn('⚠️ Errore caricamento conversazione da KV:', loadError);
@@ -113,7 +144,7 @@ export async function POST(request: NextRequest) {
         console.log('✅ Orchestratore ottenuto');
 
         console.log('🔄 Processamento messaggio...');
-        const response = await orchestrator.processMessage(message, sessionId, {
+        const response = await orchestrator.processMessage(message, conversationId, {
           customerType,
           customerId,
           customerName,
@@ -131,37 +162,38 @@ export async function POST(request: NextRequest) {
 
         // Registra statistiche - prima l'orchestratore, poi l'agente specifico
         // L'orchestratore ha sempre processato il messaggio per smistarlo
-        recordRequest('orchestrator', duration, response.success !== false, sessionId);
+        recordRequest('orchestrator', duration, response.success !== false, conversationId);
 
         // Poi registra l'agente specifico che ha gestito la richiesta
         if (response.agentId && response.agentId !== 'orchestrator') {
           // Normalizza gli agentId per matchare la dashboard
           const normalizedAgentId = normalizeAgentId(response.agentId);
-          recordRequest(normalizedAgentId, duration, response.success !== false, sessionId);
+          recordRequest(normalizedAgentId, duration, response.success !== false, conversationId);
         }
 
         if (response.requiresHumanEscalation) {
           recordEscalation();
         }
 
-        // Salva la conversazione nel KV per persistenza
+        // Salva la conversazione nel KV per persistenza usando conversationId
+        // IMPORTANTE: Usa conversationId (basato su customerId/parentId) non sessionId
         try {
-          // Salva messaggio utente (include attachments in metadata if present)
-          await addMessageToConversation(sessionId, {
+          // Salva messaggio utente con info su chi ha scritto
+          await addMessageToConversation(conversationId, {
             role: 'user',
             content: message,
             timestamp: new Date(),
             metadata: attachments && attachments.length > 0 ? { attachments } : undefined
-          }, { customerId, customerName, customerType });
+          }, { customerId, customerName, customerType, parentId });
 
           // Salva risposta assistente (includi data per follow-up con pending_products)
-          await addMessageToConversation(sessionId, {
+          await addMessageToConversation(conversationId, {
             role: 'assistant',
             content: response.message,
             timestamp: new Date(),
             agentId: response.agentId,
             data: response.data  // Salva anche data per selezioni successive
-          }, { customerId, customerName, customerType });
+          }, { customerId, customerName, customerType, parentId });
         } catch (kvError) {
           console.warn('⚠️ Errore salvataggio conversazione in KV:', kvError);
         }
@@ -171,7 +203,9 @@ export async function POST(request: NextRequest) {
           metadata: {
             duration,
             timestamp: new Date().toISOString(),
-            sessionId,
+            conversationId,  // Ritorna conversationId per debug
+            customerId,
+            parentId,
             aiEnabled: true
           }
         });
@@ -184,7 +218,7 @@ export async function POST(request: NextRequest) {
 
         // Registra errore
         const errorDuration = Date.now() - startTime;
-        recordRequest('error', errorDuration, false, sessionId);
+        recordRequest('error', errorDuration, false, conversationId);
 
         // Ritorna errore dettagliato invece di fallback silenzioso
         return jsonResponse({
@@ -195,7 +229,9 @@ export async function POST(request: NextRequest) {
           metadata: {
             duration: errorDuration,
             timestamp: new Date().toISOString(),
-            sessionId,
+            conversationId,
+            customerId,
+            parentId,
             aiEnabled: true,
             errorType: aiError instanceof Error ? aiError.name : 'Unknown'
           }
@@ -211,14 +247,16 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Fallback response generated in ${duration}ms by agent: ${response.agentId}`);
 
     // Registra statistiche fallback
-    recordRequest(response.agentId, duration, true, sessionId);
+    recordRequest(response.agentId, duration, true, conversationId);
 
     return jsonResponse({
       ...response,
       metadata: {
         duration,
         timestamp: new Date().toISOString(),
-        sessionId,
+        conversationId,
+        customerId,
+        parentId,
         aiEnabled: false
       }
     });

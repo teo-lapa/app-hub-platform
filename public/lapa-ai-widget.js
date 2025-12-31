@@ -6,7 +6,16 @@
  * Uso:
  * <script src="https://staging.hub.lapa.ch/lapa-ai-widget.js"
  *         data-customer-type="b2b"
+ *         data-customer-id="1234"
+ *         data-parent-id="1000"
  *         data-language="it"></script>
+ *
+ * IMPORTANTE - Gestione Padre/Figli in Odoo:
+ * - data-customer-id: ID del partner che sta chattando (es. Mario = 1001)
+ * - data-parent-id: ID dell'azienda padre se il partner e un figlio (es. Pizza al Taglio = 1000)
+ *
+ * Se data-parent-id e valorizzato, la conversazione sara condivisa tra tutti i figli
+ * della stessa azienda. Ogni messaggio salva chi lo ha scritto (senderId/senderName).
  */
 
 (function() {
@@ -22,9 +31,9 @@
     welcomeMessage: 'Ciao! Sono l\'assistente AI di LAPA. Posso aiutarti con ordini, prodotti, fatture, spedizioni e molto altro. Come posso aiutarti oggi?'
   };
 
-  // Genera ID sessione unico
+  // Genera ID sessione fallback per utenti anonimi
   function generateSessionId() {
-    return 'lapa_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 
   // Ottieni configurazione dal tag script
@@ -33,6 +42,7 @@
     return {
       customerType: script?.getAttribute('data-customer-type') || 'anonymous',
       customerId: script?.getAttribute('data-customer-id') || null,
+      parentId: script?.getAttribute('data-parent-id') || null,  // ID azienda padre per conversazioni condivise
       customerName: script?.getAttribute('data-customer-name') || null,
       customerEmail: script?.getAttribute('data-customer-email') || null,
       language: script?.getAttribute('data-language') || 'it'
@@ -498,9 +508,10 @@
           message,
           customerType: state.config.customerType,
           customerId: state.config.customerId ? parseInt(state.config.customerId) : undefined,
+          parentId: state.config.parentId ? parseInt(state.config.parentId) : undefined,  // ID azienda padre
           customerName: state.config.customerName,
           customerEmail: state.config.customerEmail,
-          sessionId: state.sessionId,
+          sessionId: state.sessionId,  // Fallback per utenti anonimi
           language: state.config.language
         })
       });

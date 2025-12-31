@@ -12,6 +12,9 @@ export interface Message {
   content: string;
   timestamp: Date;
   agentId?: string;
+  // Chi ha scritto questo messaggio (per messaggi utente in conversazioni condivise padre/figli)
+  senderId?: number;      // ID del partner che ha scritto (es. Mario = 1001)
+  senderName?: string;    // Nome del partner che ha scritto (es. "Mario Rossi")
   data?: any;  // Per salvare dati come pending_products per selezioni successive
   metadata?: {
     attachments?: Array<{
@@ -24,8 +27,9 @@ export interface Message {
 }
 
 export interface StoredConversation {
-  sessionId: string;
-  customerId?: number;
+  sessionId: string;  // Ora basato su customerId/parentId, non più random
+  customerId?: number;  // ID del cliente principale (o ultimo che ha scritto)
+  parentId?: number;    // ID dell'azienda padre (se esiste) - per conversazioni condivise
   customerName?: string;
   customerType: 'b2b' | 'b2c' | 'anonymous';
   messages: Message[];
@@ -95,12 +99,29 @@ export async function loadConversation(sessionId: string): Promise<StoredConvers
 }
 
 /**
+ * Info del cliente che sta scrivendo
+ */
+export interface CustomerInfo {
+  customerId?: number;      // ID del partner che sta scrivendo
+  customerName?: string;    // Nome del partner che sta scrivendo
+  customerType?: 'b2b' | 'b2c' | 'anonymous';
+  parentId?: number;        // ID dell'azienda padre (se figlio)
+}
+
+/**
  * Aggiunge un messaggio a una conversazione esistente
+ *
+ * IMPORTANTE: Il sessionId ora è basato su customerId/parentId per garantire
+ * che lo stesso cliente veda sempre la sua cronologia.
+ *
+ * Per conversazioni padre/figli:
+ * - sessionId = "customer-{parentId}" (tutti i figli vedono la stessa conv)
+ * - Ogni messaggio salva senderId/senderName per sapere CHI ha scritto
  */
 export async function addMessageToConversation(
   sessionId: string,
   message: Message,
-  customerInfo?: { customerId?: number; customerName?: string; customerType?: 'b2b' | 'b2c' | 'anonymous' }
+  customerInfo?: CustomerInfo
 ): Promise<StoredConversation> {
   let conversation = await loadConversation(sessionId);
 
@@ -109,6 +130,7 @@ export async function addMessageToConversation(
     conversation = {
       sessionId,
       customerId: customerInfo?.customerId,
+      parentId: customerInfo?.parentId,
       customerName: customerInfo?.customerName,
       customerType: customerInfo?.customerType || 'anonymous',
       messages: [],
@@ -117,11 +139,22 @@ export async function addMessageToConversation(
     };
   }
 
-  // Aggiorna info cliente se fornite
+  // Aggiorna info conversazione se fornite
   if (customerInfo) {
+    // Aggiorna sempre customerId e customerName con l'ultimo che ha scritto
     if (customerInfo.customerId) conversation.customerId = customerInfo.customerId;
     if (customerInfo.customerName) conversation.customerName = customerInfo.customerName;
     if (customerInfo.customerType) conversation.customerType = customerInfo.customerType;
+    // parentId resta sempre lo stesso (è l'azienda padre)
+    if (customerInfo.parentId && !conversation.parentId) {
+      conversation.parentId = customerInfo.parentId;
+    }
+  }
+
+  // Per messaggi utente, aggiungi info su chi ha scritto
+  if (message.role === 'user' && customerInfo) {
+    message.senderId = customerInfo.customerId;
+    message.senderName = customerInfo.customerName;
   }
 
   // Aggiungi messaggio
