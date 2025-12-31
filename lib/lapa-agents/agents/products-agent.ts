@@ -37,6 +37,11 @@
  */
 
 import { createOdooRPCClient, OdooRPCClient } from '../../odoo/rpcClient';
+import {
+  findSimilarProducts,
+  isEmbeddingsReady,
+  SimilarProduct as SemanticMatch
+} from '../product-embedding-service';
 
 // ============= TYPES =============
 
@@ -219,6 +224,67 @@ export class ProductsAgent {
     try {
       console.log('🔍 Ricerca prodotti:', filters);
 
+      // ========================================
+      // RAG SEMANTIC SEARCH - Prova prima ricerca semantica
+      // ========================================
+      if (filters.query && isEmbeddingsReady()) {
+        console.log('🧠 RAG: Tentativo ricerca semantica per:', filters.query);
+
+        try {
+          const semanticMatches = await findSimilarProducts({
+            query: filters.query,
+            matchThreshold: 0.35,
+            matchCount: limit
+          });
+
+          if (semanticMatches.length > 0) {
+            console.log(`🧠 RAG: Trovati ${semanticMatches.length} prodotti semanticamente simili`);
+
+            // Recupera i dettagli completi da Odoo usando gli ID trovati
+            const productIds = semanticMatches.map(m => m.productId);
+
+            const products = await this.odoo.searchRead(
+              'product.product',
+              [
+                ['id', 'in', productIds],
+                ['active', '=', true],
+                ['sale_ok', '=', true]
+              ],
+              [
+                'id', 'name', 'default_code', 'barcode', 'categ_id',
+                'list_price', 'qty_available', 'uom_id', 'product_tmpl_id',
+                'description_sale'
+              ],
+              limit
+            );
+
+            if (products.length > 0) {
+              console.log(`🧠 RAG: Dettagli recuperati per ${products.length} prodotti`);
+
+              // Ordina per similarity score
+              const productMap = new Map(products.map((p: any) => [p.id, p]));
+              const sortedProducts = semanticMatches
+                .filter(m => productMap.has(m.productId))
+                .map(m => productMap.get(m.productId));
+
+              return {
+                success: true,
+                message: this.msg('product_found', sortedProducts.length),
+                data: sortedProducts as Product[],
+                timestamp: new Date(),
+                language: this.language
+              };
+            }
+          }
+        } catch (semanticError) {
+          console.warn('🧠 RAG: Ricerca semantica fallita, uso fallback keyword:', semanticError);
+        }
+      }
+
+      // ========================================
+      // FALLBACK: Ricerca keyword tradizionale
+      // ========================================
+
       // Costruisci dominio Odoo
       const domain: any[] = [];
 
@@ -244,6 +310,17 @@ export class ProductsAgent {
         'pomodoro': ['pomodor', 'pelati', 'passata'],
         'olio': ['extravergine', 'evo'],
         'aceto': ['balsamico'],
+        // Frutti di mare - IMPORTANTE per ricerche astice/coda
+        'astice': ['hummer', 'lobster', 'aragosta'],
+        'coda': ['hummerschwaenze', 'schwanz', 'tail', 'code'],
+        'aragosta': ['astice', 'lobster', 'hummer'],
+        'polpo': ['octopus', 'poulpe', 'krake', 'tentacoli'],
+        'gamberi': ['gamber', 'shrimp', 'garnelen', 'crevettes'],
+        'scampi': ['scampo', 'langoustine'],
+        'seppia': ['sepia', 'cuttlefish', 'seppie'],
+        'calamari': ['calamar', 'squid', 'totani'],
+        'vongole': ['vongola', 'clams', 'muscheln'],
+        'cozze': ['cozza', 'mussels', 'miesmuscheln'],
       };
 
       // Ricerca testuale intelligente
@@ -269,13 +346,29 @@ export class ProductsAgent {
         const queryWords = significantWords.length > 0 ? significantWords : allWords;
 
         if (queryWords.length > 1) {
-          // Ricerca multi-parola: TUTTE le parole devono essere presenti nel NOME
-          // Questo evita match generici come "fior di latte" per "mozzarella di bufala"
+          // Ricerca multi-parola CON SINONIMI: per ogni parola, cerca anche i sinonimi
+          // Es: "coda di astice" → (coda OR hummerschwaenze OR tail) AND (astice OR hummer OR lobster)
           for (const word of queryWords) {
-            // Ogni parola significativa DEVE essere nel nome del prodotto
-            domain.push(['name', 'ilike', word]);
+            const wordSynonyms = synonymsMap[word.toLowerCase()] || [];
+            const allTermsForWord = [word, ...wordSynonyms];
+
+            if (allTermsForWord.length > 1) {
+              // Più termini per questa parola - crea OR tra di loro
+              for (let i = 0; i < allTermsForWord.length - 1; i++) {
+                domain.push('|');
+              }
+              for (const term of allTermsForWord) {
+                domain.push(['name', 'ilike', term]);
+              }
+            } else {
+              // Solo una parola - cerca direttamente
+              domain.push(['name', 'ilike', word]);
+            }
           }
-          console.log(`🔍 Ricerca multi-parola (stop words filtrate): ${queryWords.join(' + ')}`);
+          console.log(`🔍 Ricerca multi-parola con sinonimi: ${queryWords.map(w => {
+            const syns = synonymsMap[w.toLowerCase()] || [];
+            return syns.length > 0 ? `(${w}|${syns.join('|')})` : w;
+          }).join(' + ')}`);
         } else if (queryWords.length === 1) {
           // Ricerca singola parola: espandi con sinonimi se disponibili
           const searchWord = queryWords[0].toLowerCase();
