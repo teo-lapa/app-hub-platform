@@ -1397,12 +1397,19 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           // Prepara dati per la risposta conversazionale
           const productsData = products.map((product: any) => {
             const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+            const qty = product.qty_available || 0;
+            const isAvailable = qty > 0;
             return {
               name: product.name,
               price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
-              qty_available: product.qty_available !== undefined ? product.qty_available : 'N/D',
+              qty_available: qty,
               unit: product.uom_id ? product.uom_id[1] : 'pz',
-              url: generateProductUrl(templateId, product.name)
+              url: generateProductUrl(templateId, product.name),
+              // Info disponibilità
+              disponibile_subito: isAvailable,
+              disponibilita_testo: isAvailable
+                ? `✅ Disponibile subito (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'} in stock) - consegna domani`
+                : `⏳ Ordinabile su richiesta - consegna in 2-7 giorni`
             };
           });
 
@@ -3036,7 +3043,8 @@ REGOLE IMPORTANTI:
 11. ⚠️ NON MANDARE MAI il cliente al supermercato! LAPA vende di tutto - proponi SEMPRE alternative dai prodotti LAPA
 12. Se un prodotto è esaurito, proponi SEMPRE alternative simili dal catalogo LAPA (es. pasta secca invece di fresca)
 13. Se nei dati ci sono più prodotti, mostrarli TUTTI - il cliente vuole vedere le opzioni disponibili
-14. ⚠️ NON INCLUDERE MAI link/URL nel testo! I pulsanti per ordinare vengono generati automaticamente dal sistema. Invece di scrivere "vai su https://..." scrivi semplicemente "Clicca sul pulsante qui sotto per ordinare"
+14. 🔗 Per i PRODOTTI: usa SEMPRE link markdown cliccabili! Formato: [👉 Vedi NOME_PRODOTTO](URL_PRODOTTO) - il cliente deve poter cliccare!
+15. 📦 DISPONIBILITÀ: usa sempre il campo "disponibilita_testo" per indicare se è disponibile subito (consegna domani) o ordinabile (2-7 giorni)
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
