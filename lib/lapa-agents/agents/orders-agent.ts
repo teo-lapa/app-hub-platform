@@ -587,6 +587,459 @@ const ordersTools: AgentTool[] = [
     },
   },
 
+  // ============================================================================
+  // CARRELLO / PREVENTIVO - Gestione carrello conversazionale
+  // ============================================================================
+
+  {
+    name: 'get_or_create_cart',
+    description: 'Trova o crea un preventivo (carrello) draft per il cliente. Usato come carrello conversazionale.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente',
+        },
+      },
+      required: ['customer_id'],
+    },
+    handler: async ({ customer_id }): Promise<{ cart_id: number; cart_name: string; items: any[]; total: number; is_new: boolean }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // Cerca un preventivo draft esistente (carrello) per questo cliente
+        // Ordina per data creazione desc per prendere il più recente
+        const existingCarts = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', '=', 'draft']  // Solo preventivi non confermati
+          ],
+          ['id', 'name', 'amount_total', 'order_line', 'create_date'],
+          10  // Limit
+        );
+
+        let cartId: number;
+        let cartName: string;
+        let isNew = false;
+
+        if (existingCarts.length > 0) {
+          // Usa il carrello esistente più recente
+          cartId = existingCarts[0].id;
+          cartName = existingCarts[0].name;
+        } else {
+          // Crea un nuovo preventivo vuoto
+          const newCartIds = await odoo.create('sale.order', [{
+            partner_id: customer_id,
+            state: 'draft',
+          }]);
+
+          if (!newCartIds || newCartIds.length === 0) {
+            throw new Error('Errore creazione carrello');
+          }
+
+          cartId = newCartIds[0];
+          isNew = true;
+
+          // Recupera il nome del carrello creato
+          const newCart = await odoo.searchRead(
+            'sale.order',
+            [['id', '=', cartId]],
+            ['name']
+          );
+          cartName = newCart[0]?.name || `S${cartId}`;
+        }
+
+        // Recupera le righe del carrello
+        const cart = await odoo.searchRead(
+          'sale.order',
+          [['id', '=', cartId]],
+          ['order_line', 'amount_total']
+        );
+
+        let items: any[] = [];
+        if (cart[0]?.order_line?.length > 0) {
+          const lines = await odoo.searchRead(
+            'sale.order.line',
+            [['id', 'in', cart[0].order_line]],
+            ['product_id', 'name', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+          );
+
+          items = lines.map((line: any) => ({
+            line_id: line.id,
+            product_id: line.product_id[0],
+            product_name: line.product_id[1],
+            quantity: line.product_uom_qty,
+            price_unit: line.price_unit,
+            subtotal: line.price_subtotal,
+            uom: line.product_uom?.[1] || 'pz'
+          }));
+        }
+
+        return {
+          cart_id: cartId,
+          cart_name: cartName,
+          items,
+          total: cart[0]?.amount_total || 0,
+          is_new: isNew
+        };
+      } catch (error) {
+        throw new Error(`Errore gestione carrello: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
+    name: 'add_to_cart',
+    description: 'Aggiunge un prodotto al carrello (preventivo draft) del cliente',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente',
+        },
+        product_id: {
+          type: 'number',
+          description: 'ID del prodotto da aggiungere',
+        },
+        quantity: {
+          type: 'number',
+          description: 'Quantità da aggiungere',
+        },
+      },
+      required: ['customer_id', 'product_id', 'quantity'],
+    },
+    handler: async ({ customer_id, product_id, quantity }): Promise<{ success: boolean; cart_id: number; cart_name: string; product_name: string; quantity: number; items: any[]; total: number }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // Prima ottieni o crea il carrello
+        const existingCarts = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', '=', 'draft']
+          ],
+          ['id', 'name'],
+          1
+        );
+
+        let cartId: number;
+        let cartName: string;
+
+        if (existingCarts.length > 0) {
+          cartId = existingCarts[0].id;
+          cartName = existingCarts[0].name;
+        } else {
+          // Crea nuovo carrello
+          const newCartIds = await odoo.create('sale.order', [{
+            partner_id: customer_id,
+            state: 'draft',
+          }]);
+          cartId = newCartIds[0];
+
+          const newCart = await odoo.searchRead(
+            'sale.order',
+            [['id', '=', cartId]],
+            ['name']
+          );
+          cartName = newCart[0]?.name || `S${cartId}`;
+        }
+
+        // Recupera info prodotto
+        const products = await odoo.searchRead(
+          'product.product',
+          [['id', '=', product_id]],
+          ['name', 'list_price', 'uom_id']
+        );
+
+        if (products.length === 0) {
+          throw new Error('Prodotto non trovato');
+        }
+
+        const product = products[0];
+
+        // Controlla se il prodotto è già nel carrello
+        const existingLines = await odoo.searchRead(
+          'sale.order.line',
+          [
+            ['order_id', '=', cartId],
+            ['product_id', '=', product_id]
+          ],
+          ['id', 'product_uom_qty']
+        );
+
+        if (existingLines.length > 0) {
+          // Aggiorna quantità esistente
+          const newQty = existingLines[0].product_uom_qty + quantity;
+          await odoo.write('sale.order.line', [existingLines[0].id], {
+            product_uom_qty: newQty
+          });
+        } else {
+          // Aggiungi nuova riga
+          await odoo.create('sale.order.line', [{
+            order_id: cartId,
+            product_id: product_id,
+            product_uom_qty: quantity,
+          }]);
+        }
+
+        // Recupera carrello aggiornato
+        const updatedCart = await odoo.searchRead(
+          'sale.order',
+          [['id', '=', cartId]],
+          ['order_line', 'amount_total']
+        );
+
+        let items: any[] = [];
+        if (updatedCart[0]?.order_line?.length > 0) {
+          const lines = await odoo.searchRead(
+            'sale.order.line',
+            [['id', 'in', updatedCart[0].order_line]],
+            ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal']
+          );
+
+          items = lines.map((line: any) => ({
+            product_id: line.product_id[0],
+            product_name: line.product_id[1],
+            quantity: line.product_uom_qty,
+            price_unit: line.price_unit,
+            subtotal: line.price_subtotal
+          }));
+        }
+
+        return {
+          success: true,
+          cart_id: cartId,
+          cart_name: cartName,
+          product_name: product.name,
+          quantity,
+          items,
+          total: updatedCart[0]?.amount_total || 0
+        };
+      } catch (error) {
+        throw new Error(`Errore aggiunta al carrello: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
+    name: 'remove_from_cart',
+    description: 'Rimuove un prodotto dal carrello del cliente',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente',
+        },
+        product_id: {
+          type: 'number',
+          description: 'ID del prodotto da rimuovere',
+        },
+      },
+      required: ['customer_id', 'product_id'],
+    },
+    handler: async ({ customer_id, product_id }): Promise<{ success: boolean; removed_product: string; items: any[]; total: number }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // Trova il carrello
+        const carts = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', '=', 'draft']
+          ],
+          ['id'],
+          1
+        );
+
+        if (carts.length === 0) {
+          throw new Error('Nessun carrello trovato');
+        }
+
+        const cartId = carts[0].id;
+
+        // Trova la riga del prodotto
+        const lines = await odoo.searchRead(
+          'sale.order.line',
+          [
+            ['order_id', '=', cartId],
+            ['product_id', '=', product_id]
+          ],
+          ['id', 'product_id']
+        );
+
+        if (lines.length === 0) {
+          throw new Error('Prodotto non trovato nel carrello');
+        }
+
+        const productName = lines[0].product_id[1];
+
+        // Elimina la riga
+        await odoo.unlink('sale.order.line', [lines[0].id]);
+
+        // Recupera carrello aggiornato
+        const updatedCart = await odoo.searchRead(
+          'sale.order',
+          [['id', '=', cartId]],
+          ['order_line', 'amount_total']
+        );
+
+        let items: any[] = [];
+        if (updatedCart[0]?.order_line?.length > 0) {
+          const remainingLines = await odoo.searchRead(
+            'sale.order.line',
+            [['id', 'in', updatedCart[0].order_line]],
+            ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal']
+          );
+
+          items = remainingLines.map((line: any) => ({
+            product_id: line.product_id[0],
+            product_name: line.product_id[1],
+            quantity: line.product_uom_qty,
+            subtotal: line.price_subtotal
+          }));
+        }
+
+        return {
+          success: true,
+          removed_product: productName,
+          items,
+          total: updatedCart[0]?.amount_total || 0
+        };
+      } catch (error) {
+        throw new Error(`Errore rimozione dal carrello: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
+    name: 'view_cart',
+    description: 'Mostra il contenuto del carrello (preventivo draft) del cliente',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente',
+        },
+      },
+      required: ['customer_id'],
+    },
+    handler: async ({ customer_id }): Promise<{ cart_id: number | null; cart_name: string | null; items: any[]; total: number; empty: boolean }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        const carts = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', '=', 'draft']
+          ],
+          ['id', 'name', 'order_line', 'amount_total'],
+          1
+        );
+
+        if (carts.length === 0) {
+          return {
+            cart_id: null,
+            cart_name: null,
+            items: [],
+            total: 0,
+            empty: true
+          };
+        }
+
+        const cart = carts[0];
+        let items: any[] = [];
+
+        if (cart.order_line?.length > 0) {
+          const lines = await odoo.searchRead(
+            'sale.order.line',
+            [['id', 'in', cart.order_line]],
+            ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+          );
+
+          items = lines.map((line: any) => ({
+            product_id: line.product_id[0],
+            product_name: line.product_id[1],
+            quantity: line.product_uom_qty,
+            price_unit: line.price_unit,
+            subtotal: line.price_subtotal,
+            uom: line.product_uom?.[1] || 'pz'
+          }));
+        }
+
+        return {
+          cart_id: cart.id,
+          cart_name: cart.name,
+          items,
+          total: cart.amount_total || 0,
+          empty: items.length === 0
+        };
+      } catch (error) {
+        throw new Error(`Errore visualizzazione carrello: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
+  {
+    name: 'confirm_cart',
+    description: 'Conferma il carrello e lo trasforma in ordine confermato',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente',
+        },
+      },
+      required: ['customer_id'],
+    },
+    handler: async ({ customer_id }): Promise<{ success: boolean; order_id: number; order_name: string; total: number; message: string }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        const carts = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', '=', customer_id],
+            ['state', '=', 'draft']
+          ],
+          ['id', 'name', 'order_line', 'amount_total'],
+          1
+        );
+
+        if (carts.length === 0) {
+          throw new Error('Nessun carrello da confermare');
+        }
+
+        const cart = carts[0];
+
+        if (!cart.order_line || cart.order_line.length === 0) {
+          throw new Error('Il carrello è vuoto');
+        }
+
+        // Conferma l'ordine
+        await odoo.call('sale.order', 'action_confirm', [[cart.id]]);
+
+        return {
+          success: true,
+          order_id: cart.id,
+          order_name: cart.name,
+          total: cart.amount_total,
+          message: `Ordine ${cart.name} confermato! Totale: ${cart.amount_total.toFixed(2)} CHF`
+        };
+      } catch (error) {
+        throw new Error(`Errore conferma ordine: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
+
   {
     name: 'create_order',
     description: 'Crea un nuovo ordine per un cliente B2B',

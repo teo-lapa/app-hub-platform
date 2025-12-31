@@ -15,6 +15,7 @@ interface OdooClient {
   searchCount: (model: string, domain: any[]) => Promise<number>;
   create: (model: string, values: any[]) => Promise<number[]>;
   write: (model: string, ids: number[], values: any) => Promise<boolean>;
+  unlink: (model: string, ids: number[]) => Promise<boolean>;
   call: (model: string, method: string, args: any[], kwargs?: any) => Promise<any>;
 }
 
@@ -317,6 +318,38 @@ class OdooRPC implements OdooClient {
     if (data.error) {
       console.error('❌ Odoo write error:', JSON.stringify(data.error, null, 2));
       throw new Error(data.error.data?.message || data.error.message || 'Write failed');
+    }
+
+    return data.result || false;
+  }
+
+  async unlink(model: string, ids: number[]): Promise<boolean> {
+    await this.ensureAuthenticated();
+
+    const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': this.cookies || `session_id=${this.sessionId}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: model,
+          method: 'unlink',
+          args: [ids],
+          kwargs: {}
+        },
+        id: Math.floor(Math.random() * 1000000)
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('❌ Odoo unlink error:', JSON.stringify(data.error, null, 2));
+      throw new Error(data.error.data?.message || data.error.message || 'Unlink failed');
     }
 
     return data.result || false;

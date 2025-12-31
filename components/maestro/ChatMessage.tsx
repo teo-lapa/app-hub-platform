@@ -180,24 +180,83 @@ function MarkdownContent({ content }: { content: string }) {
 /**
  * RichText Component
  *
- * Renders text with **bold** formatting
+ * Renders text with:
+ * - **bold** formatting
+ * - [text](url) clickable links
+ * - Plain URLs (https://...)
  */
 function RichText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+  // Combined regex for bold, markdown links, and plain URLs
+  // Order matters: check markdown links first, then bold, then plain URLs
+  const pattern = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*.*?\*\*)|(https?:\/\/[^\s<>"{}|\\^\[\]`]+)/g;
+
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyIndex = 0;
+
+  while ((match = pattern.exec(text)) !== null) {
+    // Add text before match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1]) {
+      // Markdown link: [text](url)
+      const linkText = match[2];
+      const linkUrl = match[3];
+      parts.push(
+        <a
+          key={`link-${keyIndex++}`}
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors"
+        >
+          {linkText}
+        </a>
+      );
+    } else if (match[4]) {
+      // Bold: **text**
+      const boldText = match[4].slice(2, -2);
+      parts.push(
+        <strong key={`bold-${keyIndex++}`} className="font-semibold text-white">
+          {boldText}
+        </strong>
+      );
+    } else if (match[5]) {
+      // Plain URL
+      parts.push(
+        <a
+          key={`url-${keyIndex++}`}
+          href={match[5]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors break-all"
+        >
+          {match[5]}
+        </a>
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  // If no special formatting found, return original text
+  if (parts.length === 0) {
+    return <>{text}</>;
+  }
 
   return (
     <>
-      {parts.map((part, idx) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          const boldText = part.slice(2, -2);
-          return (
-            <strong key={idx} className="font-semibold text-white">
-              {boldText}
-            </strong>
-          );
-        }
-        return <span key={idx}>{part}</span>;
-      })}
+      {parts.map((part, idx) =>
+        typeof part === 'string' ? <span key={`text-${idx}`}>{part}</span> : part
+      )}
     </>
   );
 }

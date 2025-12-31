@@ -239,6 +239,10 @@ export type IntentType =
   | 'order_create'         // Creare un nuovo ordine
   | 'order_inquiry'        // Domande su ordini
   | 'order_detail'         // Dettagli di un ordine specifico
+  | 'cart_add'             // Aggiungere prodotto al carrello (preventivo draft)
+  | 'cart_view'            // Vedere il carrello
+  | 'cart_remove'          // Rimuovere prodotto dal carrello
+  | 'cart_confirm'         // Confermare il carrello/ordine
   | 'invoice_inquiry'      // Domande su fatture
   | 'invoice_detail'       // Dettagli di una fattura specifica
   | 'invoice_filter'       // Filtrare fatture (da pagare, pagate, etc.)
@@ -466,7 +470,7 @@ COMPITO:
 Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOLO con un JSON valido nel seguente formato:
 
 {
-  "type": "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
+  "type": "cart_add" | "cart_view" | "cart_remove" | "cart_confirm" | "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
   "confidence": 0.0-1.0,
   "entities": {
     "order_id": "SO123" (se menzionato),
@@ -478,7 +482,11 @@ Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOL
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
-- order_create: Richiesta di CREARE un nuovo ordine, fare un ordine, ordinare prodotti (Keywords: creare ordine, fare ordine, voglio ordinare, vorrei ordinare, mi puoi creare, crea ordine, nuovo ordine, ordinare, order erstellen, passer commande, place order, bestellen)
+- cart_add: AGGIUNGERE prodotto al carrello, mettere prodotto nel carrello. PRIORITÀ MASSIMA quando l'utente dice "aggiungimi", "mettimi", "aggiungi al carrello" (Keywords: aggiungimi, mettimi, aggiungi, aggiungi al carrello, metti nel carrello, lo voglio, lo prendo, me lo metti, aggiungi questo, add to cart, in den Warenkorb, ajouter au panier)
+- cart_view: VEDERE il carrello, cosa c'è nel carrello (Keywords: carrello, vedi carrello, mostra carrello, cosa ho nel carrello, cosa c'è nel carrello, my cart, Warenkorb anzeigen, voir panier)
+- cart_remove: RIMUOVERE prodotto dal carrello (Keywords: togli, rimuovi, elimina dal carrello, remove from cart, aus dem Warenkorb entfernen, retirer du panier)
+- cart_confirm: CONFERMARE l'ordine/carrello, procedere all'acquisto (Keywords: conferma ordine, conferma carrello, procedi, checkout, finalizza, conferma, bestätigen, confirmer)
+- order_create: Richiesta generica di CREARE un ordine senza specificare prodotti (Keywords: creare ordine, fare ordine, voglio ordinare genericamente, order erstellen, passer commande)
 - order_inquiry: Domande su ordini esistenti, stato ordini, modifiche, prodotti acquistati, storico acquisti (Keywords: ordine, ordini, ordinato, acquisto, acquistato, comprato, storico, ultimi prodotti, cosa ho comprato, quando ho comprato, SO, order, Bestellung, commande, purchased, gekauft, acheté)
 - order_detail: Richiesta DETTAGLI di un ordine specifico (Keywords: dettagli ordine, mostrami l'ordine, più info su ordine)
 - invoice_inquiry: Domande su fatture, pagamenti, estratti conto, saldo (Keywords: fattura, fatture, pagamento, saldo, INV, invoice, Rechnung, facture)
@@ -562,6 +570,42 @@ IMPORTANTE:
    */
   private fallbackIntentAnalysis(message: string): Intent {
     const lowerMessage = message.toLowerCase();
+
+    // Cart add keywords (HIGHEST PRIORITY - must come first)
+    if (lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
+      return {
+        type: 'cart_add',
+        confidence: 0.9,
+        requiresAuth: true
+      };
+    }
+
+    // Cart view keywords
+    if (lowerMessage.match(/vedi.*carrell|mostra.*carrell|cosa.*carrell|nel carrello|my cart|warenkorb anzeigen|voir panier/i)) {
+      return {
+        type: 'cart_view',
+        confidence: 0.9,
+        requiresAuth: true
+      };
+    }
+
+    // Cart remove keywords
+    if (lowerMessage.match(/togli.*carrell|rimuovi.*carrell|elimina.*carrell|remove from cart/i)) {
+      return {
+        type: 'cart_remove',
+        confidence: 0.9,
+        requiresAuth: true
+      };
+    }
+
+    // Cart confirm keywords
+    if (lowerMessage.match(/conferma.*ordine|conferma.*carrell|procedi|checkout|finalizza|bestätigen|confirmer/i)) {
+      return {
+        type: 'cart_confirm',
+        confidence: 0.9,
+        requiresAuth: true
+      };
+    }
 
     // Order keywords
     if (lowerMessage.match(/ordine|order|ordinato|acquisto|so\d+/i)) {
@@ -1212,6 +1256,19 @@ IMPORTANTE:
       priority: 10,
       handler: async (context, intent) => {
         return await this.followupAgentHandler(context, intent);
+      }
+    });
+
+    // CART AGENT - Gestisce il carrello conversazionale (preventivo draft Odoo)
+    this.registerAgent({
+      id: 'cart',
+      name: 'Cart Agent',
+      description: 'Gestisce il carrello conversazionale - aggiunge, rimuove, mostra e conferma prodotti',
+      intents: ['cart_add', 'cart_view', 'cart_remove', 'cart_confirm'],
+      requiresAuth: true,
+      priority: 10, // Alta priorità per gestione carrello
+      handler: async (context, intent) => {
+        return await this.cartAgentHandler(context, intent);
       }
     });
   }
@@ -2079,6 +2136,668 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         agentId: 'order_create'
       };
     }
+  }
+
+  /**
+   * Handler per il carrello conversazionale
+   * Gestisce aggiunta, rimozione, visualizzazione e conferma del carrello (preventivo draft Odoo)
+   */
+  private async cartAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    // Verifica autenticazione
+    if (!context.customerId) {
+      return {
+        success: false,
+        message: 'Per gestire il carrello devi prima effettuare il login.',
+        requiresHumanEscalation: false,
+        agentId: 'cart',
+        suggestedActions: ['Effettua il login', 'Vai al sito web']
+      };
+    }
+
+    try {
+      const odoo = await getOdooClient();
+      const customerId = context.customerId;
+
+      // Prendi il messaggio originale dell'utente
+      const userMessages = context.conversationHistory.filter(m => m.role === 'user');
+      const userMessage = userMessages[userMessages.length - 1]?.content || '';
+      const lowerMessage = userMessage.toLowerCase();
+
+      console.log('🛒 cartAgentHandler:', { intent: intent.type, userMessage: userMessage.substring(0, 100) });
+
+      // Gestisci i diversi tipi di intent
+      switch (intent.type) {
+        case 'cart_add':
+          return await this.handleCartAdd(context, odoo, userMessage, intent);
+
+        case 'cart_view':
+          return await this.handleCartView(context, odoo);
+
+        case 'cart_remove':
+          return await this.handleCartRemove(context, odoo, userMessage, intent);
+
+        case 'cart_confirm':
+          return await this.handleCartConfirm(context, odoo);
+
+        default:
+          return await this.handleCartView(context, odoo);
+      }
+    } catch (error) {
+      console.error('❌ Errore cartAgentHandler:', error);
+      return {
+        success: false,
+        message: 'Si è verificato un errore con il carrello. Riprova o contatta il supporto.',
+        requiresHumanEscalation: true,
+        agentId: 'cart'
+      };
+    }
+  }
+
+  /**
+   * Gestisce l'aggiunta di prodotti al carrello
+   * Supporta richieste come: "aggiungimi un guanciale, 1 kg di pecorino romano e un litro di uovo"
+   */
+  private async handleCartAdd(
+    context: CustomerContext,
+    odoo: any,
+    userMessage: string,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    const customerId = context.customerId!;
+
+    console.log('🛒 handleCartAdd - userMessage:', userMessage);
+
+    // Estrai i prodotti menzionati dal messaggio usando parsing intelligente
+    const extractedProducts = this.extractProductsFromMessage(userMessage);
+
+    console.log('🛒 Extracted products:', extractedProducts);
+
+    // Se abbiamo estratto prodotti dal messaggio, cercali in Odoo
+    if (extractedProducts.length > 0) {
+      const addedProducts: string[] = [];
+      const notFoundProducts: string[] = [];
+      let lastCartInfo: any = null;
+
+      for (const extracted of extractedProducts) {
+        // Cerca il prodotto in Odoo
+        const products = await odoo.searchRead(
+          'product.product',
+          [
+            '|',
+            ['name', 'ilike', extracted.name],
+            ['default_code', 'ilike', extracted.name],
+            ['sale_ok', '=', true]
+          ],
+          ['id', 'name', 'list_price', 'uom_id', 'product_tmpl_id'],
+          3
+        );
+
+        if (products.length > 0) {
+          // Prendi il prodotto più rilevante (primo risultato)
+          const product = products[0];
+          const qty = extracted.quantity || 1;
+
+          try {
+            const result = await this.addProductToCart(odoo, customerId, product, qty, context.customerName);
+            addedProducts.push(`${qty}x ${product.name}`);
+            lastCartInfo = result.data;
+          } catch (err) {
+            console.error('Errore aggiunta prodotto:', err);
+            notFoundProducts.push(extracted.name);
+          }
+        } else {
+          notFoundProducts.push(extracted.name);
+        }
+      }
+
+      // Costruisci il messaggio di risposta
+      if (addedProducts.length > 0) {
+        let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+        addedProducts.forEach(p => {
+          message += `• ${p}\n`;
+        });
+
+        if (notFoundProducts.length > 0) {
+          message += `\n⚠️ **Non trovati:** ${notFoundProducts.join(', ')}\n`;
+        }
+
+        if (lastCartInfo) {
+          const cartUrl = generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name);
+          message += `\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n`;
+          message += `- ${lastCartInfo.item_count} articoli\n`;
+          message += `- Totale: CHF ${lastCartInfo.total.toFixed(2)}\n\n`;
+          message += `[Vedi carrello](${cartUrl})`;
+        }
+
+        return {
+          success: true,
+          message,
+          agentId: 'cart',
+          data: lastCartInfo,
+          suggestedActions: notFoundProducts.length > 0
+            ? ['Cerca ' + notFoundProducts[0], 'Vedi carrello', 'Conferma ordine']
+            : ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+        };
+      }
+    }
+
+    // Se non abbiamo estratto prodotti, prova con l'entity dall'intent o cerca prodotti recenti
+    const productName = intent.entities?.product_name;
+
+    if (!productName) {
+      // Cerca nei prodotti mostrati recentemente nella conversazione
+      const recentProducts = this.extractRecentProductsFromConversation(context);
+
+      if (recentProducts.length === 0) {
+        return {
+          success: false,
+          message: 'Quale prodotto vuoi aggiungere al carrello? Dimmi il nome del prodotto.',
+          agentId: 'cart',
+          suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
+        };
+      }
+
+      // Se c'è un solo prodotto recente, chiedi conferma
+      if (recentProducts.length === 1) {
+        return {
+          success: true,
+          message: `Vuoi aggiungere **${recentProducts[0].name}** al carrello? Quanti ne vuoi?`,
+          agentId: 'cart',
+          data: { pending_product: recentProducts[0] },
+          suggestedActions: ['1', '2', '5', 'Altro prodotto']
+        };
+      }
+    }
+
+    // Cerca il prodotto in Odoo
+    const searchTerms = (productName || userMessage).toLowerCase();
+    const products = await odoo.searchRead(
+      'product.product',
+      [
+        '|',
+        ['name', 'ilike', searchTerms],
+        ['default_code', 'ilike', searchTerms],
+        ['sale_ok', '=', true]
+      ],
+      ['id', 'name', 'list_price', 'uom_id', 'product_tmpl_id'],
+      5
+    );
+
+    if (products.length === 0) {
+      return {
+        success: false,
+        message: `Non ho trovato prodotti corrispondenti a "${searchTerms}". Prova con un altro nome.`,
+        agentId: 'cart',
+        suggestedActions: ['Cerca un altro prodotto', 'Mostra catalogo']
+      };
+    }
+
+    if (products.length === 1) {
+      // Un solo prodotto trovato - aggiungi direttamente con quantità 1
+      return await this.addProductToCart(odoo, customerId, products[0], 1, context.customerName);
+    }
+
+    // Più prodotti trovati - chiedi quale
+    let message = 'Ho trovato questi prodotti:\n\n';
+    products.forEach((p: any, idx: number) => {
+      const url = generateProductUrl(p.product_tmpl_id?.[0] || p.id, p.name);
+      message += `${idx + 1}. **${p.name}** - CHF ${p.list_price.toFixed(2)} - [Vedi](${url})\n`;
+    });
+    message += '\nQuale vuoi aggiungere al carrello?';
+
+    return {
+      success: true,
+      message,
+      agentId: 'cart',
+      data: { pending_products: products },
+      suggestedActions: products.slice(0, 3).map((p: any) => p.name.substring(0, 20))
+    };
+  }
+
+  /**
+   * Estrae prodotti e quantità da un messaggio in linguaggio naturale
+   * Es: "aggiungimi un guanciale, 1 kg di pecorino romano e un litro di uovo"
+   */
+  private extractProductsFromMessage(message: string): Array<{name: string, quantity: number, unit?: string}> {
+    const products: Array<{name: string, quantity: number, unit?: string}> = [];
+
+    // Rimuovi le parole chiave di aggiunta
+    let cleanMessage = message.toLowerCase()
+      .replace(/aggiungimi|mettimi|aggiungi|metti|lo voglio|lo prendo|me lo metti|al carrello|nel carrello/gi, '')
+      .trim();
+
+    // Se il messaggio è vuoto dopo la pulizia, non c'è nulla da estrarre
+    if (!cleanMessage) return products;
+
+    // Dividi per virgole, "e", "poi"
+    const parts = cleanMessage.split(/\s*[,e]\s*|\s+poi\s+/i).filter(p => p.trim());
+
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+
+      // Pattern per estrarre quantità e prodotto
+      // Es: "1 kg di pecorino romano", "un guanciale", "2 mozzarelle", "un litro di uovo"
+      const patterns = [
+        // "1 kg di prodotto" o "1kg di prodotto"
+        /^(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|litro|litri|ml|pz|pezzi|conf|confezioni?)\s+(?:di\s+)?(.+)$/i,
+        // "un/una prodotto" o "un chilo di prodotto"
+        /^(?:un|una|uno)\s+(kg|chilo|kilo|litro|litri?|l)\s+(?:di\s+)?(.+)$/i,
+        // "un/una prodotto"
+        /^(?:un|una|uno|il|la|lo|i|gli|le)\s+(.+)$/i,
+        // "2 prodotti" (numero + prodotto)
+        /^(\d+)\s+(.+)$/i,
+        // Solo nome prodotto
+        /^(.+)$/i
+      ];
+
+      for (const pattern of patterns) {
+        const match = trimmed.match(pattern);
+        if (match) {
+          if (pattern === patterns[0]) {
+            // Pattern con quantità e unità
+            const qty = parseFloat(match[1].replace(',', '.'));
+            const unit = match[2];
+            const name = match[3].trim();
+            if (name.length > 1) {
+              products.push({ name, quantity: qty, unit });
+              break;
+            }
+          } else if (pattern === patterns[1]) {
+            // Pattern "un chilo di..."
+            const unit = match[1];
+            const name = match[2].trim();
+            if (name.length > 1) {
+              products.push({ name, quantity: 1, unit });
+              break;
+            }
+          } else if (pattern === patterns[2]) {
+            // Pattern "un prodotto"
+            const name = match[1].trim();
+            if (name.length > 1) {
+              products.push({ name, quantity: 1 });
+              break;
+            }
+          } else if (pattern === patterns[3]) {
+            // Pattern "2 prodotti"
+            const qty = parseInt(match[1]);
+            const name = match[2].trim();
+            if (name.length > 1) {
+              products.push({ name, quantity: qty });
+              break;
+            }
+          } else {
+            // Solo nome
+            const name = match[1].trim();
+            if (name.length > 1) {
+              products.push({ name, quantity: 1 });
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return products;
+  }
+
+  /**
+   * Aggiunge un prodotto al carrello (crea o aggiorna preventivo draft)
+   */
+  private async addProductToCart(
+    odoo: any,
+    customerId: number,
+    product: any,
+    quantity: number,
+    customerName?: string
+  ): Promise<AgentResponse> {
+    try {
+      // Cerca un preventivo draft esistente per questo cliente
+      let carts = await odoo.searchRead(
+        'sale.order',
+        [
+          ['partner_id', '=', customerId],
+          ['state', '=', 'draft']
+        ],
+        ['id', 'name', 'order_line', 'amount_total'],
+        1
+      );
+
+      let cartId: number;
+      let cartName: string;
+      let isNewCart = false;
+
+      if (carts.length === 0) {
+        // Crea un nuovo preventivo
+        const newCartIds = await odoo.create('sale.order', [{
+          partner_id: customerId,
+          state: 'draft'
+        }]);
+        cartId = newCartIds[0];
+        isNewCart = true;
+
+        const newCart = await odoo.searchRead(
+          'sale.order',
+          [['id', '=', cartId]],
+          ['name']
+        );
+        cartName = newCart[0]?.name || `S${cartId}`;
+      } else {
+        cartId = carts[0].id;
+        cartName = carts[0].name;
+      }
+
+      // Controlla se il prodotto è già nel carrello
+      const existingLines = await odoo.searchRead(
+        'sale.order.line',
+        [
+          ['order_id', '=', cartId],
+          ['product_id', '=', product.id]
+        ],
+        ['id', 'product_uom_qty']
+      );
+
+      if (existingLines.length > 0) {
+        // Aggiorna la quantità
+        const newQty = existingLines[0].product_uom_qty + quantity;
+        await odoo.write('sale.order.line', [existingLines[0].id], {
+          product_uom_qty: newQty
+        });
+      } else {
+        // Aggiungi nuova riga
+        await odoo.create('sale.order.line', [{
+          order_id: cartId,
+          product_id: product.id,
+          product_uom_qty: quantity
+        }]);
+      }
+
+      // Recupera il carrello aggiornato
+      const updatedCart = await odoo.searchRead(
+        'sale.order',
+        [['id', '=', cartId]],
+        ['order_line', 'amount_total']
+      );
+
+      // Conta gli articoli
+      const itemCount = updatedCart[0]?.order_line?.length || 0;
+      const total = updatedCart[0]?.amount_total || 0;
+
+      const productUrl = generateProductUrl(product.product_tmpl_id?.[0] || product.id, product.name);
+      const cartUrl = generateOrderUrl(cartId, cartName);
+
+      let message = `✅ **${product.name}** aggiunto al carrello!\n\n`;
+      message += `📦 Quantità: ${quantity}\n`;
+      message += `💰 Prezzo: CHF ${product.list_price.toFixed(2)}\n\n`;
+      message += `🛒 **Carrello (${cartName}):**\n`;
+      message += `- ${itemCount} articoli\n`;
+      message += `- Totale: CHF ${total.toFixed(2)}\n\n`;
+      message += `[Vedi carrello](${cartUrl})`;
+
+      return {
+        success: true,
+        message,
+        agentId: 'cart',
+        data: {
+          cart_id: cartId,
+          cart_name: cartName,
+          product_added: product.name,
+          quantity,
+          total,
+          item_count: itemCount
+        },
+        suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+      };
+    } catch (error) {
+      console.error('❌ Errore addProductToCart:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mostra il contenuto del carrello
+   */
+  private async handleCartView(
+    context: CustomerContext,
+    odoo: any
+  ): Promise<AgentResponse> {
+    const customerId = context.customerId!;
+
+    const carts = await odoo.searchRead(
+      'sale.order',
+      [
+        ['partner_id', '=', customerId],
+        ['state', '=', 'draft']
+      ],
+      ['id', 'name', 'order_line', 'amount_total', 'amount_untaxed'],
+      1
+    );
+
+    if (carts.length === 0) {
+      return {
+        success: true,
+        message: '🛒 Il tuo carrello è vuoto.\n\nVuoi cercare qualche prodotto?',
+        agentId: 'cart',
+        suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
+      };
+    }
+
+    const cart = carts[0];
+    const cartUrl = generateOrderUrl(cart.id, cart.name);
+
+    if (!cart.order_line || cart.order_line.length === 0) {
+      return {
+        success: true,
+        message: `🛒 Il tuo carrello (${cart.name}) è vuoto.\n\n[Vedi carrello](${cartUrl})`,
+        agentId: 'cart',
+        suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
+      };
+    }
+
+    // Recupera i dettagli delle righe
+    const lines = await odoo.searchRead(
+      'sale.order.line',
+      [['id', 'in', cart.order_line]],
+      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+    );
+
+    let message = `🛒 **Il tuo carrello (${cart.name}):**\n\n`;
+
+    for (const line of lines) {
+      const productName = line.product_id?.[1] || 'Prodotto';
+      const qty = line.product_uom_qty;
+      const uom = line.product_uom?.[1] || 'pz';
+      const subtotal = line.price_subtotal;
+
+      message += `• **${productName}**\n`;
+      message += `  ${qty} ${uom} × CHF ${line.price_unit.toFixed(2)} = CHF ${subtotal.toFixed(2)}\n\n`;
+    }
+
+    message += `---\n`;
+    message += `**Totale: CHF ${cart.amount_total.toFixed(2)}**\n\n`;
+    message += `[Vedi carrello completo](${cartUrl})`;
+
+    return {
+      success: true,
+      message,
+      agentId: 'cart',
+      data: {
+        cart_id: cart.id,
+        cart_name: cart.name,
+        items: lines.map((l: any) => ({
+          product_name: l.product_id?.[1],
+          quantity: l.product_uom_qty,
+          subtotal: l.price_subtotal
+        })),
+        total: cart.amount_total
+      },
+      suggestedActions: ['Aggiungi altro', 'Rimuovi prodotto', 'Conferma ordine']
+    };
+  }
+
+  /**
+   * Rimuove un prodotto dal carrello
+   */
+  private async handleCartRemove(
+    context: CustomerContext,
+    odoo: any,
+    userMessage: string,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    const customerId = context.customerId!;
+    const productName = intent.entities?.product_name;
+
+    // Trova il carrello
+    const carts = await odoo.searchRead(
+      'sale.order',
+      [
+        ['partner_id', '=', customerId],
+        ['state', '=', 'draft']
+      ],
+      ['id', 'name', 'order_line'],
+      1
+    );
+
+    if (carts.length === 0 || !carts[0].order_line?.length) {
+      return {
+        success: true,
+        message: '🛒 Il tuo carrello è già vuoto.',
+        agentId: 'cart'
+      };
+    }
+
+    const cart = carts[0];
+
+    // Recupera le righe per trovare il prodotto
+    const lines = await odoo.searchRead(
+      'sale.order.line',
+      [['id', 'in', cart.order_line]],
+      ['id', 'product_id', 'product_uom_qty']
+    );
+
+    if (!productName) {
+      // Chiedi quale prodotto rimuovere
+      let message = 'Quale prodotto vuoi rimuovere dal carrello?\n\n';
+      lines.forEach((line: any, idx: number) => {
+        message += `${idx + 1}. ${line.product_id?.[1]} (${line.product_uom_qty} pz)\n`;
+      });
+
+      return {
+        success: true,
+        message,
+        agentId: 'cart',
+        data: { cart_lines: lines },
+        suggestedActions: lines.slice(0, 3).map((l: any) => l.product_id?.[1]?.substring(0, 15))
+      };
+    }
+
+    // Trova la riga corrispondente
+    const matchingLine = lines.find((l: any) =>
+      l.product_id?.[1]?.toLowerCase().includes(productName.toLowerCase())
+    );
+
+    if (!matchingLine) {
+      return {
+        success: false,
+        message: `Non ho trovato "${productName}" nel tuo carrello.`,
+        agentId: 'cart'
+      };
+    }
+
+    // Rimuovi la riga
+    await odoo.unlink('sale.order.line', [matchingLine.id]);
+
+    return {
+      success: true,
+      message: `✅ **${matchingLine.product_id?.[1]}** rimosso dal carrello.`,
+      agentId: 'cart',
+      suggestedActions: ['Vedi carrello', 'Aggiungi altro', 'Conferma ordine']
+    };
+  }
+
+  /**
+   * Conferma il carrello e lo trasforma in ordine
+   */
+  private async handleCartConfirm(
+    context: CustomerContext,
+    odoo: any
+  ): Promise<AgentResponse> {
+    const customerId = context.customerId!;
+
+    const carts = await odoo.searchRead(
+      'sale.order',
+      [
+        ['partner_id', '=', customerId],
+        ['state', '=', 'draft']
+      ],
+      ['id', 'name', 'order_line', 'amount_total'],
+      1
+    );
+
+    if (carts.length === 0) {
+      return {
+        success: false,
+        message: '🛒 Non hai un carrello da confermare. Aggiungi prima dei prodotti!',
+        agentId: 'cart',
+        suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
+      };
+    }
+
+    const cart = carts[0];
+
+    if (!cart.order_line || cart.order_line.length === 0) {
+      return {
+        success: false,
+        message: '🛒 Il tuo carrello è vuoto. Aggiungi prima dei prodotti!',
+        agentId: 'cart',
+        suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
+      };
+    }
+
+    // Conferma l'ordine
+    await odoo.call('sale.order', 'action_confirm', [[cart.id]]);
+
+    const orderUrl = generateOrderUrl(cart.id, cart.name);
+
+    return {
+      success: true,
+      message: `✅ **Ordine ${cart.name} confermato!**\n\n` +
+        `💰 Totale: CHF ${cart.amount_total.toFixed(2)}\n` +
+        `📦 Riceverai una conferma via email\n\n` +
+        `[Vedi dettagli ordine](${orderUrl})\n\n` +
+        `Grazie per il tuo ordine! 🙏`,
+      agentId: 'cart',
+      data: {
+        order_id: cart.id,
+        order_name: cart.name,
+        total: cart.amount_total
+      },
+      suggestedActions: ['Traccia spedizione', 'Nuovo ordine', 'Contatta supporto']
+    };
+  }
+
+  /**
+   * Estrae prodotti menzionati recentemente dalla conversazione
+   */
+  private extractRecentProductsFromConversation(context: CustomerContext): Array<{id: number, name: string}> {
+    const products: Array<{id: number, name: string}> = [];
+
+    // Cerca nei metadata dei messaggi recenti
+    const recentMessages = context.conversationHistory.slice(-5);
+    for (const msg of recentMessages) {
+      if (msg.role === 'assistant' && (msg as any).metadata?.products_shown) {
+        // I prodotti sono già stati mostrati - possiamo estrarli
+        const shown = (msg as any).metadata.products_shown;
+        if (Array.isArray(shown)) {
+          products.push(...shown);
+        }
+      }
+    }
+
+    return products;
   }
 
   /**
