@@ -38,6 +38,16 @@ const RECIPE_MAP: Record<string, RecipeInfo> = {
     ingredients: ['guanciale', 'pecorino romano', 'pomodoro', 'peperoncino'],
     description: 'La vera amatriciana con guanciale e pecorino romano'
   },
+  'alla matriciana': {
+    name: 'Amatriciana',
+    ingredients: ['guanciale', 'pecorino romano', 'pomodoro', 'peperoncino'],
+    description: 'La vera amatriciana con guanciale e pecorino romano'
+  },
+  "all'amatriciana": {
+    name: 'Amatriciana',
+    ingredients: ['guanciale', 'pecorino romano', 'pomodoro', 'peperoncino'],
+    description: 'La vera amatriciana con guanciale e pecorino romano'
+  },
   'carbonara': {
     name: 'Carbonara',
     ingredients: ['guanciale', 'pecorino romano', 'uova', 'pepe nero'],
@@ -1503,7 +1513,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       // ========================================
       // RECIPE DETECTION - Cerca ingredienti per ricette
       // ========================================
+      console.log(`🔍 Recipe detection check - Message: "${lastUserMsg}"`);
       const recipe = detectRecipe(lastUserMsg);
+      console.log(`🔍 Recipe detection result: ${recipe ? recipe.name : 'null'}`);
 
       if (recipe) {
         console.log(`🍝 Ricetta rilevata: ${recipe.name} - Ingredienti: ${recipe.ingredients.join(', ')}`);
