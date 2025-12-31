@@ -214,6 +214,7 @@ export interface CustomerContext {
       content: string; // base64
       mimetype: string;
     }>;
+    originalMessage?: string; // Messaggio originale dell'utente
   };
 }
 
