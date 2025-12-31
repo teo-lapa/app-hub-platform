@@ -16,6 +16,122 @@ import { getOdooClient } from '@/lib/odoo-client';
 // URL base per il sito e-commerce
 const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
 
+// ============================================================================
+// RECIPE DETECTION - Mappa ricette -> ingredienti chiave
+// ============================================================================
+
+interface RecipeInfo {
+  name: string;
+  ingredients: string[];  // Ingredienti da cercare nel catalogo
+  description: string;
+}
+
+const RECIPE_MAP: Record<string, RecipeInfo> = {
+  // Paste classiche
+  'amatriciana': {
+    name: 'Amatriciana',
+    ingredients: ['guanciale', 'pecorino romano', 'pomodoro', 'peperoncino'],
+    description: 'La vera amatriciana con guanciale e pecorino romano'
+  },
+  'matriciana': {
+    name: 'Amatriciana',
+    ingredients: ['guanciale', 'pecorino romano', 'pomodoro', 'peperoncino'],
+    description: 'La vera amatriciana con guanciale e pecorino romano'
+  },
+  'carbonara': {
+    name: 'Carbonara',
+    ingredients: ['guanciale', 'pecorino romano', 'uova', 'pepe nero'],
+    description: 'Carbonara autentica con guanciale e pecorino'
+  },
+  'cacio e pepe': {
+    name: 'Cacio e Pepe',
+    ingredients: ['pecorino romano', 'pepe nero', 'spaghetto', 'tonnarello'],
+    description: 'Cacio e pepe con pecorino romano stagionato'
+  },
+  'gricia': {
+    name: 'Gricia',
+    ingredients: ['guanciale', 'pecorino romano', 'pepe nero'],
+    description: 'Gricia - la madre della carbonara e amatriciana'
+  },
+  'arrabbiata': {
+    name: 'Arrabbiata',
+    ingredients: ['pomodoro', 'aglio', 'peperoncino', 'prezzemolo'],
+    description: 'Penne all\'arrabbiata piccanti'
+  },
+  'puttanesca': {
+    name: 'Puttanesca',
+    ingredients: ['pomodoro', 'olive', 'capperi', 'acciuga', 'aglio'],
+    description: 'Spaghetti alla puttanesca con olive e capperi'
+  },
+  'norma': {
+    name: 'Pasta alla Norma',
+    ingredients: ['melanzana', 'pomodoro', 'ricotta salata', 'basilico'],
+    description: 'Pasta alla norma siciliana con ricotta salata'
+  },
+  'pesto': {
+    name: 'Pesto alla Genovese',
+    ingredients: ['pesto', 'basilico', 'parmigiano', 'pecorino', 'pinoli'],
+    description: 'Trofie o trenette al pesto genovese'
+  },
+  'bolognese': {
+    name: 'Ragù alla Bolognese',
+    ingredients: ['ragù', 'parmigiano', 'tagliatelle'],
+    description: 'Tagliatelle al ragù bolognese'
+  },
+  'lasagna': {
+    name: 'Lasagna',
+    ingredients: ['ragù', 'besciamella', 'parmigiano', 'lasagna', 'mozzarella'],
+    description: 'Lasagne alla bolognese'
+  },
+  // Piatti speciali
+  'caprese': {
+    name: 'Insalata Caprese',
+    ingredients: ['mozzarella', 'pomodoro', 'basilico', 'olio extravergine'],
+    description: 'Caprese con mozzarella di bufala'
+  },
+  'tiramisù': {
+    name: 'Tiramisù',
+    ingredients: ['mascarpone', 'savoiardi', 'caffè', 'cacao'],
+    description: 'Tiramisù con mascarpone fresco'
+  },
+  'tiramisu': {
+    name: 'Tiramisù',
+    ingredients: ['mascarpone', 'savoiardi', 'caffè', 'cacao'],
+    description: 'Tiramisù con mascarpone fresco'
+  },
+  'risotto milanese': {
+    name: 'Risotto alla Milanese',
+    ingredients: ['riso', 'zafferano', 'parmigiano', 'burro', 'brodo'],
+    description: 'Risotto giallo con zafferano'
+  },
+  'pizza margherita': {
+    name: 'Pizza Margherita',
+    ingredients: ['mozzarella', 'pomodoro', 'basilico', 'farina'],
+    description: 'Pizza margherita classica'
+  },
+  'bruschetta': {
+    name: 'Bruschetta',
+    ingredients: ['pomodoro', 'basilico', 'aglio', 'olio extravergine', 'pane'],
+    description: 'Bruschetta al pomodoro fresco'
+  }
+};
+
+/**
+ * Rileva se il messaggio contiene una ricetta e restituisce gli ingredienti da cercare
+ */
+function detectRecipe(message: string): RecipeInfo | null {
+  const lowerMessage = message.toLowerCase();
+
+  // Cerca corrispondenze nelle ricette
+  for (const [keyword, recipe] of Object.entries(RECIPE_MAP)) {
+    if (lowerMessage.includes(keyword)) {
+      return recipe;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Genera un URL per un prodotto sul sito web
  * Formato Odoo standard: /shop/product-slug-TEMPLATE_ID
@@ -1383,6 +1499,97 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const lastUserMsg = context.conversationHistory
         .filter(m => m.role === 'user')
         .pop()?.content || 'Cerca prodotto';
+
+      // ========================================
+      // RECIPE DETECTION - Cerca ingredienti per ricette
+      // ========================================
+      const recipe = detectRecipe(lastUserMsg);
+
+      if (recipe) {
+        console.log(`🍝 Ricetta rilevata: ${recipe.name} - Ingredienti: ${recipe.ingredients.join(', ')}`);
+
+        // Cerca TUTTI gli ingredienti della ricetta
+        const allProducts: any[] = [];
+        const ingredientResults: Record<string, any[]> = {};
+
+        for (const ingredient of recipe.ingredients) {
+          const searchResult = await this.productsAgent.searchProducts(
+            { query: ingredient, active_only: true },
+            5  // Max 5 prodotti per ingrediente
+          );
+
+          if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+            ingredientResults[ingredient] = searchResult.data;
+            allProducts.push(...searchResult.data);
+          } else {
+            ingredientResults[ingredient] = [];
+          }
+        }
+
+        // Prepara dati per la risposta - raggruppa per ingrediente
+        const recipeProductsData: any[] = [];
+        const foundIngredients: string[] = [];
+        const missingIngredients: string[] = [];
+
+        for (const [ingredient, products] of Object.entries(ingredientResults)) {
+          if (products.length > 0) {
+            foundIngredients.push(ingredient);
+            // Aggiungi i primi 2 prodotti per ogni ingrediente
+            products.slice(0, 2).forEach((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              recipeProductsData.push({
+                name: product.name,
+                ingredient: ingredient,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              });
+            });
+          } else {
+            missingIngredients.push(ingredient);
+          }
+        }
+
+        // Genera risposta conversazionale per la ricetta
+        const recipeMessage = await this.generateConversationalResponse(
+          context,
+          'ricetta ingredienti',
+          {
+            recipe_name: recipe.name,
+            recipe_description: recipe.description,
+            products: recipeProductsData,
+            found_ingredients: foundIngredients,
+            missing_ingredients: missingIngredients,
+            total_products: recipeProductsData.length,
+            customer_name: context.customerName
+          },
+          lastUserMsg
+        );
+
+        return {
+          success: true,
+          message: recipeMessage,
+          data: allProducts,
+          agentId: 'product',
+          confidence: 0.95,
+          suggestedActions: [
+            `Ordina tutto per ${recipe.name}`,
+            'Cerca altro',
+            'Chiedi un preventivo'
+          ]
+        };
+      }
+
+      // ========================================
+      // STANDARD PRODUCT SEARCH (no recipe)
+      // ========================================
 
       // Se c'è un nome prodotto o query, cerca prodotti
       if (entities.product_name) {
@@ -3045,6 +3252,7 @@ REGOLE IMPORTANTI:
 13. Se nei dati ci sono più prodotti, mostrarli TUTTI - il cliente vuole vedere le opzioni disponibili
 14. 🔗 Per i PRODOTTI: usa SEMPRE link markdown cliccabili! Formato: [👉 Vedi NOME_PRODOTTO](URL_PRODOTTO) - il cliente deve poter cliccare!
 15. 📦 DISPONIBILITÀ: usa sempre il campo "disponibilita_testo" per indicare se è disponibile subito (consegna domani) o ordinabile (2-7 giorni)
+16. 🍝 RICETTE: Se l'argomento è "ricetta ingredienti", mostra TUTTI i prodotti raggruppati per ingrediente. Esempio: "Per la **Amatriciana** ti servono: **Guanciale**: [prodotto1], [prodotto2]... **Pecorino**: [prodotto1]..." etc. Mostra TUTTO quello che abbiamo!
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
