@@ -154,12 +154,13 @@ export async function POST(request: NextRequest) {
             metadata: attachments && attachments.length > 0 ? { attachments } : undefined
           }, { customerId, customerName, customerType });
 
-          // Salva risposta assistente
+          // Salva risposta assistente (includi data per follow-up con pending_products)
           await addMessageToConversation(sessionId, {
             role: 'assistant',
             content: response.message,
             timestamp: new Date(),
-            agentId: response.agentId
+            agentId: response.agentId,
+            data: response.data  // Salva anche data per selezioni successive
           }, { customerId, customerName, customerType });
         } catch (kvError) {
           console.warn('⚠️ Errore salvataggio conversazione in KV:', kvError);

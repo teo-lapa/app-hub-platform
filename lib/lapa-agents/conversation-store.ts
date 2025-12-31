@@ -12,6 +12,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   agentId?: string;
+  data?: any;  // Per salvare dati come pending_products per selezioni successive
   metadata?: {
     attachments?: Array<{
       name: string;
