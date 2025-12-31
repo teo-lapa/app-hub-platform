@@ -2224,9 +2224,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     // PRIMA: Controlla se l'utente sta selezionando da pending_products (es: "il primo", "1", "2")
     const ordinalSelection = this.parseOrdinalSelection(userMessage);
+    console.log('🛒 parseOrdinalSelection result:', ordinalSelection, 'for message:', userMessage);
+
     if (ordinalSelection >= 0) {
       const pendingProducts = this.extractPendingProductsFromConversation(context);
       console.log('🛒 Ordinal selection:', ordinalSelection, 'pendingProducts:', pendingProducts.length);
+      console.log('🛒 Context history length:', context.conversationHistory.length);
+      console.log('🛒 Last messages data:', context.conversationHistory.slice(-3).map(m => ({ role: m.role, hasData: !!m.data, dataKeys: m.data ? Object.keys(m.data) : [] })));
 
       if (pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
         const selectedProduct = pendingProducts[ordinalSelection];
