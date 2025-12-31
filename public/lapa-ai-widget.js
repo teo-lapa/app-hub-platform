@@ -400,6 +400,33 @@
       color: white;
     }
 
+    /* Stile bottone per link Markdown [testo](url) */
+    .lapa-link-button {
+      display: inline-block;
+      background: #2563eb;
+      color: white !important;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none !important;
+      font-weight: 500;
+      margin: 4px 0;
+      transition: background 0.2s ease;
+    }
+
+    .lapa-link-button:hover {
+      background: #1d4ed8;
+      text-decoration: none !important;
+    }
+
+    .lapa-ai-message.user .lapa-link-button {
+      background: rgba(255,255,255,0.2);
+      color: white !important;
+    }
+
+    .lapa-ai-message.user .lapa-link-button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
     .lapa-ai-message-attachments {
       display: flex;
       flex-wrap: wrap;
@@ -675,10 +702,16 @@
       html += '</div>';
     }
 
-    // Converti link in anchor tags
-    const linkedText = text.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener">$1</a>'
+    // Converti link Markdown [testo](url) in anchor tags cliccabili
+    let linkedText = text.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="lapa-link-button">$1</a>'
+    );
+    // Poi converti URL nudi che non sono già dentro href="..."
+    // Usa un approccio compatibile con tutti i browser (senza lookbehind)
+    linkedText = linkedText.replace(
+      /(^|[^"'])(https?:\/\/[^\s<"']+)/g,
+      '$1<a href="$2" target="_blank" rel="noopener">$2</a>'
     );
     html += '<div class="lapa-ai-message-text">' + linkedText + '</div>';
 
