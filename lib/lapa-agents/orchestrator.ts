@@ -2340,14 +2340,94 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       ];
 
       // Verifica se l'utente chiede esplicitamente una RICETTA (non un prodotto)
-      const isRecipeRequest = /\b(ricetta|come (fare|preparare|cucinare)|ingredienti per|per fare)\b/i.test(lastUserMsg);
+      // Include anche "fare un X", "voglio fare", "devo fare", "mi serve fare"
+      const isRecipeRequest = /\b(ricetta|come (fare|preparare|cucinare)|ingredienti per|per fare|voglio fare|devo fare|mi serve fare|fare (un|una|il|la|i|le|gli))\b/i.test(lastUserMsg);
+
+      // ========================================
+      // MULTI-PRODUCT SEARCH: Se l'utente menziona più ingredienti, cerca TUTTI
+      // Es: "mascarpone savoiardi cacao" -> cerca ognuno separatamente
+      // ========================================
+      const multipleIngredients = this.extractMultipleIngredients(lastUserMsg);
+      console.log(`🔍 Multiple ingredients detected: ${multipleIngredients.join(', ') || 'none'}`);
+
+      if (multipleIngredients.length > 1) {
+        console.log(`🛒 Ricerca multipla per ${multipleIngredients.length} ingredienti: ${multipleIngredients.join(', ')}`);
+
+        const allProductsFound: any[] = [];
+        const ingredientResults: Record<string, any[]> = {};
+        const notFoundIngredients: string[] = [];
+
+        for (const ingredient of multipleIngredients) {
+          const searchResult = await this.productsAgent.searchProducts(
+            { query: ingredient, active_only: true },
+            3  // Max 3 prodotti per ingrediente
+          );
+
+          if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+            ingredientResults[ingredient] = searchResult.data;
+            allProductsFound.push(...searchResult.data);
+          } else {
+            notFoundIngredients.push(ingredient);
+            ingredientResults[ingredient] = [];
+          }
+        }
+
+        // Se abbiamo trovato almeno qualche prodotto, mostra i risultati
+        if (allProductsFound.length > 0) {
+          const productsData = Object.entries(ingredientResults).flatMap(([ingredient, products]) => {
+            return products.slice(0, 2).map((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              return {
+                name: product.name,
+                ingredient: ingredient,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              };
+            });
+          });
+
+          const foundIngredients = Object.keys(ingredientResults).filter(k => ingredientResults[k].length > 0);
+
+          const multiMessage = await this.generateConversationalResponse(
+            context,
+            'ricerca multipla ingredienti',
+            {
+              ingredients_searched: multipleIngredients,
+              products: productsData,
+              found_ingredients: foundIngredients,
+              missing_ingredients: notFoundIngredients,
+              total_products: productsData.length,
+              customer_name: context.customerName
+            },
+            lastUserMsg
+          );
+
+          return {
+            success: true,
+            message: multiMessage,
+            data: allProductsFound,
+            agentId: 'product',
+            confidence: 0.9,
+            suggestedActions: ['Aggiungi tutto al carrello', 'Cerca altro', 'Chiedi un preventivo']
+          };
+        }
+      }
 
       const productTermFound = PRODUCT_TERMS.find(term =>
         lastUserMsg.toLowerCase().includes(term)
       );
 
       // Se l'utente cerca un prodotto (non una ricetta), mostra i prodotti prima
-      if (productTermFound && !isRecipeRequest) {
+      // MA solo se non ha già menzionato più ingredienti (gestito sopra)
+      if (productTermFound && !isRecipeRequest && multipleIngredients.length <= 1) {
         console.log(`🎯 Termine prodotto speciale trovato: "${productTermFound}" - Cerco prodotto diretto (non è una richiesta ricetta)`);
 
         const directProductSearch = await this.productsAgent.searchProducts(
@@ -3864,6 +3944,76 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 No pending_products found in conversation');
     return [];
+  }
+
+  /**
+   * Estrae ingredienti multipli dal messaggio dell'utente
+   * Es: "mascarpone savoiardi cacao" -> ["mascarpone", "savoiardi", "cacao"]
+   * Es: "fare un tiramisu mascarpone savoiardi cacao" -> ["tiramisu", "mascarpone", "savoiardi", "cacao"]
+   */
+  private extractMultipleIngredients(message: string): string[] {
+    const lowerMsg = message.toLowerCase();
+
+    // Lista di parole da ignorare (stop words)
+    const stopWords = new Set([
+      'un', 'una', 'uno', 'il', 'la', 'lo', 'i', 'gli', 'le',
+      'mi', 'ti', 'ci', 'vi', 'si', 'ne', 'ce', 'se',
+      'serve', 'servono', 'servirebbero', 'servisse',
+      'fare', 'fai', 'fa', 'facciamo', 'fanno', 'fatto',
+      'voglio', 'vorrei', 'volevo', 'vuoi', 'vuole',
+      'devo', 'devi', 'deve', 'dobbiamo',
+      'cerco', 'cerca', 'cerchi', 'cercate',
+      'ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno',
+      'bisogno', 'di', 'per', 'con', 'senza', 'che', 'come',
+      'anche', 'ancora', 'pure', 'poi', 'quindi', 'allora',
+      'tutto', 'tutti', 'tutte', 'alcuni', 'qualche',
+      'ciao', 'buongiorno', 'buonasera', 'salve',
+      'grazie', 'prego', 'scusa', 'scusi',
+      'ok', 'sì', 'si', 'no', 'forse', 'magari',
+      'a', 'e', 'o', 'ma', 'se', 'non', 'più'
+    ]);
+
+    // Lista di ingredienti/prodotti noti (espandibile)
+    const knownIngredients = new Set([
+      // Formaggi
+      'mascarpone', 'mozzarella', 'burrata', 'ricotta', 'parmigiano', 'pecorino', 'gorgonzola',
+      'provolone', 'scamorza', 'fontina', 'taleggio', 'asiago', 'grana',
+      // Salumi
+      'prosciutto', 'salame', 'pancetta', 'guanciale', 'speck', 'mortadella', 'bresaola',
+      'nduja', 'coppa', 'lonza', 'porchetta', 'lardo', 'culatello',
+      // Dolci
+      'savoiardi', 'cacao', 'cioccolato', 'zucchero', 'vaniglia', 'miele', 'caramello',
+      'panna', 'crema', 'amaretti', 'biscotti', 'pandoro', 'panettone',
+      // Pasta
+      'spaghetti', 'penne', 'rigatoni', 'fusilli', 'tagliatelle', 'lasagna', 'ravioli',
+      'tortellini', 'gnocchi', 'linguine', 'bucatini', 'orecchiette', 'paccheri',
+      // Pesce
+      'astice', 'aragosta', 'gamberi', 'scampi', 'vongole', 'cozze', 'calamari',
+      'polpo', 'salmone', 'tonno', 'branzino', 'orata', 'merluzzo',
+      // Carne
+      'manzo', 'vitello', 'maiale', 'pollo', 'tacchino', 'agnello', 'coniglio',
+      // Verdure
+      'pomodoro', 'pomodori', 'basilico', 'prezzemolo', 'aglio', 'cipolla', 'peperoncino',
+      'melanzane', 'zucchine', 'peperoni', 'carciofi', 'funghi', 'spinaci', 'rucola',
+      // Prodotti base
+      'olio', 'aceto', 'farina', 'lievito', 'burro', 'uova', 'latte', 'caffè', 'caffe',
+      // Ricette/Piatti (che hanno anche prodotti)
+      'tiramisu', 'tiramisù', 'carbonara', 'amatriciana', 'pesto', 'ragù', 'ragu',
+      'lasagne', 'bolognese', 'caprese', 'bruschetta', 'arrabbiata', 'puttanesca'
+    ]);
+
+    // Estrai parole dal messaggio
+    const words = lowerMsg
+      .replace(/[.,!?;:'"()]/g, ' ')  // Rimuovi punteggiatura
+      .split(/\s+/)                    // Dividi per spazi
+      .filter(w => w.length > 2)       // Minimo 3 caratteri
+      .filter(w => !stopWords.has(w)); // Rimuovi stop words
+
+    // Filtra solo ingredienti/prodotti conosciuti
+    const ingredients = words.filter(w => knownIngredients.has(w));
+
+    // Rimuovi duplicati mantenendo l'ordine
+    return Array.from(new Set(ingredients));
   }
 
   /**
