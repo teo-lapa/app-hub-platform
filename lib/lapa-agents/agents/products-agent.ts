@@ -441,12 +441,67 @@ export class ProductsAgent {
           'qty_available', 'virtual_available',
           'product_tmpl_id'  // ID del template per URL sito web
         ],
-        limit,
+        limit * 2,  // Aumentiamo il limite per poi riordinare e filtrare
         'name asc'
       );
 
+      // ===========================================
+      // PRIORITIZZAZIONE RISULTATI
+      // Prodotti dove il termine appare all'INIZIO del nome
+      // vengono mostrati prima di quelli dove appare nel mezzo
+      // Es: "FARINA 00 CAPUTO" viene prima di "ASPARAGINA IN CROSTA DI FARINA"
+      // ===========================================
+      let sortedProducts = products;
+      if (filters.query && products.length > 0) {
+        const queryLower = filters.query.toLowerCase().trim();
+        const queryWords = queryLower.split(/\s+/).filter((w: string) => w.length >= 2);
+        const mainSearchTerm = queryWords[0] || queryLower;
+
+        sortedProducts = [...products].sort((a: any, b: any) => {
+          const aNameLower = (a.name || '').toLowerCase();
+          const bNameLower = (b.name || '').toLowerCase();
+
+          // Punteggio priorità (più alto = migliore posizione)
+          let aScore = 0;
+          let bScore = 0;
+
+          // Priorità 1: Nome inizia con il termine di ricerca (es: "FARINA 00...")
+          if (aNameLower.startsWith(mainSearchTerm)) aScore += 100;
+          if (bNameLower.startsWith(mainSearchTerm)) bScore += 100;
+
+          // Priorità 2: Prima parola del nome contiene il termine
+          const aFirstWord = aNameLower.split(/\s+/)[0] || '';
+          const bFirstWord = bNameLower.split(/\s+/)[0] || '';
+          if (aFirstWord.includes(mainSearchTerm)) aScore += 50;
+          if (bFirstWord.includes(mainSearchTerm)) bScore += 50;
+
+          // Priorità 3: Termine appare come parola isolata (non parte di altra parola)
+          // "FARINA" in "FARINA 00" vs "farina" in "ASPARAGINA"
+          const aHasIsolatedTerm = new RegExp(`\\b${mainSearchTerm}\\b`, 'i').test(aNameLower);
+          const bHasIsolatedTerm = new RegExp(`\\b${mainSearchTerm}\\b`, 'i').test(bNameLower);
+          if (aHasIsolatedTerm) aScore += 30;
+          if (bHasIsolatedTerm) bScore += 30;
+
+          // Priorità 4: Per ricerche multi-parola, bonus se tutte le parole principali sono presenti
+          if (queryWords.length > 1) {
+            const aHasAllWords = queryWords.every((w: string) => aNameLower.includes(w));
+            const bHasAllWords = queryWords.every((w: string) => bNameLower.includes(w));
+            if (aHasAllWords) aScore += 25;
+            if (bHasAllWords) bScore += 25;
+          }
+
+          // Ordina per punteggio decrescente
+          return bScore - aScore;
+        });
+
+        // Limita al numero richiesto dopo il riordino
+        sortedProducts = sortedProducts.slice(0, limit);
+
+        console.log(`🔀 Risultati riordinati per priorità "${mainSearchTerm}": ${sortedProducts.slice(0, 3).map((p: any) => p.name.substring(0, 30)).join(', ')}...`);
+      }
+
       // Filtro disponibilità (se richiesto)
-      let filteredProducts = products;
+      let filteredProducts = sortedProducts;
       if (filters.available_only) {
         const availableProducts: Product[] = [];
         for (const product of products) {
