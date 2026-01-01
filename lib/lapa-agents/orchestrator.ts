@@ -2135,8 +2135,76 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         .pop()?.content || 'Cerca prodotto';
 
       // ========================================
+      // PRODOTTI SPECIALI - Termini che sono PRODOTTI, non ricette
+      // Es: "porchetta" è un prodotto LAPA (PORCHETTA DI ARICCIA, etc.)
+      // ========================================
+      const PRODUCT_TERMS = ['porchetta'];  // Termini da cercare come prodotto prima
+
+      const productTermFound = PRODUCT_TERMS.find(term =>
+        lastUserMsg.toLowerCase().includes(term)
+      );
+
+      if (productTermFound) {
+        console.log(`🎯 Termine prodotto speciale trovato: "${productTermFound}" - Cerco prodotto diretto`);
+
+        const directProductSearch = await this.productsAgent.searchProducts(
+          { query: productTermFound, active_only: false },
+          10
+        );
+
+        if (directProductSearch.success && directProductSearch.data && directProductSearch.data.length > 0) {
+          // Filtra solo prodotti che contengono il termine nel nome
+          const matchingProducts = directProductSearch.data.filter((p: any) =>
+            p.name.toLowerCase().includes(productTermFound)
+          );
+
+          if (matchingProducts.length > 0) {
+            console.log(`✅ Trovati ${matchingProducts.length} prodotti "${productTermFound}"`);
+
+            const productsData = matchingProducts.map((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              return {
+                name: product.name,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              };
+            });
+
+            const directMessage = await this.generateConversationalResponse(
+              context,
+              'prodotto ricercato',
+              {
+                search_term: productTermFound,
+                products: productsData,
+                total_found: productsData.length,
+                customer_name: context.customerName
+              },
+              lastUserMsg
+            );
+
+            return {
+              success: true,
+              message: directMessage,
+              data: matchingProducts,
+              agentId: 'product',
+              confidence: 0.95,
+              suggestedActions: ['Aggiungi al carrello', 'Cerca altro', 'Chiedi un preventivo']
+            };
+          }
+        }
+        console.log(`⚠️ Nessun prodotto trovato per "${productTermFound}", continuo con ricerca normale`);
+      }
+
+      // ========================================
       // RECIPE DETECTION - Cerca ingredienti per ricette
-      // MA PRIMA: cerca il termine stesso come prodotto!
       // ========================================
       console.log(`🔍 Recipe detection check - Message: "${lastUserMsg}"`);
       const recipe = detectRecipe(lastUserMsg);
