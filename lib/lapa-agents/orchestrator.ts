@@ -2149,7 +2149,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         // IMPORTANTE: Prima cerca il nome della ricetta come PRODOTTO DIRETTO
         // Es: "porchetta" potrebbe essere un prodotto in vendita, non solo una ricetta
         // ========================================
-        const recipeNameLower = Object.keys(ITALIAN_RECIPES).find(key =>
+        const recipeNameLower = Object.keys(RECIPE_MAP).find(key =>
           lastUserMsg.toLowerCase().includes(key)
         );
 
