@@ -484,6 +484,7 @@ export interface AgentResponse {
 }
 
 export type IntentType =
+  | 'lead_capture'         // Utente fornisce email/nome per registrazione B2B
   | 'order_create'         // Creare un nuovo ordine
   | 'order_inquiry'        // Domande su ordini
   | 'order_detail'         // Dettagli di un ordine specifico
@@ -904,18 +905,21 @@ COMPITO:
 Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOLO con un JSON valido nel seguente formato:
 
 {
-  "type": "cart_add" | "cart_view" | "cart_remove" | "cart_confirm" | "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
+  "type": "lead_capture" | "cart_add" | "cart_view" | "cart_remove" | "cart_confirm" | "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
   "confidence": 0.0-1.0,
   "entities": {
     "order_id": "SO123" (se menzionato),
     "product_name": "nome prodotto" (se menzionato),
     "invoice_number": "INV/2024/001" (se menzionato),
-    "tracking_number": "123456" (se menzionato)
+    "tracking_number": "123456" (se menzionato),
+    "email": "user@email.com" (se fornita per lead_capture),
+    "contact_name": "Nome Cognome" (se fornito per lead_capture)
   },
   "requiresAuth": true/false
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
+- lead_capture: L'utente fornisce i propri DATI DI CONTATTO (email, nome, telefono) per registrazione B2B o per essere ricontattato. PRIORITÀ MASSIMA quando contiene un indirizzo email! (Keywords: @, .com, .ch, mi chiamo, sono, chiamano, email, mail, my name is, ich bin, je m'appelle). Estrai entities: email, contact_name
 - cart_add: AGGIUNGERE prodotto al carrello, mettere prodotto nel carrello. PRIORITÀ MASSIMA quando l'utente dice "aggiungimi", "mettimi", "aggiungi al carrello", O quando seleziona un prodotto con "il primo", "1", "secondo", etc. (Keywords: aggiungimi, mettimi, aggiungi, aggiungi al carrello, metti nel carrello, lo voglio, lo prendo, me lo metti, aggiungi questo, add to cart, in den Warenkorb, ajouter au panier, il primo, primo, secondo, terzo, 1, 2, 3)
 - cart_view: VEDERE il carrello, cosa c'è nel carrello (Keywords: carrello, vedi carrello, mostra carrello, cosa ho nel carrello, cosa c'è nel carrello, my cart, Warenkorb anzeigen, voir panier)
 - cart_remove: RIMUOVERE prodotto dal carrello (Keywords: togli, rimuovi, elimina dal carrello, remove from cart, aus dem Warenkorb entfernen, retirer du panier)
@@ -1004,6 +1008,35 @@ IMPORTANTE:
    */
   private fallbackIntentAnalysis(message: string): Intent {
     const lowerMessage = message.toLowerCase();
+
+    // ========================================
+    // LEAD CAPTURE - Email + Nome (PRIORITÀ ALTISSIMA)
+    // Quando l'utente fornisce email e/o nome per registrazione B2B
+    // ========================================
+    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const namePattern = /(?:mi chiamo|sono|chiamano|nome[:\s]+|name[:\s]+|ich bin|je m'appelle|my name is)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i;
+
+    const hasEmail = emailPattern.test(message);
+    const hasName = namePattern.test(message) ||
+                    // Pattern per nomi senza prefisso (es. "giovanni franco" dopo aver dato email)
+                    (hasEmail && /\s+(e\s+)?(io\s+)?(mi\s+chiamo\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i.test(message));
+
+    if (hasEmail || (hasName && lowerMessage.includes('chiamo'))) {
+      // Estrai email e nome
+      const emailMatch = message.match(emailPattern);
+      const nameMatch = message.match(/(?:mi chiamo|sono|chiamano|name[:\s]+|ich bin|je m'appelle)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i) ||
+                        message.match(/(?:e\s+)?(?:io\s+)?(?:mi\s+chiamo\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)$/);
+
+      return {
+        type: 'lead_capture',
+        confidence: 0.95,
+        entities: {
+          email: emailMatch ? emailMatch[0] : undefined,
+          contact_name: nameMatch ? nameMatch[1]?.trim() : undefined
+        },
+        requiresAuth: false
+      };
+    }
 
     // Ordinal selection (for cart product selection: "il primo", "1", "secondo", etc.)
     // HIGHEST PRIORITY - users selecting from a product list
@@ -1570,6 +1603,19 @@ IMPORTANTE:
    * Registra gli agenti di default
    */
   private registerDefaultAgents(): void {
+    // LEAD CAPTURE AGENT - Cattura dati contatto per B2B (PRIORITÀ MASSIMA!)
+    this.registerAgent({
+      id: 'lead_capture',
+      name: 'Lead Capture Agent',
+      description: 'Cattura email e nome per registrazione B2B o follow-up commerciale',
+      intents: ['lead_capture'],
+      requiresAuth: false,
+      priority: 15, // Priorità massima - non perdere mai un lead!
+      handler: async (context, intent) => {
+        return await this.leadCaptureAgentHandler(context, intent);
+      }
+    });
+
     // HELPDESK AGENT - Gestisce richieste generiche
     this.registerAgent({
       id: 'helpdesk',
@@ -1730,6 +1776,135 @@ IMPORTANTE:
   // ============================================================================
   // AGENT HANDLERS
   // ============================================================================
+
+  /**
+   * Handler per Lead Capture - Cattura dati contatto per registrazione B2B
+   * CRITICO per la conversione: quando un utente fornisce email/nome, NON perdere il lead!
+   */
+  private async leadCaptureAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    try {
+      const email = intent.entities?.email as string | undefined;
+      const contactName = intent.entities?.contact_name as string | undefined;
+      const lang = context.metadata?.language || 'it';
+
+      console.log('🎯 LEAD CAPTURE:', { email, contactName, sessionId: context.sessionId });
+
+      // Cerca nella conversazione precedente per info aggiuntive (nome pizzeria, zona, prodotti interesse)
+      const conversationText = context.conversationHistory
+        .map(m => m.content)
+        .join(' ')
+        .toLowerCase();
+
+      // Estrai info dalla conversazione
+      const businessNameMatch = conversationText.match(/(?:pizzeria|ristorante|hotel|locale|attività)\s+(?:da\s+)?([a-zA-Z\s]+?)(?:\s*[-–]|\s+a\s+|\s+in\s+|\s*$)/i);
+      const businessName = businessNameMatch ? businessNameMatch[1].trim() : undefined;
+
+      const zonaMatch = conversationText.match(/(?:a\s+|in\s+|zona\s+)(zurigo|berna|basilea|ginevra|lugano|lucerna|zurich|zürich|bern|basel|genève|genf)/i);
+      const zona = zonaMatch ? zonaMatch[1] : undefined;
+
+      // Prepara messaggio di conferma
+      const leadInfo = {
+        email,
+        contactName,
+        businessName,
+        zona,
+        timestamp: new Date().toISOString(),
+        sessionId: context.sessionId,
+        conversationSummary: conversationText.slice(-500) // Ultimi 500 caratteri
+      };
+
+      console.log('📋 Lead info raccolte:', leadInfo);
+
+      // TODO: Salvare lead in database/CRM
+      // Per ora logghiamo e confermiamo all'utente
+
+      const messages: Record<string, string> = {
+        it: `🎉 **Perfetto, grazie ${contactName || ''}!**
+
+📋 **Dati raccolti:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Nome: ${contactName}` : ''}
+${businessName ? `✅ Attività: ${businessName}` : ''}
+${zona ? `✅ Zona: ${zona}` : ''}
+
+Il nostro team commerciale ti contatterà **entro 24 ore lavorative** per:
+- 📝 Attivare il tuo account B2B
+- 💰 Inviarti il listino prezzi dedicato
+- 📦 Organizzare la prima consegna di prova
+
+Nel frattempo, hai altre domande sui nostri prodotti?`,
+
+        de: `🎉 **Perfekt, danke ${contactName || ''}!**
+
+📋 **Erfasste Daten:**
+${email ? `✅ E-Mail: ${email}` : ''}
+${contactName ? `✅ Name: ${contactName}` : ''}
+${businessName ? `✅ Betrieb: ${businessName}` : ''}
+${zona ? `✅ Zone: ${zona}` : ''}
+
+Unser Vertriebsteam wird Sie **innerhalb von 24 Arbeitsstunden** kontaktieren für:
+- 📝 Ihr B2B-Konto aktivieren
+- 💰 Ihnen die dedizierte Preisliste senden
+- 📦 Die erste Probelieferung organisieren
+
+In der Zwischenzeit, haben Sie weitere Fragen zu unseren Produkten?`,
+
+        fr: `🎉 **Parfait, merci ${contactName || ''}!**
+
+📋 **Données collectées:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Nom: ${contactName}` : ''}
+${businessName ? `✅ Établissement: ${businessName}` : ''}
+${zona ? `✅ Zone: ${zona}` : ''}
+
+Notre équipe commerciale vous contactera **sous 24 heures ouvrables** pour:
+- 📝 Activer votre compte B2B
+- 💰 Vous envoyer la liste de prix dédiée
+- 📦 Organiser la première livraison d'essai
+
+En attendant, avez-vous d'autres questions sur nos produits?`,
+
+        en: `🎉 **Perfect, thank you ${contactName || ''}!**
+
+📋 **Collected data:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Name: ${contactName}` : ''}
+${businessName ? `✅ Business: ${businessName}` : ''}
+${zona ? `✅ Area: ${zona}` : ''}
+
+Our sales team will contact you **within 24 business hours** to:
+- 📝 Activate your B2B account
+- 💰 Send you the dedicated price list
+- 📦 Organize your first trial delivery
+
+In the meantime, do you have other questions about our products?`
+      };
+
+      return {
+        success: true,
+        message: messages[lang] || messages.it,
+        data: leadInfo,
+        agentId: 'lead_capture',
+        confidence: 0.98,
+        suggestedActions: [
+          lang === 'de' ? 'Produkte entdecken' : lang === 'fr' ? 'Découvrir les produits' : 'Scopri i prodotti',
+          lang === 'de' ? 'Fragen stellen' : lang === 'fr' ? 'Poser une question' : 'Altre domande'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore lead capture:', error);
+      return {
+        success: false,
+        message: 'Grazie per le informazioni! Ti contatteremo presto.',
+        agentId: 'lead_capture',
+        confidence: 0.5
+      };
+    }
+  }
 
   /**
    * Handler per l'agente Helpdesk
