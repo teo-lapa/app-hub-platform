@@ -2130,12 +2130,108 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     intent: Intent
   ): Promise<AgentResponse> {
     try {
+      // Imposta la lingua del products-agent in base al context
+      const userLanguage = (context.metadata?.language || 'it') as 'it' | 'en' | 'fr' | 'de';
+      this.productsAgent.setLanguage(userLanguage);
+
       const entities = intent.entities || {};
 
       // Ottieni l'ultimo messaggio dell'utente per contesto
       const lastUserMsg = context.conversationHistory
         .filter(m => m.role === 'user')
         .pop()?.content || 'Cerca prodotto';
+
+      // ========================================
+      // PRODOTTI SPECIALI - Termini che sono sia PRODOTTI che ricette
+      // Quando l'utente cerca questi termini, mostriamo PRIMA i prodotti reali
+      // Solo se l'utente chiede esplicitamente "ricetta", "come fare", etc.
+      // allora mostriamo gli ingredienti
+      // ========================================
+      const PRODUCT_TERMS = [
+        // Prodotti specifici
+        'porchetta',
+        // Dessert e dolci
+        'tiramisu', 'tiramisù',
+        // Salse e sughi pronti
+        'pesto', 'ragù', 'ragu',
+        // Paste
+        'lasagna',
+        // Preparati
+        'bruschetta', 'caprese',
+        // Frutti di mare (utenti vogliono il prodotto, non la ricetta)
+        'astice', 'aragosta', 'vongole',
+        // Sughi pronti (spesso venduti come prodotti)
+        'carbonara', 'amatriciana', 'arrabbiata', 'puttanesca', 'bolognese', 'norma'
+      ];
+
+      // Verifica se l'utente chiede esplicitamente una RICETTA (non un prodotto)
+      const isRecipeRequest = /\b(ricetta|come (fare|preparare|cucinare)|ingredienti per|per fare)\b/i.test(lastUserMsg);
+
+      const productTermFound = PRODUCT_TERMS.find(term =>
+        lastUserMsg.toLowerCase().includes(term)
+      );
+
+      // Se l'utente cerca un prodotto (non una ricetta), mostra i prodotti prima
+      if (productTermFound && !isRecipeRequest) {
+        console.log(`🎯 Termine prodotto speciale trovato: "${productTermFound}" - Cerco prodotto diretto (non è una richiesta ricetta)`);
+
+        const directProductSearch = await this.productsAgent.searchProducts(
+          { query: productTermFound, active_only: false },
+          10
+        );
+
+        if (directProductSearch.success && directProductSearch.data && directProductSearch.data.length > 0) {
+          // Filtra solo prodotti che contengono il termine nel nome
+          const matchingProducts = directProductSearch.data.filter((p: any) =>
+            p.name.toLowerCase().includes(productTermFound)
+          );
+
+          if (matchingProducts.length > 0) {
+            console.log(`✅ Trovati ${matchingProducts.length} prodotti "${productTermFound}"`);
+
+            const productsData = matchingProducts.map((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              return {
+                name: product.name,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              };
+            });
+
+            const directMessage = await this.generateConversationalResponse(
+              context,
+              'prodotto ricercato',
+              {
+                search_term: productTermFound,
+                products: productsData,
+                total_found: productsData.length,
+                customer_name: context.customerName
+              },
+              lastUserMsg
+            );
+
+            return {
+              success: true,
+              message: directMessage,
+              data: matchingProducts,
+              agentId: 'product',
+              confidence: 0.95,
+              suggestedActions: ['Aggiungi al carrello', 'Cerca altro', 'Chiedi un preventivo']
+            };
+          }
+        }
+        console.log(`⚠️ Nessun prodotto trovato per "${productTermFound}", continuo con ricerca normale`);
+      } else if (productTermFound && isRecipeRequest) {
+        console.log(`📖 Richiesta ricetta per "${productTermFound}" - mostrerò gli ingredienti invece dei prodotti`);
+      }
 
       // ========================================
       // RECIPE DETECTION - Cerca ingredienti per ricette
