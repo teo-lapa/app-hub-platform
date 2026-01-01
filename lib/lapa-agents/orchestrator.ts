@@ -1815,6 +1815,10 @@ IMPORTANTE:
   /**
    * Handler per Lead Capture - Cattura dati contatto per registrazione B2B
    * CRITICO per la conversione: quando un utente fornisce email/nome, NON perdere il lead!
+   *
+   * SALVA SEMPRE in Odoo:
+   * 1. Crea/trova res.partner con email
+   * 2. Crea ticket helpdesk per tracciare la richiesta
    */
   private async leadCaptureAgentHandler(
     context: CustomerContext,
@@ -1853,8 +1857,87 @@ IMPORTANTE:
 
       console.log('📋 Lead info raccolte:', leadInfo);
 
-      // TODO: Salvare lead in database/CRM
-      // Per ora logghiamo e confermiamo all'utente
+      // ========================================
+      // SALVATAGGIO LEAD IN ODOO - SEMPRE TICKET!
+      // Cerca partner esistente, se non esiste usa ID 1 (LAPA)
+      // NON crea nuovi partner, solo ticket per tracciamento
+      // ========================================
+      let partnerId: number = 1; // Default: LAPA company
+      let ticketId: string | null = null;
+      let partnerExists = false;
+
+      if (email) {
+        try {
+          const odooClient = await getOdooClient();
+
+          // Cerca partner esistente con questa email (NON creiamo nuovi partner)
+          const existingPartners = await odooClient.searchRead(
+            'res.partner',
+            [['email', '=ilike', email]],
+            ['id', 'name'],
+            1
+          );
+
+          if (existingPartners && existingPartners.length > 0) {
+            partnerId = existingPartners[0].id;
+            partnerExists = true;
+            console.log('🔍 Partner esistente trovato:', partnerId, existingPartners[0].name);
+          } else {
+            console.log('📝 Partner non trovato, uso ID 1 (LAPA) per il ticket');
+          }
+        } catch (searchError) {
+          console.warn('⚠️ Errore ricerca partner:', searchError);
+        }
+
+        // CREA SEMPRE IL TICKET - con tutti i dati nel description
+        try {
+          const conversationSummary = context.conversationHistory
+            .map(m => `[${m.timestamp.toLocaleString('it-CH')}] ${m.role === 'user' ? 'CLIENTE' : 'AI'}: ${m.content}`)
+            .join('\n\n');
+
+          const ticketDescription = `
+══════════════════════════════════════════════════════
+📋 NUOVO LEAD B2B - CHAT AI LAPA
+══════════════════════════════════════════════════════
+
+👤 DATI LEAD (DA CONTATTARE!):
+──────────────────────────────────────────────────────
+• Nome: ${contactName || 'Non fornito'}
+• Email: ${email}
+• Attività: ${businessName || 'Non specificata'}
+• Zona: ${zona || 'Non specificata'}
+${partnerExists ? `• Partner Odoo esistente: ID ${partnerId}` : '• Partner: NON ESISTE in Odoo (nuovo lead)'}
+
+💬 CONVERSAZIONE CHAT:
+──────────────────────────────────────────────────────
+${conversationSummary}
+
+──────────────────────────────────────────────────────
+📅 Data: ${new Date().toLocaleString('it-CH')}
+🔗 Sessione: ${context.sessionId}
+══════════════════════════════════════════════════════
+
+⚠️ AZIONE RICHIESTA: Contattare il lead via email (${email}) entro 24h per attivazione B2B.
+          `.trim();
+
+          const helpdeskAgent = createHelpdeskAgent(context.sessionId, (lang as 'it' | 'en' | 'de') || 'it');
+          const ticketResult = await helpdeskAgent.createTicket({
+            customerId: partnerId,
+            subject: `[Lead B2B] ${contactName || email}${businessName ? ` - ${businessName}` : ''}`,
+            description: ticketDescription,
+            priority: '2' // Media-alta priorità per lead B2B
+          });
+
+          if (ticketResult.success) {
+            ticketId = String(ticketResult.ticketId);
+            console.log('✅ Ticket lead creato:', ticketId);
+          } else {
+            console.error('⚠️ Errore creazione ticket lead:', ticketResult);
+          }
+        } catch (ticketError) {
+          console.error('❌ Errore creazione ticket:', ticketError);
+        }
+      }
 
       const messages: Record<string, string> = {
         it: `🎉 **Perfetto, grazie ${contactName || ''}!**
