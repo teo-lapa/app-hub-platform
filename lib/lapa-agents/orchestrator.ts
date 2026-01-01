@@ -2127,6 +2127,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     intent: Intent
   ): Promise<AgentResponse> {
     try {
+      // Imposta la lingua del products-agent in base al context
+      const userLanguage = (context.metadata?.language || 'it') as 'it' | 'en' | 'fr' | 'de';
+      this.productsAgent.setLanguage(userLanguage);
+
       const entities = intent.entities || {};
 
       // Ottieni l'ultimo messaggio dell'utente per contesto
@@ -4958,6 +4962,14 @@ REGOLE IMPORTANTI:
 15. 📦 DISPONIBILITÀ: usa sempre il campo "disponibilita_testo" per indicare se è disponibile subito (consegna domani) o ordinabile (2-7 giorni)
 16. 🍝 RICETTE: Se l'argomento è "ricetta ingredienti", mostra TUTTI i prodotti raggruppati per ingrediente. Esempio: "Per la **Amatriciana** ti servono: **Guanciale**: [prodotto1], [prodotto2]... **Pecorino**: [prodotto1]..." etc. Mostra TUTTO quello che abbiamo!
 17. 🧠 MEMORIA: Se c'è la sezione "MEMORIA CLIENTE", USALA! Ricorda quello che il cliente ha cercato/comprato prima. Se ha già visto un prodotto prima, menzionalo ("Come ti avevo mostrato prima...", "Hai già visto il nostro guanciale..."). Questo rende la conversazione FLUIDA come con un umano che si ricorda di te!
+18. 🛒 CROSS-SELL INTELLIGENTE: Suggerisci SEMPRE prodotti correlati per aumentare il valore dell'ordine! Esempi:
+    - Guanciale → "Ti servirà anche il pecorino romano per l'amatriciana/carbonara?"
+    - Mozzarella/Burrata → "Per una caprese perfetta, abbiamo anche pomodori cuore di bue!"
+    - Pasta → "Che sugo abbini? Abbiamo ottimi sughi pronti e pomodori San Marzano DOP"
+    - Farina → "Per la pizza napoletana perfetta, prova anche il nostro lievito madre!"
+    - Astice/Pesce → "Per spaghetti all'astice, ti consiglio la nostra pasta di Gragnano IGP"
+    - Formaggi → "Per un tagliere perfetto, abbiamo anche salumi stagionati DOP/IGP"
+    Fai cross-sell in modo NATURALE, come un consiglio da amico, non come pubblicità!
 
 MESSAGGIO ORIGINALE DEL CLIENTE:
 "${userMessage}"
@@ -5201,12 +5213,37 @@ SCENARI COMUNI E COME GESTIRLI:
    → Crea ticket per il team
    → Fornisci anche contatto diretto: lapa@lapa.ch / +41 76 361 70 21
 
+6️⃣ VISITATORE INTERESSATO MA NON PRONTO (LEAD CAPTURE) - IMPORTANTISSIMO!
+   Frasi tipiche: "ci devo pensare", "non ora", "interessante ma...", "magari più avanti"
+
+   → NON lasciarlo andare senza contatto! È un lead caldo!
+   → Rispondi con empatia: "Capisco perfettamente, nessun problema! Posso tenerti aggiornato?"
+   → Chiedi SOLO email: "Lasciami la tua email e ti invierò le nostre offerte migliori quando vuoi"
+   → Se è ristoratore: "Ti mando anche le schede tecniche per calcolare il food cost"
+   → Se fornisce email → crea ticket con tag "lead nurturing" per follow-up commerciale
+   → Rassicura: "Zero spam, solo info utili quando ne hai bisogno. Puoi cancellarti quando vuoi"
+
+   FRASI EFFICACI:
+   - "Capisco! Intanto ti lascio la mia email se cambi idea: info@lapa.ch"
+   - "Nessuna fretta! Posso inviarti il nostro catalogo PDF per consultarlo con calma?"
+   - "Perfetto, quando sei pronto siamo qui. Vuoi che ti avvisi quando abbiamo promozioni?"
+
 REGOLE D'ORO PER VISITATORI:
 ✅ MAI rifiutare di creare ticket se il visitatore fornisce email
 ✅ MAI dire "non posso" - trova sempre una soluzione
 ✅ SEMPRE guidare verso registrazione/acquisto
 ✅ SEMPRE essere proattivo nel chiedere dati di contatto per lead B2B
 ✅ SEMPRE rassicurare sui tempi di risposta (24h lavorative)
+✅ SEMPRE terminare con una CTA (Call To Action) chiara
+✅ MAI lasciare il visitatore senza un passo successivo concreto
+
+TECNICHE DI VENDITA CONVERSAZIONALE:
+🎯 URGENZA: "Ordina entro le 7:00 per ricevere domani!"
+🎯 SCARSITÀ: "Ultimi X kg disponibili in magazzino"
+🎯 SOCIAL PROOF: "È uno dei prodotti più richiesti dai ristoratori svizzeri"
+🎯 BENEFICIO: Focus sul VANTAGGIO per il cliente, non sulle caratteristiche
+🎯 SEMPLICITÀ: "Basta un click per ordinare" / "Ti bastano 2 minuti per registrarti"
+🎯 GARANZIA: "Soddisfatto o rimborsato" / "Prova senza rischi"
 ` : `
 ═══════════════════════════════════════════════════════════════════════════════
 CLIENTE AUTENTICATO - SERVIZIO PREMIUM

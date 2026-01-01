@@ -204,6 +204,21 @@ export class ProductsAgent {
     this.language = language;
   }
 
+  /**
+   * Imposta la lingua per le risposte
+   * Permette di cambiare lingua dinamicamente basandosi sul context
+   */
+  setLanguage(language: 'it' | 'en' | 'fr' | 'de'): void {
+    this.language = language;
+  }
+
+  /**
+   * Ottiene la lingua corrente
+   */
+  getLanguage(): 'it' | 'en' | 'fr' | 'de' {
+    return this.language;
+  }
+
   // Helper per messaggi multilingua
   private msg(key: keyof typeof MESSAGES.it, ...args: number[]): string {
     const message = MESSAGES[this.language][key];
