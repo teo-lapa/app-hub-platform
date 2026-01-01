@@ -226,8 +226,11 @@ export class ProductsAgent {
 
       // ========================================
       // RAG SEMANTIC SEARCH - Prova prima ricerca semantica
+      // NOTA: Non usiamo isEmbeddingsReady() perché in serverless la cache
+      // in-memory è vuota ad ogni cold start. findSimilarProducts va direttamente
+      // al database PostgreSQL (pgvector) che ha sempre gli embeddings.
       // ========================================
-      if (filters.query && isEmbeddingsReady()) {
+      if (filters.query) {
         console.log('🧠 RAG: Tentativo ricerca semantica per:', filters.query);
 
         try {
