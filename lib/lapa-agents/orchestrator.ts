@@ -3110,40 +3110,148 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 handleCartAdd - userMessage:', userMessage);
 
-    // PRIMA: Controlla se l'utente sta selezionando da pending_products (es: "il primo", "1", "2")
-    const ordinalSelection = this.parseOrdinalSelection(userMessage);
-    console.log('🛒 parseOrdinalSelection result:', ordinalSelection, 'for message:', userMessage);
+    // ========================================
+    // SELEZIONE MULTIPLA: "tutte e due", "entrambi", "tutti", etc.
+    // Quando l'utente vuole TUTTI i prodotti mostrati nella risposta precedente
+    // ========================================
+    const lowerMessage = userMessage.toLowerCase();
+    const wantsAllProducts = /\b(tutt[ie]?\s*(e\s*due)?|entramb[ie]|ambedue|both|all|tutti\s*e\s*due)\b/i.test(lowerMessage);
 
-    if (ordinalSelection >= 0) {
+    if (wantsAllProducts) {
       const pendingProducts = this.extractPendingProductsFromConversation(context);
-      console.log('🛒 Ordinal selection:', ordinalSelection, 'pendingProducts:', pendingProducts.length);
-      console.log('🛒 Context history length:', context.conversationHistory.length);
-      console.log('🛒 Last messages data:', context.conversationHistory.slice(-3).map(m => ({ role: m.role, hasData: !!m.data, dataKeys: m.data ? Object.keys(m.data) : [] })));
+      console.log('🛒 User wants ALL products, pending:', pendingProducts.length);
 
-      if (pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
-        const selectedProduct = pendingProducts[ordinalSelection];
-        console.log('🛒 Selected product from pending:', selectedProduct.name);
+      if (pendingProducts.length > 0) {
+        const addedProducts: string[] = [];
+        const failedProducts: string[] = [];
+        let lastCartInfo: any = null;
 
-        try {
-          const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
-          const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+        for (const product of pendingProducts) {
+          try {
+            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
+            addedProducts.push(product.name);
+            lastCartInfo = result.data;
+          } catch (err) {
+            console.error('❌ Errore aggiunta prodotto:', product.name, err);
+            failedProducts.push(product.name);
+          }
+        }
+
+        if (addedProducts.length > 0) {
+          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
+          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+          addedProducts.forEach(p => message += `• ${p}\n`);
+
+          if (failedProducts.length > 0) {
+            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
+          }
+
+          if (lastCartInfo) {
+            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+          }
 
           return {
             success: true,
-            message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
+            message,
             agentId: 'cart',
-            data: result.data,
-            suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
-          };
-        } catch (err) {
-          console.error('❌ Errore aggiunta prodotto selezionato:', err);
-          return {
-            success: false,
-            message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
-            agentId: 'cart',
-            suggestedActions: ['Riprova', 'Cerca altro prodotto']
+            data: lastCartInfo,
+            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
           };
         }
+      }
+    }
+
+    // ========================================
+    // SELEZIONE PER NOME: l'utente menziona prodotti specifici mostrati prima
+    // Es: "mettimi sia San Daniele che Parma" -> cerca tra pending products
+    // ========================================
+    const pendingProducts = this.extractPendingProductsFromConversation(context);
+    if (pendingProducts.length > 0) {
+      // Cerca se il messaggio menziona prodotti dai pending
+      const matchedProducts = pendingProducts.filter(p => {
+        const pNameLower = p.name.toLowerCase();
+        // Controlla se parti significative del nome prodotto sono menzionate
+        const keywords = pNameLower.split(/\s+/).filter((w: string) => w.length > 3);
+        return keywords.some((kw: string) => lowerMessage.includes(kw)) ||
+               // Controlla varianti comuni
+               (pNameLower.includes('san daniele') && lowerMessage.includes('san daniele')) ||
+               (pNameLower.includes('parma') && lowerMessage.includes('parma')) ||
+               (pNameLower.includes('prosciutto') && lowerMessage.includes('prosciutto'));
+      });
+
+      console.log('🛒 Matched products from pending by name:', matchedProducts.map(p => p.name));
+
+      if (matchedProducts.length > 0) {
+        const addedProducts: string[] = [];
+        const failedProducts: string[] = [];
+        let lastCartInfo: any = null;
+
+        for (const product of matchedProducts) {
+          try {
+            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
+            addedProducts.push(product.name);
+            lastCartInfo = result.data;
+          } catch (err) {
+            console.error('❌ Errore aggiunta prodotto:', product.name, err);
+            failedProducts.push(product.name);
+          }
+        }
+
+        if (addedProducts.length > 0) {
+          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
+          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+          addedProducts.forEach(p => message += `• ${p}\n`);
+
+          if (failedProducts.length > 0) {
+            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
+          }
+
+          if (lastCartInfo) {
+            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+          }
+
+          return {
+            success: true,
+            message,
+            agentId: 'cart',
+            data: lastCartInfo,
+            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
+          };
+        }
+      }
+    }
+
+    // ========================================
+    // SELEZIONE ORDINALE: "il primo", "1", "2", etc.
+    // ========================================
+    const ordinalSelection = this.parseOrdinalSelection(userMessage);
+    console.log('🛒 parseOrdinalSelection result:', ordinalSelection, 'for message:', userMessage);
+
+    if (ordinalSelection >= 0 && pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
+      const selectedProduct = pendingProducts[ordinalSelection];
+      console.log('🛒 Selected product from pending:', selectedProduct.name);
+
+      try {
+        const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
+        const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+
+        return {
+          success: true,
+          message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
+          agentId: 'cart',
+          data: result.data,
+          suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+        };
+      } catch (err) {
+        console.error('❌ Errore aggiunta prodotto selezionato:', err);
+        return {
+          success: false,
+          message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
+          agentId: 'cart',
+          suggestedActions: ['Riprova', 'Cerca altro prodotto']
+        };
       }
     }
 
