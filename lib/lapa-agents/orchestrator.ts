@@ -222,11 +222,8 @@ const RECIPE_MAP: Record<string, RecipeInfo> = {
     ingredients: ['vitello', 'uova', 'pangrattato', 'burro'],
     description: 'Cotoletta impanata e fritta'
   },
-  'porchetta': {
-    name: 'Porchetta',
-    ingredients: ['maiale', 'finocchio', 'aglio', 'rosmarino'],
-    description: 'Porchetta di Ariccia'
-  },
+  // NOTA: 'porchetta' rimossa perché è un PRODOTTO venduto da LAPA, non solo una ricetta
+  // Quando l'utente cerca "porchetta", deve trovare i prodotti PORCHETTA DI ARICCIA, etc.
   'brasato': {
     name: 'Brasato al Barolo',
     ingredients: ['manzo', 'barolo', 'carote', 'sedano', 'cipolla'],
@@ -292,7 +289,7 @@ const FOOD_KEYWORDS = new Set([
   // Carne
   'carne', 'manzo', 'vitello', 'maiale', 'pollo', 'tacchino', 'agnello',
   'prosciutto', 'guanciale', 'pancetta', 'salame', 'bresaola', 'speck',
-  'bistecca', 'cotoletta', 'ossobuco', 'porchetta',
+  'bistecca', 'cotoletta', 'ossobuco',  // 'porchetta' rimossa - è un prodotto LAPA
   // Formaggi
   'formaggio', 'mozzarella', 'parmigiano', 'pecorino', 'gorgonzola', 'ricotta',
   'mascarpone', 'burrata', 'grana', 'taleggio', 'fontina', 'provolone',
