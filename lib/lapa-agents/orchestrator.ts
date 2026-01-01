@@ -1039,9 +1039,22 @@ IMPORTANTE:
       };
     }
 
+    // ========================================
+    // NEGATION DETECTION - HIGHEST PRIORITY
+    // Se il messaggio inizia con "No", "Non", "no volevo", etc. NON è cart_add
+    // È una correzione o chiarimento, passa all'AI per capire l'intento reale
+    // ========================================
+    const isNegation = /^(no[,\s]|non\s|no\s+volevo|non\s+volevo|non\s+intendevo|volevo\s+solo|solo\s+queste?|no\s+solo)/i.test(lowerMessage);
+    if (isNegation) {
+      console.log('🚫 Detected negation/correction, skipping cart_add detection');
+      // Non classificare come cart_add, lascia che il flusso continui
+      // per essere gestito dall'AI o come product_inquiry
+    }
+
     // Ordinal selection (for cart product selection: "il primo", "1", "secondo", etc.)
     // HIGHEST PRIORITY - users selecting from a product list
-    if (lowerMessage.match(/^(il |la )?(primo|prima|secondo|seconda|terzo|terza|quarto|quarta|quinto|quinta|1|2|3|4|5|uno|due|tre|quattro|cinque)\.?$/i)) {
+    // Ma solo se NON è una negazione
+    if (!isNegation && lowerMessage.match(/^(il |la )?(primo|prima|secondo|seconda|terzo|terza|quarto|quarta|quinto|quinta|1|2|3|4|5|uno|due|tre|quattro|cinque)\.?$/i)) {
       return {
         type: 'cart_add',
         confidence: 0.95,
@@ -1050,7 +1063,8 @@ IMPORTANTE:
     }
 
     // Cart add keywords (HIGHEST PRIORITY - must come first)
-    if (lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
+    // Ma solo se NON è una negazione
+    if (!isNegation && lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
       return {
         type: 'cart_add',
         confidence: 0.9,
@@ -3518,8 +3532,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     // Se il messaggio è vuoto dopo la pulizia, non c'è nulla da estrarre
     if (!cleanMessage) return products;
 
-    // Dividi per virgole, "e", "poi"
-    const parts = cleanMessage.split(/\s*[,e]\s*|\s+poi\s+/i).filter(p => p.trim());
+    // Dividi per virgole, " e " (con spazi), "poi"
+    // IMPORTANTE: NON dividere su ogni "e"! Solo su " e " come congiunzione
+    const parts = cleanMessage.split(/\s*,\s*|\s+e\s+|\s+poi\s+/i).filter(p => p.trim());
 
     for (const part of parts) {
       const trimmed = part.trim();
