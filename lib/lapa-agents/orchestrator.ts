@@ -13,6 +13,7 @@ import { ShippingAgent } from './agents/shipping-agent';
 import { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 import { getOdooClient } from '@/lib/odoo-client';
 import { getMemoryService, ConversationMemoryService, CustomerMemory } from './memory/conversation-memory';
+import { enrichMessageWithAttachments, Attachment } from './attachment-analyzer';
 
 // URL base per il sito e-commerce
 const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
@@ -1217,18 +1218,38 @@ IMPORTANTE:
         }
       }
 
+      // ========================================
+      // ANALISI ALLEGATI (se presenti)
+      // Usa Gemini Vision per analizzare immagini/PDF
+      // ========================================
+      let processedMessage = message;
+      const attachments = context.metadata?.attachments as Attachment[] | undefined;
+
+      if (attachments && attachments.length > 0) {
+        console.log(`📎 Analisi ${attachments.length} allegati con Gemini Vision...`);
+        try {
+          const { enrichedMessage, analyzedAttachments } = await enrichMessageWithAttachments(message, attachments);
+          processedMessage = enrichedMessage;
+          console.log(`✅ Allegati analizzati. Messaggio arricchito: ${processedMessage.substring(0, 100)}...`);
+        } catch (attachmentError) {
+          console.error('❌ Errore analisi allegati:', attachmentError);
+          // Continua comunque con il messaggio originale
+        }
+      }
+
       // Aggiungi il messaggio dell'utente alla cronologia
       this.addMessage(context, {
         role: 'user',
-        content: message,
-        timestamp: new Date()
-      });
+        content: processedMessage,
+        timestamp: new Date(),
+        metadata: attachments ? { attachments } : undefined
+      } as Message);
 
       // 🧠 Salva messaggio utente nella memoria persistente
-      await this.saveToMemory(context, 'user', message);
+      await this.saveToMemory(context, 'user', processedMessage);
 
-      // 1. Analizza l'intento
-      const intent = await this.analyzeIntent(message, context);
+      // 1. Analizza l'intento (usa il messaggio arricchito con analisi allegati)
+      const intent = await this.analyzeIntent(processedMessage, context);
       console.log('📊 Intento identificato:', intent);
 
       // 2. Verifica se richiede autenticazione
