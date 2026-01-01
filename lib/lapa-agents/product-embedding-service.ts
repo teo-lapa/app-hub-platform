@@ -151,8 +151,38 @@ export async function findSimilarProducts(params: {
     const matchThreshold = params.matchThreshold || 0.3; // Lower threshold for products
     const matchCount = params.matchCount || 20;
 
-    // Try database search first
+    // ========================================
+    // STRATEGIA: Prima LIKE esatto, poi semantica
+    // Questo garantisce che "porchetta" trovi prima i prodotti PORCHETTA
+    // e non solo ingredienti semanticamente simili (maiale, finocchio)
+    // ========================================
     try {
+      // STEP 1: Ricerca LIKE esatta sul nome prodotto (priorità massima)
+      console.log(`[PRODUCT-EMBEDDING] STEP 1: LIKE search for: ${params.query}`);
+      const likeResult = await sql`
+        SELECT
+          product_id,
+          product_name,
+          0.95 as similarity
+        FROM product_embeddings
+        WHERE LOWER(product_name) LIKE ${`%${params.query.toLowerCase()}%`}
+        ORDER BY
+          CASE WHEN LOWER(product_name) LIKE ${`${params.query.toLowerCase()}%`} THEN 0 ELSE 1 END,
+          product_name
+        LIMIT ${matchCount}
+      `;
+
+      if (likeResult.rows.length > 0) {
+        console.log(`[PRODUCT-EMBEDDING] LIKE found ${likeResult.rows.length} exact matches for "${params.query}"`);
+        return likeResult.rows.map(row => ({
+          productId: row.product_id,
+          productName: row.product_name,
+          similarity: parseFloat(row.similarity)
+        }));
+      }
+
+      // STEP 2: Se LIKE non trova nulla, usa ricerca semantica
+      console.log(`[PRODUCT-EMBEDDING] STEP 2: No LIKE matches, trying semantic search`);
       const result = await sql`
         SELECT
           product_id,
@@ -165,35 +195,8 @@ export async function findSimilarProducts(params: {
       `;
 
       if (result.rows.length > 0) {
-        console.log(`[PRODUCT-EMBEDDING] Found ${result.rows.length} similar products in DB`);
+        console.log(`[PRODUCT-EMBEDDING] Semantic search found ${result.rows.length} similar products`);
         return result.rows.map(row => ({
-          productId: row.product_id,
-          productName: row.product_name,
-          similarity: parseFloat(row.similarity)
-        }));
-      }
-
-      // ========================================
-      // FALLBACK: Ricerca SQL LIKE per nome prodotto
-      // Se la ricerca semantica non trova nulla, prova con LIKE
-      // Questo risolve il problema della "porchetta" dove l'embedding
-      // della query non è abbastanza simile all'embedding del prodotto
-      // ========================================
-      console.log(`[PRODUCT-EMBEDDING] Semantic search found 0 results, trying SQL LIKE fallback for: ${params.query}`);
-      const likeResult = await sql`
-        SELECT
-          product_id,
-          product_name,
-          0.75 as similarity
-        FROM product_embeddings
-        WHERE LOWER(product_name) LIKE ${`%${params.query.toLowerCase()}%`}
-        ORDER BY product_name
-        LIMIT ${matchCount}
-      `;
-
-      if (likeResult.rows.length > 0) {
-        console.log(`[PRODUCT-EMBEDDING] SQL LIKE fallback found ${likeResult.rows.length} products`);
-        return likeResult.rows.map(row => ({
           productId: row.product_id,
           productName: row.product_name,
           similarity: parseFloat(row.similarity)
