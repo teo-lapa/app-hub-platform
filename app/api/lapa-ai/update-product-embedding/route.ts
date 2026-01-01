@@ -24,11 +24,18 @@ import { sql } from '@vercel/postgres';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { product_id, product_name, action = 'update' } = body;
+
+    // Support both manual calls (product_id) and Odoo webhook format (_id)
+    const product_id = body.product_id || body._id;
+    // Support both manual calls (product_name) and Odoo webhook format (name)
+    const product_name = body.product_name || body.name;
+    const action = body.action || 'update';
+
+    console.log('[UPDATE-EMBEDDING] Received payload:', JSON.stringify(body).substring(0, 200));
 
     if (!product_id) {
       return NextResponse.json(
-        { success: false, error: 'product_id is required' },
+        { success: false, error: 'product_id or _id is required' },
         { status: 400 }
       );
     }
