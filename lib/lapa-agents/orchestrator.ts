@@ -2139,6 +2139,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       // ========================================
       // RECIPE DETECTION - Cerca ingredienti per ricette
+      // MA PRIMA: cerca il termine stesso come prodotto!
       // ========================================
       console.log(`🔍 Recipe detection check - Message: "${lastUserMsg}"`);
       const recipe = detectRecipe(lastUserMsg);
@@ -2146,6 +2147,69 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       if (recipe) {
         console.log(`🍝 Ricetta rilevata: ${recipe.name} - Ingredienti: ${recipe.ingredients.join(', ')}`);
+
+        // ========================================
+        // IMPORTANTE: Prima cerca il nome della ricetta come PRODOTTO DIRETTO
+        // Es: "porchetta" potrebbe essere un prodotto in vendita, non solo una ricetta
+        // ========================================
+        const recipeNameLower = Object.keys(ITALIAN_RECIPES).find(key =>
+          lastUserMsg.toLowerCase().includes(key)
+        );
+
+        if (recipeNameLower) {
+          console.log(`🔍 Ricerca diretta prodotto per: ${recipeNameLower}`);
+          const directProductSearch = await this.productsAgent.searchProducts(
+            { query: recipeNameLower, active_only: true },
+            10
+          );
+
+          if (directProductSearch.success && directProductSearch.data && directProductSearch.data.length > 0) {
+            // Trovati prodotti diretti! (es: "Porchetta di Ariccia" invece di ingredienti)
+            console.log(`✅ Trovati ${directProductSearch.data.length} prodotti diretti per "${recipeNameLower}"`);
+
+            // Prepara dati prodotti trovati
+            const productsData = directProductSearch.data.map((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              return {
+                name: product.name,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              };
+            });
+
+            const directMessage = await this.generateConversationalResponse(
+              context,
+              'prodotto ricercato',
+              {
+                search_term: recipeNameLower,
+                products: productsData,
+                total_found: productsData.length,
+                customer_name: context.customerName
+              },
+              lastUserMsg
+            );
+
+            return {
+              success: true,
+              message: directMessage,
+              data: directProductSearch.data,
+              agentId: 'product',
+              confidence: 0.95,
+              suggestedActions: ['Aggiungi al carrello', 'Cerca altro', 'Chiedi un preventivo']
+            };
+          }
+        }
+
+        // Se non trovati prodotti diretti, cerca gli ingredienti della ricetta
+        console.log(`📝 Nessun prodotto diretto trovato, cerco ingredienti per: ${recipe.name}`);
 
         // Cerca TUTTI gli ingredienti della ricetta
         const allProducts: any[] = [];
