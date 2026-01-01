@@ -2158,8 +2158,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
         if (recipeNameLower) {
           console.log(`🔍 Ricerca diretta prodotto per: ${recipeNameLower}`);
+          // NOTA: active_only: false per trovare TUTTI i prodotti con questo nome,
+          // anche quelli temporaneamente non attivi/vendibili
           const directProductSearch = await this.productsAgent.searchProducts(
-            { query: recipeNameLower, active_only: true },
+            { query: recipeNameLower, active_only: false },
             10
           );
 
