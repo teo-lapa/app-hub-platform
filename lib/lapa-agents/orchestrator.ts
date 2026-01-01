@@ -1947,8 +1947,9 @@ ${conversationSummary}
         throw new Error('Unexpected response type');
       }
 
-      // Se il cliente NON è loggato - controlla se ha fornito i dati di contatto
-      if (!context.customerId) {
+      // Se il cliente NON è loggato E vuole ESPLICITAMENTE supporto/ticket - controlla se ha fornito i dati di contatto
+      // Se non vuole supporto, lascia passare e restituisci la risposta di Claude
+      if (!context.customerId && hasKeywords) {
         // Cerca di estrarre dati di contatto dal messaggio dell'utente
         const fullUserMessage = lastUserMessage?.content || '';
 
