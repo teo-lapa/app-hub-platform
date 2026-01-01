@@ -1153,6 +1153,18 @@ IMPORTANTE:
       };
     }
 
+    // ========================================
+    // ACCOUNT MANAGEMENT - "mi conosci?", "chi sono?", etc.
+    // Richieste info sull'account/dati del cliente autenticato
+    // ========================================
+    if (lowerMessage.match(/mi conosci|chi sono|che sai di me|info di me|miei dati|mio account|mio profilo|i miei dati|il mio account|il mio profilo|account|password|dati personali/i)) {
+      return {
+        type: 'account_management',
+        confidence: 0.85,
+        requiresAuth: true
+      };
+    }
+
     return {
       type: 'helpdesk',
       confidence: 0.5,
@@ -1656,7 +1668,7 @@ IMPORTANTE:
       id: 'helpdesk',
       name: 'Helpdesk Agent',
       description: 'Gestisce supporto generico e informazioni generali',
-      intents: ['helpdesk', 'general_info', 'unknown'],
+      intents: ['helpdesk', 'general_info', 'unknown', 'account_management'],
       requiresAuth: false,
       priority: 1,
       handler: async (context, intent) => {
