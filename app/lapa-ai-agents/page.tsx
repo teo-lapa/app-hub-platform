@@ -42,7 +42,10 @@ import {
   Eye,
   Edit3,
   Save,
-  X
+  X,
+  Database,
+  Search,
+  HardDrive
 } from 'lucide-react';
 
 // Tipi
@@ -88,6 +91,15 @@ interface DashboardStats {
   escalatedToday: number;
   avgResponseTime: number;
   customerSatisfaction: number;
+}
+
+interface RAGStats {
+  totalEmbeddings: number;
+  lastUpdate: string | null;
+  firstSync: string | null;
+  recentUpdates24h: number;
+  indexHealth: 'healthy' | 'missing_index' | 'error' | 'unknown';
+  recentProducts: { productId: number; productName: string; updatedAt: string }[];
 }
 
 // Configurazione agenti di default
@@ -236,6 +248,7 @@ export default function LapaAIAgentsPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'logs' | 'test'>('overview');
   const [loading, setLoading] = useState(false);
   const [conversations, setConversations] = useState<ConversationLog[]>([]);
+  const [ragStats, setRagStats] = useState<RAGStats | null>(null);
 
   // Test chat state
   const [testMessages, setTestMessages] = useState<{role: 'user' | 'assistant'; content: string}[]>([]);
@@ -247,6 +260,8 @@ export default function LapaAIAgentsPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+
+      // Carica dati agenti
       const response = await fetch('/api/lapa-agents/status');
       const data = await response.json();
 
@@ -268,6 +283,17 @@ export default function LapaAIAgentsPage() {
 
       if (data.stats) {
         setStats(data.stats);
+      }
+
+      // Carica statistiche RAG
+      try {
+        const ragResponse = await fetch('/api/lapa-ai/rag-stats');
+        const ragData = await ragResponse.json();
+        if (ragData.success && ragData.stats) {
+          setRagStats(ragData.stats);
+        }
+      } catch (ragError) {
+        console.error('Failed to load RAG stats:', ragError);
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -435,7 +461,7 @@ export default function LapaAIAgentsPage() {
         {/* Tab Content */}
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
-            <OverviewTab agents={agents} />
+            <OverviewTab agents={agents} ragStats={ragStats} />
           )}
 
           {activeTab === 'agents' && (
@@ -513,7 +539,7 @@ function StatsCard({ icon: Icon, label, value, color }: {
 }
 
 // Overview Tab
-function OverviewTab({ agents }: { agents: AgentConfig[] }) {
+function OverviewTab({ agents, ragStats }: { agents: AgentConfig[]; ragStats: RAGStats | null }) {
   return (
     <motion.div
       key="overview"
@@ -522,6 +548,107 @@ function OverviewTab({ agents }: { agents: AgentConfig[] }) {
       exit={{ opacity: 0, y: -20 }}
       className="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
+      {/* RAG Database Stats */}
+      <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Database className="w-5 h-5 text-cyan-400" />
+          Database RAG - Ricerca Semantica Prodotti
+        </h3>
+
+        {ragStats ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {/* Total Products */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <HardDrive className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs text-slate-400">Prodotti Indicizzati</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{ragStats.totalEmbeddings.toLocaleString()}</div>
+            </div>
+
+            {/* Last Update */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-green-400" />
+                <span className="text-xs text-slate-400">Ultimo Aggiornamento</span>
+              </div>
+              <div className="text-lg font-bold text-white">
+                {ragStats.lastUpdate
+                  ? new Date(ragStats.lastUpdate).toLocaleString('it-IT', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'N/A'}
+              </div>
+            </div>
+
+            {/* Updates 24h */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs text-slate-400">Aggiornati (24h)</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{ragStats.recentUpdates24h}</div>
+            </div>
+
+            {/* Index Health */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="w-4 h-4 text-purple-400" />
+                <span className="text-xs text-slate-400">Stato Indice</span>
+              </div>
+              <div className={`text-lg font-bold ${
+                ragStats.indexHealth === 'healthy' ? 'text-green-400' :
+                ragStats.indexHealth === 'missing_index' ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {ragStats.indexHealth === 'healthy' ? 'Sano' :
+                 ragStats.indexHealth === 'missing_index' ? 'Indice Mancante' :
+                 ragStats.indexHealth === 'error' ? 'Errore' : 'Sconosciuto'}
+              </div>
+            </div>
+
+            {/* First Sync */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4 text-blue-400" />
+                <span className="text-xs text-slate-400">Prima Sincronizzazione</span>
+              </div>
+              <div className="text-lg font-bold text-white">
+                {ragStats.firstSync
+                  ? new Date(ragStats.firstSync).toLocaleDateString('it-IT')
+                  : 'N/A'}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-8 text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            Caricamento statistiche RAG...
+          </div>
+        )}
+
+        {/* Recent Products */}
+        {ragStats && ragStats.recentProducts.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-700/50">
+            <h4 className="text-sm font-medium text-slate-400 mb-2">Ultimi prodotti aggiornati:</h4>
+            <div className="flex flex-wrap gap-2">
+              {ragStats.recentProducts.slice(0, 5).map(p => (
+                <span
+                  key={p.productId}
+                  className="px-2 py-1 bg-slate-700/50 rounded text-xs text-slate-300"
+                  title={`ID: ${p.productId} - ${new Date(p.updatedAt).toLocaleString('it-IT')}`}
+                >
+                  {p.productName.length > 30 ? p.productName.substring(0, 30) + '...' : p.productName}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Agents Grid */}
       <div className="lg:col-span-2">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">

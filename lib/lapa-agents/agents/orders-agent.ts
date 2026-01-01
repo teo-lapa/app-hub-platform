@@ -1382,7 +1382,8 @@ export class OrdersAgent extends BaseAgent {
   }
 
   getSystemPrompt(): string {
-    return `Sei l'Orders Agent di LAPA Food, distributore premium di prodotti alimentari in Ticino.
+    return `Sei l'Orders Agent di LAPA Food, distributore premium di prodotti alimentari italiani in Svizzera.
+Sede: Embrach (Canton Zurigo). Consegne dirette in Canton Zurigo e Ticino, resto della Svizzera via Posta/DHL.
 
 # IL TUO RUOLO
 Sei specializzato nella gestione ordini e assistenza clienti. Gestisci:
