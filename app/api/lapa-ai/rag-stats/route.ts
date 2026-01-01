@@ -15,8 +15,34 @@ import { sql } from '@vercel/postgres';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const searchQuery = searchParams.get('search');
+
+    // If search query provided, search for products
+    if (searchQuery) {
+      const searchResult = await sql`
+        SELECT product_id, product_name
+        FROM product_embeddings
+        WHERE LOWER(product_name) LIKE ${`%${searchQuery.toLowerCase()}%`}
+        ORDER BY product_name
+        LIMIT 50
+      `;
+
+      return NextResponse.json({
+        success: true,
+        search: {
+          query: searchQuery,
+          found: searchResult.rows.length,
+          products: searchResult.rows.map(r => ({
+            id: r.product_id,
+            name: r.product_name
+          }))
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
     // Get total embeddings count
     const countResult = await sql`
       SELECT COUNT(*) as total FROM product_embeddings
