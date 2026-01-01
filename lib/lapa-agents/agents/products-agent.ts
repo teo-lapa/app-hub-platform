@@ -1061,13 +1061,6 @@ export class ProductsAgent {
   }
 
   /**
-   * Cambia lingua dell'agente
-   */
-  setLanguage(language: 'it' | 'en' | 'fr' | 'de'): void {
-    this.language = language;
-  }
-
-  /**
    * Test connessione Odoo
    */
   async testConnection(): Promise<boolean> {
