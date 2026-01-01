@@ -4893,12 +4893,18 @@ Rispondi in modo naturale come se stessi parlando con un amico/cliente.`;
 
 INFORMAZIONI AZIENDA:
 - Nome: LAPA - finest italian food GmbH
-- Settore: Importazione e distribuzione prodotti alimentari italiani
-- Mercato: Svizzera (principalmente Canton Ticino)
-- Clienti: B2B (ristoranti, hotel, negozi) e B2C (consumatori finali)
+- Settore: Importazione e distribuzione prodotti alimentari italiani di alta qualità
+- Sede: Embrach, Canton Zurigo (Industriestrasse 18, 8424 Embrach)
+- Catalogo: oltre 3.000 prodotti italiani sempre disponibili
+- Clienti: B2B (ristoranti, hotel, negozi, catering) e B2C (consumatori finali)
+
+ZONE DI CONSEGNA:
+- Canton Zurigo e Canton Ticino: consegna diretta con mezzi propri refrigerati
+- Resto della Svizzera: spedizione tramite Posta/DHL
 
 CONTATTO:
 - Email: lapa@lapa.ch
+- Telefono: +41 76 361 70 21
 - Sito: https://www.lapa.ch
 - Indirizzo: Industriestrasse 18, 8424 Embrach, Svizzera
 
