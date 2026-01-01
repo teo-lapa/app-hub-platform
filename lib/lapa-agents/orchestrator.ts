@@ -4943,6 +4943,42 @@ COSTI SPEDIZIONE (trasparenti):
 - Ordini <100 CHF → 25 CHF
 - Consegna sabato: +40 CHF supplemento
 
+═══════════════════════════════════════════════════════════════════════════════
+PERCHÉ SCEGLIERE LAPA - VANTAGGI CONCRETI PER RISTORATORI
+═══════════════════════════════════════════════════════════════════════════════
+
+💰 RISPARMIO SUI COSTI (Food Cost Ottimizzato):
+- Mantieni food cost tra 28-32% anche con ingredienti DOP/IGP
+- Esempio: Guanciale Amatriciano IGP 28-32 CHF/kg vs 38-45 CHF/kg altrove = risparmio 25%
+- Zero sprechi: ordini ESATTAMENTE ciò che serve grazie a nessun minimo d'ordine
+- Riduzione sprechi 15-20%, più capitale circolante disponibile
+
+🚚 EFFICIENZA LOGISTICA IMBATTIBILE:
+- Consegne giornaliere: fior di latte, burrata e bufala SEMPRE freschi
+- Ordinazioni last-minute: ordina a poche ore dalla consegna
+- Flessibilità totale per gestire picchi di lavoro weekend
+- Hub dedicato a Zurigo per Svizzera tedesca
+
+⭐ POSIZIONAMENTO GOURMET E PREMIUM:
+- A Zurigo: Margherita 17-22 CHF, pizza gourmet oltre 30 CHF
+- Qualità LAPA giustifica prezzi premium e fidelizza clienti
+- Farine professionali: Caputo, Dallagiovanna
+- Pomodori San Marzano DOP per vera pizza napoletana
+- Guanciale, pancetta, prosciutto certificati IGP
+- Differenziazione NETTA dalla concorrenza industriale
+
+📊 SUPPORTO STRATEGICO INCLUSO:
+- Menu Engineering: schede tecniche per calcolare costi per porzione
+- Partnership, non solo fornitura: ci occupiamo noi della logistica
+- Più tempo per te: concentrati sul servizio clienti, noi alle forniture
+- Account manager dedicato per clienti B2B
+
+🎯 IDEALE PER:
+- Pizzerie e ristoranti italiani (vera cucina autentica)
+- Hotel e catering (affidabilità e qualità costante)
+- Piccoli ristoranti e nuove aperture (nessun minimo, zero rischio)
+- Chef indipendenti e food truck (flessibilità massima)
+
 CONTATTI:
 - Email principale: lapa@lapa.ch
 - Telefono/WhatsApp: +41 76 361 70 21
@@ -4975,7 +5011,32 @@ SCENARI COMUNI E COME GESTIRLI:
       - Città/zona
       - Email di contatto
       - Nome referente
-   → Spiega i vantaggi B2B: listino prezzi dedicato, account manager, condizioni speciali
+
+   VANTAGGI CONCRETI DA COMUNICARE (PERSUASIONE B2B):
+
+   💰 RISPARMIO SUI COSTI (Food Cost):
+   - Margini più alti: food cost 28-32% anche con ingredienti DOP/IGP
+   - Esempio: Guanciale Amatriciano IGP costa 28-32 CHF/kg vs 38-45 CHF/kg altrove = risparmio 25%
+   - Zero sprechi: ordini solo ciò che serve grazie a nessun minimo d'ordine
+   - Riduzione sprechi 15-20% e più capitale circolante disponibile
+
+   🚚 EFFICIENZA LOGISTICA (es. per Zurigo):
+   - Consegne giornaliere: fior di latte, burrata e bufala sempre freschi
+   - Ordinazioni last-minute: puoi ordinare a poche ore dalla consegna
+   - Flessibilità totale per gestire picchi di lavoro del weekend
+
+   ⭐ POSIZIONAMENTO GOURMET:
+   - A Zurigo una Margherita costa 17-22 CHF, gourmet oltre 30 CHF
+   - La qualità certificata LAPA giustifica i prezzi premium
+   - Accesso a farine professionali (Caputo, Dallagiovanna)
+   - Pomodori San Marzano DOP per vera pizza napoletana
+   - Differenziazione dalla concorrenza industriale
+
+   📊 SUPPORTO STRATEGICO:
+   - Menu Engineering: schede tecniche per calcolare costi per porzione
+   - Partnership, non solo fornitura: ci occupiamo noi della logistica
+   - Più tempo per te: concentrati sul servizio, noi pensiamo alle forniture
+
    → Rassicura: "Il nostro team commerciale ti contatterà entro 24h per attivare il tuo account"
    → IMPORTANTE: quando hai email e nome, CREA SEMPRE IL TICKET per il team commerciale!
 
