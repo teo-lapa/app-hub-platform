@@ -172,6 +172,33 @@ export async function findSimilarProducts(params: {
           similarity: parseFloat(row.similarity)
         }));
       }
+
+      // ========================================
+      // FALLBACK: Ricerca SQL LIKE per nome prodotto
+      // Se la ricerca semantica non trova nulla, prova con LIKE
+      // Questo risolve il problema della "porchetta" dove l'embedding
+      // della query non è abbastanza simile all'embedding del prodotto
+      // ========================================
+      console.log(`[PRODUCT-EMBEDDING] Semantic search found 0 results, trying SQL LIKE fallback for: ${params.query}`);
+      const likeResult = await sql`
+        SELECT
+          product_id,
+          product_name,
+          0.75 as similarity
+        FROM product_embeddings
+        WHERE LOWER(product_name) LIKE ${`%${params.query.toLowerCase()}%`}
+        ORDER BY product_name
+        LIMIT ${matchCount}
+      `;
+
+      if (likeResult.rows.length > 0) {
+        console.log(`[PRODUCT-EMBEDDING] SQL LIKE fallback found ${likeResult.rows.length} products`);
+        return likeResult.rows.map(row => ({
+          productId: row.product_id,
+          productName: row.product_name,
+          similarity: parseFloat(row.similarity)
+        }));
+      }
     } catch (dbError: any) {
       console.warn('[PRODUCT-EMBEDDING] DB search failed, using cache:', dbError.message);
     }
