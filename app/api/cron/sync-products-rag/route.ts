@@ -1,11 +1,9 @@
-/**
- * Cron Job: Sync Products to RAG
- *
- * Runs every 15 minutes to sync any new/modified products to the RAG embeddings.
- * This is needed because Odoo doesn't allow outgoing HTTP calls from server actions.
- *
- * Schedule: */15 * * * * (every 15 minutes)
- */
+// Cron Job: Sync Products to RAG
+//
+// Runs every 15 minutes to sync any new/modified products to the RAG embeddings.
+// This is needed because Odoo doesn't allow outgoing HTTP calls from server actions.
+//
+// Schedule: every 15 minutes (*/15 * * * *)
 
 import { NextResponse } from 'next/server';
 import { getOdooClient } from '@/lib/odoo-client';
