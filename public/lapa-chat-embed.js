@@ -187,81 +187,59 @@
     </svg>
   `;
 
-  // Ottieni dati utente Odoo se loggato
-  function getOdooUser() {
+  // Variabile per memorizzare i dati utente una volta ottenuti
+  let cachedUser = null;
+
+  // Ottieni dati utente Odoo chiamando l'API
+  async function fetchOdooUser() {
     try {
-      // Metodo 1: Odoo session_info (backend e alcune pagine frontend)
-      if (window.odoo) {
-        const session = window.odoo.session_info || window.odoo.__session_info__;
-        if (session && session.user_id && session.user_id !== false) {
-          console.log('LAPA Chat: found user via odoo.session_info');
-          return {
-            id: session.partner_id,
-            name: session.name || session.username,
-            email: session.username,
-            userId: session.user_id
-          };
-        }
+      // Chiama l'endpoint Odoo per ottenere info sessione
+      const response = await fetch('/web/session/get_session_info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {},
+          id: Date.now()
+        }),
+        credentials: 'include' // Importante per inviare i cookie
+      });
+
+      const data = await response.json();
+
+      if (data.result && data.result.user_id && data.result.user_id !== false) {
+        console.log('LAPA Chat: user found via API', data.result.name);
+        return {
+          id: data.result.partner_id,
+          name: data.result.name,
+          email: data.result.username,
+          userId: data.result.user_id
+        };
       }
-
-      // Metodo 2: Cerca icona utente loggato nell'header Odoo
-      // Quando loggato, Odoo mostra un'icona utente invece di "Accedi"
-      const userIcon = document.querySelector('a[href="/my/home"] i.fa-user, a[href="/my"] i.fa-user, .o_header_affix a[href*="/my"]');
-      if (userIcon) {
-        // Utente loggato - cerca il nome nel dropdown
-        const dropdown = userIcon.closest('.dropdown');
-        if (dropdown) {
-          const nameEl = dropdown.querySelector('.dropdown-menu a[href*="/my"]');
-          if (nameEl) {
-            console.log('LAPA Chat: found user via header dropdown');
-            return { name: nameEl.textContent?.trim() || 'Cliente' };
-          }
-        }
-        // Se non trova il nome, comunque è loggato
-        console.log('LAPA Chat: user is logged in (icon found)');
-        return { name: 'Cliente' };
-      }
-
-      // Metodo 3: Controlla se esiste il link "Il mio account" o "Logout"
-      const myAccountLink = document.querySelector('a[href="/my/home"], a[href="/my"], a[href*="/web/session/logout"]');
-      const loginLink = document.querySelector('a[href*="/web/login"]:not([href*="redirect"])');
-
-      // Se c'è "Il mio account" ma NON c'è "Accedi", utente è loggato
-      if (myAccountLink && !loginLink) {
-        console.log('LAPA Chat: user logged in (my account link present, no login link)');
-        return { name: 'Cliente' };
-      }
-
-      // Metodo 4: Cerca nella pagina /my (portale)
-      if (window.location.pathname.startsWith('/my')) {
-        // Siamo nel portale, utente sicuramente loggato
-        const pageTitle = document.querySelector('h1, .o_page_header h1');
-        if (pageTitle) {
-          const titleText = pageTitle.textContent?.trim();
-          if (titleText && titleText !== 'Il mio account') {
-            console.log('LAPA Chat: found user name in portal page');
-            return { name: titleText };
-          }
-        }
-        console.log('LAPA Chat: user in portal (logged in)');
-        return { name: 'Cliente' };
-      }
-
-      // Metodo 5: Controlla cookie di sessione Odoo
-      const hasSessionCookie = document.cookie.includes('session_id=');
-      const hasFrontendCookie = document.cookie.includes('frontend_lang=');
-      if (hasSessionCookie) {
-        // C'è una sessione, verifica se utente loggato controllando elementi UI
-        const cartQty = document.querySelector('.my_cart_quantity');
-        const wishlist = document.querySelector('a[href*="/shop/wishlist"]');
-        if (cartQty || wishlist) {
-          console.log('LAPA Chat: session cookie found, likely logged in');
-          return { name: 'Cliente' };
-        }
-      }
-
     } catch (e) {
-      console.log('LAPA Chat: error getting user', e);
+      console.log('LAPA Chat: API call failed', e);
+    }
+    return null;
+  }
+
+  // Versione sincrona che usa la cache o dati dal DOM
+  function getOdooUser() {
+    if (cachedUser) return cachedUser;
+
+    try {
+      // Controlla se c'è il link "Il mio account" (utente loggato sul portale)
+      const myAccountIcon = document.querySelector('a[href="/my/home"] i.fa-user, a[href="/my"] i.fa-user');
+      const logoutLink = document.querySelector('a[href*="/web/session/logout"]');
+
+      if (myAccountIcon || logoutLink) {
+        console.log('LAPA Chat: user appears logged in (UI check)');
+        return { name: 'Cliente' }; // Placeholder, verrà aggiornato
+      }
+    } catch (e) {
+      console.log('LAPA Chat: error in sync check', e);
     }
     return null;
   }
@@ -323,23 +301,27 @@
         if (!iframe) {
           iframe = document.createElement('iframe');
           iframe.id = 'lapa-chat-iframe';
-
-          // Costruisci URL con dati utente se loggato
-          let widgetUrl = CONFIG.widgetUrl;
-          const user = getOdooUser();
-          if (user) {
-            const params = new URLSearchParams();
-            if (user.id) params.set('partnerId', user.id);
-            if (user.name) params.set('name', user.name);
-            if (user.email) params.set('email', user.email);
-            if (user.userId) params.set('userId', user.userId);
-            widgetUrl += '?' + params.toString();
-          }
-
-          iframe.src = widgetUrl;
           iframe.setAttribute('allow', 'microphone');
           iframe.setAttribute('loading', 'lazy');
+
+          // Prima carica l'iframe con URL base
+          iframe.src = CONFIG.widgetUrl;
           iframeContainer.appendChild(iframe);
+
+          // Poi cerca dati utente via API (asincrono)
+          fetchOdooUser().then(function(user) {
+            if (user) {
+              cachedUser = user;
+              // Ricarica iframe con dati utente
+              const params = new URLSearchParams();
+              if (user.id) params.set('partnerId', user.id);
+              if (user.name) params.set('name', user.name);
+              if (user.email) params.set('email', user.email);
+              if (user.userId) params.set('userId', user.userId);
+              iframe.src = CONFIG.widgetUrl + '?' + params.toString();
+              console.log('LAPA Chat: iframe updated with user data', user.name);
+            }
+          });
         }
       } else {
         // Chiudi chat
