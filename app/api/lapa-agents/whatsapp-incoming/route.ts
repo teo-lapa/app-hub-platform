@@ -267,20 +267,24 @@ export async function POST(request: NextRequest) {
         }
 
         if (accountIdToUse) {
+          console.log('[WHATSAPP-INCOMING] About to call sendWhatsAppResponse with accountId:', accountIdToUse);
           await sendWhatsAppResponse(
             mobileNumber,
             response.message,
             accountIdToUse,
             messageId
           );
-          console.log('[WHATSAPP-INCOMING] Response sent successfully');
+          console.log('[WHATSAPP-INCOMING] Response sent successfully - COMPLETED');
         } else {
           console.warn('[WHATSAPP-INCOMING] Could not send response - no wa_account_id found');
         }
-      } catch (sendError) {
-        console.error('[WHATSAPP-INCOMING] Failed to send response:', sendError);
+      } catch (sendError: any) {
+        console.error('[WHATSAPP-INCOMING] Failed to send response:', sendError?.message || sendError);
+        console.error('[WHATSAPP-INCOMING] Error stack:', sendError?.stack);
         // Don't fail the whole request if sending fails
       }
+    } else {
+      console.log('[WHATSAPP-INCOMING] No response.message to send');
     }
 
     // Handle escalation if needed
@@ -326,7 +330,11 @@ async function sendWhatsAppResponse(
   waAccountId: number,
   originalMessageId: number
 ): Promise<void> {
+  console.log('[WHATSAPP-INCOMING] ====== sendWhatsAppResponse START ======');
+  console.log('[WHATSAPP-INCOMING] Parameters:', { mobileNumber, messageLength: message?.length, waAccountId, originalMessageId });
+
   const odoo = await getOdooClient();
+  console.log('[WHATSAPP-INCOMING] Odoo client obtained:', !!odoo);
   if (!odoo) {
     throw new Error('Failed to connect to Odoo');
   }
@@ -373,12 +381,15 @@ async function sendWhatsAppResponse(
       );
       console.log('[WHATSAPP-INCOMING] message_post result:', JSON.stringify(postResult));
       console.log('[WHATSAPP-INCOMING] Message posted to channel successfully');
+      console.log('[WHATSAPP-INCOMING] ====== sendWhatsAppResponse END (success) ======');
     } catch (postError: any) {
       console.error('[WHATSAPP-INCOMING] message_post FAILED:', postError.message);
+      console.log('[WHATSAPP-INCOMING] ====== sendWhatsAppResponse END (error) ======');
       throw postError;
     }
   } else {
     console.warn('[WHATSAPP-INCOMING] No channel found for', formattedPhone);
+    console.log('[WHATSAPP-INCOMING] ====== sendWhatsAppResponse END (no channel) ======');
     throw new Error(`No WhatsApp channel found for ${formattedPhone}`);
   }
 }
