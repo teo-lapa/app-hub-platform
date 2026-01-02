@@ -190,7 +190,7 @@
   // Ottieni dati utente Odoo se loggato
   function getOdooUser() {
     try {
-      // Odoo espone i dati sessione in odoo.session_info o window.odoo
+      // Metodo 1: Odoo backend (session_info)
       if (window.odoo && window.odoo.session_info) {
         const session = window.odoo.session_info;
         if (session.user_id && session.user_id !== false) {
@@ -202,16 +202,60 @@
           };
         }
       }
-      // Fallback: cerca nel DOM (Odoo mette info utente in alcuni elementi)
-      const userMenu = document.querySelector('[data-user-id]');
-      if (userMenu) {
-        return {
-          id: userMenu.dataset.userId,
-          name: userMenu.dataset.userName || userMenu.textContent.trim()
-        };
+
+      // Metodo 2: Cerca nell'header utente Odoo website
+      // Odoo mette il nome utente nel dropdown dell'header
+      const userDropdown = document.querySelector('.o_header_affix .dropdown-toggle, .o_main_nav .dropdown-toggle, #top_menu .dropdown-toggle');
+      if (userDropdown) {
+        const nameEl = userDropdown.querySelector('span') || userDropdown;
+        const name = nameEl.textContent?.trim();
+        if (name && name !== 'Accedi' && name !== 'Sign in' && name !== 'Login') {
+          return { name: name };
+        }
       }
+
+      // Metodo 3: Cerca il link "Il mio account" che contiene info utente
+      const myAccountLink = document.querySelector('a[href*="/my/home"], a[href*="/my/account"]');
+      if (myAccountLink) {
+        const parent = myAccountLink.closest('.dropdown');
+        if (parent) {
+          const toggle = parent.querySelector('.dropdown-toggle');
+          const name = toggle?.textContent?.trim();
+          if (name && name !== 'Accedi' && name !== 'Sign in') {
+            return { name: name };
+          }
+        }
+      }
+
+      // Metodo 4: Cerca qualsiasi elemento con email visibile (es. paul@lapa.ch)
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const allText = document.body.innerText;
+      const emailMatch = allText.match(emailRegex);
+
+      // Metodo 5: Cerca nel localStorage/sessionStorage di Odoo
+      try {
+        const odooSession = sessionStorage.getItem('session_info') || localStorage.getItem('session_info');
+        if (odooSession) {
+          const session = JSON.parse(odooSession);
+          if (session.partner_id) {
+            return {
+              id: session.partner_id,
+              name: session.name,
+              email: session.username
+            };
+          }
+        }
+      } catch(e) {}
+
+      // Metodo 6: Controlla se c'è un cookie di sessione e il carrello mostra utente loggato
+      const cartHeader = document.querySelector('.my_cart_quantity, .o_wsale_my_cart');
+      const loginBtn = document.querySelector('a[href*="/web/login"], a[href*="/my/home"]');
+      if (cartHeader && loginBtn && loginBtn.textContent?.includes('@')) {
+        return { email: loginBtn.textContent.trim() };
+      }
+
     } catch (e) {
-      console.log('LAPA Chat: no user session found');
+      console.log('LAPA Chat: error getting user', e);
     }
     return null;
   }
