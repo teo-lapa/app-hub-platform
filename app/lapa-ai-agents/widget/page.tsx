@@ -109,6 +109,7 @@ export default function LapaAgentsWidgetPage() {
 
       return () => window.removeEventListener('message', handleMessage);
     }
+    return undefined;
   }, []);
 
   // File upload states
