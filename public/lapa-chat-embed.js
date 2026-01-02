@@ -190,10 +190,11 @@
   // Ottieni dati utente Odoo se loggato
   function getOdooUser() {
     try {
-      // Metodo 1: Odoo backend (session_info)
-      if (window.odoo && window.odoo.session_info) {
-        const session = window.odoo.session_info;
-        if (session.user_id && session.user_id !== false) {
+      // Metodo 1: Odoo session_info (backend e alcune pagine frontend)
+      if (window.odoo) {
+        const session = window.odoo.session_info || window.odoo.__session_info__;
+        if (session && session.user_id && session.user_id !== false) {
+          console.log('LAPA Chat: found user via odoo.session_info');
           return {
             id: session.partner_id,
             name: session.name || session.username,
@@ -203,55 +204,60 @@
         }
       }
 
-      // Metodo 2: Cerca nell'header utente Odoo website
-      // Odoo mette il nome utente nel dropdown dell'header
-      const userDropdown = document.querySelector('.o_header_affix .dropdown-toggle, .o_main_nav .dropdown-toggle, #top_menu .dropdown-toggle');
-      if (userDropdown) {
-        const nameEl = userDropdown.querySelector('span') || userDropdown;
-        const name = nameEl.textContent?.trim();
-        if (name && name !== 'Accedi' && name !== 'Sign in' && name !== 'Login') {
-          return { name: name };
-        }
-      }
-
-      // Metodo 3: Cerca il link "Il mio account" che contiene info utente
-      const myAccountLink = document.querySelector('a[href*="/my/home"], a[href*="/my/account"]');
-      if (myAccountLink) {
-        const parent = myAccountLink.closest('.dropdown');
-        if (parent) {
-          const toggle = parent.querySelector('.dropdown-toggle');
-          const name = toggle?.textContent?.trim();
-          if (name && name !== 'Accedi' && name !== 'Sign in') {
-            return { name: name };
+      // Metodo 2: Cerca icona utente loggato nell'header Odoo
+      // Quando loggato, Odoo mostra un'icona utente invece di "Accedi"
+      const userIcon = document.querySelector('a[href="/my/home"] i.fa-user, a[href="/my"] i.fa-user, .o_header_affix a[href*="/my"]');
+      if (userIcon) {
+        // Utente loggato - cerca il nome nel dropdown
+        const dropdown = userIcon.closest('.dropdown');
+        if (dropdown) {
+          const nameEl = dropdown.querySelector('.dropdown-menu a[href*="/my"]');
+          if (nameEl) {
+            console.log('LAPA Chat: found user via header dropdown');
+            return { name: nameEl.textContent?.trim() || 'Cliente' };
           }
         }
+        // Se non trova il nome, comunque è loggato
+        console.log('LAPA Chat: user is logged in (icon found)');
+        return { name: 'Cliente' };
       }
 
-      // Metodo 4: Cerca qualsiasi elemento con email visibile (es. paul@lapa.ch)
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-      const allText = document.body.innerText;
-      const emailMatch = allText.match(emailRegex);
+      // Metodo 3: Controlla se esiste il link "Il mio account" o "Logout"
+      const myAccountLink = document.querySelector('a[href="/my/home"], a[href="/my"], a[href*="/web/session/logout"]');
+      const loginLink = document.querySelector('a[href*="/web/login"]:not([href*="redirect"])');
 
-      // Metodo 5: Cerca nel localStorage/sessionStorage di Odoo
-      try {
-        const odooSession = sessionStorage.getItem('session_info') || localStorage.getItem('session_info');
-        if (odooSession) {
-          const session = JSON.parse(odooSession);
-          if (session.partner_id) {
-            return {
-              id: session.partner_id,
-              name: session.name,
-              email: session.username
-            };
+      // Se c'è "Il mio account" ma NON c'è "Accedi", utente è loggato
+      if (myAccountLink && !loginLink) {
+        console.log('LAPA Chat: user logged in (my account link present, no login link)');
+        return { name: 'Cliente' };
+      }
+
+      // Metodo 4: Cerca nella pagina /my (portale)
+      if (window.location.pathname.startsWith('/my')) {
+        // Siamo nel portale, utente sicuramente loggato
+        const pageTitle = document.querySelector('h1, .o_page_header h1');
+        if (pageTitle) {
+          const titleText = pageTitle.textContent?.trim();
+          if (titleText && titleText !== 'Il mio account') {
+            console.log('LAPA Chat: found user name in portal page');
+            return { name: titleText };
           }
         }
-      } catch(e) {}
+        console.log('LAPA Chat: user in portal (logged in)');
+        return { name: 'Cliente' };
+      }
 
-      // Metodo 6: Controlla se c'è un cookie di sessione e il carrello mostra utente loggato
-      const cartHeader = document.querySelector('.my_cart_quantity, .o_wsale_my_cart');
-      const loginBtn = document.querySelector('a[href*="/web/login"], a[href*="/my/home"]');
-      if (cartHeader && loginBtn && loginBtn.textContent?.includes('@')) {
-        return { email: loginBtn.textContent.trim() };
+      // Metodo 5: Controlla cookie di sessione Odoo
+      const hasSessionCookie = document.cookie.includes('session_id=');
+      const hasFrontendCookie = document.cookie.includes('frontend_lang=');
+      if (hasSessionCookie) {
+        // C'è una sessione, verifica se utente loggato controllando elementi UI
+        const cartQty = document.querySelector('.my_cart_quantity');
+        const wishlist = document.querySelector('a[href*="/shop/wishlist"]');
+        if (cartQty || wishlist) {
+          console.log('LAPA Chat: session cookie found, likely logged in');
+          return { name: 'Cliente' };
+        }
       }
 
     } catch (e) {
