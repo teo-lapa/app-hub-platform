@@ -3494,11 +3494,15 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.log('🛒 User wants ALL products, pending:', pendingProducts.length);
 
       if (pendingProducts.length > 0) {
+        // Estrai quantità dal messaggio se presente (es. "2 di tutti", "3x di ognuno")
+        const qtyMatchAll = lowerMessage.match(/(\d+)\s*(di tutti|di ognuno|ciascuno|each|x)?/i);
+        const qtyAll = qtyMatchAll ? parseInt(qtyMatchAll[1]) : 1;
+
         // Prepara lista prodotti e chiedi conferma
         let message = '🛒 Vuoi aggiungere questi prodotti al carrello?\n\n';
         const productsWithQty = pendingProducts.map((p: any) => ({
           ...p,
-          qty: 1,
+          qty: qtyAll,
           price: p.list_price || 0
         }));
 
@@ -3574,11 +3578,15 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.log('🛒 Matched products from pending by name:', matchedProducts.map(p => p.name));
 
       if (matchedProducts.length > 0) {
+        // Estrai quantità dal messaggio se presente (es. "3 kg", "2x", "5 pezzi")
+        const qtyMatchPartial = lowerMessage.match(/(\d+)\s*(kg|g|x|pezzi|pz|conf|confezioni)?/i);
+        const qtyPartial = qtyMatchPartial ? parseInt(qtyMatchPartial[1]) : 1;
+
         // Prepara lista prodotti e chiedi conferma
         let message = '🛒 Vuoi aggiungere questi prodotti al carrello?\n\n';
         const productsWithQty = matchedProducts.map((p: any) => ({
           ...p,
-          qty: 1,
+          qty: qtyPartial,
           price: p.list_price || 0
         }));
 
@@ -3610,15 +3618,20 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const selectedProduct = pendingProducts[ordinalSelection];
       console.log('🛒 Selected product from pending:', selectedProduct.name);
 
+      // Estrai quantità dal messaggio se presente (es. "3 kg", "2x", "5 pezzi")
+      const qtyMatchOrdinal = lowerMessage.match(/(\d+)\s*(kg|g|x|pezzi|pz|conf|confezioni)?/i);
+      // Ignora il numero se è solo la selezione ordinale (1, 2, 3...)
+      const qtyOrdinal = qtyMatchOrdinal && parseInt(qtyMatchOrdinal[1]) !== (ordinalSelection + 1) ? parseInt(qtyMatchOrdinal[1]) : 1;
+
       // Chiedi conferma prima di aggiungere
       const productWithQty = {
         ...selectedProduct,
-        qty: 1,
+        qty: qtyOrdinal,
         price: selectedProduct.list_price || 0
       };
 
       let message = '🛒 Vuoi aggiungere questo prodotto al carrello?\n\n';
-      message += `• 1x ${selectedProduct.name}`;
+      message += `• ${qtyOrdinal}x ${selectedProduct.name}`;
       if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
       message += '\n\nConfermi?';
 
@@ -3765,14 +3778,19 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     if (products.length === 1) {
       // Un solo prodotto trovato - chiedi conferma
       const product = products[0];
+
+      // Estrai quantità dal messaggio se presente (es. "3 kg", "2x", "5 pezzi")
+      const qtyMatchSingle = lowerMessage.match(/(\d+)\s*(kg|g|x|pezzi|pz|conf|confezioni)?/i);
+      const qtySingle = qtyMatchSingle ? parseInt(qtyMatchSingle[1]) : 1;
+
       const productWithQty = {
         ...product,
-        qty: 1,
+        qty: qtySingle,
         price: product.list_price || 0
       };
 
       let message = '🛒 Vuoi aggiungere questo prodotto al carrello?\n\n';
-      message += `• 1x ${product.name}`;
+      message += `• ${qtySingle}x ${product.name}`;
       if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
       message += '\n\nConfermi?';
 
