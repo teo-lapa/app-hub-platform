@@ -8,9 +8,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { CustomerOrchestrator } from '@/lib/lapa-agents/orchestrator';
+import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
-import { addMessageToConversation } from '@/lib/lapa-agents/conversation-store';
+import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
 
 interface WhatsAppIncomingRequest {
   whatsapp_message_id: number;
@@ -66,17 +66,38 @@ export async function POST(request: NextRequest) {
       customerType
     });
 
+    // Load conversation history
+    let conversationHistory: { role: 'user' | 'assistant'; content: string; timestamp: Date; agentId?: string }[] = [];
+    try {
+      const storedConversation = await loadConversation(conversationId);
+      if (storedConversation && storedConversation.messages.length > 0) {
+        conversationHistory = storedConversation.messages;
+        console.log(`[WHATSAPP-INCOMING] Loaded ${conversationHistory.length} messages from history`);
+      }
+    } catch (loadError) {
+      console.warn('[WHATSAPP-INCOMING] Error loading conversation:', loadError);
+    }
+
+    // Get Odoo client and create orchestrator
+    const odooClient = await getOdooClient();
+    if (!odooClient) {
+      throw new Error('Failed to connect to Odoo');
+    }
+    const orchestrator = getOrchestrator(odooClient);
+
     // Process with AI agents
-    const orchestrator = new CustomerOrchestrator();
-    const response = await orchestrator.handleMessage(
+    const response = await orchestrator.processMessage(
       body.message,
+      conversationId,
       {
         customerType,
         customerId,
         customerName,
-        language: 'it',
-        sessionId,
-        channel: 'whatsapp'
+        conversationHistory,
+        metadata: {
+          language: 'it',
+          source: 'whatsapp'
+        }
       }
     );
 
