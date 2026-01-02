@@ -43,6 +43,7 @@ interface ChatRequest {
   customerEmail?: string;
   sessionId: string;  // Usato come fallback per utenti anonimi
   language?: string;
+  channel?: 'web' | 'whatsapp' | 'api';  // Canale di provenienza del messaggio
   attachments?: Array<{
     name: string;
     content: string; // base64 encoded
@@ -101,7 +102,7 @@ function normalizeAgentId(agentId: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, customerType, customerId, parentId, customerName, customerEmail, sessionId, language = 'it', attachments } = body;
+    const { message, customerType, customerId, parentId, customerName, customerEmail, sessionId, language = 'it', channel = 'web', attachments } = body;
 
     if (!message || typeof message !== 'string') {
       return jsonResponse(
@@ -202,11 +203,12 @@ export async function POST(request: NextRequest) {
         // Salva la conversazione nel KV per persistenza usando conversationId
         // IMPORTANTE: Usa conversationId (basato su customerId/parentId) non sessionId
         try {
-          // Salva messaggio utente con info su chi ha scritto
+          // Salva messaggio utente con info su chi ha scritto e canale
           await addMessageToConversation(conversationId, {
             role: 'user',
             content: message,
             timestamp: new Date(),
+            channel,  // Traccia da dove viene il messaggio (web, whatsapp, api)
             metadata: attachments && attachments.length > 0 ? { attachments } : undefined
           }, { customerId, customerName, customerType, parentId });
 
@@ -216,6 +218,7 @@ export async function POST(request: NextRequest) {
             content: response.message,
             timestamp: new Date(),
             agentId: response.agentId,
+            channel,  // Anche la risposta è sullo stesso canale
             data: response.data  // Salva anche data per selezioni successive
           }, { customerId, customerName, customerType, parentId });
         } catch (kvError) {

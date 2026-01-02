@@ -12,6 +12,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   agentId?: string;
+  channel?: 'web' | 'whatsapp' | 'api';  // Da dove viene il messaggio
   // Chi ha scritto questo messaggio (per messaggi utente in conversazioni condivise padre/figli)
   senderId?: number;      // ID del partner che ha scritto (es. Mario = 1001)
   senderName?: string;    // Nome del partner che ha scritto (es. "Mario Rossi")
@@ -32,6 +33,7 @@ export interface StoredConversation {
   parentId?: number;    // ID dell'azienda padre (se esiste) - per conversazioni condivise
   customerName?: string;
   customerType: 'b2b' | 'b2c' | 'anonymous';
+  channels?: ('web' | 'whatsapp' | 'api')[];  // Canali usati in questa conversazione
   messages: Message[];
   metadata?: Record<string, any>;
   createdAt: Date;
@@ -155,6 +157,16 @@ export async function addMessageToConversation(
   if (message.role === 'user' && customerInfo) {
     message.senderId = customerInfo.customerId;
     message.senderName = customerInfo.customerName;
+  }
+
+  // Traccia i canali usati nella conversazione
+  if (message.channel) {
+    if (!conversation.channels) {
+      conversation.channels = [];
+    }
+    if (!conversation.channels.includes(message.channel)) {
+      conversation.channels.push(message.channel);
+    }
   }
 
   // Aggiungi messaggio

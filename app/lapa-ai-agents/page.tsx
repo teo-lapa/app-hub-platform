@@ -861,78 +861,268 @@ function AgentsTab({ agents, onToggle, onSelect }: {
   );
 }
 
+// Interfaccia per conversazione dal KV
+interface StoredConversation {
+  sessionId: string;
+  customerId?: number;
+  parentId?: number;
+  customerName?: string;
+  customerType: 'b2b' | 'b2c' | 'anonymous';
+  channels?: ('web' | 'whatsapp' | 'api')[];
+  messages: {
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+    agentId?: string;
+    channel?: 'web' | 'whatsapp' | 'api';
+    senderName?: string;
+  }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Logs Tab
-function LogsTab({ conversations }: { conversations: ConversationLog[] }) {
+function LogsTab({ conversations: initialConversations }: { conversations: ConversationLog[] }) {
+  const [conversations, setConversations] = useState<StoredConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedConv, setSelectedConv] = useState<StoredConversation | null>(null);
+  const [filter, setFilter] = useState<'all' | 'web' | 'whatsapp'>('all');
+
+  // Carica conversazioni dal KV
+  useEffect(() => {
+    async function loadConversations() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/lapa-agents/conversations?limit=50');
+        const data = await response.json();
+        if (data.success && data.conversations) {
+          setConversations(data.conversations);
+        }
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadConversations();
+    // Refresh ogni 30 secondi
+    const interval = setInterval(loadConversations, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filtra conversazioni per canale
+  const filteredConversations = conversations.filter(conv => {
+    if (filter === 'all') return true;
+    return conv.channels?.includes(filter) || conv.messages.some(m => m.channel === filter);
+  });
+
+  // Icona canale
+  const ChannelIcon = ({ channel }: { channel?: string }) => {
+    if (channel === 'whatsapp') return <span className="text-green-400">📱</span>;
+    if (channel === 'api') return <span className="text-purple-400">🔌</span>;
+    return <span className="text-blue-400">🌐</span>;
+  };
+
   return (
     <motion.div
       key="logs"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6"
+      className="grid grid-cols-1 lg:grid-cols-3 gap-6"
     >
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-blue-400" />
-          Conversazioni Recenti
-        </h3>
-        <div className="flex gap-2">
-          <select className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm border border-slate-600">
-            <option>Tutti gli agenti</option>
-            <option>Orchestratore</option>
-            <option>Agente Ordini</option>
-            <option>Agente Fatture</option>
-          </select>
-          <select className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm border border-slate-600">
-            <option>Ultimo ora</option>
-            <option>Ultime 24h</option>
-            <option>Ultima settimana</option>
-          </select>
+      {/* Lista conversazioni */}
+      <div className="lg:col-span-1 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 max-h-[600px] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-blue-400" />
+            Conversazioni
+          </h3>
+          <span className="text-xs text-slate-400">{filteredConversations.length} totali</span>
         </div>
-      </div>
 
-      {conversations.length === 0 ? (
-        <div className="text-center py-12 text-slate-400">
-          <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Nessuna conversazione registrata</p>
-          <p className="text-sm mt-2">Le conversazioni appariranno qui quando i clienti useranno il chatbot</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {conversations.map(conv => (
-            <div
-              key={conv.id}
-              className="p-4 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
+        {/* Filtri canale */}
+        <div className="flex gap-2 mb-4">
+          {[
+            { id: 'all', label: 'Tutti', icon: '📊' },
+            { id: 'web', label: 'Web', icon: '🌐' },
+            { id: 'whatsapp', label: 'WhatsApp', icon: '📱' }
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filter === f.id
+                  ? 'bg-red-600 text-white'
+                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+              }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-slate-400" />
-                  <span className="text-white font-medium">
-                    {conv.customerName || 'Visitatore Anonimo'}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded text-xs ${
+              {f.icon} {f.label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>Nessuna conversazione</p>
+          </div>
+        ) : (
+          <div className="space-y-2 overflow-y-auto flex-1">
+            {filteredConversations.map(conv => (
+              <motion.div
+                key={conv.sessionId}
+                whileHover={{ scale: 1.01 }}
+                onClick={() => setSelectedConv(conv)}
+                className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                  selectedConv?.sessionId === conv.sessionId
+                    ? 'bg-red-600/20 border border-red-500/30'
+                    : 'bg-slate-700/50 hover:bg-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-white font-medium text-sm truncate max-w-[120px]">
+                      {conv.customerName || 'Anonimo'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {conv.channels?.map(ch => (
+                      <ChannelIcon key={ch} channel={ch} />
+                    )) || <ChannelIcon channel="web" />}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`px-1.5 py-0.5 rounded text-xs ${
                     conv.customerType === 'b2b' ? 'bg-blue-500/20 text-blue-400' :
                     conv.customerType === 'b2c' ? 'bg-green-500/20 text-green-400' :
                     'bg-slate-600 text-slate-400'
                   }`}>
                     {conv.customerType.toUpperCase()}
                   </span>
+                  <span className="text-xs text-slate-500">
+                    {conv.messages.length} msg
+                  </span>
                 </div>
-                <span className={`px-2 py-0.5 rounded text-xs ${
-                  conv.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
-                  conv.status === 'escalated' ? 'bg-orange-500/20 text-orange-400' :
-                  'bg-blue-500/20 text-blue-400'
-                }`}>
-                  {conv.status}
-                </span>
+                <p className="text-slate-400 text-xs mt-1 line-clamp-1">
+                  {conv.messages[conv.messages.length - 1]?.content.substring(0, 50) || '...'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {new Date(conv.updatedAt).toLocaleString('it-IT', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dettaglio conversazione */}
+      <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 max-h-[600px] overflow-hidden flex flex-col">
+        {selectedConv ? (
+          <>
+            {/* Header conversazione */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-400" />
+                  {selectedConv.customerName || 'Visitatore Anonimo'}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    selectedConv.customerType === 'b2b' ? 'bg-blue-500/20 text-blue-400' :
+                    selectedConv.customerType === 'b2c' ? 'bg-green-500/20 text-green-400' :
+                    'bg-slate-600 text-slate-400'
+                  }`}>
+                    {selectedConv.customerType.toUpperCase()}
+                  </span>
+                  {selectedConv.customerId && (
+                    <span className="text-xs text-slate-400">
+                      ID: {selectedConv.customerId}
+                    </span>
+                  )}
+                  {selectedConv.channels?.map(ch => (
+                    <span key={ch} className={`px-2 py-0.5 rounded text-xs ${
+                      ch === 'whatsapp' ? 'bg-green-500/20 text-green-400' :
+                      ch === 'api' ? 'bg-purple-500/20 text-purple-400' :
+                      'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {ch}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <p className="text-slate-400 text-sm line-clamp-1">
-                {conv.messages[conv.messages.length - 1]?.content || 'Nessun messaggio'}
-              </p>
+              <div className="text-right text-xs text-slate-400">
+                <div>Creata: {new Date(selectedConv.createdAt).toLocaleString('it-IT')}</div>
+                <div>Aggiornata: {new Date(selectedConv.updatedAt).toLocaleString('it-IT')}</div>
+              </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Messaggi */}
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {selectedConv.messages.map((msg, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center mr-2 flex-shrink-0">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  <div className={`max-w-[75%] ${
+                    msg.role === 'user'
+                      ? 'bg-blue-600 text-white rounded-xl rounded-br-sm'
+                      : 'bg-slate-700 text-slate-100 rounded-xl rounded-bl-sm'
+                  } p-3`}>
+                    {/* Header messaggio */}
+                    <div className="flex items-center gap-2 mb-1 text-xs opacity-70">
+                      <ChannelIcon channel={msg.channel} />
+                      {msg.senderName && <span>{msg.senderName}</span>}
+                      {msg.agentId && (
+                        <span className="px-1.5 py-0.5 bg-black/20 rounded">
+                          {msg.agentId}
+                        </span>
+                      )}
+                      <span>
+                        {new Date(msg.timestamp).toLocaleTimeString('it-IT', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    {/* Contenuto */}
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center ml-2 flex-shrink-0">
+                      <Users className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-slate-400">
+            <div className="text-center">
+              <Eye className="w-16 h-16 mx-auto mb-4 opacity-30" />
+              <p>Seleziona una conversazione per vedere i dettagli</p>
+            </div>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
