@@ -6,7 +6,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { OrdersAgent } from './agents/orders-agent';
+import { OrdersAgent, getPartnerIdsForSearch } from './agents/orders-agent';
 import { InvoicesAgent } from './agents/invoices-agent';
 import { ProductsAgent } from './agents/products-agent';
 import { ShippingAgent } from './agents/shipping-agent';
@@ -3110,13 +3110,17 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       // Usa Odoo direttamente per recuperare gli ordini
       const odoo = await getOdooClient();
 
+      // B2B: Ottieni tutti i partner collegati (azienda + contatti)
+      const { ids: partnerIds, parentName } = await getPartnerIdsForSearch(context.customerId);
+      console.log(`📦 orderAgentHandler: cercherò ordini di ${partnerIds.length} partner${parentName ? ` (azienda: ${parentName})` : ''}`);
+
       // Rileva richiesta "prodotti acquistati"
       const isProductsQuery = lowerMessage.match(
         /prodott[io].*comprat|cosa.*comprat|ultim[io].*prodott|quando.*comprat|storico.*acquist|purchased|gekauft|acheté/i
       );
 
       if (isProductsQuery) {
-        return await this.handlePurchasedProductsQuery(context, odoo, lowerMessage);
+        return await this.handlePurchasedProductsQuery(context, odoo, lowerMessage, partnerIds);
       }
 
       // Se c'è un order_id specifico, mostra i dettagli
@@ -3124,7 +3128,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         const orders = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', context.customerId],
+            ['partner_id', 'in', partnerIds],
             ['name', 'ilike', entities.order_id]
           ],
           [
@@ -3163,10 +3167,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         };
       }
 
-      // Altrimenti mostra lo storico ordini recenti
+      // Altrimenti mostra lo storico ordini recenti (company-wide per B2B)
       const orders = await odoo.searchRead(
         'sale.order',
-        [['partner_id', '=', context.customerId]],
+        [['partner_id', 'in', partnerIds]],
         ['id', 'name', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
         10
       );
@@ -4271,10 +4275,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
   private async handlePurchasedProductsQuery(
     context: CustomerContext,
     odoo: any,
-    lowerMessage: string
+    lowerMessage: string,
+    partnerIds: number[]
   ): Promise<AgentResponse> {
     try {
-      const customerId = context.customerId!;
 
       // Controlla se cerca un prodotto specifico
       const specificProductMatch = lowerMessage.match(
@@ -4286,11 +4290,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         const productSearch = (specificProductMatch[1] || specificProductMatch[2] || '').trim();
 
         if (productSearch && productSearch.length > 2) {
-          // Trova ordini del cliente
+          // Trova ordini del cliente (company-wide per B2B)
           const orders = await odoo.searchRead(
             'sale.order',
             [
-              ['partner_id', '=', customerId],
+              ['partner_id', 'in', partnerIds],
               ['state', 'in', ['sale', 'done']]
             ],
             ['id', 'name', 'date_order'],
@@ -4395,11 +4399,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }
       }
 
-      // Mostra lista prodotti acquistati (query generica)
+      // Mostra lista prodotti acquistati (query generica, company-wide per B2B)
       const orders = await odoo.searchRead(
         'sale.order',
         [
-          ['partner_id', '=', customerId],
+          ['partner_id', 'in', partnerIds],
           ['state', 'in', ['sale', 'done']]
         ],
         ['id', 'name', 'date_order'],

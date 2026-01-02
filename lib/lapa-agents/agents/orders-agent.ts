@@ -87,7 +87,7 @@ interface CustomerInfo {
  * Se il cliente è un contatto di un'azienda (ha parent_id), ritorna sia l'ID del contatto
  * che l'ID dell'azienda padre, così possiamo vedere tutti gli ordini dell'azienda.
  */
-async function getPartnerIdsForSearch(customerId: number): Promise<{ ids: number[]; parentId?: number; parentName?: string }> {
+export async function getPartnerIdsForSearch(customerId: number): Promise<{ ids: number[]; parentId?: number; parentName?: string }> {
   const odoo = await getOdooClient();
 
   const partners = await odoo.searchRead(
