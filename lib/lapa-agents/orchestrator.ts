@@ -3450,7 +3450,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       if (addedProducts.length > 0) {
         const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
-        let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+        let message = `✅ Prodotti aggiunti al carrello:\n\n`;
         addedProducts.forEach(p => message += `• ${p}\n`);
 
         if (failedProducts.length > 0) {
@@ -3458,7 +3458,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }
 
         if (lastCartInfo) {
-          message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+          message += `\n\n🛒 Carrello (${lastCartInfo.cart_name}):\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
           if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
         }
 
@@ -3495,7 +3495,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       if (pendingProducts.length > 0) {
         // Prepara lista prodotti e chiedi conferma
-        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+        let message = '🛒 Vuoi aggiungere questi prodotti al carrello?\n\n';
         const productsWithQty = pendingProducts.map((p: any) => ({
           ...p,
           qty: 1,
@@ -3503,12 +3503,12 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }));
 
         productsWithQty.forEach((p: any) => {
-          message += `• ${p.qty}x **${p.name}**`;
+          message += `• ${p.qty}x ${p.name}`;
           if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
           message += '\n';
         });
 
-        message += '\n**Confermi?**';
+        message += '\nConfermi?';
 
         return {
           success: true,
@@ -3526,23 +3526,56 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     // ========================================
     const pendingProducts = this.extractPendingProductsFromConversation(context);
     if (pendingProducts.length > 0) {
-      // Cerca se il messaggio menziona prodotti dai pending
+      // PRIMA: cerca match ESATTO o molto simile del nome prodotto
+      const exactMatch = pendingProducts.find(p => {
+        const pNameLower = p.name.toLowerCase();
+        const msgClean = lowerMessage.replace(/[^\w\s]/g, '').trim();
+        const nameClean = pNameLower.replace(/[^\w\s]/g, '').trim();
+        // Match esatto o il messaggio contiene tutto il nome del prodotto
+        return msgClean === nameClean || msgClean.includes(nameClean) || nameClean.includes(msgClean);
+      });
+
+      if (exactMatch) {
+        console.log('🛒 Exact match found:', exactMatch.name);
+        // Estrai quantità dal messaggio se presente (es. "3 kg", "2x", "5 pezzi")
+        const qtyMatch = lowerMessage.match(/(\d+)\s*(kg|g|x|pezzi|pz|conf|confezioni)?/i);
+        const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+
+        const productWithQty = {
+          ...exactMatch,
+          qty,
+          price: exactMatch.list_price || 0
+        };
+
+        let message = '🛒 Vuoi aggiungere questo prodotto al carrello?\n\n';
+        message += `• ${qty}x ${exactMatch.name}`;
+        if (productWithQty.price) message += ` - CHF ${(productWithQty.price * qty).toFixed(2)}`;
+        message += '\n\nConfermi?';
+
+        return {
+          success: true,
+          message,
+          agentId: 'cart',
+          data: { pending_cart_confirmation: [productWithQty] },
+          suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Cambia quantità']
+        };
+      }
+
+      // ALTRIMENTI: cerca match parziale ma più restrittivo
       const matchedProducts = pendingProducts.filter(p => {
         const pNameLower = p.name.toLowerCase();
-        // Controlla se parti significative del nome prodotto sono menzionate
-        const keywords = pNameLower.split(/\s+/).filter((w: string) => w.length > 3);
-        return keywords.some((kw: string) => lowerMessage.includes(kw)) ||
-               // Controlla varianti comuni
-               (pNameLower.includes('san daniele') && lowerMessage.includes('san daniele')) ||
-               (pNameLower.includes('parma') && lowerMessage.includes('parma')) ||
-               (pNameLower.includes('prosciutto') && lowerMessage.includes('prosciutto'));
+        // Cerca parole chiave specifiche (almeno 5 caratteri) che devono essere nel messaggio
+        const keywords = pNameLower.split(/\s+/).filter((w: string) => w.length > 4);
+        // Richiedi almeno 2 keyword che matchano per evitare falsi positivi
+        const matchCount = keywords.filter((kw: string) => lowerMessage.includes(kw)).length;
+        return matchCount >= 2;
       });
 
       console.log('🛒 Matched products from pending by name:', matchedProducts.map(p => p.name));
 
       if (matchedProducts.length > 0) {
         // Prepara lista prodotti e chiedi conferma
-        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+        let message = '🛒 Vuoi aggiungere questi prodotti al carrello?\n\n';
         const productsWithQty = matchedProducts.map((p: any) => ({
           ...p,
           qty: 1,
@@ -3550,12 +3583,12 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }));
 
         productsWithQty.forEach((p: any) => {
-          message += `• ${p.qty}x **${p.name}**`;
+          message += `• ${p.qty}x ${p.name}`;
           if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
           message += '\n';
         });
 
-        message += '\n**Confermi?**';
+        message += '\nConfermi?';
 
         return {
           success: true,
@@ -3584,10 +3617,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         price: selectedProduct.list_price || 0
       };
 
-      let message = '🛒 **Vuoi aggiungere questo prodotto al carrello?**\n\n';
-      message += `• 1x **${selectedProduct.name}**`;
+      let message = '🛒 Vuoi aggiungere questo prodotto al carrello?\n\n';
+      message += `• 1x ${selectedProduct.name}`;
       if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
-      message += '\n\n**Confermi?**';
+      message += '\n\nConfermi?';
 
       return {
         success: true,
@@ -3638,19 +3671,19 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       // Se abbiamo trovato prodotti, chiedi conferma
       if (foundProducts.length > 0) {
-        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+        let message = '🛒 Vuoi aggiungere questi prodotti al carrello?\n\n';
 
         foundProducts.forEach((p: any) => {
-          message += `• ${p.qty}x **${p.name}**`;
+          message += `• ${p.qty}x ${p.name}`;
           if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
           message += '\n';
         });
 
         if (notFoundProducts.length > 0) {
-          message += `\n⚠️ **Non trovati:** ${notFoundProducts.join(', ')}\n`;
+          message += `\n⚠️ Non trovati: ${notFoundProducts.join(', ')}\n`;
         }
 
-        message += '\n**Confermi?**';
+        message += '\nConfermi?';
 
         return {
           success: true,
@@ -3738,10 +3771,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         price: product.list_price || 0
       };
 
-      let message = '🛒 **Vuoi aggiungere questo prodotto al carrello?**\n\n';
-      message += `• 1x **${product.name}**`;
+      let message = '🛒 Vuoi aggiungere questo prodotto al carrello?\n\n';
+      message += `• 1x ${product.name}`;
       if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
-      message += '\n\n**Confermi?**';
+      message += '\n\nConfermi?';
 
       return {
         success: true,
@@ -3756,7 +3789,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     let message = 'Ho trovato questi prodotti:\n\n';
     products.forEach((p: any, idx: number) => {
       const url = generateProductUrl(p.product_tmpl_id?.[0] || p.id, p.name);
-      message += `${idx + 1}. **${p.name}** - CHF ${p.list_price.toFixed(2)} - [Vedi](${url})\n`;
+      message += `${idx + 1}. ${p.name} - CHF ${p.list_price.toFixed(2)} - [Vedi](${url})\n`;
     });
     message += '\nQuale vuoi aggiungere al carrello?';
 
@@ -3948,10 +3981,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const productUrl = generateProductUrl(product.product_tmpl_id?.[0] || product.id, product.name);
       const cartUrl = generateOrderUrl(cartId, cartName);
 
-      let message = `✅ **${product.name}** aggiunto al carrello!\n\n`;
+      let message = `✅ ${product.name} aggiunto al carrello!\n\n`;
       message += `📦 Quantità: ${quantity}\n`;
       message += `💰 Prezzo: CHF ${product.list_price.toFixed(2)}\n\n`;
-      message += `🛒 **Carrello (${cartName}):**\n`;
+      message += `🛒 Carrello (${cartName}):\n`;
       message += `- ${itemCount} articoli\n`;
       message += `- Totale: CHF ${total.toFixed(2)}\n\n`;
       message += `[Vedi carrello](${cartUrl})`;
@@ -4024,7 +4057,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
     );
 
-    let message = `🛒 **Il tuo carrello (${cart.name}):**\n\n`;
+    let message = `🛒 Il tuo carrello (${cart.name}):\n\n`;
 
     for (const line of lines) {
       const productName = line.product_id?.[1] || 'Prodotto';
@@ -4032,12 +4065,12 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const uom = line.product_uom?.[1] || 'pz';
       const subtotal = line.price_subtotal;
 
-      message += `• **${productName}**\n`;
+      message += `• ${productName}\n`;
       message += `  ${qty} ${uom} × CHF ${line.price_unit.toFixed(2)} = CHF ${subtotal.toFixed(2)}\n\n`;
     }
 
     message += `---\n`;
-    message += `**Totale: CHF ${cart.amount_total.toFixed(2)}**\n\n`;
+    message += `Totale: CHF ${cart.amount_total.toFixed(2)}\n\n`;
     message += `[Vedi carrello completo](${cartUrl})`;
 
     return {
@@ -4133,7 +4166,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     return {
       success: true,
-      message: `✅ **${matchingLine.product_id?.[1]}** rimosso dal carrello.`,
+      message: `✅ ${matchingLine.product_id?.[1]} rimosso dal carrello.`,
       agentId: 'cart',
       suggestedActions: ['Vedi carrello', 'Aggiungi altro', 'Conferma ordine']
     };
@@ -4186,7 +4219,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     return {
       success: true,
-      message: `✅ **Ordine ${cart.name} confermato!**\n\n` +
+      message: `✅ Ordine ${cart.name} confermato!\n\n` +
         `💰 Totale: CHF ${cart.amount_total.toFixed(2)}\n` +
         `📦 Riceverai una conferma via email\n\n` +
         `[Vedi dettagli ordine](${orderUrl})\n\n` +
