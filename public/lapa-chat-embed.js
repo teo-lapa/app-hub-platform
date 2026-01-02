@@ -118,37 +118,71 @@
       border: none;
     }
 
-    /* Mobile responsive */
-    @media (max-width: 480px) {
+    /* Mobile responsive - FULLSCREEN */
+    @media (max-width: 768px) {
       #lapa-chat-widget-container {
-        bottom: 220px; /* Sopra la barra di navigazione mobile e altri pulsanti */
-        right: 10px;
+        bottom: 100px;
+        right: 15px;
       }
 
       #lapa-chat-button {
-        width: 50px;
-        height: 50px;
+        width: 55px;
+        height: 55px;
       }
 
       #lapa-chat-button svg {
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
       }
 
+      /* FULLSCREEN on mobile */
       #lapa-chat-iframe-container {
-        position: fixed;
-        width: 100vw;
-        height: calc(100vh - 60px);
-        bottom: 0;
-        left: 0;
-        right: 0;
-        border-radius: 16px 16px 0 0;
-        transform-origin: bottom center;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        transform-origin: center center;
+        z-index: 9999999 !important;
       }
 
       #lapa-chat-iframe-container.open {
-        transform: scale(1) translateY(0);
+        transform: none;
       }
+
+      /* Pulsante chiudi visibile su mobile */
+      #lapa-chat-close-btn {
+        display: flex !important;
+      }
+    }
+
+    /* Pulsante chiudi per mobile (nascosto su desktop) */
+    #lapa-chat-close-btn {
+      display: none;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #dc2626;
+      border: none;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    #lapa-chat-close-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
     }
 
     /* Notification badge */
@@ -319,11 +353,29 @@
     iframeContainer.id = 'lapa-chat-iframe-container';
     container.appendChild(iframeContainer);
 
+    // Pulsante chiudi per mobile (fuori dal container per z-index)
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'lapa-chat-close-btn';
+    closeBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+    closeBtn.setAttribute('aria-label', 'Chiudi chat');
+    document.body.appendChild(closeBtn);
+
     // Iframe (lazy load)
     let iframe = null;
 
     // Event handler
     let isOpen = false;
+
+    // Funzione per chiudere la chat
+    function closeChat() {
+      isOpen = false;
+      button.classList.remove('open');
+      iframeContainer.classList.remove('open');
+      closeBtn.style.display = 'none';
+    }
+
+    // Click sul pulsante chiudi
+    closeBtn.addEventListener('click', closeChat);
 
     button.addEventListener('click', function() {
       isOpen = !isOpen;
@@ -336,6 +388,11 @@
         // Apri chat
         button.classList.add('open');
         iframeContainer.classList.add('open');
+
+        // Mostra pulsante chiudi su mobile
+        if (window.innerWidth <= 768) {
+          closeBtn.style.display = 'flex';
+        }
 
         // Lazy load iframe
         if (!iframe) {
@@ -365,8 +422,7 @@
         }
       } else {
         // Chiudi chat
-        button.classList.remove('open');
-        iframeContainer.classList.remove('open');
+        closeChat();
       }
     });
 
