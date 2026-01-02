@@ -103,11 +103,23 @@
 
     /* Mobile responsive */
     @media (max-width: 480px) {
+      #lapa-chat-widget-container {
+        bottom: 80px; /* Sopra la navigazione mobile (Account, Carrello) */
+      }
+
       #lapa-chat-iframe-container {
-        width: calc(100vw - 40px);
-        height: calc(100vh - 120px);
-        bottom: ${CONFIG.buttonSize + 15}px;
-        ${CONFIG.position}: -${CONFIG.sideOffset - 10}px;
+        position: fixed;
+        width: 100vw;
+        height: calc(100vh - 60px);
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 16px 16px 0 0;
+        transform-origin: bottom center;
+      }
+
+      #lapa-chat-iframe-container.open {
+        transform: scale(1) translateY(0);
       }
     }
 
