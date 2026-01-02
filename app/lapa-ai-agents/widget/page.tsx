@@ -592,25 +592,47 @@ export default function LapaAgentsWidgetPage() {
             accept="image/*,.pdf,.txt"
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-            className="p-2 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-full transition-colors disabled:opacity-50"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
 
-          <button
-            onClick={toggleListening}
-            disabled={isLoading}
-            className={`p-2 rounded-full transition-colors ${
-              isListening
-                ? 'bg-red-100 text-red-600 animate-pulse'
-                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-            } disabled:opacity-50`}
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
+          {/* Menu + con opzioni extra */}
+          <div className="relative group">
+            <button
+              className="p-2 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            {/* Dropdown menu */}
+            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:flex flex-col bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px]">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 text-gray-700 text-xs disabled:opacity-50"
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+                <span>Allega file</span>
+              </button>
+              <button
+                onClick={toggleListening}
+                disabled={isLoading}
+                className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 text-xs disabled:opacity-50 ${
+                  isListening ? 'text-red-600' : 'text-gray-700'
+                }`}
+              >
+                {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                <span>{isListening ? 'Stop' : 'Voce'}</span>
+              </button>
+              <button
+                onClick={() => setVoiceEnabled(!voiceEnabled)}
+                className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 text-xs ${
+                  voiceEnabled ? 'text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                <span>{voiceEnabled ? 'Audio on' : 'Audio off'}</span>
+              </button>
+            </div>
+          </div>
 
           <input
             type="text"
@@ -621,17 +643,6 @@ export default function LapaAgentsWidgetPage() {
             disabled={isLoading}
             className="flex-1 px-3 py-2 bg-gray-100 border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
           />
-
-          <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`p-2 rounded-full transition-colors ${
-              voiceEnabled
-                ? 'bg-blue-100 text-blue-600'
-                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -647,9 +658,6 @@ export default function LapaAgentsWidgetPage() {
             )}
           </motion.button>
         </div>
-        <p className="text-[9px] text-gray-400 mt-1.5 text-center">
-          Powered by LAPA AI
-        </p>
       </div>
     </div>
   );
