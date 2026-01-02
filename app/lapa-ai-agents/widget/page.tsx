@@ -129,30 +129,26 @@ export default function LapaAgentsWidgetPage() {
   }, [messages]);
 
   // Welcome message (personalizzato se utente loggato)
+  // Viene ri-renderizzato quando odooUser cambia
   useEffect(() => {
-    // Aspetta che odooUser sia stato letto dai parametri URL
-    const timer = setTimeout(() => {
-      let welcomeContent = 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?';
-      let actions = ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?'];
+    let welcomeContent = 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?';
+    let actions = ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?'];
 
-      if (odooUser?.name) {
-        const firstName = odooUser.name.split(' ')[0];
-        welcomeContent = `Ciao ${firstName}! Sono l'assistente AI di LAPA. Come posso aiutarti oggi?`;
-        actions = ['Vedi i miei ordini', 'Ho fatture da pagare?', 'Cerca un prodotto'];
-      }
+    if (odooUser?.name) {
+      const firstName = odooUser.name.split(' ')[0];
+      welcomeContent = `Ciao ${firstName}! Sono l'assistente AI di LAPA. Come posso aiutarti oggi?`;
+      actions = ['Vedi i miei ordini', 'Ho fatture da pagare?', 'Cerca un prodotto'];
+    }
 
-      const welcomeMessage: Message = {
-        id: 'welcome',
-        role: 'assistant',
-        content: welcomeContent,
-        timestamp: new Date(),
-        agentId: 'orchestrator',
-        suggestedActions: actions
-      };
-      setMessages([welcomeMessage]);
-    }, 100); // Piccolo delay per permettere la lettura dei params
-
-    return () => clearTimeout(timer);
+    const welcomeMessage: Message = {
+      id: 'welcome',
+      role: 'assistant',
+      content: welcomeContent,
+      timestamp: new Date(),
+      agentId: 'orchestrator',
+      suggestedActions: actions
+    };
+    setMessages([welcomeMessage]);
   }, [odooUser]);
 
   // Initialize speech recognition
