@@ -63,6 +63,30 @@ export default function LapaAgentsWidgetPage() {
   const [sessionId] = useState(() => `widget-${Date.now()}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Dati utente Odoo (passati via URL params dall'embed script)
+  const [odooUser, setOdooUser] = useState<{
+    partnerId?: string;
+    name?: string;
+    email?: string;
+    userId?: string;
+  } | null>(null);
+
+  // Leggi parametri URL all'avvio
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const partnerId = params.get('partnerId');
+      const name = params.get('name');
+      const email = params.get('email');
+      const userId = params.get('userId');
+
+      if (partnerId || email || name) {
+        setOdooUser({ partnerId: partnerId || undefined, name: name || undefined, email: email || undefined, userId: userId || undefined });
+        console.log('LAPA Widget: User from Odoo:', { partnerId, name, email });
+      }
+    }
+  }, []);
+
   // File upload states
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,18 +103,32 @@ export default function LapaAgentsWidgetPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Welcome message
+  // Welcome message (personalizzato se utente loggato)
   useEffect(() => {
-    const welcomeMessage: Message = {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?',
-      timestamp: new Date(),
-      agentId: 'orchestrator',
-      suggestedActions: ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?']
-    };
-    setMessages([welcomeMessage]);
-  }, []);
+    // Aspetta che odooUser sia stato letto dai parametri URL
+    const timer = setTimeout(() => {
+      let welcomeContent = 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?';
+      let actions = ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?'];
+
+      if (odooUser?.name) {
+        const firstName = odooUser.name.split(' ')[0];
+        welcomeContent = `Ciao ${firstName}! Sono l'assistente AI di LAPA. Come posso aiutarti oggi?`;
+        actions = ['Vedi i miei ordini', 'Ho fatture da pagare?', 'Cerca un prodotto'];
+      }
+
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        role: 'assistant',
+        content: welcomeContent,
+        timestamp: new Date(),
+        agentId: 'orchestrator',
+        suggestedActions: actions
+      };
+      setMessages([welcomeMessage]);
+    }, 100); // Piccolo delay per permettere la lettura dei params
+
+    return () => clearTimeout(timer);
+  }, [odooUser]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -288,9 +326,15 @@ export default function LapaAgentsWidgetPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          customerType: 'anonymous',
+          customerType: odooUser ? 'b2b' : 'anonymous',
           sessionId,
           language: 'it',
+          // Passa dati utente Odoo se disponibili
+          ...(odooUser && {
+            customerId: odooUser.partnerId,
+            customerEmail: odooUser.email,
+            customerName: odooUser.name
+          }),
           attachments: currentAttachments.length > 0 ? currentAttachments.map(a => ({
             name: a.name,
             content: a.content,

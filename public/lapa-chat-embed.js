@@ -187,6 +187,35 @@
     </svg>
   `;
 
+  // Ottieni dati utente Odoo se loggato
+  function getOdooUser() {
+    try {
+      // Odoo espone i dati sessione in odoo.session_info o window.odoo
+      if (window.odoo && window.odoo.session_info) {
+        const session = window.odoo.session_info;
+        if (session.user_id && session.user_id !== false) {
+          return {
+            id: session.partner_id,
+            name: session.name || session.username,
+            email: session.username,
+            userId: session.user_id
+          };
+        }
+      }
+      // Fallback: cerca nel DOM (Odoo mette info utente in alcuni elementi)
+      const userMenu = document.querySelector('[data-user-id]');
+      if (userMenu) {
+        return {
+          id: userMenu.dataset.userId,
+          name: userMenu.dataset.userName || userMenu.textContent.trim()
+        };
+      }
+    } catch (e) {
+      console.log('LAPA Chat: no user session found');
+    }
+    return null;
+  }
+
   // Crea il widget
   function createWidget() {
     // Aggiungi stili
@@ -244,7 +273,20 @@
         if (!iframe) {
           iframe = document.createElement('iframe');
           iframe.id = 'lapa-chat-iframe';
-          iframe.src = CONFIG.widgetUrl;
+
+          // Costruisci URL con dati utente se loggato
+          let widgetUrl = CONFIG.widgetUrl;
+          const user = getOdooUser();
+          if (user) {
+            const params = new URLSearchParams();
+            if (user.id) params.set('partnerId', user.id);
+            if (user.name) params.set('name', user.name);
+            if (user.email) params.set('email', user.email);
+            if (user.userId) params.set('userId', user.userId);
+            widgetUrl += '?' + params.toString();
+          }
+
+          iframe.src = widgetUrl;
           iframe.setAttribute('allow', 'microphone');
           iframe.setAttribute('loading', 'lazy');
           iframeContainer.appendChild(iframe);
