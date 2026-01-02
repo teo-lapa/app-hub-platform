@@ -36,7 +36,24 @@
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/lapa-ai-agents/widget",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "ALLOWALL"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors *"
+        }
+      ]
+    },
+    {
+      "source": "/((?!lapa-ai-agents/widget).*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
