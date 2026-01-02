@@ -71,9 +71,10 @@ export default function LapaAgentsWidgetPage() {
     userId?: string;
   } | null>(null);
 
-  // Leggi parametri URL all'avvio
+  // Leggi parametri URL all'avvio e ascolta postMessage dal parent
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Metodo 1: Parametri URL
       const params = new URLSearchParams(window.location.search);
       const partnerId = params.get('partnerId');
       const name = params.get('name');
@@ -82,8 +83,31 @@ export default function LapaAgentsWidgetPage() {
 
       if (partnerId || email || name) {
         setOdooUser({ partnerId: partnerId || undefined, name: name || undefined, email: email || undefined, userId: userId || undefined });
-        console.log('LAPA Widget: User from Odoo:', { partnerId, name, email });
+        console.log('LAPA Widget: User from URL params:', { partnerId, name, email });
       }
+
+      // Metodo 2: PostMessage dal parent (Odoo)
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'lapa-user-data' && event.data?.user) {
+          const user = event.data.user;
+          setOdooUser({
+            partnerId: user.partnerId?.toString(),
+            name: user.name,
+            email: user.email,
+            userId: user.userId?.toString()
+          });
+          console.log('LAPA Widget: User from postMessage:', user);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Notifica al parent che siamo pronti
+      if (window.parent !== window) {
+        window.parent.postMessage('lapa-chat-ready', '*');
+      }
+
+      return () => window.removeEventListener('message', handleMessage);
     }
   }, []);
 
