@@ -635,8 +635,8 @@ export default function LapaAgentsWidgetPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - padding extra per safe area mobile (50px per gesture bar) */}
-      <div className="p-3 pb-14 md:pb-3 border-t border-gray-200 bg-white shrink-0" style={{ paddingBottom: 'max(50px, calc(12px + env(safe-area-inset-bottom, 40px)))' }}>
+      {/* Input Area - padding extra per safe area mobile (70px per gesture bar) */}
+      <div className="p-3 pb-20 md:pb-3 border-t border-gray-200 bg-white shrink-0" style={{ paddingBottom: 'max(70px, calc(12px + env(safe-area-inset-bottom, 60px)))' }}>
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {attachments.map((att, index) => {
