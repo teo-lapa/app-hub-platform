@@ -341,12 +341,12 @@ async function sendWhatsAppResponse(
   // This sends a free-form text message (not using templates)
   try {
     // Method 1: Try creating whatsapp.message directly
+    // Note: Don't set 'state' - Odoo will set it automatically
     await odoo.create('whatsapp.message', [{
       mobile_number: formattedPhone,
       body: truncatedMessage,
       message_type: 'outbound',
-      wa_account_id: waAccountId,
-      state: 'pending'
+      wa_account_id: waAccountId
     }]);
   } catch (createError) {
     console.error('[WHATSAPP-INCOMING] Direct create failed, trying composer:', createError);
