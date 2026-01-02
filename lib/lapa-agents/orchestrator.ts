@@ -1084,7 +1084,8 @@ IMPORTANTE:
 
     // Cart add keywords (HIGHEST PRIORITY - must come first)
     // Ma solo se NON è una negazione
-    if (!isNegation && lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
+    // "Aggiungi X" dove X è un nome prodotto (pattern ^aggiungi\s+\w per i pulsanti come "Aggiungi FRIARIELLI")
+    if (!isNegation && lowerMessage.match(/^aggiungi\s+\w|aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
       return {
         type: 'cart_add',
         confidence: 0.9,
