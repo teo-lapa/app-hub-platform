@@ -60,7 +60,20 @@ export default function LapaAgentsWidgetPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => `widget-${Date.now()}`);
+
+  // SessionId persistente - usa quello passato via URL o ne crea uno nuovo
+  const [sessionId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlSessionId = params.get('sessionId');
+      if (urlSessionId) {
+        console.log('LAPA Widget: Using sessionId from URL:', urlSessionId);
+        return urlSessionId;
+      }
+    }
+    return `widget-${Date.now()}`;
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Dati utente Odoo (passati via URL params dall'embed script)
@@ -128,28 +141,58 @@ export default function LapaAgentsWidgetPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Welcome message (personalizzato se utente loggato)
-  // Viene ri-renderizzato quando odooUser cambia
+  // Carica conversazione esistente o mostra messaggio di benvenuto
   useEffect(() => {
-    let welcomeContent = 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?';
-    let actions = ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?'];
+    async function loadExistingConversation() {
+      // Prova a caricare conversazione esistente
+      if (sessionId && sessionId.startsWith('web-')) {
+        try {
+          const response = await fetch(`/api/lapa-agents/conversations?sessionId=${sessionId}`);
+          const data = await response.json();
 
-    if (odooUser?.name) {
-      const firstName = odooUser.name.split(' ')[0];
-      welcomeContent = `Ciao ${firstName}! Sono l'assistente AI di LAPA. Come posso aiutarti oggi?`;
-      actions = ['Vedi i miei ordini', 'Ho fatture da pagare?', 'Cerca un prodotto'];
+          if (data.success && data.conversation && data.conversation.messages?.length > 0) {
+            // Converti i messaggi dal formato storage al formato UI
+            const loadedMessages: Message[] = data.conversation.messages.map((msg: any, index: number) => ({
+              id: `loaded-${index}`,
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content,
+              timestamp: new Date(msg.timestamp || Date.now()),
+              agentId: msg.agentId,
+              suggestedActions: msg.suggestedActions
+            }));
+
+            console.log('LAPA Widget: Loaded existing conversation with', loadedMessages.length, 'messages');
+            setMessages(loadedMessages);
+            return; // Non mostrare welcome message
+          }
+        } catch (error) {
+          console.log('LAPA Widget: No existing conversation found');
+        }
+      }
+
+      // Se non c'è conversazione esistente, mostra welcome message
+      let welcomeContent = 'Ciao! Sono l\'assistente AI di LAPA. Come posso aiutarti oggi?';
+      let actions = ['Cerca un prodotto', 'Dov\'è la mia spedizione?', 'Ho fatture da pagare?'];
+
+      if (odooUser?.name) {
+        const firstName = odooUser.name.split(' ')[0];
+        welcomeContent = `Ciao ${firstName}! Sono l'assistente AI di LAPA. Come posso aiutarti oggi?`;
+        actions = ['Vedi i miei ordini', 'Ho fatture da pagare?', 'Cerca un prodotto'];
+      }
+
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        role: 'assistant',
+        content: welcomeContent,
+        timestamp: new Date(),
+        agentId: 'orchestrator',
+        suggestedActions: actions
+      };
+      setMessages([welcomeMessage]);
     }
 
-    const welcomeMessage: Message = {
-      id: 'welcome',
-      role: 'assistant',
-      content: welcomeContent,
-      timestamp: new Date(),
-      agentId: 'orchestrator',
-      suggestedActions: actions
-    };
-    setMessages([welcomeMessage]);
-  }, [odooUser]);
+    loadExistingConversation();
+  }, [sessionId, odooUser]);
 
   // Initialize speech recognition
   useEffect(() => {

@@ -406,16 +406,26 @@
           iframe.setAttribute('allow', 'microphone');
           iframe.setAttribute('loading', 'lazy');
 
-          // Prima carica l'iframe con URL base
-          iframe.src = CONFIG.widgetUrl;
+          // Ottieni o crea sessionId persistente
+          let sessionId = localStorage.getItem('lapa-chat-session');
+          if (!sessionId) {
+            sessionId = 'web-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('lapa-chat-session', sessionId);
+          }
+
+          // Carica iframe con sessionId per persistere la conversazione
+          const params = new URLSearchParams();
+          params.set('sessionId', sessionId);
+          iframe.src = CONFIG.widgetUrl + '?' + params.toString();
           iframeContainer.appendChild(iframe);
 
           // Poi cerca dati utente via API (asincrono)
           fetchOdooUser().then(function(user) {
             if (user) {
               cachedUser = user;
-              // Ricarica iframe con dati utente
+              // Aggiorna iframe con dati utente + sessionId
               const params = new URLSearchParams();
+              params.set('sessionId', sessionId);
               if (user.id) params.set('partnerId', user.id);
               if (user.name) params.set('name', user.name);
               if (user.email) params.set('email', user.email);
