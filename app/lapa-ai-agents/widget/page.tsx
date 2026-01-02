@@ -429,9 +429,9 @@ export default function LapaAgentsWidgetPage() {
           customerType: odooUser ? 'b2b' : 'anonymous',
           sessionId,
           language: 'it',
-          // Passa dati utente Odoo se disponibili
+          // Passa dati utente Odoo se disponibili (converti partnerId in numero)
           ...(odooUser && {
-            customerId: odooUser.partnerId,
+            customerId: odooUser.partnerId ? parseInt(odooUser.partnerId, 10) : undefined,
             customerEmail: odooUser.email,
             customerName: odooUser.name
           }),
