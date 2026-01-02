@@ -448,6 +448,8 @@ export interface CustomerContext {
   customerName?: string;
   customerEmail?: string;
   customerType: 'b2b' | 'b2c' | 'anonymous';
+  companyId?: number;        // ID dell'azienda padre (per contatti B2B)
+  companyName?: string;      // Nome dell'azienda padre (per contatti B2B)
   sessionId: string;
   conversationHistory: Message[];
   odooSession?: OdooSession;
@@ -641,6 +643,25 @@ export class LapaAiOrchestrator {
     }
 
     try {
+      // Se abbiamo companyId ma non companyName, recuperalo da Odoo
+      let companyName = context.companyName;
+      if (context.companyId && !companyName && this.odooClient?.searchRead) {
+        try {
+          const partners = await this.odooClient.searchRead(
+            'res.partner',
+            [['id', '=', context.companyId]],
+            ['name']
+          );
+          if (partners.length > 0) {
+            companyName = partners[0].name;
+            // Aggiorna anche il context per future chiamate
+            context.companyName = companyName;
+          }
+        } catch (odooError) {
+          console.warn('⚠️ Errore recupero nome azienda da Odoo:', odooError);
+        }
+      }
+
       await this.memoryService.addMessage(
         context.customerId,
         context.customerName || 'Cliente',
@@ -651,7 +672,9 @@ export class LapaAiOrchestrator {
           content,
           timestamp: new Date().toISOString(),
           metadata
-        }
+        },
+        context.companyId,     // ID azienda padre per B2B
+        companyName            // Nome azienda padre per B2B
       );
     } catch (error) {
       console.error('❌ Errore salvataggio memoria:', error);
@@ -1360,6 +1383,8 @@ IMPORTANTE:
       customerId: customerContext?.customerId,
       customerName: customerContext?.customerName,
       customerEmail: customerContext?.customerEmail,
+      companyId: customerContext?.companyId,      // ID azienda padre per B2B
+      companyName: customerContext?.companyName,  // Nome azienda padre per B2B
       odooSession: customerContext?.odooSession,
       conversationHistory: history,
       metadata: {
