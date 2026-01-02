@@ -25,9 +25,13 @@ export interface ConversationMessage {
 }
 
 export interface CustomerMemory {
-  customer_id: number;
-  customer_name: string;
+  customer_id: number;        // ID usato come chiave (per B2B = company_id, per B2C = customer_id)
+  customer_name: string;      // Nome azienda per B2B, nome cliente per B2C
   customer_type: 'b2b' | 'b2c' | 'anonymous';
+
+  // Per B2B: traccia anche l'ID dell'azienda padre
+  company_id?: number;        // ID dell'azienda (parent) per clienti B2B
+  company_name?: string;      // Nome dell'azienda
 
   // Conversazione corrente
   current_session_id: string;
@@ -119,17 +123,16 @@ export class ConversationMemoryService {
 
   /**
    * Salva la memoria di un cliente su Vercel KV
+   * NOTA: Memoria permanente senza TTL
    */
   async saveMemory(memory: CustomerMemory): Promise<boolean> {
     try {
-      // Salva su KV con TTL di 90 giorni (7776000 secondi)
-      await kv.set(this.getKey(memory.customer_id), memory, {
-        ex: 7776000 // 90 giorni
-      });
+      // Salva su KV senza TTL (memoria permanente)
+      await kv.set(this.getKey(memory.customer_id), memory);
 
       // Update cache
       this.memoryCache.set(memory.customer_id, memory);
-      console.log(`🧠 Memory saved for customer ${memory.customer_id}`);
+      console.log(`🧠 Memory saved for ${memory.company_name || memory.customer_name} (ID: ${memory.customer_id})`);
 
       return true;
 
@@ -145,24 +148,34 @@ export class ConversationMemoryService {
 
   /**
    * Aggiunge un messaggio alla memoria del cliente
+   * Per clienti B2B: usa company_id come chiave per condividere la memoria tra tutti i contatti dell'azienda
+   * Per clienti B2C: usa customer_id
    */
   async addMessage(
     customerId: number,
     customerName: string,
     customerType: 'b2b' | 'b2c' | 'anonymous',
     sessionId: string,
-    message: ConversationMessage
+    message: ConversationMessage,
+    companyId?: number,       // ID dell'azienda padre (per B2B)
+    companyName?: string      // Nome dell'azienda padre (per B2B)
   ): Promise<CustomerMemory> {
 
+    // Per B2B con azienda padre, usa l'ID azienda come chiave memoria
+    const memoryKeyId = (customerType === 'b2b' && companyId) ? companyId : customerId;
+    const memoryName = (customerType === 'b2b' && companyName) ? companyName : customerName;
+
     // Load or create memory
-    let memory = await this.loadMemory(customerId);
+    let memory = await this.loadMemory(memoryKeyId);
 
     if (!memory) {
-      // Create new memory for this customer
+      // Create new memory for this customer/company
       memory = {
-        customer_id: customerId,
-        customer_name: customerName,
+        customer_id: memoryKeyId,
+        customer_name: memoryName,
         customer_type: customerType,
+        company_id: companyId,
+        company_name: companyName,
         current_session_id: sessionId,
         messages: [],
         conversation_summary: '',
@@ -177,7 +190,7 @@ export class ConversationMemoryService {
     if (memory.current_session_id !== sessionId) {
       memory.current_session_id = sessionId;
       memory.total_sessions += 1;
-      console.log(`🧠 New session started for customer ${customerId} (session #${memory.total_sessions})`);
+      console.log(`🧠 New session started for ${companyName || customerName} (ID: ${memoryKeyId}, session #${memory.total_sessions})`);
     }
 
     // Add message
@@ -211,8 +224,12 @@ export class ConversationMemoryService {
   getContextForAI(memory: CustomerMemory): string {
     const parts: string[] = [];
 
-    // 1. Customer info
-    parts.push(`CLIENTE: ${memory.customer_name} (${memory.customer_type.toUpperCase()})`);
+    // 1. Customer/Company info
+    if (memory.customer_type === 'b2b' && memory.company_name) {
+      parts.push(`AZIENDA: ${memory.company_name} (B2B)`);
+    } else {
+      parts.push(`CLIENTE: ${memory.customer_name} (${memory.customer_type.toUpperCase()})`);
+    }
     parts.push(`Sessioni totali: ${memory.total_sessions}`);
 
     // 2. Customer facts (learned from past conversations)

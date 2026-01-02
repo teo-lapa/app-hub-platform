@@ -74,6 +74,79 @@ interface CustomerInfo {
   can_place_orders: boolean;
   payment_terms?: string;
   credit_limit?: number;
+  parent_id?: number;  // ID dell'azienda padre (se contatto di un'azienda)
+  parent_name?: string; // Nome dell'azienda padre
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Ottiene gli ID dei partner da cercare per un cliente.
+ * Se il cliente è un contatto di un'azienda (ha parent_id), ritorna sia l'ID del contatto
+ * che l'ID dell'azienda padre, così possiamo vedere tutti gli ordini dell'azienda.
+ */
+async function getPartnerIdsForSearch(customerId: number): Promise<{ ids: number[]; parentId?: number; parentName?: string }> {
+  const odoo = await getOdooClient();
+
+  const partners = await odoo.searchRead(
+    'res.partner',
+    [['id', '=', customerId]],
+    ['parent_id', 'is_company']
+  );
+
+  if (partners.length === 0) {
+    return { ids: [customerId] };
+  }
+
+  const partner = partners[0];
+  const hasParent = partner.parent_id && partner.parent_id !== false;
+
+  if (hasParent) {
+    // È un contatto di un'azienda: cerca ordini sia del contatto che dell'azienda padre
+    const parentId = partner.parent_id[0];
+    const parentName = partner.parent_id[1];
+
+    // Cerca anche tutti gli altri contatti dell'azienda (fratelli)
+    const siblings = await odoo.searchRead(
+      'res.partner',
+      [['parent_id', '=', parentId]],
+      ['id'],
+      100
+    );
+
+    const siblingIds = siblings.map((s: { id: number }) => s.id);
+    const allIds = [parentId, ...siblingIds];
+
+    console.log(`📦 Cliente ${customerId} appartiene all'azienda ${parentName} (ID: ${parentId}). Cercherò ordini di ${allIds.length} partner.`);
+
+    return {
+      ids: allIds,
+      parentId,
+      parentName
+    };
+  }
+
+  if (partner.is_company) {
+    // È un'azienda: cerca anche ordini dei contatti figli
+    const children = await odoo.searchRead(
+      'res.partner',
+      [['parent_id', '=', customerId]],
+      ['id'],
+      100
+    );
+
+    const childIds = children.map((c: { id: number }) => c.id);
+    const allIds = [customerId, ...childIds];
+
+    console.log(`📦 Cliente ${customerId} è un'azienda con ${childIds.length} contatti. Cercherò ordini di tutti.`);
+
+    return { ids: allIds };
+  }
+
+  // Cliente privato senza parent
+  return { ids: [customerId] };
 }
 
 // ============================================================================
@@ -109,6 +182,7 @@ const ordersTools: AgentTool[] = [
             'property_payment_term_id',
             'credit_limit',
             'company_type',
+            'parent_id',
           ]
         );
 
@@ -117,16 +191,20 @@ const ordersTools: AgentTool[] = [
         }
 
         const partner = partners[0];
-        const isB2B = partner.is_company || partner.customer_rank > 0;
+        // B2B se: è un'azienda, ha customer_rank > 0, O è collegato a un'azienda padre
+        const hasParent = partner.parent_id && partner.parent_id !== false;
+        const isB2B = partner.is_company || partner.customer_rank > 0 || hasParent;
 
         return {
           id: partner.id,
           name: partner.name,
           customer_type: isB2B ? 'b2b' : 'b2c',
           is_company: partner.is_company,
-          can_place_orders: partner.customer_rank > 0,
+          can_place_orders: partner.customer_rank > 0 || hasParent, // Anche i contatti di aziende possono ordinare
           payment_terms: partner.property_payment_term_id ? partner.property_payment_term_id[1] : undefined,
           credit_limit: partner.credit_limit || undefined,
+          parent_id: hasParent ? partner.parent_id[0] : undefined,
+          parent_name: hasParent ? partner.parent_id[1] : undefined,
         };
       } catch (error) {
         throw new Error(`Errore recupero info cliente: ${error instanceof Error ? error.message : error}`);
@@ -159,12 +237,15 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        const domain: any[] = [['partner_id', '=', customer_id]];
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre + altri contatti se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
+        const domain: any[] = [['partner_id', 'in', partnerIds]];
         if (state_filter) {
           domain.push(['state', '=', state_filter]);
         }
 
-        const orders = await odoo.searchRead(
+        const orders = await odoo.searchReadKw(
           'sale.order',
           domain,
           [
@@ -174,8 +255,9 @@ const ordersTools: AgentTool[] = [
             'amount_total',
             'currency_id',
             'order_line',
+            'partner_id',  // Aggiungo per sapere chi ha fatto l'ordine
           ],
-          limit
+          { limit, order: 'date_order desc' }
         );
 
         const stateLabels: Record<string, string> = {
@@ -383,11 +465,14 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        // Trova tutti gli ordini del cliente (confermati o completati)
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre + altri contatti se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
+        // Trova tutti gli ordini dell'azienda (confermati o completati)
         const orders = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', 'in', ['sale', 'done']]
           ],
           ['id', 'name', 'date_order'],
@@ -513,11 +598,14 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        // Trova ordini del cliente
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre + altri contatti se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
+        // Trova ordini dell'azienda
         const orders = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', 'in', ['sale', 'done']]
           ],
           ['id', 'name', 'date_order'],
@@ -608,12 +696,17 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        // Cerca un preventivo draft esistente (carrello) per questo cliente
+        // Ottieni l'ID del partner principale (azienda padre se esiste)
+        const { ids: partnerIds, parentId } = await getPartnerIdsForSearch(customer_id);
+        // Per il carrello, usa l'azienda padre se esiste, altrimenti il cliente stesso
+        const orderPartnerId = parentId || customer_id;
+
+        // Cerca un preventivo draft esistente (carrello) per l'azienda
         // Ordina per data creazione desc per prendere il più recente
         const existingCarts = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],  // Cerca carrelli di tutta l'azienda
             ['state', '=', 'draft']  // Solo preventivi non confermati
           ],
           ['id', 'name', 'amount_total', 'order_line', 'create_date'],
@@ -629,9 +722,9 @@ const ordersTools: AgentTool[] = [
           cartId = existingCarts[0].id;
           cartName = existingCarts[0].name;
         } else {
-          // Crea un nuovo preventivo vuoto
+          // Crea un nuovo preventivo vuoto - intestato all'azienda padre se esiste
           const newCartIds = await odoo.create('sale.order', [{
-            partner_id: customer_id,
+            partner_id: orderPartnerId,
             state: 'draft',
           }]);
 
@@ -715,11 +808,15 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        // Prima ottieni o crea il carrello
+        // Ottieni l'ID del partner principale (azienda padre se esiste)
+        const { ids: partnerIds, parentId } = await getPartnerIdsForSearch(customer_id);
+        const orderPartnerId = parentId || customer_id;
+
+        // Prima ottieni o crea il carrello (cerca in tutta l'azienda)
         const existingCarts = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', '=', 'draft']
           ],
           ['id', 'name'],
@@ -733,9 +830,9 @@ const ordersTools: AgentTool[] = [
           cartId = existingCarts[0].id;
           cartName = existingCarts[0].name;
         } else {
-          // Crea nuovo carrello
+          // Crea nuovo carrello intestato all'azienda
           const newCartIds = await odoo.create('sale.order', [{
-            partner_id: customer_id,
+            partner_id: orderPartnerId,
             state: 'draft',
           }]);
           cartId = newCartIds[0];
@@ -846,11 +943,14 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
-        // Trova il carrello
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
+        // Trova il carrello dell'azienda
         const carts = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', '=', 'draft']
           ],
           ['id'],
@@ -934,10 +1034,13 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
         const carts = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', '=', 'draft']
           ],
           ['id', 'name', 'order_line', 'amount_total'],
@@ -1004,10 +1107,13 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
+        // Ottieni tutti gli ID da cercare (cliente + azienda padre se B2B)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
         const carts = await odoo.searchRead(
           'sale.order',
           [
-            ['partner_id', '=', customer_id],
+            ['partner_id', 'in', partnerIds],
             ['state', '=', 'draft']
           ],
           ['id', 'name', 'order_line', 'amount_total'],
@@ -1074,18 +1180,23 @@ const ordersTools: AgentTool[] = [
       try {
         const odoo = await getOdooClient();
 
+        // Ottieni l'ID del partner principale (azienda padre se esiste)
+        const { parentId, parentName } = await getPartnerIdsForSearch(customer_id);
+        const orderPartnerId = parentId || customer_id;
+
         // Verifica che il cliente sia B2B
         const customerInfo = await odoo.searchRead(
           'res.partner',
           [['id', '=', customer_id]],
-          ['name', 'is_company', 'customer_rank']
+          ['name', 'is_company', 'customer_rank', 'parent_id']
         );
 
         if (customerInfo.length === 0) {
           throw new Error('Cliente non trovato');
         }
 
-        const isB2B = customerInfo[0].is_company || customerInfo[0].customer_rank > 0;
+        const hasParent = customerInfo[0].parent_id && customerInfo[0].parent_id !== false;
+        const isB2B = customerInfo[0].is_company || customerInfo[0].customer_rank > 0 || hasParent;
         if (!isB2B) {
           throw new Error('Questo cliente è B2C. Gli ordini B2C devono essere effettuati tramite il sito web.');
         }
@@ -1104,9 +1215,9 @@ const ordersTools: AgentTool[] = [
           return line;
         });
 
-        // Crea l'ordine
+        // Crea l'ordine intestato all'azienda (parent) se esiste
         const orderData: any = {
-          partner_id: customer_id,
+          partner_id: orderPartnerId,
           order_line: orderLines,
         };
 
@@ -1130,11 +1241,12 @@ const ordersTools: AgentTool[] = [
         );
 
         const orderName = createdOrders[0]?.name || `SO${orderId}`;
+        const companyName = parentName || customerInfo[0].name;
 
         return {
           order_id: orderId,
           order_name: orderName,
-          message: `Ordine ${orderName} creato con successo per ${customerInfo[0].name}`,
+          message: `Ordine ${orderName} creato con successo per ${companyName}`,
         };
       } catch (error) {
         throw new Error(`Errore creazione ordine: ${error instanceof Error ? error.message : error}`);

@@ -13,6 +13,7 @@ import { ShippingAgent } from './agents/shipping-agent';
 import { HelpdeskAgent, createHelpdeskAgent } from './agents/helpdesk-agent';
 import { getOdooClient } from '@/lib/odoo-client';
 import { getMemoryService, ConversationMemoryService, CustomerMemory } from './memory/conversation-memory';
+import { enrichMessageWithAttachments, Attachment } from './attachment-analyzer';
 
 // URL base per il sito e-commerce
 const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
@@ -444,6 +445,8 @@ export interface CustomerContext {
   customerName?: string;
   customerEmail?: string;
   customerType: 'b2b' | 'b2c' | 'anonymous';
+  companyId?: number;        // ID dell'azienda padre (per contatti B2B)
+  companyName?: string;      // Nome dell'azienda padre (per contatti B2B)
   sessionId: string;
   conversationHistory: Message[];
   odooSession?: OdooSession;
@@ -481,6 +484,7 @@ export interface AgentResponse {
 }
 
 export type IntentType =
+  | 'lead_capture'         // Utente fornisce email/nome per registrazione B2B
   | 'order_create'         // Creare un nuovo ordine
   | 'order_inquiry'        // Domande su ordini
   | 'order_detail'         // Dettagli di un ordine specifico
@@ -636,6 +640,25 @@ export class LapaAiOrchestrator {
     }
 
     try {
+      // Se abbiamo companyId ma non companyName, recuperalo da Odoo
+      let companyName = context.companyName;
+      if (context.companyId && !companyName && this.odooClient?.searchRead) {
+        try {
+          const partners = await this.odooClient.searchRead(
+            'res.partner',
+            [['id', '=', context.companyId]],
+            ['name']
+          );
+          if (partners.length > 0) {
+            companyName = partners[0].name;
+            // Aggiorna anche il context per future chiamate
+            context.companyName = companyName;
+          }
+        } catch (odooError) {
+          console.warn('⚠️ Errore recupero nome azienda da Odoo:', odooError);
+        }
+      }
+
       await this.memoryService.addMessage(
         context.customerId,
         context.customerName || 'Cliente',
@@ -646,7 +669,9 @@ export class LapaAiOrchestrator {
           content,
           timestamp: new Date().toISOString(),
           metadata
-        }
+        },
+        context.companyId,     // ID azienda padre per B2B
+        companyName            // Nome azienda padre per B2B
       );
     } catch (error) {
       console.error('❌ Errore salvataggio memoria:', error);
@@ -901,18 +926,21 @@ COMPITO:
 Analizza il messaggio del cliente e determina l'intento principale. Rispondi SOLO con un JSON valido nel seguente formato:
 
 {
-  "type": "cart_add" | "cart_view" | "cart_remove" | "cart_confirm" | "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
+  "type": "lead_capture" | "cart_add" | "cart_view" | "cart_remove" | "cart_confirm" | "order_create" | "order_inquiry" | "invoice_inquiry" | "shipping_inquiry" | "product_inquiry" | "account_management" | "helpdesk" | "pricing_quote" | "complaint" | "general_info" | "unknown",
   "confidence": 0.0-1.0,
   "entities": {
     "order_id": "SO123" (se menzionato),
     "product_name": "nome prodotto" (se menzionato),
     "invoice_number": "INV/2024/001" (se menzionato),
-    "tracking_number": "123456" (se menzionato)
+    "tracking_number": "123456" (se menzionato),
+    "email": "user@email.com" (se fornita per lead_capture),
+    "contact_name": "Nome Cognome" (se fornito per lead_capture)
   },
   "requiresAuth": true/false
 }
 
 DEFINIZIONI INTENTI (con parole chiave tipiche):
+- lead_capture: L'utente fornisce i propri DATI DI CONTATTO (email, nome, telefono) per registrazione B2B o per essere ricontattato. PRIORITÀ MASSIMA quando contiene un indirizzo email! (Keywords: @, .com, .ch, mi chiamo, sono, chiamano, email, mail, my name is, ich bin, je m'appelle). Estrai entities: email, contact_name
 - cart_add: AGGIUNGERE prodotto al carrello, mettere prodotto nel carrello. PRIORITÀ MASSIMA quando l'utente dice "aggiungimi", "mettimi", "aggiungi al carrello", O quando seleziona un prodotto con "il primo", "1", "secondo", etc. (Keywords: aggiungimi, mettimi, aggiungi, aggiungi al carrello, metti nel carrello, lo voglio, lo prendo, me lo metti, aggiungi questo, add to cart, in den Warenkorb, ajouter au panier, il primo, primo, secondo, terzo, 1, 2, 3)
 - cart_view: VEDERE il carrello, cosa c'è nel carrello (Keywords: carrello, vedi carrello, mostra carrello, cosa ho nel carrello, cosa c'è nel carrello, my cart, Warenkorb anzeigen, voir panier)
 - cart_remove: RIMUOVERE prodotto dal carrello (Keywords: togli, rimuovi, elimina dal carrello, remove from cart, aus dem Warenkorb entfernen, retirer du panier)
@@ -1002,9 +1030,51 @@ IMPORTANTE:
   private fallbackIntentAnalysis(message: string): Intent {
     const lowerMessage = message.toLowerCase();
 
+    // ========================================
+    // LEAD CAPTURE - Email + Nome (PRIORITÀ ALTISSIMA)
+    // Quando l'utente fornisce email e/o nome per registrazione B2B
+    // ========================================
+    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const namePattern = /(?:mi chiamo|sono|chiamano|nome[:\s]+|name[:\s]+|ich bin|je m'appelle|my name is)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i;
+
+    const hasEmail = emailPattern.test(message);
+    const hasName = namePattern.test(message) ||
+                    // Pattern per nomi senza prefisso (es. "giovanni franco" dopo aver dato email)
+                    (hasEmail && /\s+(e\s+)?(io\s+)?(mi\s+chiamo\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i.test(message));
+
+    if (hasEmail || (hasName && lowerMessage.includes('chiamo'))) {
+      // Estrai email e nome
+      const emailMatch = message.match(emailPattern);
+      const nameMatch = message.match(/(?:mi chiamo|sono|chiamano|name[:\s]+|ich bin|je m'appelle)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i) ||
+                        message.match(/(?:e\s+)?(?:io\s+)?(?:mi\s+chiamo\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)$/);
+
+      return {
+        type: 'lead_capture',
+        confidence: 0.95,
+        entities: {
+          email: emailMatch ? emailMatch[0] : undefined,
+          contact_name: nameMatch ? nameMatch[1]?.trim() : undefined
+        },
+        requiresAuth: false
+      };
+    }
+
+    // ========================================
+    // NEGATION DETECTION - HIGHEST PRIORITY
+    // Se il messaggio inizia con "No", "Non", "no volevo", etc. NON è cart_add
+    // È una correzione o chiarimento, passa all'AI per capire l'intento reale
+    // ========================================
+    const isNegation = /^(no[,\s]|non\s|no\s+volevo|non\s+volevo|non\s+intendevo|volevo\s+solo|solo\s+queste?|no\s+solo)/i.test(lowerMessage);
+    if (isNegation) {
+      console.log('🚫 Detected negation/correction, skipping cart_add detection');
+      // Non classificare come cart_add, lascia che il flusso continui
+      // per essere gestito dall'AI o come product_inquiry
+    }
+
     // Ordinal selection (for cart product selection: "il primo", "1", "secondo", etc.)
     // HIGHEST PRIORITY - users selecting from a product list
-    if (lowerMessage.match(/^(il |la )?(primo|prima|secondo|seconda|terzo|terza|quarto|quarta|quinto|quinta|1|2|3|4|5|uno|due|tre|quattro|cinque)\.?$/i)) {
+    // Ma solo se NON è una negazione
+    if (!isNegation && lowerMessage.match(/^(il |la )?(primo|prima|secondo|seconda|terzo|terza|quarto|quarta|quinto|quinta|1|2|3|4|5|uno|due|tre|quattro|cinque)\.?$/i)) {
       return {
         type: 'cart_add',
         confidence: 0.95,
@@ -1013,7 +1083,8 @@ IMPORTANTE:
     }
 
     // Cart add keywords (HIGHEST PRIORITY - must come first)
-    if (lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
+    // Ma solo se NON è una negazione
+    if (!isNegation && lowerMessage.match(/aggiungimi|mettimi|aggiungi.*carrell|metti.*carrell|lo voglio|lo prendo|me lo metti|add to cart|in den warenkorb|ajouter au panier/i)) {
       return {
         type: 'cart_add',
         confidence: 0.9,
@@ -1102,6 +1173,18 @@ IMPORTANTE:
       };
     }
 
+    // ========================================
+    // ACCOUNT MANAGEMENT - "mi conosci?", "chi sono?", etc.
+    // Richieste info sull'account/dati del cliente autenticato
+    // ========================================
+    if (lowerMessage.match(/mi conosci|chi sono|che sai di me|info di me|miei dati|mio account|mio profilo|i miei dati|il mio account|il mio profilo|account|password|dati personali/i)) {
+      return {
+        type: 'account_management',
+        confidence: 0.85,
+        requiresAuth: true
+      };
+    }
+
     return {
       type: 'helpdesk',
       confidence: 0.5,
@@ -1181,18 +1264,38 @@ IMPORTANTE:
         }
       }
 
+      // ========================================
+      // ANALISI ALLEGATI (se presenti)
+      // Usa Gemini Vision per analizzare immagini/PDF
+      // ========================================
+      let processedMessage = message;
+      const attachments = context.metadata?.attachments as Attachment[] | undefined;
+
+      if (attachments && attachments.length > 0) {
+        console.log(`📎 Analisi ${attachments.length} allegati con Gemini Vision...`);
+        try {
+          const { enrichedMessage, analyzedAttachments } = await enrichMessageWithAttachments(message, attachments);
+          processedMessage = enrichedMessage;
+          console.log(`✅ Allegati analizzati. Messaggio arricchito: ${processedMessage.substring(0, 100)}...`);
+        } catch (attachmentError) {
+          console.error('❌ Errore analisi allegati:', attachmentError);
+          // Continua comunque con il messaggio originale
+        }
+      }
+
       // Aggiungi il messaggio dell'utente alla cronologia
       this.addMessage(context, {
         role: 'user',
-        content: message,
-        timestamp: new Date()
-      });
+        content: processedMessage,
+        timestamp: new Date(),
+        metadata: attachments ? { attachments } : undefined
+      } as Message);
 
       // 🧠 Salva messaggio utente nella memoria persistente
-      await this.saveToMemory(context, 'user', message);
+      await this.saveToMemory(context, 'user', processedMessage);
 
-      // 1. Analizza l'intento
-      const intent = await this.analyzeIntent(message, context);
+      // 1. Analizza l'intento (usa il messaggio arricchito con analisi allegati)
+      const intent = await this.analyzeIntent(processedMessage, context);
       console.log('📊 Intento identificato:', intent);
 
       // 2. Verifica se richiede autenticazione
@@ -1277,6 +1380,8 @@ IMPORTANTE:
       customerId: customerContext?.customerId,
       customerName: customerContext?.customerName,
       customerEmail: customerContext?.customerEmail,
+      companyId: customerContext?.companyId,      // ID azienda padre per B2B
+      companyName: customerContext?.companyName,  // Nome azienda padre per B2B
       odooSession: customerContext?.odooSession,
       conversationHistory: history,
       metadata: {
@@ -1567,12 +1672,25 @@ IMPORTANTE:
    * Registra gli agenti di default
    */
   private registerDefaultAgents(): void {
+    // LEAD CAPTURE AGENT - Cattura dati contatto per B2B (PRIORITÀ MASSIMA!)
+    this.registerAgent({
+      id: 'lead_capture',
+      name: 'Lead Capture Agent',
+      description: 'Cattura email e nome per registrazione B2B o follow-up commerciale',
+      intents: ['lead_capture'],
+      requiresAuth: false,
+      priority: 15, // Priorità massima - non perdere mai un lead!
+      handler: async (context, intent) => {
+        return await this.leadCaptureAgentHandler(context, intent);
+      }
+    });
+
     // HELPDESK AGENT - Gestisce richieste generiche
     this.registerAgent({
       id: 'helpdesk',
       name: 'Helpdesk Agent',
       description: 'Gestisce supporto generico e informazioni generali',
-      intents: ['helpdesk', 'general_info', 'unknown'],
+      intents: ['helpdesk', 'general_info', 'unknown', 'account_management'],
       requiresAuth: false,
       priority: 1,
       handler: async (context, intent) => {
@@ -1727,6 +1845,218 @@ IMPORTANTE:
   // ============================================================================
   // AGENT HANDLERS
   // ============================================================================
+
+  /**
+   * Handler per Lead Capture - Cattura dati contatto per registrazione B2B
+   * CRITICO per la conversione: quando un utente fornisce email/nome, NON perdere il lead!
+   *
+   * SALVA SEMPRE in Odoo:
+   * 1. Crea/trova res.partner con email
+   * 2. Crea ticket helpdesk per tracciare la richiesta
+   */
+  private async leadCaptureAgentHandler(
+    context: CustomerContext,
+    intent: Intent
+  ): Promise<AgentResponse> {
+    try {
+      const email = intent.entities?.email as string | undefined;
+      const contactName = intent.entities?.contact_name as string | undefined;
+      const lang = context.metadata?.language || 'it';
+
+      console.log('🎯 LEAD CAPTURE:', { email, contactName, sessionId: context.sessionId });
+
+      // Cerca nella conversazione precedente per info aggiuntive (nome pizzeria, zona, prodotti interesse)
+      const conversationText = context.conversationHistory
+        .map(m => m.content)
+        .join(' ')
+        .toLowerCase();
+
+      // Estrai info dalla conversazione
+      const businessNameMatch = conversationText.match(/(?:pizzeria|ristorante|hotel|locale|attività)\s+(?:da\s+)?([a-zA-Z\s]+?)(?:\s*[-–]|\s+a\s+|\s+in\s+|\s*$)/i);
+      const businessName = businessNameMatch ? businessNameMatch[1].trim() : undefined;
+
+      const zonaMatch = conversationText.match(/(?:a\s+|in\s+|zona\s+)(zurigo|berna|basilea|ginevra|lugano|lucerna|zurich|zürich|bern|basel|genève|genf)/i);
+      const zona = zonaMatch ? zonaMatch[1] : undefined;
+
+      // Prepara messaggio di conferma
+      const leadInfo = {
+        email,
+        contactName,
+        businessName,
+        zona,
+        timestamp: new Date().toISOString(),
+        sessionId: context.sessionId,
+        conversationSummary: conversationText.slice(-500) // Ultimi 500 caratteri
+      };
+
+      console.log('📋 Lead info raccolte:', leadInfo);
+
+      // ========================================
+      // SALVATAGGIO LEAD IN ODOO - SEMPRE TICKET!
+      // Cerca partner esistente, se non esiste usa ID 1 (LAPA)
+      // NON crea nuovi partner, solo ticket per tracciamento
+      // ========================================
+      let partnerId: number = 1; // Default: LAPA company
+      let ticketId: string | null = null;
+      let partnerExists = false;
+
+      if (email) {
+        try {
+          const odooClient = await getOdooClient();
+
+          // Cerca partner esistente con questa email (NON creiamo nuovi partner)
+          const existingPartners = await odooClient.searchRead(
+            'res.partner',
+            [['email', '=ilike', email]],
+            ['id', 'name'],
+            1
+          );
+
+          if (existingPartners && existingPartners.length > 0) {
+            partnerId = existingPartners[0].id;
+            partnerExists = true;
+            console.log('🔍 Partner esistente trovato:', partnerId, existingPartners[0].name);
+          } else {
+            console.log('📝 Partner non trovato, uso ID 1 (LAPA) per il ticket');
+          }
+        } catch (searchError) {
+          console.warn('⚠️ Errore ricerca partner:', searchError);
+        }
+
+        // CREA SEMPRE IL TICKET - con tutti i dati nel description
+        try {
+          const conversationSummary = context.conversationHistory
+            .map(m => `[${m.timestamp.toLocaleString('it-CH')}] ${m.role === 'user' ? 'CLIENTE' : 'AI'}: ${m.content}`)
+            .join('\n\n');
+
+          const ticketDescription = `
+══════════════════════════════════════════════════════
+📋 NUOVO LEAD B2B - CHAT AI LAPA
+══════════════════════════════════════════════════════
+
+👤 DATI LEAD (DA CONTATTARE!):
+──────────────────────────────────────────────────────
+• Nome: ${contactName || 'Non fornito'}
+• Email: ${email}
+• Attività: ${businessName || 'Non specificata'}
+• Zona: ${zona || 'Non specificata'}
+${partnerExists ? `• Partner Odoo esistente: ID ${partnerId}` : '• Partner: NON ESISTE in Odoo (nuovo lead)'}
+
+💬 CONVERSAZIONE CHAT:
+──────────────────────────────────────────────────────
+${conversationSummary}
+
+──────────────────────────────────────────────────────
+📅 Data: ${new Date().toLocaleString('it-CH')}
+🔗 Sessione: ${context.sessionId}
+══════════════════════════════════════════════════════
+
+⚠️ AZIONE RICHIESTA: Contattare il lead via email (${email}) entro 24h per attivazione B2B.
+          `.trim();
+
+          const helpdeskAgent = createHelpdeskAgent(context.sessionId, (lang as 'it' | 'en' | 'de') || 'it');
+          const ticketResult = await helpdeskAgent.createTicket({
+            customerId: partnerId,
+            subject: `[Lead B2B] ${contactName || email}${businessName ? ` - ${businessName}` : ''}`,
+            description: ticketDescription,
+            priority: '2' // Media-alta priorità per lead B2B
+          });
+
+          if (ticketResult.success) {
+            ticketId = String(ticketResult.ticketId);
+            console.log('✅ Ticket lead creato:', ticketId);
+          } else {
+            console.error('⚠️ Errore creazione ticket lead:', ticketResult);
+          }
+        } catch (ticketError) {
+          console.error('❌ Errore creazione ticket:', ticketError);
+        }
+      }
+
+      const messages: Record<string, string> = {
+        it: `🎉 **Perfetto, grazie ${contactName || ''}!**
+
+📋 **Dati raccolti:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Nome: ${contactName}` : ''}
+${businessName ? `✅ Attività: ${businessName}` : ''}
+${zona ? `✅ Zona: ${zona}` : ''}
+
+Il nostro team commerciale ti contatterà **entro 24 ore lavorative** per:
+- 📝 Attivare il tuo account B2B
+- 💰 Inviarti il listino prezzi dedicato
+- 📦 Organizzare la prima consegna di prova
+
+Nel frattempo, hai altre domande sui nostri prodotti?`,
+
+        de: `🎉 **Perfekt, danke ${contactName || ''}!**
+
+📋 **Erfasste Daten:**
+${email ? `✅ E-Mail: ${email}` : ''}
+${contactName ? `✅ Name: ${contactName}` : ''}
+${businessName ? `✅ Betrieb: ${businessName}` : ''}
+${zona ? `✅ Zone: ${zona}` : ''}
+
+Unser Vertriebsteam wird Sie **innerhalb von 24 Arbeitsstunden** kontaktieren für:
+- 📝 Ihr B2B-Konto aktivieren
+- 💰 Ihnen die dedizierte Preisliste senden
+- 📦 Die erste Probelieferung organisieren
+
+In der Zwischenzeit, haben Sie weitere Fragen zu unseren Produkten?`,
+
+        fr: `🎉 **Parfait, merci ${contactName || ''}!**
+
+📋 **Données collectées:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Nom: ${contactName}` : ''}
+${businessName ? `✅ Établissement: ${businessName}` : ''}
+${zona ? `✅ Zone: ${zona}` : ''}
+
+Notre équipe commerciale vous contactera **sous 24 heures ouvrables** pour:
+- 📝 Activer votre compte B2B
+- 💰 Vous envoyer la liste de prix dédiée
+- 📦 Organiser la première livraison d'essai
+
+En attendant, avez-vous d'autres questions sur nos produits?`,
+
+        en: `🎉 **Perfect, thank you ${contactName || ''}!**
+
+📋 **Collected data:**
+${email ? `✅ Email: ${email}` : ''}
+${contactName ? `✅ Name: ${contactName}` : ''}
+${businessName ? `✅ Business: ${businessName}` : ''}
+${zona ? `✅ Area: ${zona}` : ''}
+
+Our sales team will contact you **within 24 business hours** to:
+- 📝 Activate your B2B account
+- 💰 Send you the dedicated price list
+- 📦 Organize your first trial delivery
+
+In the meantime, do you have other questions about our products?`
+      };
+
+      return {
+        success: true,
+        message: messages[lang] || messages.it,
+        data: leadInfo,
+        agentId: 'lead_capture',
+        confidence: 0.98,
+        suggestedActions: [
+          lang === 'de' ? 'Produkte entdecken' : lang === 'fr' ? 'Découvrir les produits' : 'Scopri i prodotti',
+          lang === 'de' ? 'Fragen stellen' : lang === 'fr' ? 'Poser une question' : 'Altre domande'
+        ]
+      };
+
+    } catch (error) {
+      console.error('❌ Errore lead capture:', error);
+      return {
+        success: false,
+        message: 'Grazie per le informazioni! Ti contatteremo presto.',
+        agentId: 'lead_capture',
+        confidence: 0.5
+      };
+    }
+  }
 
   /**
    * Handler per l'agente Helpdesk
@@ -2139,17 +2469,118 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         .pop()?.content || 'Cerca prodotto';
 
       // ========================================
-      // PRODOTTI SPECIALI - Termini che sono PRODOTTI, non ricette
-      // Es: "porchetta" è un prodotto LAPA (PORCHETTA DI ARICCIA, etc.)
+      // PRODOTTI SPECIALI - Termini che sono sia PRODOTTI che ricette
+      // Quando l'utente cerca questi termini, mostriamo PRIMA i prodotti reali
+      // Solo se l'utente chiede esplicitamente "ricetta", "come fare", etc.
+      // allora mostriamo gli ingredienti
       // ========================================
-      const PRODUCT_TERMS = ['porchetta'];  // Termini da cercare come prodotto prima
+      const PRODUCT_TERMS = [
+        // Prodotti specifici
+        'porchetta',
+        // Dessert e dolci
+        'tiramisu', 'tiramisù',
+        // Salse e sughi pronti
+        'pesto', 'ragù', 'ragu',
+        // Paste
+        'lasagna',
+        // Preparati
+        'bruschetta', 'caprese',
+        // Frutti di mare (utenti vogliono il prodotto, non la ricetta)
+        'astice', 'aragosta', 'vongole',
+        // Sughi pronti (spesso venduti come prodotti)
+        'carbonara', 'amatriciana', 'arrabbiata', 'puttanesca', 'bolognese', 'norma'
+      ];
+
+      // Verifica se l'utente chiede esplicitamente una RICETTA (non un prodotto)
+      // Include anche "fare un X", "voglio fare", "devo fare", "mi serve fare"
+      const isRecipeRequest = /\b(ricetta|come (fare|preparare|cucinare)|ingredienti per|per fare|voglio fare|devo fare|mi serve fare|fare (un|una|il|la|i|le|gli))\b/i.test(lastUserMsg);
+
+      // ========================================
+      // MULTI-PRODUCT SEARCH: Se l'utente menziona più ingredienti, cerca TUTTI
+      // Es: "mascarpone savoiardi cacao" -> cerca ognuno separatamente
+      // ========================================
+      const multipleIngredients = this.extractMultipleIngredients(lastUserMsg);
+      console.log(`🔍 Multiple ingredients detected: ${multipleIngredients.join(', ') || 'none'}`);
+
+      if (multipleIngredients.length > 1) {
+        console.log(`🛒 Ricerca multipla per ${multipleIngredients.length} ingredienti: ${multipleIngredients.join(', ')}`);
+
+        const allProductsFound: any[] = [];
+        const ingredientResults: Record<string, any[]> = {};
+        const notFoundIngredients: string[] = [];
+
+        for (const ingredient of multipleIngredients) {
+          const searchResult = await this.productsAgent.searchProducts(
+            { query: ingredient, active_only: true },
+            3  // Max 3 prodotti per ingrediente
+          );
+
+          if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+            ingredientResults[ingredient] = searchResult.data;
+            allProductsFound.push(...searchResult.data);
+          } else {
+            notFoundIngredients.push(ingredient);
+            ingredientResults[ingredient] = [];
+          }
+        }
+
+        // Se abbiamo trovato almeno qualche prodotto, mostra i risultati
+        if (allProductsFound.length > 0) {
+          const productsData = Object.entries(ingredientResults).flatMap(([ingredient, products]) => {
+            return products.slice(0, 2).map((product: any) => {
+              const templateId = product.product_tmpl_id ? product.product_tmpl_id[0] : product.id;
+              const qty = product.qty_available || 0;
+              const isAvailable = qty > 0;
+              return {
+                name: product.name,
+                ingredient: ingredient,
+                price: `${product.list_price?.toFixed(2) || '0.00'} CHF`,
+                qty_available: qty,
+                unit: product.uom_id ? product.uom_id[1] : 'pz',
+                url: generateProductUrl(templateId, product.name),
+                disponibile_subito: isAvailable,
+                disponibilita_testo: isAvailable
+                  ? `✅ Disponibile (${qty} ${product.uom_id ? product.uom_id[1] : 'pz'})`
+                  : `⏳ Ordinabile su richiesta`
+              };
+            });
+          });
+
+          const foundIngredients = Object.keys(ingredientResults).filter(k => ingredientResults[k].length > 0);
+
+          const multiMessage = await this.generateConversationalResponse(
+            context,
+            'ricerca multipla ingredienti',
+            {
+              ingredients_searched: multipleIngredients,
+              products: productsData,
+              found_ingredients: foundIngredients,
+              missing_ingredients: notFoundIngredients,
+              total_products: productsData.length,
+              customer_name: context.customerName
+            },
+            lastUserMsg
+          );
+
+          return {
+            success: true,
+            message: multiMessage,
+            data: allProductsFound,
+            agentId: 'product',
+            confidence: 0.9,
+            suggestedActions: ['Aggiungi tutto al carrello', 'Cerca altro', 'Chiedi un preventivo']
+          };
+        }
+      }
 
       const productTermFound = PRODUCT_TERMS.find(term =>
         lastUserMsg.toLowerCase().includes(term)
       );
 
-      if (productTermFound) {
-        console.log(`🎯 Termine prodotto speciale trovato: "${productTermFound}" - Cerco prodotto diretto`);
+      // Se l'utente cerca un prodotto (non una ricetta), mostra i prodotti prima
+      // MA solo se non ha già menzionato più ingredienti (gestito sopra)
+      if (productTermFound && !isRecipeRequest && multipleIngredients.length <= 1) {
+        console.log(`🎯 Termine prodotto speciale trovato: "${productTermFound}" - Cerco prodotto diretto (non è una richiesta ricetta)`);
 
         const directProductSearch = await this.productsAgent.searchProducts(
           { query: productTermFound, active_only: false },
@@ -2205,6 +2636,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           }
         }
         console.log(`⚠️ Nessun prodotto trovato per "${productTermFound}", continuo con ricerca normale`);
+      } else if (productTermFound && isRecipeRequest) {
+        console.log(`📖 Richiesta ricetta per "${productTermFound}" - mostrerò gli ingredienti invece dei prodotti`);
       }
 
       // ========================================
@@ -2974,40 +3407,148 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 handleCartAdd - userMessage:', userMessage);
 
-    // PRIMA: Controlla se l'utente sta selezionando da pending_products (es: "il primo", "1", "2")
-    const ordinalSelection = this.parseOrdinalSelection(userMessage);
-    console.log('🛒 parseOrdinalSelection result:', ordinalSelection, 'for message:', userMessage);
+    // ========================================
+    // SELEZIONE MULTIPLA: "tutte e due", "entrambi", "tutti", etc.
+    // Quando l'utente vuole TUTTI i prodotti mostrati nella risposta precedente
+    // ========================================
+    const lowerMessage = userMessage.toLowerCase();
+    const wantsAllProducts = /\b(tutt[ie]?\s*(e\s*due)?|entramb[ie]|ambedue|both|all|tutti\s*e\s*due)\b/i.test(lowerMessage);
 
-    if (ordinalSelection >= 0) {
+    if (wantsAllProducts) {
       const pendingProducts = this.extractPendingProductsFromConversation(context);
-      console.log('🛒 Ordinal selection:', ordinalSelection, 'pendingProducts:', pendingProducts.length);
-      console.log('🛒 Context history length:', context.conversationHistory.length);
-      console.log('🛒 Last messages data:', context.conversationHistory.slice(-3).map(m => ({ role: m.role, hasData: !!m.data, dataKeys: m.data ? Object.keys(m.data) : [] })));
+      console.log('🛒 User wants ALL products, pending:', pendingProducts.length);
 
-      if (pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
-        const selectedProduct = pendingProducts[ordinalSelection];
-        console.log('🛒 Selected product from pending:', selectedProduct.name);
+      if (pendingProducts.length > 0) {
+        const addedProducts: string[] = [];
+        const failedProducts: string[] = [];
+        let lastCartInfo: any = null;
 
-        try {
-          const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
-          const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+        for (const product of pendingProducts) {
+          try {
+            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
+            addedProducts.push(product.name);
+            lastCartInfo = result.data;
+          } catch (err) {
+            console.error('❌ Errore aggiunta prodotto:', product.name, err);
+            failedProducts.push(product.name);
+          }
+        }
+
+        if (addedProducts.length > 0) {
+          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
+          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+          addedProducts.forEach(p => message += `• ${p}\n`);
+
+          if (failedProducts.length > 0) {
+            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
+          }
+
+          if (lastCartInfo) {
+            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+          }
 
           return {
             success: true,
-            message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
+            message,
             agentId: 'cart',
-            data: result.data,
-            suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
-          };
-        } catch (err) {
-          console.error('❌ Errore aggiunta prodotto selezionato:', err);
-          return {
-            success: false,
-            message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
-            agentId: 'cart',
-            suggestedActions: ['Riprova', 'Cerca altro prodotto']
+            data: lastCartInfo,
+            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
           };
         }
+      }
+    }
+
+    // ========================================
+    // SELEZIONE PER NOME: l'utente menziona prodotti specifici mostrati prima
+    // Es: "mettimi sia San Daniele che Parma" -> cerca tra pending products
+    // ========================================
+    const pendingProducts = this.extractPendingProductsFromConversation(context);
+    if (pendingProducts.length > 0) {
+      // Cerca se il messaggio menziona prodotti dai pending
+      const matchedProducts = pendingProducts.filter(p => {
+        const pNameLower = p.name.toLowerCase();
+        // Controlla se parti significative del nome prodotto sono menzionate
+        const keywords = pNameLower.split(/\s+/).filter((w: string) => w.length > 3);
+        return keywords.some((kw: string) => lowerMessage.includes(kw)) ||
+               // Controlla varianti comuni
+               (pNameLower.includes('san daniele') && lowerMessage.includes('san daniele')) ||
+               (pNameLower.includes('parma') && lowerMessage.includes('parma')) ||
+               (pNameLower.includes('prosciutto') && lowerMessage.includes('prosciutto'));
+      });
+
+      console.log('🛒 Matched products from pending by name:', matchedProducts.map(p => p.name));
+
+      if (matchedProducts.length > 0) {
+        const addedProducts: string[] = [];
+        const failedProducts: string[] = [];
+        let lastCartInfo: any = null;
+
+        for (const product of matchedProducts) {
+          try {
+            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
+            addedProducts.push(product.name);
+            lastCartInfo = result.data;
+          } catch (err) {
+            console.error('❌ Errore aggiunta prodotto:', product.name, err);
+            failedProducts.push(product.name);
+          }
+        }
+
+        if (addedProducts.length > 0) {
+          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
+          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+          addedProducts.forEach(p => message += `• ${p}\n`);
+
+          if (failedProducts.length > 0) {
+            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
+          }
+
+          if (lastCartInfo) {
+            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+          }
+
+          return {
+            success: true,
+            message,
+            agentId: 'cart',
+            data: lastCartInfo,
+            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
+          };
+        }
+      }
+    }
+
+    // ========================================
+    // SELEZIONE ORDINALE: "il primo", "1", "2", etc.
+    // ========================================
+    const ordinalSelection = this.parseOrdinalSelection(userMessage);
+    console.log('🛒 parseOrdinalSelection result:', ordinalSelection, 'for message:', userMessage);
+
+    if (ordinalSelection >= 0 && pendingProducts.length > 0 && ordinalSelection < pendingProducts.length) {
+      const selectedProduct = pendingProducts[ordinalSelection];
+      console.log('🛒 Selected product from pending:', selectedProduct.name);
+
+      try {
+        const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
+        const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+
+        return {
+          success: true,
+          message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
+          agentId: 'cart',
+          data: result.data,
+          suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+        };
+      } catch (err) {
+        console.error('❌ Errore aggiunta prodotto selezionato:', err);
+        return {
+          success: false,
+          message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
+          agentId: 'cart',
+          suggestedActions: ['Riprova', 'Cerca altro prodotto']
+        };
       }
     }
 
@@ -3173,8 +3714,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     // Se il messaggio è vuoto dopo la pulizia, non c'è nulla da estrarre
     if (!cleanMessage) return products;
 
-    // Dividi per virgole, "e", "poi"
-    const parts = cleanMessage.split(/\s*[,e]\s*|\s+poi\s+/i).filter(p => p.trim());
+    // Dividi per virgole, " e " (con spazi), "poi"
+    // IMPORTANTE: NON dividere su ogni "e"! Solo su " e " come congiunzione
+    const parts = cleanMessage.split(/\s*,\s*|\s+e\s+|\s+poi\s+/i).filter(p => p.trim());
 
     for (const part of parts) {
       const trimmed = part.trim();
@@ -3620,6 +4162,76 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 No pending_products found in conversation');
     return [];
+  }
+
+  /**
+   * Estrae ingredienti multipli dal messaggio dell'utente
+   * Es: "mascarpone savoiardi cacao" -> ["mascarpone", "savoiardi", "cacao"]
+   * Es: "fare un tiramisu mascarpone savoiardi cacao" -> ["tiramisu", "mascarpone", "savoiardi", "cacao"]
+   */
+  private extractMultipleIngredients(message: string): string[] {
+    const lowerMsg = message.toLowerCase();
+
+    // Lista di parole da ignorare (stop words)
+    const stopWords = new Set([
+      'un', 'una', 'uno', 'il', 'la', 'lo', 'i', 'gli', 'le',
+      'mi', 'ti', 'ci', 'vi', 'si', 'ne', 'ce', 'se',
+      'serve', 'servono', 'servirebbero', 'servisse',
+      'fare', 'fai', 'fa', 'facciamo', 'fanno', 'fatto',
+      'voglio', 'vorrei', 'volevo', 'vuoi', 'vuole',
+      'devo', 'devi', 'deve', 'dobbiamo',
+      'cerco', 'cerca', 'cerchi', 'cercate',
+      'ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno',
+      'bisogno', 'di', 'per', 'con', 'senza', 'che', 'come',
+      'anche', 'ancora', 'pure', 'poi', 'quindi', 'allora',
+      'tutto', 'tutti', 'tutte', 'alcuni', 'qualche',
+      'ciao', 'buongiorno', 'buonasera', 'salve',
+      'grazie', 'prego', 'scusa', 'scusi',
+      'ok', 'sì', 'si', 'no', 'forse', 'magari',
+      'a', 'e', 'o', 'ma', 'se', 'non', 'più'
+    ]);
+
+    // Lista di ingredienti/prodotti noti (espandibile)
+    const knownIngredients = new Set([
+      // Formaggi
+      'mascarpone', 'mozzarella', 'burrata', 'ricotta', 'parmigiano', 'pecorino', 'gorgonzola',
+      'provolone', 'scamorza', 'fontina', 'taleggio', 'asiago', 'grana',
+      // Salumi
+      'prosciutto', 'salame', 'pancetta', 'guanciale', 'speck', 'mortadella', 'bresaola',
+      'nduja', 'coppa', 'lonza', 'porchetta', 'lardo', 'culatello',
+      // Dolci
+      'savoiardi', 'cacao', 'cioccolato', 'zucchero', 'vaniglia', 'miele', 'caramello',
+      'panna', 'crema', 'amaretti', 'biscotti', 'pandoro', 'panettone',
+      // Pasta
+      'spaghetti', 'penne', 'rigatoni', 'fusilli', 'tagliatelle', 'lasagna', 'ravioli',
+      'tortellini', 'gnocchi', 'linguine', 'bucatini', 'orecchiette', 'paccheri',
+      // Pesce
+      'astice', 'aragosta', 'gamberi', 'scampi', 'vongole', 'cozze', 'calamari',
+      'polpo', 'salmone', 'tonno', 'branzino', 'orata', 'merluzzo',
+      // Carne
+      'manzo', 'vitello', 'maiale', 'pollo', 'tacchino', 'agnello', 'coniglio',
+      // Verdure
+      'pomodoro', 'pomodori', 'basilico', 'prezzemolo', 'aglio', 'cipolla', 'peperoncino',
+      'melanzane', 'zucchine', 'peperoni', 'carciofi', 'funghi', 'spinaci', 'rucola',
+      // Prodotti base
+      'olio', 'aceto', 'farina', 'lievito', 'burro', 'uova', 'latte', 'caffè', 'caffe',
+      // Ricette/Piatti (che hanno anche prodotti)
+      'tiramisu', 'tiramisù', 'carbonara', 'amatriciana', 'pesto', 'ragù', 'ragu',
+      'lasagne', 'bolognese', 'caprese', 'bruschetta', 'arrabbiata', 'puttanesca'
+    ]);
+
+    // Estrai parole dal messaggio
+    const words = lowerMsg
+      .replace(/[.,!?;:'"()]/g, ' ')  // Rimuovi punteggiatura
+      .split(/\s+/)                    // Dividi per spazi
+      .filter(w => w.length > 2)       // Minimo 3 caratteri
+      .filter(w => !stopWords.has(w)); // Rimuovi stop words
+
+    // Filtra solo ingredienti/prodotti conosciuti
+    const ingredients = words.filter(w => knownIngredients.has(w));
+
+    // Rimuovi duplicati mantenendo l'ordine
+    return Array.from(new Set(ingredients));
   }
 
   /**

@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
           customerId,
           customerName,
           customerEmail,
+          companyId: parentId,  // ID dell'azienda padre per B2B (per memoria condivisa)
           conversationHistory, // Passa la cronologia caricata da KV
           metadata: {
             language,
