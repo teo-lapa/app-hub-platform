@@ -121,7 +121,18 @@
     /* Mobile responsive */
     @media (max-width: 480px) {
       #lapa-chat-widget-container {
-        bottom: 80px; /* Sopra la navigazione mobile (Account, Carrello) */
+        bottom: 70px; /* Allineato con la barra di navigazione (Shop, Cart, Account) */
+        right: 10px;
+      }
+
+      #lapa-chat-button {
+        width: 50px;
+        height: 50px;
+      }
+
+      #lapa-chat-button svg {
+        width: 24px;
+        height: 24px;
       }
 
       #lapa-chat-iframe-container {
