@@ -155,15 +155,15 @@
         transform: none;
       }
 
-      /* Pulsante chiudi visibile su mobile */
-      #lapa-chat-close-btn {
+      /* Pulsante chiudi visibile su mobile SOLO quando ha .visible */
+      #lapa-chat-close-btn.visible {
         display: flex !important;
       }
     }
 
-    /* Pulsante chiudi - SEMPRE NASCOSTO di default, mostrato via JS */
+    /* Pulsante chiudi - SEMPRE NASCOSTO di default */
     #lapa-chat-close-btn {
-      display: none !important;
+      display: none;
       position: fixed;
       top: 15px;
       right: 15px;
@@ -181,7 +181,7 @@
 
     /* Mostrato solo quando ha classe .visible */
     #lapa-chat-close-btn.visible {
-      display: flex !important;
+      display: flex;
     }
 
     #lapa-chat-close-btn svg {
