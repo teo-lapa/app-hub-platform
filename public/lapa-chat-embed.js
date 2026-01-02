@@ -116,6 +116,7 @@
       width: 100%;
       height: 100%;
       border: none;
+      display: block;
     }
 
     /* Mobile responsive - FULLSCREEN */
@@ -143,9 +144,11 @@
         right: 0 !important;
         bottom: 0 !important;
         width: 100vw !important;
-        height: 100vh !important;
+        height: 100dvh !important;
+        height: -webkit-fill-available !important;
         max-width: 100vw !important;
-        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        max-height: -webkit-fill-available !important;
         border-radius: 0 !important;
         transform-origin: center center;
         z-index: 9999999 !important;
