@@ -337,51 +337,38 @@ async function sendWhatsAppResponse(
     ? message.substring(0, 3997) + '...'
     : message;
 
-  // Create a WhatsApp message using Odoo's whatsapp.message model
-  // This sends a free-form text message (not using templates)
-  try {
-    // Method 1: Try creating whatsapp.message directly
-    // Note: Don't set 'state' - Odoo will set it automatically
-    await odoo.create('whatsapp.message', [{
-      mobile_number: formattedPhone,
-      body: truncatedMessage,
-      message_type: 'outbound',
-      wa_account_id: waAccountId
-    }]);
-  } catch (createError) {
-    console.error('[WHATSAPP-INCOMING] Direct create failed, trying composer:', createError);
+  // Send WhatsApp message via discuss.channel.message_post
+  // This is the correct method that links mail.message and properly sends via WhatsApp
+  const phoneLast9 = formattedPhone.slice(-9);
 
-    // Method 2: Try using discuss.channel to post message
-    try {
-      // Find the discuss channel for this phone number
-      const channels = await odoo.searchRead(
-        'discuss.channel',
-        [
-          ['channel_type', '=', 'whatsapp'],
-          ['whatsapp_number', 'ilike', formattedPhone.slice(-9)] // Match last 9 digits
-        ],
-        ['id'],
-        1
-      );
+  // Find the discuss channel for this phone number
+  const channels = await odoo.searchRead(
+    'discuss.channel',
+    [
+      ['channel_type', '=', 'whatsapp'],
+      ['whatsapp_number', 'ilike', phoneLast9]
+    ],
+    ['id', 'name'],
+    1
+  );
 
-      if (channels.length > 0) {
-        // Post message to the channel
-        await odoo.call(
-          'discuss.channel',
-          'message_post',
-          [[channels[0].id]],
-          {
-            body: truncatedMessage,
-            message_type: 'whatsapp_message'
-          }
-        );
-      } else {
-        console.warn('[WHATSAPP-INCOMING] No channel found for', formattedPhone);
+  if (channels.length > 0) {
+    console.log(`[WHATSAPP-INCOMING] Found channel ${channels[0].id} for ${phoneLast9}`);
+
+    // Post message to the channel - this creates both mail.message and whatsapp.message
+    await odoo.call(
+      'discuss.channel',
+      'message_post',
+      [[channels[0].id]],
+      {
+        body: truncatedMessage,
+        message_type: 'whatsapp_message'
       }
-    } catch (channelError) {
-      console.error('[WHATSAPP-INCOMING] Channel post also failed:', channelError);
-      throw channelError;
-    }
+    );
+    console.log('[WHATSAPP-INCOMING] Message posted to channel successfully');
+  } else {
+    console.warn('[WHATSAPP-INCOMING] No channel found for', formattedPhone);
+    throw new Error(`No WhatsApp channel found for ${formattedPhone}`);
   }
 }
 
