@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.json();
 
-    console.log('[WHATSAPP-INCOMING] Received raw:', JSON.stringify(rawBody).substring(0, 200));
+    // Log full payload for debugging
+    console.log('[WHATSAPP-INCOMING] Received raw:', JSON.stringify(rawBody).substring(0, 500));
 
     // Parse Odoo webhook format
     const odooPayload = rawBody as OdooWebhookPayload;
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
     const cleanMessage = messageBody.replace(/<[^>]*>/g, '').trim();
 
     const mobileNumber = odooPayload.mobile_number || '';
-    const waAccountId = odooPayload.wa_account_id;
+    // Handle wa_account_id as number or array [id, name] from Odoo
+    const waAccountIdRaw = odooPayload.wa_account_id;
+    let waAccountId: number | undefined = Array.isArray(waAccountIdRaw) ? waAccountIdRaw[0] : waAccountIdRaw;
     const messageId = odooPayload.id;
 
     console.log('[WHATSAPP-INCOMING] Parsed:', {
@@ -218,15 +221,60 @@ export async function POST(request: NextRequest) {
     });
 
     // Send response back via WhatsApp
-    if (response.message && waAccountId) {
+    if (response.message) {
       try {
-        await sendWhatsAppResponse(
-          mobileNumber,
-          response.message,
-          waAccountId,
-          messageId
-        );
-        console.log('[WHATSAPP-INCOMING] Response sent successfully');
+        // If wa_account_id is missing, try to find it from the original message or use default
+        let accountIdToUse = waAccountId;
+        if (!accountIdToUse) {
+          console.log('[WHATSAPP-INCOMING] wa_account_id missing, looking up from Odoo...');
+          try {
+            const odoo = await getOdooClient();
+            if (odoo) {
+              // Try to get wa_account_id from the original message
+              if (messageId) {
+                const originalMsg = await odoo.searchRead(
+                  'whatsapp.message',
+                  [['id', '=', messageId]],
+                  ['wa_account_id'],
+                  1
+                );
+                if (originalMsg.length > 0 && originalMsg[0].wa_account_id) {
+                  accountIdToUse = Array.isArray(originalMsg[0].wa_account_id)
+                    ? originalMsg[0].wa_account_id[0]
+                    : originalMsg[0].wa_account_id;
+                  console.log('[WHATSAPP-INCOMING] Found wa_account_id from message:', accountIdToUse);
+                }
+              }
+              // If still not found, get the default WhatsApp account
+              if (!accountIdToUse) {
+                const accounts = await odoo.searchRead(
+                  'whatsapp.account',
+                  [],
+                  ['id'],
+                  1
+                );
+                if (accounts.length > 0) {
+                  accountIdToUse = accounts[0].id;
+                  console.log('[WHATSAPP-INCOMING] Using default wa_account_id:', accountIdToUse);
+                }
+              }
+            }
+          } catch (lookupErr) {
+            console.warn('[WHATSAPP-INCOMING] Failed to lookup wa_account_id:', lookupErr);
+          }
+        }
+
+        if (accountIdToUse) {
+          await sendWhatsAppResponse(
+            mobileNumber,
+            response.message,
+            accountIdToUse,
+            messageId
+          );
+          console.log('[WHATSAPP-INCOMING] Response sent successfully');
+        } else {
+          console.warn('[WHATSAPP-INCOMING] Could not send response - no wa_account_id found');
+        }
       } catch (sendError) {
         console.error('[WHATSAPP-INCOMING] Failed to send response:', sendError);
         // Don't fail the whole request if sending fails
