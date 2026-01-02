@@ -136,7 +136,7 @@
         height: 26px;
       }
 
-      /* FULLSCREEN on mobile */
+      /* FULLSCREEN on mobile con safe area per barra telefono */
       #lapa-chat-iframe-container {
         position: fixed !important;
         top: 0 !important;
@@ -150,11 +150,26 @@
         border-radius: 0 !important;
         transform-origin: center center;
         z-index: 9999999 !important;
+        /* Safe area per iPhone/Android con gesture bar */
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
       }
 
       #lapa-chat-iframe-container #lapa-chat-iframe {
         width: 100% !important;
         height: 100% !important;
+      }
+
+      /* Background bianco sotto l'iframe per safe area */
+      #lapa-chat-iframe-container::after {
+        content: '';
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-bottom, 0px);
+        background: white;
+        z-index: -1;
       }
 
       #lapa-chat-iframe-container.open {
