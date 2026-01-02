@@ -41,10 +41,11 @@ export interface StoredConversation {
 }
 
 const CONVERSATION_PREFIX = 'lapa_conv:';
-const CONVERSATION_TTL = 60 * 60 * 24; // 24 ore
+const MAX_CONVERSATIONS = 100; // Mantieni le ultime 100 conversazioni (non più basato su tempo)
 
 /**
  * Salva una conversazione nel KV
+ * NOTA: Non usa più TTL - le conversazioni vengono mantenute per quantità, non per tempo
  */
 export async function saveConversation(conversation: StoredConversation): Promise<void> {
   try {
@@ -61,10 +62,62 @@ export async function saveConversation(conversation: StoredConversation): Promis
       updatedAt: new Date().toISOString()
     };
 
-    await kv.set(key, serializable, { ex: CONVERSATION_TTL });
+    // Salva SENZA TTL - le conversazioni persistono finché non vengono pulite
+    await kv.set(key, serializable);
     console.log(`💾 Conversazione salvata: ${conversation.sessionId} (${conversation.messages.length} messaggi)`);
+
+    // Ogni tanto pulisci le conversazioni vecchie (1% delle volte per non rallentare)
+    if (Math.random() < 0.01) {
+      cleanupOldConversations().catch(err => console.warn('⚠️ Cleanup error:', err));
+    }
   } catch (error) {
     console.error('❌ Errore salvataggio conversazione:', error);
+  }
+}
+
+/**
+ * Pulisce le conversazioni più vecchie se superiamo MAX_CONVERSATIONS
+ * Mantiene sempre le ultime 100 conversazioni ordinate per updatedAt
+ */
+export async function cleanupOldConversations(): Promise<number> {
+  try {
+    const keys = await kv.keys(`${CONVERSATION_PREFIX}*`);
+
+    if (keys.length <= MAX_CONVERSATIONS) {
+      return 0; // Niente da pulire
+    }
+
+    console.log(`🧹 Cleanup: ${keys.length} conversazioni trovate, limite ${MAX_CONVERSATIONS}`);
+
+    // Carica tutte le conversazioni per ordinarle per data
+    const conversations: { key: string; updatedAt: Date }[] = [];
+    for (const key of keys) {
+      const data = await kv.get<any>(key);
+      if (data?.updatedAt) {
+        conversations.push({
+          key,
+          updatedAt: new Date(data.updatedAt)
+        });
+      }
+    }
+
+    // Ordina per data (più recenti prima)
+    conversations.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+    // Elimina le conversazioni oltre il limite
+    const toDelete = conversations.slice(MAX_CONVERSATIONS);
+    let deleted = 0;
+
+    for (const conv of toDelete) {
+      await kv.del(conv.key);
+      deleted++;
+    }
+
+    console.log(`🗑️ Cleanup completato: ${deleted} conversazioni eliminate`);
+    return deleted;
+  } catch (error) {
+    console.error('❌ Errore cleanup conversazioni:', error);
+    return 0;
   }
 }
 
