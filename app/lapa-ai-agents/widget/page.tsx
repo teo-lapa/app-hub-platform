@@ -476,7 +476,7 @@ export default function LapaAgentsWidgetPage() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-white overflow-hidden">
+    <div className="h-dvh w-screen flex flex-col bg-white overflow-hidden" style={{ height: '100dvh', maxHeight: '-webkit-fill-available' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-red-600 to-red-700 p-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -600,7 +600,7 @@ export default function LapaAgentsWidgetPage() {
       </div>
 
       {/* Input Area */}
-      <div className="p-3 border-t border-gray-200 bg-white shrink-0">
+      <div className="p-3 border-t border-gray-200 bg-white shrink-0" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {attachments.map((att, index) => {
