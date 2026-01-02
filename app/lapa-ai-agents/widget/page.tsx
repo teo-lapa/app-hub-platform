@@ -135,6 +135,42 @@ export default function LapaAgentsWidgetPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Gestione viewport dinamica per mobile (tastiera, barra browser)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      // Usa visualViewport se disponibile (più preciso su mobile)
+      const vh = window.visualViewport?.height || window.innerHeight;
+      if (containerRef.current) {
+        containerRef.current.style.height = `${vh}px`;
+      }
+    };
+
+    // Gestione focus input - scrolla per rendere visibile
+    const handleFocus = () => {
+      setTimeout(() => {
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 300);
+    };
+
+    // Inizializza
+    handleResize();
+
+    // Event listeners
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
+    inputRef.current?.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
+      inputRef.current?.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -476,7 +512,7 @@ export default function LapaAgentsWidgetPage() {
   };
 
   return (
-    <div className="w-screen flex flex-col bg-white overflow-hidden" style={{ height: '100%', minHeight: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+    <div ref={containerRef} className="w-screen flex flex-col bg-white overflow-hidden" style={{ height: '100%', minHeight: '100%', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-red-600 to-red-700 p-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -678,6 +714,7 @@ export default function LapaAgentsWidgetPage() {
           </div>
 
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
