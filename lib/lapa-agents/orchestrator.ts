@@ -3660,10 +3660,26 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     }
 
     // Cerca il prodotto in Odoo
-    const searchTerms = (productName || userMessage).toLowerCase();
+    // Pulisci il messaggio rimuovendo le parole di azione (aggiungi, mettimi, etc.)
+    let searchTerms = productName || userMessage;
+    searchTerms = searchTerms.toLowerCase()
+      .replace(/^aggiungi\s+/i, '')
+      .replace(/aggiungimi\s*/i, '')
+      .replace(/mettimi\s*/i, '')
+      .replace(/aggiungi\s*/i, '')
+      .replace(/metti\s*/i, '')
+      .replace(/lo voglio\s*/i, '')
+      .replace(/lo prendo\s*/i, '')
+      .replace(/me lo metti\s*/i, '')
+      .replace(/al carrello\s*/i, '')
+      .replace(/nel carrello\s*/i, '')
+      .trim();
+
+    // Dominio corretto: (name ILIKE searchTerms OR default_code ILIKE searchTerms) AND sale_ok = true
     const products = await odoo.searchRead(
       'product.product',
       [
+        '&',
         '|',
         ['name', 'ilike', searchTerms],
         ['default_code', 'ilike', searchTerms],
