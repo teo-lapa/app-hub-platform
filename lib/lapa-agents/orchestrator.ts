@@ -18,6 +18,10 @@ import { enrichMessageWithAttachments, Attachment } from './attachment-analyzer'
 // URL base per il sito e-commerce
 const LAPA_SHOP_URL = process.env.LAPA_SHOP_URL || 'https://lapa.ch';
 
+// Company ID per LAPA Svizzera (filtra ordini per escludere ItaEmpire e altre company)
+// LAPA - finest italian food GmbH (CHF, Switzerland) = company_id 1
+const LAPA_COMPANY_ID = 1;
+
 // ============================================================================
 // RECIPE DETECTION - Mappa ricette -> ingredienti chiave
 // ============================================================================
@@ -3130,7 +3134,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           'sale.order',
           [
             ['partner_id', 'in', partnerIds],
-            ['name', 'ilike', entities.order_id]
+            ['name', 'ilike', entities.order_id],
+            ['company_id', '=', LAPA_COMPANY_ID]
           ],
           [
             'name', 'partner_id', 'date_order', 'state',
@@ -3169,9 +3174,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       }
 
       // Altrimenti mostra lo storico ordini recenti (company-wide per B2B)
+      // Filtro per company_id per escludere ordini di altre aziende (es. ItaEmpire)
       const orders = await odoo.searchRead(
         'sale.order',
-        [['partner_id', 'in', partnerIds]],
+        [
+          ['partner_id', 'in', partnerIds],
+          ['company_id', '=', LAPA_COMPANY_ID]
+        ],
         ['id', 'name', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
         10
       );
@@ -3819,12 +3828,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     customerName?: string
   ): Promise<AgentResponse> {
     try {
-      // Cerca un preventivo draft esistente per questo cliente
+      // Cerca un preventivo draft esistente per questo cliente (solo LAPA Svizzera)
       let carts = await odoo.searchRead(
         'sale.order',
         [
           ['partner_id', '=', customerId],
-          ['state', '=', 'draft']
+          ['state', '=', 'draft'],
+          ['company_id', '=', LAPA_COMPANY_ID]
         ],
         ['id', 'name', 'order_line', 'amount_total'],
         1
@@ -3835,10 +3845,11 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       let isNewCart = false;
 
       if (carts.length === 0) {
-        // Crea un nuovo preventivo
+        // Crea un nuovo preventivo per LAPA Svizzera
         const newCartIds = await odoo.create('sale.order', [{
           partner_id: customerId,
-          state: 'draft'
+          state: 'draft',
+          company_id: LAPA_COMPANY_ID
         }]);
         cartId = newCartIds[0];
         isNewCart = true;
@@ -3938,7 +3949,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       'sale.order',
       [
         ['partner_id', '=', customerId],
-        ['state', '=', 'draft']
+        ['state', '=', 'draft'],
+        ['company_id', '=', LAPA_COMPANY_ID]
       ],
       ['id', 'name', 'order_line', 'amount_total', 'amount_untaxed'],
       1
@@ -4018,12 +4030,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     const customerId = context.customerId!;
     const productName = intent.entities?.product_name;
 
-    // Trova il carrello
+    // Trova il carrello (solo LAPA Svizzera)
     const carts = await odoo.searchRead(
       'sale.order',
       [
         ['partner_id', '=', customerId],
-        ['state', '=', 'draft']
+        ['state', '=', 'draft'],
+        ['company_id', '=', LAPA_COMPANY_ID]
       ],
       ['id', 'name', 'order_line'],
       1
@@ -4099,7 +4112,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       'sale.order',
       [
         ['partner_id', '=', customerId],
-        ['state', '=', 'draft']
+        ['state', '=', 'draft'],
+        ['company_id', '=', LAPA_COMPANY_ID]
       ],
       ['id', 'name', 'order_line', 'amount_total'],
       1
@@ -4311,12 +4325,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         const productSearch = (specificProductMatch[1] || specificProductMatch[2] || '').trim();
 
         if (productSearch && productSearch.length > 2) {
-          // Trova ordini del cliente (company-wide per B2B)
+          // Trova ordini del cliente (solo LAPA Svizzera)
           const orders = await odoo.searchRead(
             'sale.order',
             [
               ['partner_id', 'in', partnerIds],
-              ['state', 'in', ['sale', 'done']]
+              ['state', 'in', ['sale', 'done']],
+              ['company_id', '=', LAPA_COMPANY_ID]
             ],
             ['id', 'name', 'date_order'],
             100
@@ -4420,12 +4435,13 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }
       }
 
-      // Mostra lista prodotti acquistati (query generica, company-wide per B2B)
+      // Mostra lista prodotti acquistati (solo LAPA Svizzera)
       const orders = await odoo.searchRead(
         'sale.order',
         [
           ['partner_id', 'in', partnerIds],
-          ['state', 'in', ['sale', 'done']]
+          ['state', 'in', ['sale', 'done']],
+          ['company_id', '=', LAPA_COMPANY_ID]
         ],
         ['id', 'name', 'date_order'],
         100
@@ -5081,7 +5097,8 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           'sale.order',
           [
             ['partner_id', '=', context.customerId],
-            ['name', 'ilike', entities.order_id]
+            ['name', 'ilike', entities.order_id],
+            ['company_id', '=', LAPA_COMPANY_ID]
           ],
           ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
           1
@@ -5093,7 +5110,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       if (!orderToShow && entities.position) {
         const orders = await odoo.searchRead(
           'sale.order',
-          [['partner_id', '=', context.customerId]],
+          [
+            ['partner_id', '=', context.customerId],
+            ['company_id', '=', LAPA_COMPANY_ID]
+          ],
           ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
           20
         );
@@ -5127,11 +5147,14 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         }
       }
 
-      // 4. Fallback: prendi l'ultimo ordine
+      // 4. Fallback: prendi l'ultimo ordine (solo LAPA Svizzera)
       if (!orderToShow) {
         const orders = await odoo.searchRead(
           'sale.order',
-          [['partner_id', '=', context.customerId]],
+          [
+            ['partner_id', '=', context.customerId],
+            ['company_id', '=', LAPA_COMPANY_ID]
+          ],
           ['name', 'partner_id', 'date_order', 'state', 'amount_total', 'currency_id', 'order_line'],
           1
         );
