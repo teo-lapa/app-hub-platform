@@ -3854,11 +3854,15 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           product_uom_qty: newQty
         });
       } else {
-        // Aggiungi nuova riga
+        // Aggiungi nuova riga con tutti i campi obbligatori
+        const uomId = product.uom_id?.[0] || 1; // Default a Units se non specificato
         await odoo.create('sale.order.line', [{
           order_id: cartId,
           product_id: product.id,
-          product_uom_qty: quantity
+          product_uom_qty: quantity,
+          product_uom: uomId,
+          name: product.name,
+          price_unit: product.list_price || 0
         }]);
       }
 
