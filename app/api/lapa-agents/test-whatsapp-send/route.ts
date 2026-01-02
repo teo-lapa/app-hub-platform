@@ -8,6 +8,16 @@ import { getOdooClient } from '@/lib/odoo-client';
 export async function POST(request: NextRequest) {
   console.log('[TEST-WHATSAPP] Starting test...');
 
+  // Debug: log environment variables (masked)
+  console.log('[TEST-WHATSAPP] Env check:', {
+    ODOO_URL: process.env.NEXT_PUBLIC_ODOO_URL ? 'SET' : 'NOT SET',
+    ODOO_DB: process.env.ODOO_DB ? 'SET' : 'NOT SET',
+    ODOO_USERNAME: process.env.ODOO_USERNAME ? 'SET' : 'NOT SET',
+    ODOO_ADMIN_EMAIL: process.env.ODOO_ADMIN_EMAIL ? 'SET' : 'NOT SET',
+    ODOO_PASSWORD: process.env.ODOO_PASSWORD ? 'SET' : 'NOT SET',
+    ODOO_ADMIN_PASSWORD: process.env.ODOO_ADMIN_PASSWORD ? 'SET' : 'NOT SET',
+  });
+
   try {
     const body = await request.json();
     const mobileNumber = body.mobile_number || '+41763730491';
