@@ -3,8 +3,11 @@
  *
  * POST /api/lapa-agents/whatsapp-incoming
  *
- * Receives WhatsApp messages from Odoo automation,
+ * Receives WhatsApp messages from Odoo webhook automation,
  * processes them with AI agents, and sends response back via WhatsApp.
+ *
+ * Supports Odoo native webhook format:
+ * { id, body, mobile_number, message_type, wa_account_id, mail_message_id }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,42 +15,103 @@ import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
 import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
 
-interface WhatsAppIncomingRequest {
-  whatsapp_message_id: number;
-  mobile_number: string;
-  message: string;
-  partner_id?: number;
-  partner_name?: string;
-  customer_type?: 'b2b' | 'b2c' | 'anonymous';
+// Odoo native webhook format
+interface OdooWebhookPayload {
+  _model?: string;
+  _name?: string;
+  id: number;
+  body?: string;          // HTML content
+  mobile_number?: string;
+  message_type?: string;  // 'inbound' | 'outbound'
   wa_account_id?: number;
+  mail_message_id?: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: WhatsAppIncomingRequest = await request.json();
+    const rawBody = await request.json();
 
-    console.log('[WHATSAPP-INCOMING] Received:', {
-      messageId: body.whatsapp_message_id,
-      from: body.mobile_number,
-      message: body.message?.substring(0, 50) + '...',
-      partner: body.partner_name
+    console.log('[WHATSAPP-INCOMING] Received raw:', JSON.stringify(rawBody).substring(0, 200));
+
+    // Parse Odoo webhook format
+    const odooPayload = rawBody as OdooWebhookPayload;
+
+    // Only process inbound messages (from customers to us)
+    if (odooPayload.message_type && odooPayload.message_type !== 'inbound') {
+      console.log('[WHATSAPP-INCOMING] Skipping outbound message');
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: 'outbound message'
+      });
+    }
+
+    // Extract and clean message content (remove HTML tags)
+    const messageBody = odooPayload.body || '';
+    const cleanMessage = messageBody.replace(/<[^>]*>/g, '').trim();
+
+    const mobileNumber = odooPayload.mobile_number || '';
+    const waAccountId = odooPayload.wa_account_id;
+    const messageId = odooPayload.id;
+
+    console.log('[WHATSAPP-INCOMING] Parsed:', {
+      messageId,
+      from: mobileNumber,
+      message: cleanMessage?.substring(0, 50) + '...',
+      messageType: odooPayload.message_type
     });
 
     // Validate required fields
-    if (!body.message || !body.mobile_number) {
+    if (!cleanMessage || !mobileNumber) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required fields: message and mobile_number'
+        error: 'Missing required fields: body and mobile_number'
       }, { status: 400 });
     }
 
     // Create session ID based on phone number
-    const sessionId = `whatsapp-${body.mobile_number.replace(/\+/g, '')}`;
+    const sessionId = `whatsapp-${mobileNumber.replace(/[\+\s]/g, '')}`;
 
-    // Determine customer type
-    const customerType = body.customer_type || 'anonymous';
-    const customerId = body.partner_id;
-    const customerName = body.partner_name;
+    // Look up partner info from Odoo if mail_message_id is provided
+    let customerId: number | undefined;
+    let customerName: string | undefined;
+    let customerType: 'b2b' | 'b2c' | 'anonymous' = 'anonymous';
+
+    if (odooPayload.mail_message_id) {
+      try {
+        const odoo = await getOdooClient();
+        if (odoo) {
+          // Get author info from mail.message
+          const messages = await odoo.searchRead(
+            'mail.message',
+            [['id', '=', odooPayload.mail_message_id]],
+            ['author_id'],
+            1
+          );
+          if (messages.length > 0 && messages[0].author_id) {
+            customerId = messages[0].author_id[0];
+            customerName = messages[0].author_id[1];
+
+            // Get partner details to determine B2B/B2C
+            const partners = await odoo.searchRead(
+              'res.partner',
+              [['id', '=', customerId]],
+              ['is_company', 'parent_id'],
+              1
+            );
+            if (partners.length > 0) {
+              if (partners[0].is_company || partners[0].parent_id) {
+                customerType = 'b2b';
+              } else {
+                customerType = 'b2c';
+              }
+            }
+          }
+        }
+      } catch (lookupError) {
+        console.warn('[WHATSAPP-INCOMING] Partner lookup failed:', lookupError);
+      }
+    }
 
     // Create conversation ID for storage
     const conversationId = customerId
@@ -57,7 +121,7 @@ export async function POST(request: NextRequest) {
     // Save incoming message to conversation store
     await addMessageToConversation(conversationId, {
       role: 'user',
-      content: body.message,
+      content: cleanMessage,
       timestamp: new Date(),
       channel: 'whatsapp',
     }, {
@@ -87,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     // Process with AI agents
     const response = await orchestrator.processMessage(
-      body.message,
+      cleanMessage,
       conversationId,
       {
         customerType,
@@ -122,13 +186,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Send response back via WhatsApp
-    if (response.message && body.wa_account_id) {
+    if (response.message && waAccountId) {
       try {
         await sendWhatsAppResponse(
-          body.mobile_number,
+          mobileNumber,
           response.message,
-          body.wa_account_id,
-          body.whatsapp_message_id
+          waAccountId,
+          messageId
         );
         console.log('[WHATSAPP-INCOMING] Response sent successfully');
       } catch (sendError) {
@@ -141,11 +205,11 @@ export async function POST(request: NextRequest) {
     if (response.requiresHumanEscalation) {
       try {
         await createEscalationTicket(
-          body.mobile_number,
-          body.message,
+          mobileNumber,
+          cleanMessage,
           response.message,
-          body.partner_id,
-          body.partner_name
+          customerId,
+          customerName
         );
         console.log('[WHATSAPP-INCOMING] Escalation ticket created');
       } catch (escError) {
