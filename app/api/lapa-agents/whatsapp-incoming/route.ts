@@ -221,10 +221,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Send response back via WhatsApp
+    console.log('[WHATSAPP-INCOMING] Preparing to send response, message length:', response.message?.length, 'mobileNumber:', mobileNumber);
     if (response.message) {
       try {
         // If wa_account_id is missing, try to find it from the original message or use default
         let accountIdToUse = waAccountId;
+        console.log('[WHATSAPP-INCOMING] Initial wa_account_id:', accountIdToUse);
         if (!accountIdToUse) {
           console.log('[WHATSAPP-INCOMING] wa_account_id missing, looking up from Odoo...');
           try {
