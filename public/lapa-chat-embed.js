@@ -48,10 +48,27 @@
       transition: all 0.3s ease;
     }
 
+    #lapa-chat-button {
+      animation: heartbeat 2s ease-in-out infinite;
+    }
+
     #lapa-chat-button:hover {
       background: ${CONFIG.buttonHoverColor};
       transform: scale(1.05);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      animation: none;
+    }
+
+    #lapa-chat-button.open {
+      animation: none;
+    }
+
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      10% { transform: scale(1.1); }
+      20% { transform: scale(1); }
+      30% { transform: scale(1.1); }
+      40%, 100% { transform: scale(1); }
     }
 
     #lapa-chat-button svg {
