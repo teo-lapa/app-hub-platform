@@ -3421,11 +3421,72 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 handleCartAdd - userMessage:', userMessage);
 
+    const lowerMessage = userMessage.toLowerCase();
+
+    // ========================================
+    // CONFERMA AGGIUNTA: se l'utente conferma e ci sono prodotti in attesa
+    // ========================================
+    const isConfirmation = /^(sì|si|yes|ja|oui|ok|conferm|procedi|vai pure|certo|esatto|perfetto)/i.test(lowerMessage.trim());
+    const pendingConfirmation = this.extractPendingConfirmationFromConversation(context);
+
+    if (isConfirmation && pendingConfirmation.length > 0) {
+      console.log('🛒 User confirmed cart addition, processing:', pendingConfirmation.length, 'products');
+
+      const addedProducts: string[] = [];
+      const failedProducts: string[] = [];
+      let lastCartInfo: any = null;
+
+      for (const product of pendingConfirmation) {
+        try {
+          const qty = product.qty || 1;
+          const result = await this.addProductToCart(odoo, customerId, product, qty, context.customerName);
+          addedProducts.push(`${qty}x ${product.name}`);
+          lastCartInfo = result.data;
+        } catch (err) {
+          console.error('❌ Errore aggiunta prodotto:', product.name, err);
+          failedProducts.push(product.name);
+        }
+      }
+
+      if (addedProducts.length > 0) {
+        const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
+        let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
+        addedProducts.forEach(p => message += `• ${p}\n`);
+
+        if (failedProducts.length > 0) {
+          message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
+        }
+
+        if (lastCartInfo) {
+          message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
+          if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+        }
+
+        return {
+          success: true,
+          message,
+          agentId: 'cart',
+          data: lastCartInfo,
+          suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
+        };
+      }
+    }
+
+    // Se l'utente dice "no" o "annulla" e ci sono prodotti pending, annulla
+    const isCancellation = /^(no|annulla|cancel|non|lascia)/i.test(lowerMessage.trim());
+    if (isCancellation && pendingConfirmation.length > 0) {
+      return {
+        success: true,
+        message: 'Ok, ho annullato. Posso aiutarti con altro?',
+        agentId: 'cart',
+        suggestedActions: ['Cerca un prodotto', 'Vedi carrello', 'I miei ordini']
+      };
+    }
+
     // ========================================
     // SELEZIONE MULTIPLA: "tutte e due", "entrambi", "tutti", etc.
     // Quando l'utente vuole TUTTI i prodotti mostrati nella risposta precedente
     // ========================================
-    const lowerMessage = userMessage.toLowerCase();
     const wantsAllProducts = /\b(tutt[ie]?\s*(e\s*due)?|entramb[ie]|ambedue|both|all|tutti\s*e\s*due)\b/i.test(lowerMessage);
 
     if (wantsAllProducts) {
@@ -3433,43 +3494,29 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.log('🛒 User wants ALL products, pending:', pendingProducts.length);
 
       if (pendingProducts.length > 0) {
-        const addedProducts: string[] = [];
-        const failedProducts: string[] = [];
-        let lastCartInfo: any = null;
+        // Prepara lista prodotti e chiedi conferma
+        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+        const productsWithQty = pendingProducts.map((p: any) => ({
+          ...p,
+          qty: 1,
+          price: p.list_price || 0
+        }));
 
-        for (const product of pendingProducts) {
-          try {
-            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
-            addedProducts.push(product.name);
-            lastCartInfo = result.data;
-          } catch (err) {
-            console.error('❌ Errore aggiunta prodotto:', product.name, err);
-            failedProducts.push(product.name);
-          }
-        }
+        productsWithQty.forEach((p: any) => {
+          message += `• ${p.qty}x **${p.name}**`;
+          if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
+          message += '\n';
+        });
 
-        if (addedProducts.length > 0) {
-          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
-          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
-          addedProducts.forEach(p => message += `• ${p}\n`);
+        message += '\n**Confermi?**';
 
-          if (failedProducts.length > 0) {
-            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
-          }
-
-          if (lastCartInfo) {
-            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
-            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
-          }
-
-          return {
-            success: true,
-            message,
-            agentId: 'cart',
-            data: lastCartInfo,
-            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
-          };
-        }
+        return {
+          success: true,
+          message,
+          agentId: 'cart',
+          data: { pending_cart_confirmation: productsWithQty },
+          suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Modifica quantità']
+        };
       }
     }
 
@@ -3494,43 +3541,29 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.log('🛒 Matched products from pending by name:', matchedProducts.map(p => p.name));
 
       if (matchedProducts.length > 0) {
-        const addedProducts: string[] = [];
-        const failedProducts: string[] = [];
-        let lastCartInfo: any = null;
+        // Prepara lista prodotti e chiedi conferma
+        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+        const productsWithQty = matchedProducts.map((p: any) => ({
+          ...p,
+          qty: 1,
+          price: p.list_price || 0
+        }));
 
-        for (const product of matchedProducts) {
-          try {
-            const result = await this.addProductToCart(odoo, customerId, product, 1, context.customerName);
-            addedProducts.push(product.name);
-            lastCartInfo = result.data;
-          } catch (err) {
-            console.error('❌ Errore aggiunta prodotto:', product.name, err);
-            failedProducts.push(product.name);
-          }
-        }
+        productsWithQty.forEach((p: any) => {
+          message += `• ${p.qty}x **${p.name}**`;
+          if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
+          message += '\n';
+        });
 
-        if (addedProducts.length > 0) {
-          const cartUrl = lastCartInfo ? generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name) : '';
-          let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
-          addedProducts.forEach(p => message += `• ${p}\n`);
+        message += '\n**Confermi?**';
 
-          if (failedProducts.length > 0) {
-            message += `\n⚠️ Non aggiunti: ${failedProducts.join(', ')}`;
-          }
-
-          if (lastCartInfo) {
-            message += `\n\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
-            if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
-          }
-
-          return {
-            success: true,
-            message,
-            agentId: 'cart',
-            data: lastCartInfo,
-            suggestedActions: ['Vedi carrello', 'Conferma ordine', 'Cerca altro']
-          };
-        }
+        return {
+          success: true,
+          message,
+          agentId: 'cart',
+          data: { pending_cart_confirmation: productsWithQty },
+          suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Modifica quantità']
+        };
       }
     }
 
@@ -3544,26 +3577,25 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       const selectedProduct = pendingProducts[ordinalSelection];
       console.log('🛒 Selected product from pending:', selectedProduct.name);
 
-      try {
-        const result = await this.addProductToCart(odoo, customerId, selectedProduct, 1, context.customerName);
-        const cartUrl = generateOrderUrl(result.data.cart_id, result.data.cart_name);
+      // Chiedi conferma prima di aggiungere
+      const productWithQty = {
+        ...selectedProduct,
+        qty: 1,
+        price: selectedProduct.list_price || 0
+      };
 
-        return {
-          success: true,
-          message: `✅ **${selectedProduct.name}** aggiunto al carrello!\n\n🛒 **Carrello (${result.data.cart_name}):**\n- ${result.data.item_count} articoli\n- Totale: CHF ${result.data.total.toFixed(2)}\n\n[Vedi carrello](${cartUrl})`,
-          agentId: 'cart',
-          data: result.data,
-          suggestedActions: ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
-        };
-      } catch (err) {
-        console.error('❌ Errore aggiunta prodotto selezionato:', err);
-        return {
-          success: false,
-          message: `Non sono riuscito ad aggiungere ${selectedProduct.name} al carrello. Riprova.`,
-          agentId: 'cart',
-          suggestedActions: ['Riprova', 'Cerca altro prodotto']
-        };
-      }
+      let message = '🛒 **Vuoi aggiungere questo prodotto al carrello?**\n\n';
+      message += `• 1x **${selectedProduct.name}**`;
+      if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
+      message += '\n\n**Confermi?**';
+
+      return {
+        success: true,
+        message,
+        agentId: 'cart',
+        data: { pending_cart_confirmation: [productWithQty] },
+        suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Cambia quantità']
+      };
     }
 
     // Estrai i prodotti menzionati dal messaggio usando parsing intelligente
@@ -3571,11 +3603,10 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     console.log('🛒 Extracted products:', extractedProducts);
 
-    // Se abbiamo estratto prodotti dal messaggio, cercali in Odoo
+    // Se abbiamo estratto prodotti dal messaggio, cercali in Odoo e chiedi conferma
     if (extractedProducts.length > 0) {
-      const addedProducts: string[] = [];
+      const foundProducts: any[] = [];
       const notFoundProducts: string[] = [];
-      let lastCartInfo: any = null;
 
       for (const extracted of extractedProducts) {
         // Cerca il prodotto in Odoo
@@ -3595,47 +3626,38 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           // Prendi il prodotto più rilevante (primo risultato)
           const product = products[0];
           const qty = extracted.quantity || 1;
-
-          try {
-            const result = await this.addProductToCart(odoo, customerId, product, qty, context.customerName);
-            addedProducts.push(`${qty}x ${product.name}`);
-            lastCartInfo = result.data;
-          } catch (err) {
-            console.error('Errore aggiunta prodotto:', err);
-            notFoundProducts.push(extracted.name);
-          }
+          foundProducts.push({
+            ...product,
+            qty,
+            price: product.list_price || 0
+          });
         } else {
           notFoundProducts.push(extracted.name);
         }
       }
 
-      // Costruisci il messaggio di risposta
-      if (addedProducts.length > 0) {
-        let message = `✅ **Prodotti aggiunti al carrello:**\n\n`;
-        addedProducts.forEach(p => {
-          message += `• ${p}\n`;
+      // Se abbiamo trovato prodotti, chiedi conferma
+      if (foundProducts.length > 0) {
+        let message = '🛒 **Vuoi aggiungere questi prodotti al carrello?**\n\n';
+
+        foundProducts.forEach((p: any) => {
+          message += `• ${p.qty}x **${p.name}**`;
+          if (p.price) message += ` - CHF ${p.price.toFixed(2)}`;
+          message += '\n';
         });
 
         if (notFoundProducts.length > 0) {
           message += `\n⚠️ **Non trovati:** ${notFoundProducts.join(', ')}\n`;
         }
 
-        if (lastCartInfo) {
-          const cartUrl = generateOrderUrl(lastCartInfo.cart_id, lastCartInfo.cart_name);
-          message += `\n🛒 **Carrello (${lastCartInfo.cart_name}):**\n`;
-          message += `- ${lastCartInfo.item_count} articoli\n`;
-          message += `- Totale: CHF ${lastCartInfo.total.toFixed(2)}\n\n`;
-          message += `[Vedi carrello](${cartUrl})`;
-        }
+        message += '\n**Confermi?**';
 
         return {
           success: true,
           message,
           agentId: 'cart',
-          data: lastCartInfo,
-          suggestedActions: notFoundProducts.length > 0
-            ? ['Cerca ' + notFoundProducts[0], 'Vedi carrello', 'Conferma ordine']
-            : ['Aggiungi altro', 'Vedi carrello', 'Conferma ordine']
+          data: { pending_cart_confirmation: foundProducts },
+          suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Modifica quantità']
         };
       }
     }
@@ -3708,8 +3730,26 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     }
 
     if (products.length === 1) {
-      // Un solo prodotto trovato - aggiungi direttamente con quantità 1
-      return await this.addProductToCart(odoo, customerId, products[0], 1, context.customerName);
+      // Un solo prodotto trovato - chiedi conferma
+      const product = products[0];
+      const productWithQty = {
+        ...product,
+        qty: 1,
+        price: product.list_price || 0
+      };
+
+      let message = '🛒 **Vuoi aggiungere questo prodotto al carrello?**\n\n';
+      message += `• 1x **${product.name}**`;
+      if (productWithQty.price) message += ` - CHF ${productWithQty.price.toFixed(2)}`;
+      message += '\n\n**Confermi?**';
+
+      return {
+        success: true,
+        message,
+        agentId: 'cart',
+        data: { pending_cart_confirmation: [productWithQty] },
+        suggestedActions: ['Sì, aggiungi', 'No, annulla', 'Cambia quantità']
+      };
     }
 
     // Più prodotti trovati - chiedi quale
@@ -4200,6 +4240,25 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     }
 
     console.log('🛒 No pending_products found in conversation');
+    return [];
+  }
+
+  /**
+   * Estrae prodotti in attesa di conferma per aggiunta al carrello
+   */
+  private extractPendingConfirmationFromConversation(context: CustomerContext): any[] {
+    // Cerca l'ultimo messaggio assistant che ha pending_cart_confirmation nei data
+    const recentMessages = context.conversationHistory.slice(-3).reverse();
+
+    for (const msg of recentMessages) {
+      if (msg.role === 'assistant' && msg.data) {
+        if (msg.data.pending_cart_confirmation && Array.isArray(msg.data.pending_cart_confirmation)) {
+          console.log('🛒 Found pending_cart_confirmation:', msg.data.pending_cart_confirmation.length);
+          return msg.data.pending_cart_confirmation;
+        }
+      }
+    }
+
     return [];
   }
 
