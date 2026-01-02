@@ -342,6 +342,7 @@ async function sendWhatsAppResponse(
   // Send WhatsApp message via discuss.channel.message_post
   // This is the correct method that links mail.message and properly sends via WhatsApp
   const phoneLast9 = formattedPhone.slice(-9);
+  console.log(`[WHATSAPP-INCOMING] sendWhatsAppResponse called for ${mobileNumber} (last9: ${phoneLast9})`);
 
   // Find the discuss channel for this phone number
   const channels = await odoo.searchRead(
@@ -353,21 +354,29 @@ async function sendWhatsAppResponse(
     ['id', 'name'],
     1
   );
+  console.log(`[WHATSAPP-INCOMING] Channel search result:`, JSON.stringify(channels));
 
   if (channels.length > 0) {
     console.log(`[WHATSAPP-INCOMING] Found channel ${channels[0].id} for ${phoneLast9}`);
+    console.log(`[WHATSAPP-INCOMING] Message to send (first 100 chars): "${truncatedMessage.substring(0, 100)}..."`);
 
     // Post message to the channel - this creates both mail.message and whatsapp.message
-    await odoo.call(
-      'discuss.channel',
-      'message_post',
-      [[channels[0].id]],
-      {
-        body: truncatedMessage,
-        message_type: 'whatsapp_message'
-      }
-    );
-    console.log('[WHATSAPP-INCOMING] Message posted to channel successfully');
+    try {
+      const postResult = await odoo.call(
+        'discuss.channel',
+        'message_post',
+        [[channels[0].id]],
+        {
+          body: truncatedMessage,
+          message_type: 'whatsapp_message'
+        }
+      );
+      console.log('[WHATSAPP-INCOMING] message_post result:', JSON.stringify(postResult));
+      console.log('[WHATSAPP-INCOMING] Message posted to channel successfully');
+    } catch (postError: any) {
+      console.error('[WHATSAPP-INCOMING] message_post FAILED:', postError.message);
+      throw postError;
+    }
   } else {
     console.warn('[WHATSAPP-INCOMING] No channel found for', formattedPhone);
     throw new Error(`No WhatsApp channel found for ${formattedPhone}`);
