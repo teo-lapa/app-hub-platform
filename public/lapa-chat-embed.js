@@ -4,7 +4,7 @@
  * Questo script crea un bottone flottante che apre la chat LAPA AI in un iframe.
  * Da inserire nel sito Odoo per sostituire il livechat nativo.
  *
- * Uso: <script src="https://app-hub.vercel.app/lapa-chat-embed.js"></script>
+ * Uso: <script src="https://hub.lapa.ch/lapa-chat-embed.js"></script>
  */
 
 (function() {
@@ -12,7 +12,7 @@
 
   // Configurazione
   const CONFIG = {
-    widgetUrl: 'https://app-hub.vercel.app/lapa-ai-agents/widget',
+    widgetUrl: 'https://hub.lapa.ch/lapa-ai-agents/widget',
     buttonColor: '#dc2626', // red-600
     buttonHoverColor: '#b91c1c', // red-700
     buttonSize: 60,
