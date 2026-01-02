@@ -143,15 +143,18 @@
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        width: 100vw !important;
-        height: 100dvh !important;
-        height: -webkit-fill-available !important;
-        max-width: 100vw !important;
-        max-height: 100dvh !important;
-        max-height: -webkit-fill-available !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
         border-radius: 0 !important;
         transform-origin: center center;
         z-index: 9999999 !important;
+      }
+
+      #lapa-chat-iframe-container #lapa-chat-iframe {
+        width: 100% !important;
+        height: 100% !important;
       }
 
       #lapa-chat-iframe-container.open {
