@@ -161,9 +161,9 @@
       }
     }
 
-    /* Pulsante chiudi per mobile (nascosto su desktop) */
+    /* Pulsante chiudi - SEMPRE NASCOSTO di default, mostrato via JS */
     #lapa-chat-close-btn {
-      display: none;
+      display: none !important;
       position: fixed;
       top: 15px;
       right: 15px;
@@ -177,6 +177,11 @@
       justify-content: center;
       z-index: 99999999;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Mostrato solo quando ha classe .visible */
+    #lapa-chat-close-btn.visible {
+      display: flex !important;
     }
 
     #lapa-chat-close-btn svg {
@@ -371,7 +376,7 @@
       isOpen = false;
       button.classList.remove('open');
       iframeContainer.classList.remove('open');
-      closeBtn.style.display = 'none';
+      closeBtn.classList.remove('visible');
     }
 
     // Click sul pulsante chiudi
@@ -391,7 +396,7 @@
 
         // Mostra pulsante chiudi su mobile
         if (window.innerWidth <= 768) {
-          closeBtn.style.display = 'flex';
+          closeBtn.classList.add('visible');
         }
 
         // Lazy load iframe
