@@ -23,8 +23,8 @@ interface OdooWebhookPayload {
   body?: string;          // HTML content
   mobile_number?: string;
   message_type?: string;  // 'inbound' | 'outbound'
-  wa_account_id?: number;
-  mail_message_id?: number;
+  wa_account_id?: number | [number, string];  // Can be number or [id, name] from Odoo
+  mail_message_id?: number | [number, string];
 }
 
 export async function POST(request: NextRequest) {
