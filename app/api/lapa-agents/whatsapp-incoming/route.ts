@@ -72,45 +72,77 @@ export async function POST(request: NextRequest) {
     // Create session ID based on phone number
     const sessionId = `whatsapp-${mobileNumber.replace(/[\+\s]/g, '')}`;
 
-    // Look up partner info from Odoo if mail_message_id is provided
+    // Look up partner info from Odoo
+    // Strategy: 1) discuss.channel.whatsapp_partner_id, 2) res.partner by phone, 3) fallback to anonymous
     let customerId: number | undefined;
     let customerName: string | undefined;
     let customerType: 'b2b' | 'b2c' | 'anonymous' = 'anonymous';
 
-    if (odooPayload.mail_message_id) {
-      try {
-        const odoo = await getOdooClient();
-        if (odoo) {
-          // Get author info from mail.message
-          const messages = await odoo.searchRead(
-            'mail.message',
-            [['id', '=', odooPayload.mail_message_id]],
-            ['author_id'],
+    try {
+      const odoo = await getOdooClient();
+      if (odoo && mobileNumber) {
+        // Clean phone number for search (last 9 digits)
+        const phoneLast9 = mobileNumber.replace(/[\+\s]/g, '').slice(-9);
+
+        // Method 1: Find partner via discuss.channel (most reliable)
+        const channels = await odoo.searchRead(
+          'discuss.channel',
+          [
+            ['channel_type', '=', 'whatsapp'],
+            ['whatsapp_number', 'ilike', phoneLast9]
+          ],
+          ['whatsapp_partner_id'],
+          1
+        );
+
+        if (channels.length > 0 && channels[0].whatsapp_partner_id) {
+          customerId = channels[0].whatsapp_partner_id[0];
+          customerName = channels[0].whatsapp_partner_id[1];
+          console.log(`[WHATSAPP-INCOMING] Found partner via channel: ${customerName} (ID: ${customerId})`);
+        }
+
+        // Method 2: Search partner by phone/mobile number
+        if (!customerId) {
+          const partners = await odoo.searchRead(
+            'res.partner',
+            ['|',
+              ['mobile', 'ilike', phoneLast9],
+              ['phone', 'ilike', phoneLast9]
+            ],
+            ['id', 'name', 'is_company', 'parent_id', 'customer_rank'],
             1
           );
-          if (messages.length > 0 && messages[0].author_id) {
-            customerId = messages[0].author_id[0];
-            customerName = messages[0].author_id[1];
 
-            // Get partner details to determine B2B/B2C
-            const partners = await odoo.searchRead(
-              'res.partner',
-              [['id', '=', customerId]],
-              ['is_company', 'parent_id'],
-              1
-            );
-            if (partners.length > 0) {
-              if (partners[0].is_company || partners[0].parent_id) {
-                customerType = 'b2b';
-              } else {
-                customerType = 'b2c';
-              }
-            }
+          if (partners.length > 0) {
+            customerId = partners[0].id;
+            customerName = partners[0].name;
+            console.log(`[WHATSAPP-INCOMING] Found partner via phone: ${customerName} (ID: ${customerId})`);
           }
         }
-      } catch (lookupError) {
-        console.warn('[WHATSAPP-INCOMING] Partner lookup failed:', lookupError);
+
+        // Determine B2B/B2C if we found a partner
+        if (customerId) {
+          const partnerDetails = await odoo.searchRead(
+            'res.partner',
+            [['id', '=', customerId]],
+            ['is_company', 'parent_id', 'customer_rank'],
+            1
+          );
+          if (partnerDetails.length > 0) {
+            const p = partnerDetails[0];
+            // B2B if: is a company, or has a parent company, or has customer_rank > 0
+            if (p.is_company || p.parent_id) {
+              customerType = 'b2b';
+            } else {
+              customerType = 'b2c';
+            }
+          }
+        } else {
+          console.log(`[WHATSAPP-INCOMING] No partner found for phone: ${mobileNumber}`);
+        }
       }
+    } catch (lookupError) {
+      console.warn('[WHATSAPP-INCOMING] Partner lookup failed:', lookupError);
     }
 
     // Create conversation ID for storage
