@@ -118,14 +118,11 @@ export default function JetsonMonitor() {
     const startTime = Date.now();
 
     try {
-      if (!status?.tunnel?.url) throw new Error('Tunnel non disponibile');
-
-      const tunnelUrl = status.tunnel.url.trim();
-      const res = await fetch(`${tunnelUrl}/api/v1/chat`, {
+      // Usa il proxy server-side per evitare problemi CORS
+      const res = await fetch('/api/jetson/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'jetson-ocr-secret-2025'
         },
         body: JSON.stringify({
           message: 'Test: dimmi solo "OK"',
