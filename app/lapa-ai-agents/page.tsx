@@ -910,11 +910,13 @@ function LogsTab({ conversations: initialConversations }: { conversations: Conve
     return () => clearInterval(interval);
   }, []);
 
-  // Filtra conversazioni per canale
-  const filteredConversations = conversations.filter(conv => {
-    if (filter === 'all') return true;
-    return conv.channels?.includes(filter) || conv.messages.some(m => m.channel === filter);
-  });
+  // Filtra e ordina conversazioni per canale (più recenti prima)
+  const filteredConversations = conversations
+    .filter(conv => {
+      if (filter === 'all') return true;
+      return conv.channels?.includes(filter) || conv.messages.some(m => m.channel === filter);
+    })
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   // Icona canale
   const ChannelIcon = ({ channel }: { channel?: string }) => {
@@ -1067,9 +1069,9 @@ function LogsTab({ conversations: initialConversations }: { conversations: Conve
               </div>
             </div>
 
-            {/* Messaggi */}
-            <div className="flex-1 overflow-y-auto space-y-3">
-              {selectedConv.messages.map((msg, idx) => (
+            {/* Messaggi (più recenti in cima) */}
+            <div className="flex-1 overflow-y-auto space-y-3 flex flex-col-reverse">
+              {[...selectedConv.messages].reverse().map((msg, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 10 }}
