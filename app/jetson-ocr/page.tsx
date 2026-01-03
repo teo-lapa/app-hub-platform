@@ -48,8 +48,8 @@ export default function JetsonChat() {
     setChatLoading(true);
 
     try {
-      const tunnelUrl = jetsonStatus.tunnel.url.trim();
-      const response = await fetch(`${tunnelUrl}/api/v1/chat`, {
+      // Usa il proxy server-side per evitare problemi CORS e gestire l'API key
+      const response = await fetch('/api/jetson/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

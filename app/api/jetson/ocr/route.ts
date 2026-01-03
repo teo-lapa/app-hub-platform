@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${JETSON_OCR_URL}/api/v1/ocr/analyze`, {
       method: 'POST',
       headers: {
-        'X-Webhook-Secret': JETSON_WEBHOOK_SECRET,
+        'X-API-Key': JETSON_WEBHOOK_SECRET,
       },
       body: jetsonFormData,
     });
@@ -76,7 +76,7 @@ export async function GET() {
   try {
     const response = await fetch(`${JETSON_OCR_URL}/api/v1/health`, {
       headers: {
-        'X-Webhook-Secret': JETSON_WEBHOOK_SECRET,
+        'X-API-Key': JETSON_WEBHOOK_SECRET,
       },
     });
 

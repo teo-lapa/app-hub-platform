@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
         const jetsonResponse = await fetch(`${JETSON_OCR_URL}/api/v1/ocr/analyze`, {
           method: 'POST',
-          headers: { 'X-Webhook-Secret': JETSON_WEBHOOK_SECRET },
+          headers: { 'X-API-Key': JETSON_WEBHOOK_SECRET },
           body: formData
         });
 
