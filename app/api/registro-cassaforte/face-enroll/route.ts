@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 // Jetson Nano configuration
 const JETSON_URL = process.env.JETSON_OCR_URL || process.env.JETSON_URL || 'http://192.168.1.171:3100';
+const JETSON_SECRET = process.env.JETSON_WEBHOOK_SECRET || 'jetson-ocr-secret-2025';
 
 /**
  * POST /api/registro-cassaforte/face-enroll
@@ -78,7 +79,10 @@ export async function POST(request: NextRequest) {
     try {
       const jetsonResponse = await fetch(`${JETSON_URL}/api/v1/face/enroll`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': JETSON_SECRET,
+        },
         body: JSON.stringify({
           employee_id: employeeId,
           employee_name: employeeName,

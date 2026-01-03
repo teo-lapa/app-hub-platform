@@ -123,7 +123,10 @@ export default function JetsonMonitor() {
       const tunnelUrl = status.tunnel.url.trim();
       const res = await fetch(`${tunnelUrl}/api/v1/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'jetson-ocr-secret-2025'
+        },
         body: JSON.stringify({
           message: 'Test: dimmi solo "OK"',
           conversation: []

@@ -252,9 +252,14 @@ export async function POST(request: NextRequest) {
 
     let jetsonResponse;
 
+    const jetsonSecret = process.env.JETSON_WEBHOOK_SECRET || 'jetson-ocr-secret-2025';
+
     try {
       jetsonResponse = await fetch(`${jetsonUrl}/api/v1/extract-contact`, {
         method: 'POST',
+        headers: {
+          'X-API-Key': jetsonSecret,
+        },
         body: jetsonFormData,
       });
 

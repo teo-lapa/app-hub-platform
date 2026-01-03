@@ -87,7 +87,7 @@ export class ContactScannerService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.jetsonSecret}`,
+          'X-API-Key': this.jetsonSecret,
         },
         body: JSON.stringify({
           document: documentContent,
