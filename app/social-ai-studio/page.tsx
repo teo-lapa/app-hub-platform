@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft, Home, Sparkles, Upload, Image as ImageIcon,
   Video, Loader2, Download, Instagram, Facebook, Linkedin,
@@ -345,6 +345,30 @@ export default function SocialAIStudioPage() {
       toast.error(error.message || 'Errore durante il caricamento del logo LAPA');
     }
   };
+
+  // ==========================================
+  // Carica logo LAPA automaticamente all'avvio
+  // ==========================================
+  useEffect(() => {
+    const loadLogoOnMount = async () => {
+      try {
+        const response = await fetch('/logo-lapa.png');
+        if (response.ok) {
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            setLogoImage(base64);
+            setLogoPreview(base64);
+          };
+          reader.readAsDataURL(blob);
+        }
+      } catch (error) {
+        console.error('Errore caricamento logo automatico:', error);
+      }
+    };
+    loadLogoOnMount();
+  }, []);
 
   // ==========================================
   // Genera Ricetta Tradizionale
@@ -1651,96 +1675,54 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
           {/* ========================================== */}
           <div className="space-y-4 sm:space-y-6">
 
-            {/* Upload Foto Prodotto */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <label className="block text-sm font-medium text-purple-300 mb-3 flex items-center space-x-2">
-                <Upload className="h-4 w-4" />
-                <span>Foto Prodotto/Processo</span>
-              </label>
+            {/* Upload + Info Prodotto (COMPATTO) */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-3">
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} disabled={isGenerating} className="hidden" />
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                disabled={isGenerating}
-                className="hidden"
-              />
-
-              {/* Pulsante Scegli dal Catalogo */}
-              <button
-                onClick={() => setIsProductSelectorOpen(true)}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 sm:py-4 min-h-[48px] bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border border-emerald-400/50 rounded-lg text-white font-medium transition-all disabled:opacity-50 mb-3"
-              >
-                <Package className="h-5 w-5" />
-                <span className="text-sm sm:text-base">Scegli Prodotto dal Catalogo</span>
-              </button>
-
-              {/* Oppure carica foto */}
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-purple-500/30"></div>
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-2 bg-slate-800/40 text-purple-400">oppure</span>
-                </div>
+              {/* Pulsanti Upload */}
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => setIsProductSelectorOpen(true)}
+                  disabled={isGenerating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded text-white text-xs font-medium transition-all disabled:opacity-50"
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  <span>Catalogo</span>
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isGenerating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-900/50 hover:bg-slate-700/50 border border-purple-500/50 rounded text-purple-300 text-xs font-medium transition-all disabled:opacity-50"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Carica Foto</span>
+                </button>
               </div>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 sm:py-4 min-h-[48px] bg-slate-900/50 hover:bg-slate-700/50 border border-purple-500/50 hover:border-purple-400 rounded-lg text-purple-300 hover:text-white transition-all disabled:opacity-50"
-              >
-                <Upload className="h-5 w-5" />
-                <span className="text-sm sm:text-base">Carica Foto Manualmente</span>
-              </button>
-
+              {/* Preview immagine */}
               {productImagePreview && (
-                <div className="mt-4 relative">
-                  <img
-                    src={productImagePreview}
-                    alt="Prodotto"
-                    className="w-full h-auto max-h-[200px] sm:max-h-[300px] object-contain rounded-lg border border-purple-500/50"
-                  />
-                  <button
-                    onClick={() => {
-                      setProductImage(null);
-                      setProductImagePreview(null);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors"
-                  >
-                    <X className="h-4 w-4" />
+                <div className="relative mb-2">
+                  <img src={productImagePreview} alt="Prodotto" className="w-full h-auto max-h-[120px] object-contain rounded border border-purple-500/50" />
+                  <button onClick={() => { setProductImage(null); setProductImagePreview(null); }} className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white">
+                    <X className="h-3 w-3" />
                   </button>
-                  <div className="mt-2 text-xs text-emerald-400 text-center">
-                    ✓ Foto caricata
-                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Info Prodotto */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <label className="block text-sm font-medium text-purple-300 mb-2">
-                Nome Prodotto (opzionale)
-              </label>
+              {/* Nome + Descrizione */}
               <input
                 type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
-                placeholder="Es: Caffè Premium Arabica"
-                className="w-full px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500"
+                placeholder="Nome prodotto (opzionale)"
+                className="w-full px-3 py-1.5 mb-2 bg-slate-900/50 border border-purple-500/50 rounded text-white placeholder:text-slate-500 text-xs"
                 disabled={isGenerating}
               />
-
-              <label className="block text-sm font-medium text-purple-300 mb-2 mt-4">
-                Descrizione (opzionale)
-              </label>
               <textarea
                 value={productDescription}
                 onChange={(e) => setProductDescription(e.target.value)}
-                placeholder="Breve descrizione del prodotto..."
-                className="w-full px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500 min-h-[80px] resize-none"
+                placeholder="Descrizione (opzionale)"
+                className="w-full px-3 py-1.5 bg-slate-900/50 border border-purple-500/50 rounded text-white placeholder:text-slate-500 text-xs min-h-[50px] resize-none"
                 disabled={isGenerating}
               />
             </div>
