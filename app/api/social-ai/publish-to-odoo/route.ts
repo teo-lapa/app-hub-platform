@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { PNG } from 'pngjs';
 import * as jpeg from 'jpeg-js';
+import { put } from '@vercel/blob';
 
 /**
  * Genera un access_token casuale per gli attachment Odoo
@@ -206,6 +207,7 @@ export async function POST(req: NextRequest) {
 
     // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
     let attachmentId: number | null = null;
+    let blobUrl: string | null = null;
     if (imageUrl) {
       try {
         console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
@@ -220,32 +222,49 @@ export async function POST(req: NextRequest) {
 
         // IMPORTANTE: Converti in JPEG per compatibilità Instagram
         const { buffer: finalBuffer, mimetype, extension } = await convertToJpeg(imageBuffer);
-        const imageBase64 = finalBuffer.toString('base64');
 
         console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
 
-        // Genera access_token per rendere l'immagine accessibile pubblicamente
-        // IMPORTANTE: Instagram/Facebook API deve poter scaricare l'immagine dal nostro server
+        // ========================================
+        // INSTAGRAM FIX: Carica immagine su Vercel Blob CDN
+        // Instagram non riesce ad accedere al dominio dev.odoo.com
+        // Usando Vercel Blob, l'immagine sarà accessibile pubblicamente da qualsiasi server
+        // ========================================
+        const blobFileName = `social-ai-${Date.now()}.${extension}`;
+        console.log(`☁️ [PUBLISH-ODOO] Caricamento su Vercel Blob: ${blobFileName}...`);
+
+        const blob = await put(blobFileName, finalBuffer, {
+          access: 'public',
+          contentType: mimetype,
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+        });
+
+        blobUrl = blob.url;
+        console.log(`✅ [PUBLISH-ODOO] Immagine caricata su Vercel Blob: ${blobUrl}`);
+
+        // Genera access_token per Odoo (usato come fallback)
         const accessToken = generateAccessToken();
 
-        // Crea attachment in Odoo - DEVE essere public con access_token per Instagram!
+        // Crea attachment in Odoo con URL esterno (Vercel Blob CDN)
+        // NOTA: Usiamo type='url' con l'URL pubblico di Vercel Blob
+        // In questo modo Instagram può scaricare l'immagine dal CDN
         const attachmentResult = await callOdoo(
           odooCookies,
           'ir.attachment',
           'create',
           [{
-            name: `social-ai-${Date.now()}.${extension}`,
-            type: 'binary',
-            datas: imageBase64,
+            name: blobFileName,
+            type: 'url',
+            url: blobUrl,  // URL pubblico di Vercel Blob
             mimetype: mimetype,
-            public: true,  // ✅ FIX: Rende l'immagine accessibile pubblicamente
-            access_token: accessToken,  // ✅ FIX: Token per accesso sicuro
+            public: true,
+            access_token: accessToken,
           }]
         );
 
         if (attachmentResult) {
           attachmentId = attachmentResult;
-          console.log(`✅ [PUBLISH-ODOO] Immagine caricata: attachment ID ${attachmentId}`);
+          console.log(`✅ [PUBLISH-ODOO] Attachment creato in Odoo: ID ${attachmentId}`);
         }
       } catch (imgError: any) {
         console.error('⚠️ [PUBLISH-ODOO] Errore upload immagine:', imgError.message);
