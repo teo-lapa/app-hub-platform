@@ -14,8 +14,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import {
   Bot,
+  Home,
   ShoppingCart,
   FileText,
   Truck,
@@ -364,6 +366,16 @@ export default function LapaAIAgentsPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <Link href="/">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                  title="Torna alla Home"
+                >
+                  <Home className="w-5 h-5" />
+                </motion.button>
+              </Link>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-400 flex items-center justify-center">
                 <Bot className="w-7 h-7 text-white" />
               </div>
