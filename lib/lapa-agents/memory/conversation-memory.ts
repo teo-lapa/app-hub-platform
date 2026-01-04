@@ -505,7 +505,7 @@ export class ConversationMemoryService {
     }
     parts.push(`Sessioni totali: ${memory.total_sessions}`);
 
-    // 2. Company Avatar info (business type, purchase patterns)
+    // 2. Company Avatar info (business type, purchase patterns, web enrichment)
     if (memory.company_avatar) {
       const ca = memory.company_avatar;
       if (ca.business_type) {
@@ -514,6 +514,39 @@ export class ConversationMemoryService {
       if (ca.city) {
         parts.push(`Città: ${ca.city}`);
       }
+
+      // Web Enrichment - info raccolte dal web sul cliente
+      if (ca.web_enrichment) {
+        const we = ca.web_enrichment;
+        // Specialità e tipo cucina (MOLTO utile per suggerimenti prodotti)
+        if (we.specialty) {
+          parts.push(`Specialità: ${we.specialty}`);
+        }
+        if (we.cuisine_type) {
+          parts.push(`Tipo cucina: ${we.cuisine_type}`);
+        }
+        // Rating (utile per upsell e qualità)
+        if (we.google_rating) {
+          parts.push(`Rating Google: ${we.google_rating}/5`);
+        }
+        if (we.tripadvisor_rating) {
+          parts.push(`Rating TripAdvisor: ${we.tripadvisor_rating}/5`);
+        }
+        // Premi (per menzioni speciali)
+        if (we.awards && we.awards.length > 0) {
+          parts.push(`Riconoscimenti: ${we.awards.slice(0, 2).join(', ')}`);
+        }
+        // Descrizione breve (contesto business)
+        if (we.description) {
+          // Limita a 150 caratteri per non appesantire il prompt
+          const shortDesc = we.description.length > 150
+            ? we.description.substring(0, 150) + '...'
+            : we.description;
+          parts.push(`Info: ${shortDesc}`);
+        }
+      }
+
+      // Purchase patterns da Odoo
       if (ca.purchase_patterns) {
         const pp = ca.purchase_patterns;
         if (pp.total_orders && pp.avg_order_value) {
@@ -522,9 +555,6 @@ export class ConversationMemoryService {
         if (pp.top_products && pp.top_products.length > 0) {
           parts.push(`Prodotti preferiti: ${pp.top_products.slice(0, 3).map(p => p.product_name).join(', ')}`);
         }
-      }
-      if (ca.web_enrichment?.google_rating) {
-        parts.push(`Rating Google: ${ca.web_enrichment.google_rating}/5`);
       }
     }
 
