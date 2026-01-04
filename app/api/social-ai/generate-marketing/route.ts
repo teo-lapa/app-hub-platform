@@ -65,7 +65,7 @@ function cleanProductDescription(description: string, productName: string): stri
  * - productDescription?: string - Descrizione
  * - socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin'
  * - contentType: 'image' | 'video' | 'both'
- * - tone?: 'professional' | 'casual' | 'fun' | 'luxury'
+ * - tone?: 'random' | 'professional' | 'casual' | 'fun' | 'luxury'
  * - targetAudience?: string - Descrizione target
  */
 
@@ -75,7 +75,7 @@ interface GenerateMarketingRequest {
   productDescription?: string;
   socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
   contentType: 'image' | 'video' | 'both';
-  tone?: 'professional' | 'casual' | 'fun' | 'luxury';
+  tone?: 'random' | 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
   videoDuration?: 4 | 6 | 8;  // Durata video in secondi - Veo 3.1 supporta solo 4, 6, 8s (default: 6)
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       productDescription = '',
       socialPlatform,
       contentType,
-      tone = 'professional',
+      tone: rawTone = 'professional',
       targetAudience = 'pubblico generale',
       videoStyle = 'default',
       videoDuration = 6,    // Default: 6 secondi (Veo 3.1: solo 4, 6, 8s supportati)
@@ -140,6 +140,16 @@ export async function POST(request: NextRequest) {
       targetCity,
       targetLanguage
     } = body;
+
+    // Se tone è "random", scegli casualmente tra professional, casual, fun, luxury
+    const availableTones = ['professional', 'casual', 'fun', 'luxury'] as const;
+    const tone = rawTone === 'random'
+      ? availableTones[Math.floor(Math.random() * availableTones.length)]
+      : rawTone;
+
+    if (rawTone === 'random') {
+      console.log(`🎲 [GENERATE-MARKETING] Tone casuale selezionato: ${tone}`);
+    }
 
     // Validazione
     if (!productImage) {

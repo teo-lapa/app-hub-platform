@@ -21,7 +21,7 @@ import {
 
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
 type ContentType = 'image' | 'video' | 'both';
-type Tone = 'professional' | 'casual' | 'fun' | 'luxury';
+type Tone = 'random' | 'professional' | 'casual' | 'fun' | 'luxury';
 type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
 type VideoDuration = 4 | 6 | 8; // Veo 3.1 supporta solo 4, 6, 8 secondi (massimo 8s)
 
@@ -63,20 +63,20 @@ export default function SocialAIStudioPage() {
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>('instagram');
-  const [contentType, setContentType] = useState<ContentType>('both');
-  const [tone, setTone] = useState<Tone>('professional');
+  const [contentType, setContentType] = useState<ContentType>('image');
+  const [tone, setTone] = useState<Tone>('random');
   const [targetAudience, setTargetAudience] = useState('');
-  const [videoStyle, setVideoStyle] = useState<VideoStyle>('default');
-  const [videoDuration, setVideoDuration] = useState<VideoDuration>(6);
+  const [videoStyle, setVideoStyle] = useState<VideoStyle>('cinematic');
+  const [videoDuration, setVideoDuration] = useState<VideoDuration>(8);
 
   // Branding states
-  const [includeLogo, setIncludeLogo] = useState(false);
+  const [includeLogo, setIncludeLogo] = useState(true);
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [companyMotto, setCompanyMotto] = useState('');
+  const [companyMotto, setCompanyMotto] = useState('Zero Pensieri');
 
   // Geo-Targeting states
-  const [targetCanton, setTargetCanton] = useState('');
+  const [targetCanton, setTargetCanton] = useState('Zürich');
   const [targetCity, setTargetCity] = useState('');
   const [productCategory, setProductCategory] = useState('');
 
@@ -1745,349 +1745,199 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
               />
             </div>
 
-            {/* Branding Aziendale */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-sm font-medium text-purple-300">
-                  Branding Aziendale
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer">
+            {/* Branding Aziendale (COMPATTO) */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-purple-300">🏷️ Branding</label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={includeLogo}
                     onChange={(e) => setIncludeLogo(e.target.checked)}
                     disabled={isGenerating}
-                    className="w-4 h-4 rounded border-purple-500/50 bg-slate-900/50 text-purple-500 focus:ring-2 focus:ring-purple-500"
+                    className="w-3.5 h-3.5 rounded border-purple-500/50 bg-slate-900/50 text-purple-500"
                   />
-                  <span className="text-xs text-purple-300">Includi logo/motto</span>
+                  <span className="text-xs text-purple-300">Attivo</span>
                 </label>
               </div>
 
               {includeLogo && (
-                <>
-                  {/* Upload Logo */}
-                  <div className="mb-4">
-                    <label className="block text-xs text-purple-300 mb-2">
-                      Logo Aziendale (opzionale)
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogoUpload} disabled={isGenerating} className="hidden" id="logo-upload" />
+                    <label htmlFor="logo-upload" className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-900/50 border border-purple-500/50 rounded text-xs text-purple-300 cursor-pointer">
+                      <Upload className="h-3 w-3" /><span>Logo</span>
                     </label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/svg+xml"
-                        onChange={handleLogoUpload}
-                        disabled={isGenerating}
-                        className="hidden"
-                        id="logo-upload"
-                      />
-                      <label
-                        htmlFor="logo-upload"
-                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg hover:border-purple-400 transition-colors cursor-pointer text-sm text-purple-300"
-                      >
-                        <Upload className="h-4 w-4" />
-                        <span>Carica Logo</span>
-                      </label>
-
-                      {/* Usa Logo LAPA Button */}
-                      <button
-                        onClick={loadDefaultLogo}
-                        disabled={isGenerating}
-                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border border-purple-400/50 rounded-lg transition-all cursor-pointer text-sm text-white font-medium disabled:opacity-50"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        <span>Usa logo LAPA</span>
-                      </button>
-                    </div>
-
+                    <button onClick={loadDefaultLogo} disabled={isGenerating} className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-purple-600 rounded text-xs text-white font-medium disabled:opacity-50">
+                      <Sparkles className="h-3 w-3" /><span>LAPA</span>
+                    </button>
                     {logoPreview && (
-                      <div className="mt-2 relative inline-block">
-                        <img
-                          src={logoPreview}
-                          alt="Logo"
-                          className="h-16 w-auto object-contain rounded border border-purple-500/50 bg-white/5 p-2"
-                        />
-                        <button
-                          onClick={() => {
-                            setLogoImage(null);
-                            setLogoPreview(null);
-                          }}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white"
-                        >
-                          <X className="h-3 w-3" />
+                      <div className="relative">
+                        <img src={logoPreview} alt="Logo" className="h-8 w-auto object-contain rounded border border-purple-500/50 bg-white/5 p-1" />
+                        <button onClick={() => { setLogoImage(null); setLogoPreview(null); }} className="absolute -top-1 -right-1 p-0.5 bg-red-500 rounded-full text-white">
+                          <X className="h-2 w-2" />
                         </button>
                       </div>
                     )}
                   </div>
-
-                  {/* Motto Aziendale */}
-                  <div>
-                    <label className="block text-xs text-purple-300 mb-2">
-                      Motto/Slogan (opzionale)
-                    </label>
-                    <input
-                      type="text"
-                      value={companyMotto}
-                      onChange={(e) => setCompanyMotto(e.target.value)}
-                      placeholder="Es: Qualità Italiana dal 1950"
-                      maxLength={100}
-                      className="w-full px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500 text-sm"
-                      disabled={isGenerating}
-                    />
-                    <div className="text-xs text-slate-500 mt-1 text-right">
-                      {companyMotto.length}/100
-                    </div>
-                  </div>
-                </>
+                  <input
+                    type="text"
+                    value={companyMotto}
+                    onChange={(e) => setCompanyMotto(e.target.value)}
+                    placeholder="Motto: Zero Pensieri"
+                    maxLength={100}
+                    className="w-full px-2 py-1.5 bg-slate-900/50 border border-purple-500/50 rounded text-white placeholder:text-slate-500 text-xs"
+                    disabled={isGenerating}
+                  />
+                </div>
               )}
             </div>
 
-            {/* Social Platform */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <label className="block text-sm font-medium text-purple-300 mb-3">
-                Piattaforma Social
-              </label>
+            {/* Social Platform + Content Type (COMPATTO) */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-3">
               <div className="grid grid-cols-2 gap-3">
-                {(['instagram', 'facebook', 'tiktok', 'linkedin'] as SocialPlatform[]).map((platform) => {
-                  const Icon = platformIcons[platform];
-                  return (
-                    <button
-                      key={platform}
-                      onClick={() => setSocialPlatform(platform)}
-                      disabled={isGenerating}
-                      className={`flex items-center justify-center space-x-2 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all ${
-                        socialPlatform === platform
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                      } disabled:opacity-50 capitalize`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{platform}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Content Type */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <label className="block text-sm font-medium text-purple-300 mb-3">
-                Tipo Contenuto
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {(['image', 'video', 'both'] as ContentType[]).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setContentType(type)}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-all ${
-                      contentType === type
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50 capitalize`}
-                  >
-                    {type === 'image' && <ImageIcon className="h-5 w-5 mx-auto mb-1" />}
-                    {type === 'video' && <Video className="h-5 w-5 mx-auto mb-1" />}
-                    {type === 'both' && <Sparkles className="h-5 w-5 mx-auto mb-1" />}
-                    {type === 'both' ? 'Entrambi' : type === 'image' ? 'Foto' : 'Video'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Video Style - mostra solo se video o both */}
-            {(contentType === 'video' || contentType === 'both') && (
-              <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-                <label className="block text-sm font-medium text-purple-300 mb-3">
-                  Stile Video
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setVideoStyle('default')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'default'
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Standard</div>
-                    <div className="text-xs opacity-75">Movimento naturale</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('zoom')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'zoom'
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Zoom In</div>
-                    <div className="text-xs opacity-75">Avvicinamento lento</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('rotate')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'rotate'
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Rotazione 360°</div>
-                    <div className="text-xs opacity-75">Gira intorno prodotto</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('dynamic')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'dynamic'
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Dinamico</div>
-                    <div className="text-xs opacity-75">Movimento veloce</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('cinematic')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'cinematic'
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Cinematico</div>
-                    <div className="text-xs opacity-75">Stile film professionale</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('explosion')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'explosion'
-                        ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Esplosione</div>
-                    <div className="text-xs opacity-75">Assemblaggio pezzi</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('orbital')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'orbital'
-                        ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Orbitale 360°</div>
-                    <div className="text-xs opacity-75">Camera vola intorno</div>
-                  </button>
-
-                  <button
-                    onClick={() => setVideoStyle('reassembly')}
-                    disabled={isGenerating}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      videoStyle === 'reassembly'
-                        ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg'
-                        : 'bg-slate-900/50 text-purple-300 border border-purple-500/50 hover:border-purple-400'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="font-semibold">Ricostruzione</div>
-                    <div className="text-xs opacity-75">Da frammenti a prodotto</div>
-                  </button>
+                {/* Social Platform */}
+                <div>
+                  <label className="block text-xs font-medium text-purple-300 mb-1.5">
+                    📱 Piattaforma
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(['instagram', 'facebook', 'tiktok', 'linkedin'] as SocialPlatform[]).map((platform) => {
+                      const Icon = platformIcons[platform];
+                      return (
+                        <button
+                          key={platform}
+                          onClick={() => setSocialPlatform(platform)}
+                          disabled={isGenerating}
+                          className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                            socialPlatform === platform
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                              : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                          } disabled:opacity-50 capitalize`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{platform}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Durata Video - Slider */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-purple-300">
-                      Durata Video
-                    </label>
-                    <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                      {videoDuration}s
-                    </span>
+                {/* Content Type */}
+                <div>
+                  <label className="block text-xs font-medium text-purple-300 mb-1.5">
+                    🎨 Contenuto
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['image', 'video', 'both'] as ContentType[]).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setContentType(type)}
+                        disabled={isGenerating}
+                        className={`flex flex-col items-center px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                          contentType === type
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                        } disabled:opacity-50`}
+                      >
+                        {type === 'image' && <ImageIcon className="h-3.5 w-3.5" />}
+                        {type === 'video' && <Video className="h-3.5 w-3.5" />}
+                        {type === 'both' && <Sparkles className="h-3.5 w-3.5" />}
+                        <span className="text-[10px]">{type === 'both' ? 'Entrambi' : type === 'image' ? 'Foto' : 'Video'}</span>
+                      </button>
+                    ))}
                   </div>
+                </div>
+              </div>
+            </div>
 
-                  <div className="relative pt-1">
-                    <input
-                      type="range"
-                      min="4"
-                      max="8"
-                      step="2"
-                      value={videoDuration}
-                      onChange={(e) => setVideoDuration(parseInt(e.target.value) as VideoDuration)}
-                      disabled={isGenerating}
-                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
-                        [&::-webkit-slider-thumb]:appearance-none
-                        [&::-webkit-slider-thumb]:w-6
-                        [&::-webkit-slider-thumb]:h-6
-                        [&::-webkit-slider-thumb]:rounded-full
-                        [&::-webkit-slider-thumb]:bg-gradient-to-r
-                        [&::-webkit-slider-thumb]:from-purple-500
-                        [&::-webkit-slider-thumb]:to-pink-500
-                        [&::-webkit-slider-thumb]:shadow-lg
-                        [&::-webkit-slider-thumb]:cursor-pointer
-                        [&::-webkit-slider-thumb]:transition-transform
-                        [&::-webkit-slider-thumb]:hover:scale-110
-                        [&::-moz-range-thumb]:w-6
-                        [&::-moz-range-thumb]:h-6
-                        [&::-moz-range-thumb]:rounded-full
-                        [&::-moz-range-thumb]:bg-gradient-to-r
-                        [&::-moz-range-thumb]:from-purple-500
-                        [&::-moz-range-thumb]:to-pink-500
-                        [&::-moz-range-thumb]:border-0
-                        [&::-moz-range-thumb]:shadow-lg
-                        [&::-moz-range-thumb]:cursor-pointer"
-                    />
-                    <div className="flex justify-between mt-2 text-xs text-purple-300/70">
-                      <span>⚡ 4s</span>
-                      <span>⏱️ 6s</span>
-                      <span>🎬 8s (max)</span>
+            {/* Video Style + Durata - mostra solo se video o both */}
+            {(contentType === 'video' || contentType === 'both') && (
+              <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-purple-300">🎬 Stile Video</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-purple-300">Durata:</span>
+                    <div className="flex gap-1">
+                      {([4, 6, 8] as VideoDuration[]).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setVideoDuration(d)}
+                          disabled={isGenerating}
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            videoDuration === d
+                              ? 'bg-purple-500 text-white'
+                              : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                          }`}
+                        >
+                          {d}s
+                        </button>
+                      ))}
                     </div>
                   </div>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { value: 'cinematic', label: '🎥 Cinematico' },
+                    { value: 'default', label: '📹 Standard' },
+                    { value: 'zoom', label: '🔍 Zoom' },
+                    { value: 'dynamic', label: '⚡ Dinamico' },
+                    { value: 'rotate', label: '🔄 Rotazione' },
+                    { value: 'orbital', label: '🌀 Orbitale' },
+                    { value: 'explosion', label: '💥 Esplosione' },
+                    { value: 'reassembly', label: '🧩 Ricostruzione' }
+                  ] as { value: VideoStyle; label: string }[]).map((style) => (
+                    <button
+                      key={style.value}
+                      onClick={() => setVideoStyle(style.value)}
+                      disabled={isGenerating}
+                      className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                        videoStyle === style.value
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                          : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
+                      } disabled:opacity-50`}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Tone & Target */}
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-4 sm:p-6">
-              <label className="block text-sm font-medium text-purple-300 mb-2">
-                Tone of Voice
-              </label>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {(['professional', 'casual', 'fun', 'luxury'] as Tone[]).map((t) => (
+            {/* Tone & Target (COMPATTO) */}
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-purple-500/30 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-purple-300">🎭 Tone of Voice</label>
+              </div>
+              <div className="grid grid-cols-5 gap-1 mb-2">
+                {([
+                  { value: 'random', label: '🎲' },
+                  { value: 'professional', label: '💼' },
+                  { value: 'casual', label: '😊' },
+                  { value: 'fun', label: '🎉' },
+                  { value: 'luxury', label: '✨' }
+                ] as { value: Tone; label: string }[]).map((t) => (
                   <button
-                    key={t}
-                    onClick={() => setTone(t)}
+                    key={t.value}
+                    onClick={() => setTone(t.value)}
                     disabled={isGenerating}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                      tone === t
+                    title={t.value === 'random' ? 'Casuale' : t.value === 'professional' ? 'Professionale' : t.value === 'casual' ? 'Casual' : t.value === 'fun' ? 'Divertente' : 'Lusso'}
+                    className={`px-2 py-1 rounded text-sm font-medium transition-all ${
+                      tone === t.value
                         ? 'bg-purple-500 text-white'
                         : 'bg-slate-900/50 text-purple-300 border border-purple-500/50'
-                    } disabled:opacity-50 capitalize`}
+                    } disabled:opacity-50`}
                   >
-                    {t}
+                    {t.label}
                   </button>
                 ))}
               </div>
-
-              <label className="block text-sm font-medium text-purple-300 mb-2">
-                Target Audience (opzionale)
-              </label>
               <input
                 type="text"
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
-                placeholder="Es: Giovani professionisti 25-35 anni"
-                className="w-full px-4 py-2 bg-slate-900/50 border border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder:text-slate-500 text-sm"
+                placeholder="👥 Target audience (opzionale)"
+                className="w-full px-3 py-1.5 bg-slate-900/50 border border-purple-500/50 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-white placeholder:text-slate-500 text-xs"
                 disabled={isGenerating}
               />
             </div>
@@ -2342,83 +2192,54 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
               )}
             </div>
 
-            {/* Geo-Targeting & RAG */}
-            <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🇨🇭</span>
-                <h3 className="text-lg font-semibold text-cyan-300">Geo-Targeting & Smart RAG</h3>
-              </div>
-              <p className="text-xs text-cyan-300/70 mb-4">
-                💡 L'AI imparerà dai post simili performanti nel Canton selezionato
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">
-                    Canton Svizzero
-                  </label>
-                  <select
-                    value={targetCanton}
-                    onChange={(e) => setTargetCanton(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white text-sm"
-                    disabled={isGenerating}
-                  >
-                    <option value="">Nessuno</option>
-                    <option value="Zürich">🏙️ Zürich</option>
-                    <option value="Bern">🏛️ Bern</option>
-                    <option value="Ticino">🏔️ Ticino</option>
-                    <option value="Vaud">🍷 Vaud</option>
-                    <option value="Genève">🌍 Genève</option>
-                    <option value="Basel-Stadt">🎨 Basel</option>
-                    <option value="Luzern">🌊 Luzern</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">
-                    Città (opzionale)
-                  </label>
-                  <input
-                    type="text"
-                    value={targetCity}
-                    onChange={(e) => setTargetCity(e.target.value)}
-                    placeholder={targetCanton === 'Zürich' ? 'Es: Zürich' : targetCanton === 'Ticino' ? 'Es: Lugano' : 'Es: Bern'}
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white placeholder:text-slate-500 text-sm"
-                    disabled={isGenerating}
-                  />
-                </div>
+            {/* Geo-Targeting & RAG (COMPATTO) */}
+            <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm rounded-xl border border-cyan-500/30 p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-lg">🇨🇭</span>
+                <h3 className="text-sm font-semibold text-cyan-300">Geo-Targeting & RAG</h3>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-cyan-300 mb-2">
-                  Categoria Prodotto (per RAG)
-                </label>
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={targetCanton}
+                  onChange={(e) => setTargetCanton(e.target.value)}
+                  className="px-2 py-1.5 bg-slate-900/50 border border-cyan-500/50 rounded text-white text-xs"
+                  disabled={isGenerating}
+                >
+                  <option value="">Canton</option>
+                  <option value="Zürich">🏙️ Zürich</option>
+                  <option value="Bern">🏛️ Bern</option>
+                  <option value="Ticino">🏔️ Ticino</option>
+                  <option value="Vaud">🍷 Vaud</option>
+                  <option value="Genève">🌍 Genève</option>
+                  <option value="Basel-Stadt">🎨 Basel</option>
+                  <option value="Luzern">🌊 Luzern</option>
+                </select>
+
+                <input
+                  type="text"
+                  value={targetCity}
+                  onChange={(e) => setTargetCity(e.target.value)}
+                  placeholder="Città"
+                  className="px-2 py-1.5 bg-slate-900/50 border border-cyan-500/50 rounded text-white placeholder:text-slate-500 text-xs"
+                  disabled={isGenerating}
+                />
+
                 <select
                   value={productCategory}
                   onChange={(e) => setProductCategory(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-900/50 border border-cyan-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                  className="px-2 py-1.5 bg-slate-900/50 border border-cyan-500/50 rounded text-white text-xs"
                   disabled={isGenerating}
                 >
-                  <option value="">Auto-detect</option>
-                  <option value="Food">🍽️ Food & Alimenti</option>
-                  <option value="Gastro">🍴 Gastro & Ristorazione</option>
-                  <option value="Beverage">🍷 Beverage & Vini</option>
-                  <option value="Dairy">🧀 Latticini & Formaggi</option>
-                  <option value="Fresh">🥬 Prodotti Freschi</option>
+                  <option value="">Categoria</option>
+                  <option value="Food">🍽️ Food</option>
+                  <option value="Gastro">🍴 Gastro</option>
+                  <option value="Beverage">🍷 Beverage</option>
+                  <option value="Dairy">🧀 Latticini</option>
+                  <option value="Fresh">🥬 Freschi</option>
                   <option value="Frozen">❄️ Surgelati</option>
                 </select>
               </div>
-
-              {(targetCanton || productCategory) && (
-                <div className="mt-3 p-3 bg-cyan-900/20 border border-cyan-500/30 rounded-lg">
-                  <p className="text-xs text-cyan-300/90">
-                    ✨ <strong>RAG Attivo:</strong> L'AI cercherà post simili performanti
-                    {targetCanton && ` nel Canton ${targetCanton}`}
-                    {productCategory && ` nella categoria ${productCategory}`}
-                    {' '}per ottimizzare hashtags e CTA.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Pulsante Genera */}
@@ -2457,30 +2278,18 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
           {/* ========================================== */}
           <div className="space-y-4 sm:space-y-6">
 
-            {/* Info Card */}
-            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4 sm:p-6">
-              <h3 className="text-white font-semibold mb-3 flex items-center space-x-2">
-                <Sparkles className="h-5 w-5 text-purple-400" />
-                <span>Come funziona</span>
+            {/* GUIDA RAPIDA PER CLAUDE/UTENTE */}
+            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-3">
+              <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                Come Pubblicare un Post
               </h3>
-              <ul className="space-y-2 text-sm text-purple-200">
-                <li className="flex items-start space-x-2">
-                  <span className="text-purple-400">1.</span>
-                  <span>Carica una foto del tuo prodotto o processo</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-pink-400">2.</span>
-                  <span>Scegli piattaforma social e tipo contenuto (foto/video)</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-orange-400">3.</span>
-                  <span>3 Agenti AI lavorano in PARALLELO per te!</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-emerald-400">4.</span>
-                  <span>Ricevi: Caption + Hashtags + Immagine/Video pronti!</span>
-                </li>
-              </ul>
+              <div className="text-xs text-purple-200 space-y-1">
+                <p><strong>OPZIONE A - Da Prodotto:</strong> Clicca "Scegli Prodotto dal Catalogo" → Seleziona prodotto → Clicca "Genera Contenuti Marketing AI"</p>
+                <p><strong>OPZIONE B - Da Immagine:</strong> Clicca "Carica Foto Manualmente" → Carica immagine → Inserisci nome/descrizione → Clicca "Genera"</p>
+                <p><strong>OPZIONE C - Da Prompt:</strong> Senza caricare immagine, scrivi nome/descrizione del prodotto → L'AI genererà l'immagine dal testo</p>
+                <p className="text-purple-300 mt-1"><strong>Dopo la generazione:</strong> Clicca "Condividi sui Social" o "Pubblica su Odoo" per pubblicare su Instagram, Facebook, LinkedIn</p>
+              </div>
             </div>
 
             {/* Risultati */}
@@ -3248,10 +3057,10 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
                       </div>
                       <div className="flex gap-2 mb-3">
                         {[
-                          { code: 'it', label: '🇮🇹 IT', name: 'Italiano' },
-                          { code: 'de', label: '🇨🇭 DE', name: 'Tedesco' },
-                          { code: 'fr', label: '🇨🇭 FR', name: 'Francese' },
-                          { code: 'en', label: '🇬🇧 EN', name: 'Inglese' }
+                          { code: 'it', label: '🇮🇹', name: 'Italiano' },
+                          { code: 'de', label: '🇨🇭', name: 'Tedesco' },
+                          { code: 'fr', label: '🇫🇷', name: 'Francese' },
+                          { code: 'en', label: '🇬🇧', name: 'Inglese' }
                         ].map((lang) => (
                           <button
                             key={lang.code}
