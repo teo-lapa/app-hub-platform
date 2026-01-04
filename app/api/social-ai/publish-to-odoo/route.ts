@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { PNG } from 'pngjs';
 import * as jpeg from 'jpeg-js';
-import { put } from '@vercel/blob';
 
 /**
  * Genera un access_token casuale per gli attachment Odoo
@@ -207,7 +206,6 @@ export async function POST(req: NextRequest) {
 
     // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
     let attachmentId: number | null = null;
-    let blobUrl: string | null = null;
     if (imageUrl) {
       try {
         console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
@@ -225,37 +223,25 @@ export async function POST(req: NextRequest) {
 
         console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
 
-        // ========================================
-        // INSTAGRAM FIX: Carica immagine su Vercel Blob CDN
-        // Instagram non riesce ad accedere al dominio dev.odoo.com
-        // Usando Vercel Blob, l'immagine sarà accessibile pubblicamente da qualsiasi server
-        // ========================================
-        const blobFileName = `social-ai-${Date.now()}.${extension}`;
-        console.log(`☁️ [PUBLISH-ODOO] Caricamento su Vercel Blob: ${blobFileName}...`);
-
-        const blob = await put(blobFileName, finalBuffer, {
-          access: 'public',
-          contentType: mimetype,
-          token: process.env.BLOB_READ_WRITE_TOKEN,
-        });
-
-        blobUrl = blob.url;
-        console.log(`✅ [PUBLISH-ODOO] Immagine caricata su Vercel Blob: ${blobUrl}`);
-
-        // Genera access_token per Odoo (usato come fallback)
+        // Genera access_token per rendere l'immagine accessibile pubblicamente
         const accessToken = generateAccessToken();
 
-        // Crea attachment in Odoo con URL esterno (Vercel Blob CDN)
-        // NOTA: Usiamo type='url' con l'URL pubblico di Vercel Blob
-        // In questo modo Instagram può scaricare l'immagine dal CDN
+        // Converti in base64 per Odoo
+        const imageBase64 = finalBuffer.toString('base64');
+        const fileName = `social-ai-${Date.now()}.${extension}`;
+
+        console.log(`📤 [PUBLISH-ODOO] Creazione attachment in Odoo: ${fileName}`);
+
+        // Crea attachment in Odoo con dati binari
+        // IMPORTANTE: Odoo social module richiede type='binary' con datas
         const attachmentResult = await callOdoo(
           odooCookies,
           'ir.attachment',
           'create',
           [{
-            name: blobFileName,
-            type: 'url',
-            url: blobUrl,  // URL pubblico di Vercel Blob
+            name: fileName,
+            type: 'binary',
+            datas: imageBase64,  // Dati binari in base64
             mimetype: mimetype,
             public: true,
             access_token: accessToken,
