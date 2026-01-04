@@ -99,16 +99,41 @@ export interface FollowUp {
  * Arricchimento web (dati da social, Google, sito)
  */
 export interface WebEnrichment {
+  // URL e social
   website_url?: string;
-  menu_items?: string[];
-  cuisine_style?: string;
-  price_range?: string;
-  specialties?: string[];
-  google_rating?: number;
-  google_reviews_count?: number;
+  website?: string;  // alias per retrocompatibilità
   instagram_handle?: string;
   instagram_followers?: number;
+  facebook?: string;
+  instagram?: string;
+
+  // Specialità e cucina
+  specialty?: string;           // es. "Pizza napoletana, pasta fresca"
+  cuisine_type?: string;        // es. "Italiana, Pizzeria"
+  cuisine_style?: string;       // alias legacy
+  specialties?: string[];       // lista alternativa
+  menu_items?: string[];
+
+  // Rating e recensioni
+  google_rating?: number;
+  google_reviews_count?: number;
+  tripadvisor_rating?: number;
+
+  // Info business
+  description?: string;         // descrizione breve del business
+  awards?: string[];            // premi/riconoscimenti
+  price_range?: string;
+  owner_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  opening_hours?: string;
+  founded_year?: number;
+  locations?: string[];
+
+  // Metadata
   last_enrichment_date?: string;
+  enriched_at?: string;         // alias
 }
 
 /**
