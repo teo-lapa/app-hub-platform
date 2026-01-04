@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { PNG } from 'pngjs';
 import * as jpeg from 'jpeg-js';
+import { put } from '@vercel/blob';
 
 /**
  * Genera un access_token casuale per gli attachment Odoo
@@ -112,6 +113,124 @@ const DEFAULT_ACCOUNT_IDS = [2, 4, 6, 13];
 const TWITTER_ACCOUNT_ID = 13;
 const TWITTER_MAX_CHARS = 280;
 
+// Instagram Account ID in Odoo
+const INSTAGRAM_ACCOUNT_ID = 4;
+
+/**
+ * Pubblica direttamente su Instagram usando Graph API
+ * Bypassa Odoo perché il dominio dev.odoo.com non è accessibile a Instagram
+ */
+async function publishToInstagramDirect(
+  imageUrl: string,
+  caption: string,
+  odooCookies: string
+): Promise<{ success: boolean; instagramPostId?: string; error?: string }> {
+  try {
+    console.log('📸 [INSTAGRAM-DIRECT] Inizio pubblicazione diretta su Instagram...');
+
+    // 1. Ottieni l'access token da Odoo
+    const accounts = await callOdoo(
+      odooCookies,
+      'social.account',
+      'search_read',
+      [[['id', '=', INSTAGRAM_ACCOUNT_ID]]],
+      { fields: ['instagram_access_token', 'instagram_account_id'] }
+    );
+
+    if (!accounts || accounts.length === 0) {
+      throw new Error('Account Instagram non trovato in Odoo');
+    }
+
+    const { instagram_access_token: accessToken, instagram_account_id: igAccountId } = accounts[0];
+
+    if (!accessToken || !igAccountId) {
+      throw new Error('Credenziali Instagram non disponibili');
+    }
+
+    console.log(`📸 [INSTAGRAM-DIRECT] Account IG: ${igAccountId}`);
+
+    // 2. Crea il media container
+    console.log('📸 [INSTAGRAM-DIRECT] Creazione media container...');
+    const containerResponse = await fetch(
+      `https://graph.facebook.com/v18.0/${igAccountId}/media`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          caption: caption,
+          access_token: accessToken
+        })
+      }
+    );
+
+    const containerData = await containerResponse.json();
+
+    if (containerData.error) {
+      throw new Error(containerData.error.message || 'Errore creazione container');
+    }
+
+    const containerId = containerData.id;
+    console.log(`📸 [INSTAGRAM-DIRECT] Container creato: ${containerId}`);
+
+    // 3. Attendi che il container sia pronto (polling)
+    console.log('📸 [INSTAGRAM-DIRECT] Attendo che il container sia pronto...');
+    let containerReady = false;
+    let attempts = 0;
+    const maxAttempts = 30; // Max 60 secondi
+
+    while (!containerReady && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      attempts++;
+
+      const statusResponse = await fetch(
+        `https://graph.facebook.com/v18.0/${containerId}?fields=status_code&access_token=${accessToken}`
+      );
+      const statusData = await statusResponse.json();
+
+      console.log(`📸 [INSTAGRAM-DIRECT] Tentativo ${attempts}/${maxAttempts} - Status: ${statusData.status_code}`);
+
+      if (statusData.status_code === 'FINISHED') {
+        containerReady = true;
+      } else if (statusData.status_code === 'ERROR') {
+        throw new Error('Container in stato ERROR');
+      }
+    }
+
+    if (!containerReady) {
+      throw new Error('Timeout: container non pronto dopo 60 secondi');
+    }
+
+    // 4. Pubblica il container
+    console.log('📸 [INSTAGRAM-DIRECT] Pubblicazione del post...');
+    const publishResponse = await fetch(
+      `https://graph.facebook.com/v18.0/${igAccountId}/media_publish`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: accessToken
+        })
+      }
+    );
+
+    const publishData = await publishResponse.json();
+
+    if (publishData.error) {
+      throw new Error(publishData.error.message || 'Errore pubblicazione');
+    }
+
+    console.log(`✅ [INSTAGRAM-DIRECT] Post pubblicato! ID: ${publishData.id}`);
+
+    return { success: true, instagramPostId: publishData.id };
+
+  } catch (error: any) {
+    console.error('❌ [INSTAGRAM-DIRECT] Errore:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * Crea un messaggio abbreviato per Twitter (max 280 caratteri)
  * Priorità: caption corta + hashtags principali + link
@@ -206,6 +325,10 @@ export async function POST(req: NextRequest) {
 
     // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
     let attachmentId: number | null = null;
+    let vercelBlobUrl: string | null = null;  // URL pubblico per Instagram
+    let processedImageBuffer: Buffer | null = null;
+    let processedMimetype: string = 'image/jpeg';
+
     if (imageUrl) {
       try {
         console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
@@ -220,8 +343,29 @@ export async function POST(req: NextRequest) {
 
         // IMPORTANTE: Converti in JPEG per compatibilità Instagram
         const { buffer: finalBuffer, mimetype, extension } = await convertToJpeg(imageBuffer);
+        processedImageBuffer = finalBuffer;
+        processedMimetype = mimetype;
 
         console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
+
+        // ========================================
+        // INSTAGRAM FIX: Carica su Vercel Blob per avere URL pubblico
+        // Instagram non può accedere al dominio dev.odoo.com
+        // ========================================
+        const hasInstagram = requestedAccountIds.includes(INSTAGRAM_ACCOUNT_ID);
+        if (hasInstagram) {
+          console.log(`☁️ [PUBLISH-ODOO] Upload su Vercel Blob per Instagram...`);
+          const blobFileName = `instagram-${Date.now()}.${extension}`;
+
+          const blob = await put(blobFileName, finalBuffer, {
+            access: 'public',
+            contentType: mimetype,
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+          });
+
+          vercelBlobUrl = blob.url;
+          console.log(`✅ [PUBLISH-ODOO] Vercel Blob URL: ${vercelBlobUrl}`);
+        }
 
         // Genera access_token per rendere l'immagine accessibile pubblicamente
         const accessToken = generateAccessToken();
@@ -412,15 +556,36 @@ export async function POST(req: NextRequest) {
     }
 
     // ========================================
-    // 2. INSTAGRAM (messaggio completo) - Pubblicato separatamente!
+    // 2. INSTAGRAM - Pubblicazione DIRETTA via Graph API
+    // Bypassa Odoo perché il dominio dev.odoo.com non è accessibile a Instagram
     // ========================================
     if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.instagram.id)) {
-      await publishSingleAccount(
-        ODOO_SOCIAL_ACCOUNTS.instagram.id,
-        ODOO_SOCIAL_ACCOUNTS.instagram.name,
-        fullPostText,
-        'Instagram'
-      );
+      if (vercelBlobUrl) {
+        // Usa pubblicazione diretta con URL Vercel Blob
+        console.log('📸 [PUBLISH-ODOO] Instagram: usando pubblicazione diretta via Graph API...');
+
+        const instagramResult = await publishToInstagramDirect(
+          vercelBlobUrl,
+          fullPostText,
+          odooCookies
+        );
+
+        if (instagramResult.success) {
+          allAccountNames.push(ODOO_SOCIAL_ACCOUNTS.instagram.name);
+          console.log(`✅ [PUBLISH-ODOO] Instagram pubblicato! Post ID: ${instagramResult.instagramPostId}`);
+        } else {
+          console.error(`❌ [PUBLISH-ODOO] Instagram fallito: ${instagramResult.error}`);
+        }
+      } else {
+        // Fallback: prova con Odoo (probabilmente fallirà)
+        console.warn('⚠️ [PUBLISH-ODOO] Instagram: nessuna immagine Vercel Blob, tento con Odoo...');
+        await publishSingleAccount(
+          ODOO_SOCIAL_ACCOUNTS.instagram.id,
+          ODOO_SOCIAL_ACCOUNTS.instagram.name,
+          fullPostText,
+          'Instagram'
+        );
+      }
       // Piccola pausa tra le piattaforme
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
