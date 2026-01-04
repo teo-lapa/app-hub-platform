@@ -180,12 +180,15 @@ export async function POST(req: NextRequest) {
     const createdPostIds: number[] = [];
     const allAccountNames: string[] = [];
 
-    // Prepara i dati dell'immagine - NON creiamo l'attachment separatamente!
-    // Odoo vuole che l'immagine sia passata inline nel create del post
-    // IMPORTANTE: Instagram accetta SOLO JPEG, quindi convertiamo sempre
-    let imageBase64: string | null = null;
-    let imageName: string | null = null;
-    let imageMimetype: string | null = null;
+    // Prepara i dati dell'immagine - due versioni:
+    // 1. Originale per Facebook, Twitter, LinkedIn (accettano PNG)
+    // 2. JPEG per Instagram (accetta SOLO JPEG)
+    let originalImageBase64: string | null = null;
+    let originalImageName: string | null = null;
+    let originalImageMimetype: string | null = null;
+
+    let jpegImageBase64: string | null = null;
+    let jpegImageName: string | null = null;
 
     if (imageUrl) {
       try {
@@ -200,14 +203,29 @@ export async function POST(req: NextRequest) {
         const imageBuffer = await imageResponse.arrayBuffer();
         const buffer = Buffer.from(imageBuffer);
 
-        // Converti in JPEG (Instagram richiede JPEG)
-        const { buffer: jpegBuffer, mimetype, extension } = convertToJpeg(buffer);
+        // Determina formato originale
+        let origMimetype = 'image/png';
+        let origExtension = 'png';
+        if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+          origMimetype = 'image/jpeg';
+          origExtension = 'jpg';
+        }
 
-        imageBase64 = jpegBuffer.toString('base64');
-        imageName = `social-ai-${Date.now()}.${extension}`;
-        imageMimetype = mimetype;
+        // Salva versione originale per Facebook, Twitter, LinkedIn
+        originalImageBase64 = buffer.toString('base64');
+        originalImageName = `social-ai-${Date.now()}.${origExtension}`;
+        originalImageMimetype = origMimetype;
 
-        console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+        console.log(`📦 [PUBLISH-ODOO] Immagine originale: ${origMimetype} (${Math.round(buffer.length / 1024)}KB)`);
+
+        // Converti in JPEG per Instagram (solo se necessario)
+        const { buffer: jpegBuffer, mimetype: jpegMimetype, extension: jpegExt } = convertToJpeg(buffer);
+        jpegImageBase64 = jpegBuffer.toString('base64');
+        jpegImageName = `social-ai-${Date.now()}.${jpegExt}`;
+
+        if (origMimetype !== 'image/jpeg') {
+          console.log(`📦 [PUBLISH-ODOO] Versione JPEG per Instagram: ${jpegMimetype} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+        }
 
       } catch (imgError: any) {
         console.error('⚠️ [PUBLISH-ODOO] Errore preparazione immagine:', imgError.message);
@@ -241,13 +259,25 @@ export async function POST(req: NextRequest) {
 
       // IMPORTANTE: Passa l'immagine INLINE - Odoo creerà l'attachment con res_model/res_id corretti
       // Sintassi: [(0, 0, {campo1: valore1, ...})] crea un nuovo record collegato
-      if (imageBase64 && imageName && imageMimetype) {
+      // Instagram richiede JPEG, gli altri accettano il formato originale
+      const isInstagram = platformLabel.toLowerCase().includes('instagram');
+
+      if (isInstagram && jpegImageBase64 && jpegImageName) {
+        // Instagram: usa JPEG
         postValues.image_ids = [[0, 0, {
-          name: imageName,
-          datas: imageBase64,
-          mimetype: imageMimetype,
+          name: jpegImageName,
+          datas: jpegImageBase64,
+          mimetype: 'image/jpeg',
         }]];
-        console.log(`📎 [PUBLISH-ODOO] Immagine allegata inline: ${imageName} (${imageMimetype})`);
+        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: JPEG allegato - ${jpegImageName}`);
+      } else if (originalImageBase64 && originalImageName && originalImageMimetype) {
+        // Altri: usa formato originale
+        postValues.image_ids = [[0, 0, {
+          name: originalImageName,
+          datas: originalImageBase64,
+          mimetype: originalImageMimetype,
+        }]];
+        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: ${originalImageMimetype} allegato - ${originalImageName}`);
       }
 
       try {
@@ -433,7 +463,7 @@ export async function POST(req: NextRequest) {
       odooPostIds: createdPostIds,
       post: {
         ids: createdPostIds,
-        hasImage: !!imageBase64,
+        hasImage: !!originalImageBase64,
         accounts: allAccountNames,
         twitterMessageLength: hasTwitter ? twitterPostText.length : null
       }
