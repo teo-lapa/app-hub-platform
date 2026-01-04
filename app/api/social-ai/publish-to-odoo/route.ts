@@ -1,67 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { PNG } from 'pngjs';
-import * as jpeg from 'jpeg-js';
-import { put } from '@vercel/blob';
 
 /**
- * Genera un access_token casuale per gli attachment Odoo
- * Necessario per rendere le immagini accessibili pubblicamente a Instagram/Facebook API
+ * Determina il mimetype di un'immagine dai magic bytes
  */
-function generateAccessToken(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
-
-// Funzione per convertire PNG a JPEG (compatibile con Vercel - no binari nativi)
-async function convertToJpeg(imageBuffer: ArrayBuffer): Promise<{ buffer: Buffer; mimetype: string; extension: string }> {
-  const buffer = Buffer.from(imageBuffer);
-
-  // Verifica se è già JPEG controllando i magic bytes (FF D8 FF)
+function getImageMimetype(buffer: Buffer): { mimetype: string; extension: string } {
+  // JPEG: FF D8 FF
   if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
-    console.log('✅ [PUBLISH-ODOO] Immagine già in formato JPEG');
-    return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
+    return { mimetype: 'image/jpeg', extension: 'jpg' };
   }
-
-  // Verifica se è PNG controllando i magic bytes (89 50 4E 47)
+  // PNG: 89 50 4E 47
   if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-    console.log('🔄 [PUBLISH-ODOO] Conversione PNG -> JPEG...');
-
-    try {
-      // Decodifica PNG
-      const png = PNG.sync.read(buffer);
-
-      // Prepara i dati RGBA per jpeg-js
-      const rawImageData = {
-        data: png.data,
-        width: png.width,
-        height: png.height
-      };
-
-      // Codifica in JPEG (qualità 90%)
-      const jpegImageData = jpeg.encode(rawImageData, 90);
-
-      console.log(`✅ [PUBLISH-ODOO] Convertito in JPEG: ${png.width}x${png.height} (${Math.round(jpegImageData.data.length / 1024)}KB)`);
-
-      return {
-        buffer: jpegImageData.data,
-        mimetype: 'image/jpeg',
-        extension: 'jpg'
-      };
-    } catch (conversionError: any) {
-      console.error('⚠️ [PUBLISH-ODOO] Errore conversione PNG->JPEG:', conversionError.message);
-      // Fallback: usa PNG originale (Instagram potrebbe rifiutarlo)
-      return { buffer, mimetype: 'image/png', extension: 'png' };
-    }
+    return { mimetype: 'image/png', extension: 'png' };
   }
-
-  // Per altri formati, restituisci come-è
-  console.warn('⚠️ [PUBLISH-ODOO] Formato immagine non riconosciuto, uso originale');
-  return { buffer, mimetype: 'image/png', extension: 'png' };
+  // GIF: 47 49 46
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+    return { mimetype: 'image/gif', extension: 'gif' };
+  }
+  // Default: PNG
+  return { mimetype: 'image/png', extension: 'png' };
 }
 
 export const runtime = 'nodejs';
@@ -113,123 +70,6 @@ const DEFAULT_ACCOUNT_IDS = [2, 4, 6, 13];
 const TWITTER_ACCOUNT_ID = 13;
 const TWITTER_MAX_CHARS = 280;
 
-// Instagram Account ID in Odoo
-const INSTAGRAM_ACCOUNT_ID = 4;
-
-/**
- * Pubblica direttamente su Instagram usando Graph API
- * Bypassa Odoo perché il dominio dev.odoo.com non è accessibile a Instagram
- */
-async function publishToInstagramDirect(
-  imageUrl: string,
-  caption: string,
-  odooCookies: string
-): Promise<{ success: boolean; instagramPostId?: string; error?: string }> {
-  try {
-    console.log('📸 [INSTAGRAM-DIRECT] Inizio pubblicazione diretta su Instagram...');
-
-    // 1. Ottieni l'access token da Odoo
-    const accounts = await callOdoo(
-      odooCookies,
-      'social.account',
-      'search_read',
-      [[['id', '=', INSTAGRAM_ACCOUNT_ID]]],
-      { fields: ['instagram_access_token', 'instagram_account_id'] }
-    );
-
-    if (!accounts || accounts.length === 0) {
-      throw new Error('Account Instagram non trovato in Odoo');
-    }
-
-    const { instagram_access_token: accessToken, instagram_account_id: igAccountId } = accounts[0];
-
-    if (!accessToken || !igAccountId) {
-      throw new Error('Credenziali Instagram non disponibili');
-    }
-
-    console.log(`📸 [INSTAGRAM-DIRECT] Account IG: ${igAccountId}`);
-
-    // 2. Crea il media container
-    console.log('📸 [INSTAGRAM-DIRECT] Creazione media container...');
-    const containerResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${igAccountId}/media`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          caption: caption,
-          access_token: accessToken
-        })
-      }
-    );
-
-    const containerData = await containerResponse.json();
-
-    if (containerData.error) {
-      throw new Error(containerData.error.message || 'Errore creazione container');
-    }
-
-    const containerId = containerData.id;
-    console.log(`📸 [INSTAGRAM-DIRECT] Container creato: ${containerId}`);
-
-    // 3. Attendi che il container sia pronto (polling)
-    console.log('📸 [INSTAGRAM-DIRECT] Attendo che il container sia pronto...');
-    let containerReady = false;
-    let attempts = 0;
-    const maxAttempts = 30; // Max 60 secondi
-
-    while (!containerReady && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      attempts++;
-
-      const statusResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${containerId}?fields=status_code&access_token=${accessToken}`
-      );
-      const statusData = await statusResponse.json();
-
-      console.log(`📸 [INSTAGRAM-DIRECT] Tentativo ${attempts}/${maxAttempts} - Status: ${statusData.status_code}`);
-
-      if (statusData.status_code === 'FINISHED') {
-        containerReady = true;
-      } else if (statusData.status_code === 'ERROR') {
-        throw new Error('Container in stato ERROR');
-      }
-    }
-
-    if (!containerReady) {
-      throw new Error('Timeout: container non pronto dopo 60 secondi');
-    }
-
-    // 4. Pubblica il container
-    console.log('📸 [INSTAGRAM-DIRECT] Pubblicazione del post...');
-    const publishResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${igAccountId}/media_publish`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          creation_id: containerId,
-          access_token: accessToken
-        })
-      }
-    );
-
-    const publishData = await publishResponse.json();
-
-    if (publishData.error) {
-      throw new Error(publishData.error.message || 'Errore pubblicazione');
-    }
-
-    console.log(`✅ [INSTAGRAM-DIRECT] Post pubblicato! ID: ${publishData.id}`);
-
-    return { success: true, instagramPostId: publishData.id };
-
-  } catch (error: any) {
-    console.error('❌ [INSTAGRAM-DIRECT] Errore:', error.message);
-    return { success: false, error: error.message };
-  }
-}
 
 /**
  * Crea un messaggio abbreviato per Twitter (max 280 caratteri)
@@ -323,15 +163,15 @@ export async function POST(req: NextRequest) {
     const createdPostIds: number[] = [];
     const allAccountNames: string[] = [];
 
-    // Aggiungi immagine se presente - IMPORTANTE: Instagram richiede JPEG!
-    let attachmentId: number | null = null;
-    let vercelBlobUrl: string | null = null;  // URL pubblico per Instagram
-    let processedImageBuffer: Buffer | null = null;
-    let processedMimetype: string = 'image/jpeg';
+    // Prepara i dati dell'immagine - NON creiamo l'attachment separatamente!
+    // Odoo vuole che l'immagine sia passata inline nel create del post
+    let imageBase64: string | null = null;
+    let imageName: string | null = null;
+    let imageMimetype: string | null = null;
 
     if (imageUrl) {
       try {
-        console.log(`🖼️ [PUBLISH-ODOO] Caricamento immagine...`);
+        console.log(`🖼️ [PUBLISH-ODOO] Scaricamento immagine...`);
 
         // Scarica l'immagine
         const imageResponse = await fetch(imageUrl);
@@ -340,65 +180,20 @@ export async function POST(req: NextRequest) {
         }
 
         const imageBuffer = await imageResponse.arrayBuffer();
+        const buffer = Buffer.from(imageBuffer);
 
-        // IMPORTANTE: Converti in JPEG per compatibilità Instagram
-        const { buffer: finalBuffer, mimetype, extension } = await convertToJpeg(imageBuffer);
-        processedImageBuffer = finalBuffer;
-        processedMimetype = mimetype;
+        // Determina il mimetype dal contenuto del file (magic bytes)
+        const { mimetype, extension } = getImageMimetype(buffer);
 
-        console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(finalBuffer.length / 1024)}KB)`);
+        // Mantieni il formato originale - NON convertire
+        imageBase64 = buffer.toString('base64');
+        imageName = `social-ai-${Date.now()}.${extension}`;
+        imageMimetype = mimetype;
 
-        // ========================================
-        // INSTAGRAM FIX: Carica su Vercel Blob per avere URL pubblico
-        // Instagram non può accedere al dominio dev.odoo.com
-        // ========================================
-        const hasInstagram = requestedAccountIds.includes(INSTAGRAM_ACCOUNT_ID);
-        if (hasInstagram) {
-          console.log(`☁️ [PUBLISH-ODOO] Upload su Vercel Blob per Instagram...`);
-          const blobFileName = `instagram-${Date.now()}.${extension}`;
+        console.log(`📦 [PUBLISH-ODOO] Immagine pronta: ${mimetype} (${Math.round(buffer.length / 1024)}KB)`);
 
-          const blob = await put(blobFileName, finalBuffer, {
-            access: 'public',
-            contentType: mimetype,
-            token: process.env.BLOB_READ_WRITE_TOKEN,
-          });
-
-          vercelBlobUrl = blob.url;
-          console.log(`✅ [PUBLISH-ODOO] Vercel Blob URL: ${vercelBlobUrl}`);
-        }
-
-        // Genera access_token per rendere l'immagine accessibile pubblicamente
-        const accessToken = generateAccessToken();
-
-        // Converti in base64 per Odoo
-        const imageBase64 = finalBuffer.toString('base64');
-        const fileName = `social-ai-${Date.now()}.${extension}`;
-
-        console.log(`📤 [PUBLISH-ODOO] Creazione attachment in Odoo: ${fileName}`);
-
-        // Crea attachment in Odoo con dati binari
-        // IMPORTANTE: Odoo social module richiede type='binary' con datas
-        const attachmentResult = await callOdoo(
-          odooCookies,
-          'ir.attachment',
-          'create',
-          [{
-            name: fileName,
-            type: 'binary',
-            datas: imageBase64,  // Dati binari in base64
-            mimetype: mimetype,
-            public: true,
-            access_token: accessToken,
-          }]
-        );
-
-        if (attachmentResult) {
-          attachmentId = attachmentResult;
-          console.log(`✅ [PUBLISH-ODOO] Attachment creato in Odoo: ID ${attachmentId}`);
-        }
       } catch (imgError: any) {
-        console.error('⚠️ [PUBLISH-ODOO] Errore upload immagine:', imgError.message);
-        // Continua senza immagine ma avvisa l'utente
+        console.error('⚠️ [PUBLISH-ODOO] Errore preparazione immagine:', imgError.message);
       }
     }
 
@@ -427,8 +222,15 @@ export async function POST(req: NextRequest) {
         postValues.scheduled_date = scheduledDate;
       }
 
-      if (attachmentId) {
-        postValues.image_ids = [[6, 0, [attachmentId]]];
+      // IMPORTANTE: Passa l'immagine INLINE - Odoo creerà l'attachment con res_model/res_id corretti
+      // Sintassi: [(0, 0, {campo1: valore1, ...})] crea un nuovo record collegato
+      if (imageBase64 && imageName && imageMimetype) {
+        postValues.image_ids = [[0, 0, {
+          name: imageName,
+          datas: imageBase64,
+          mimetype: imageMimetype,
+        }]];
+        console.log(`📎 [PUBLISH-ODOO] Immagine allegata inline: ${imageName} (${imageMimetype})`);
       }
 
       try {
@@ -556,36 +358,15 @@ export async function POST(req: NextRequest) {
     }
 
     // ========================================
-    // 2. INSTAGRAM - Pubblicazione DIRETTA via Graph API
-    // Bypassa Odoo perché il dominio dev.odoo.com non è accessibile a Instagram
+    // 2. INSTAGRAM (messaggio completo) - Attraverso Odoo come gli altri
     // ========================================
     if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.instagram.id)) {
-      if (vercelBlobUrl) {
-        // Usa pubblicazione diretta con URL Vercel Blob
-        console.log('📸 [PUBLISH-ODOO] Instagram: usando pubblicazione diretta via Graph API...');
-
-        const instagramResult = await publishToInstagramDirect(
-          vercelBlobUrl,
-          fullPostText,
-          odooCookies
-        );
-
-        if (instagramResult.success) {
-          allAccountNames.push(ODOO_SOCIAL_ACCOUNTS.instagram.name);
-          console.log(`✅ [PUBLISH-ODOO] Instagram pubblicato! Post ID: ${instagramResult.instagramPostId}`);
-        } else {
-          console.error(`❌ [PUBLISH-ODOO] Instagram fallito: ${instagramResult.error}`);
-        }
-      } else {
-        // Fallback: prova con Odoo (probabilmente fallirà)
-        console.warn('⚠️ [PUBLISH-ODOO] Instagram: nessuna immagine Vercel Blob, tento con Odoo...');
-        await publishSingleAccount(
-          ODOO_SOCIAL_ACCOUNTS.instagram.id,
-          ODOO_SOCIAL_ACCOUNTS.instagram.name,
-          fullPostText,
-          'Instagram'
-        );
-      }
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.instagram.id,
+        ODOO_SOCIAL_ACCOUNTS.instagram.name,
+        fullPostText,
+        'Instagram'
+      );
       // Piccola pausa tra le piattaforme
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -635,7 +416,7 @@ export async function POST(req: NextRequest) {
       odooPostIds: createdPostIds,
       post: {
         ids: createdPostIds,
-        hasImage: !!attachmentId,
+        hasImage: !!imageBase64,
         accounts: allAccountNames,
         twitterMessageLength: hasTwitter ? twitterPostText.length : null
       }
