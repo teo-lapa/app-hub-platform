@@ -13,6 +13,27 @@
 import { BaseAgent } from '@/lib/maestro-agents/core/base-agent';
 import { getOdooClient } from '@/lib/odoo-client';
 import type { AgentRole, AgentTask, AgentResult, AgentTool } from '@/lib/maestro-agents/types';
+import Anthropic from '@anthropic-ai/sdk';
+
+// ============================================================================
+// TYPES - Product Matching
+// ============================================================================
+
+interface ProductHistoryItem {
+  product_id: number;
+  product_name: string;
+  purchase_count: number;
+  total_qty: number;
+}
+
+interface ProductMatch {
+  richiesta_originale: string;
+  quantita: number;
+  product_id: number | null;
+  product_name: string | null;
+  confidence: 'ALTA' | 'MEDIA' | 'BASSA' | 'NON_TROVATO';
+  reasoning: string;
+}
 
 // ============================================================================
 // TYPES
@@ -1465,6 +1486,194 @@ const ordersTools: AgentTool[] = [
       }
     },
   },
+
+  // ============================================================================
+  // AI PRODUCT MATCHING - Match prodotti da messaggio con storico cliente
+  // ============================================================================
+
+  {
+    name: 'match_products_from_message',
+    description: 'Processa un messaggio del cliente (es. lista prodotti WhatsApp) e fa match intelligente con lo storico acquisti. Usa AI per capire cosa vuole il cliente e trovare i prodotti esatti.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer_id: {
+          type: 'number',
+          description: 'ID del cliente (Odoo partner_id)',
+        },
+        message: {
+          type: 'string',
+          description: 'Messaggio del cliente con la lista prodotti (es. "7 sacchi verace, 2 ventricina, 1 cart bufala")',
+        },
+      },
+      required: ['customer_id', 'message'],
+    },
+    handler: async ({ customer_id, message }): Promise<{
+      success: boolean;
+      matches: ProductMatch[];
+      found_count: number;
+      not_found_count: number;
+      not_found_items: string[];
+      summary: string;
+    }> => {
+      try {
+        const odoo = await getOdooClient();
+
+        // 1. Ottieni storico prodotti cliente (ultimi 100)
+        const { ids: partnerIds } = await getPartnerIdsForSearch(customer_id);
+
+        // Trova ordini ultimi 6 mesi
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
+
+        const orders = await odoo.searchRead(
+          'sale.order',
+          [
+            ['partner_id', 'in', partnerIds],
+            ['date_order', '>=', dateFrom],
+            ['state', 'in', ['sale', 'done']]
+          ],
+          ['id', 'name', 'date_order'],
+          100
+        );
+
+        if (orders.length === 0) {
+          return {
+            success: false,
+            matches: [],
+            found_count: 0,
+            not_found_count: 0,
+            not_found_items: [],
+            summary: 'Nessuno storico ordini trovato per questo cliente. Usa search_products per cercare nel catalogo completo.'
+          };
+        }
+
+        const orderIds = orders.map((o: any) => o.id);
+
+        // Recupera prodotti ordinati
+        const orderLines = await odoo.searchRead(
+          'sale.order.line',
+          [['order_id', 'in', orderIds]],
+          ['product_id', 'product_uom_qty'],
+          1000
+        );
+
+        // Aggrega per frequenza
+        const productFrequency = new Map<number, ProductHistoryItem>();
+        for (const line of orderLines) {
+          if (!line.product_id) continue;
+          const productId = line.product_id[0];
+          const existing = productFrequency.get(productId);
+          if (existing) {
+            existing.purchase_count++;
+            existing.total_qty += line.product_uom_qty || 0;
+          } else {
+            productFrequency.set(productId, {
+              product_id: productId,
+              product_name: line.product_id[1],
+              purchase_count: 1,
+              total_qty: line.product_uom_qty || 0,
+            });
+          }
+        }
+
+        // Ordina per frequenza e prendi top 100
+        const productHistory = Array.from(productFrequency.values())
+          .sort((a, b) => b.purchase_count - a.purchase_count)
+          .slice(0, 100);
+
+        console.log(`📦 [MATCH] Cliente ${customer_id}: ${productHistory.length} prodotti nello storico`);
+
+        // 2. Chiama Claude per il matching
+        if (!process.env.ANTHROPIC_API_KEY) {
+          throw new Error('ANTHROPIC_API_KEY non configurata');
+        }
+
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+        const prompt = `Sei un assistente AI che processa ordini di prodotti alimentari italiani.
+
+STORICO ACQUISTI CLIENTE (Top 100 prodotti più ordinati):
+${productHistory.map((p, i) => `${i + 1}. ${p.product_name} (ID: ${p.product_id}) - Ordinato ${p.purchase_count} volte`).join('\n')}
+
+MESSAGGIO CLIENTE:
+"""
+${message}
+"""
+
+COMPITO:
+Estrai i prodotti richiesti dal messaggio e fai MATCH con lo storico del cliente.
+
+REGOLE:
+1. Cerca parole chiave nel nome prodotto (es. "verace" → "FARINA 00 VERACE...")
+2. Considera sinonimi (es. "mozza" = "mozzarella", "bufala" = "mozzarella di bufala")
+3. Se trovi più match, scegli quello ordinato PIÙ FREQUENTEMENTE
+4. Estrai quantità intelligentemente (es. "2 cartoni" = 2, "una decina" = 10)
+5. Se non trovi match nello storico, segnala come NON_TROVATO
+
+CONFIDENCE:
+- ALTA: Match quasi esatto (>90%)
+- MEDIA: Match parziale ma ragionevole (60-90%)
+- BASSA: Match incerto (<60%)
+- NON_TROVATO: Nessun match nello storico
+
+FORMATO OUTPUT (JSON):
+{
+  "matches": [
+    {
+      "richiesta_originale": "testo dal messaggio",
+      "quantita": numero,
+      "product_id": numero o null,
+      "product_name": "nome completo" o null,
+      "confidence": "ALTA" | "MEDIA" | "BASSA" | "NON_TROVATO",
+      "reasoning": "spiegazione breve (max 80 char)"
+    }
+  ]
+}
+
+Rispondi SOLO con il JSON, senza altro testo.`;
+
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          temperature: 0.2,
+          messages: [{ role: 'user', content: prompt }]
+        });
+
+        const content = response.content[0];
+        if (content.type !== 'text') {
+          throw new Error('Risposta AI non testuale');
+        }
+
+        // Parse JSON
+        const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('AI non ha restituito JSON valido');
+        }
+
+        const result = JSON.parse(jsonMatch[0]);
+        const matches: ProductMatch[] = result.matches || [];
+
+        // Calcola statistiche
+        const foundMatches = matches.filter(m => m.product_id !== null);
+        const notFoundMatches = matches.filter(m => m.confidence === 'NON_TROVATO');
+
+        console.log(`✅ [MATCH] Risultato: ${foundMatches.length} trovati, ${notFoundMatches.length} non trovati`);
+
+        return {
+          success: true,
+          matches,
+          found_count: foundMatches.length,
+          not_found_count: notFoundMatches.length,
+          not_found_items: notFoundMatches.map(m => m.richiesta_originale),
+          summary: `Trovati ${foundMatches.length}/${matches.length} prodotti. ${notFoundMatches.length > 0 ? `Non trovati: ${notFoundMatches.map(m => m.richiesta_originale).join(', ')}` : 'Tutti i prodotti matchati!'}`
+        };
+      } catch (error) {
+        throw new Error(`Errore matching prodotti: ${error instanceof Error ? error.message : error}`);
+      }
+    },
+  },
 ];
 
 // ============================================================================
@@ -1486,6 +1695,8 @@ export class OrdersAgent extends BaseAgent {
         'Cercare prodotti disponibili',
         'Mostrare prodotti acquistati dal cliente',
         'Mostrare storico acquisti di un prodotto specifico',
+        'Processare liste prodotti da messaggi WhatsApp/email',
+        'Match intelligente prodotti con storico cliente',
         'Guidare clienti B2C all\'acquisto sul sito web',
         'Fornire informazioni su pagamenti e spedizioni',
       ],
@@ -1530,6 +1741,33 @@ Per clienti B2B puoi:
 3. Conferma dettagli (quantità, prezzi)
 4. Crea ordine con create_order
 5. Fornisci numero ordine e conferma
+
+### 🆕 PROCESSARE LISTE PRODOTTI DA WHATSAPP/EMAIL:
+Quando un cliente B2B manda una lista prodotti (es. "7 sacchi verace, 2 ventricina..."):
+
+1. **USA match_products_from_message** con il messaggio del cliente
+   - Cerca negli ultimi 100 prodotti ordinati dal cliente
+   - Match intelligente basato su frequenza ("prodotto più ordinato")
+   - Restituisce confidence: ALTA/MEDIA/BASSA/NON_TROVATO
+
+2. **Per prodotti TROVATI** (confidence ALTA/MEDIA):
+   - Mostra al cliente cosa hai trovato
+   - Chiedi conferma
+   - Usa add_to_cart per aggiungerli
+
+3. **Per prodotti NON_TROVATO**:
+   - Usa search_products per cercare nel catalogo completo
+   - Suggerisci alternative se disponibili
+
+4. **Esempio flusso:**
+   Cliente: "7 sacchi verace, 2 ventricina, 1 bufala"
+   Tu:
+   - match_products_from_message(customer_id, messaggio)
+   - "Ho trovato:
+     ✅ FARINA 00 VERACE SACCO 25KG - Qty: 7
+     ✅ VENTRICINA PICCANTE 2.7KG - Qty: 2
+     ✅ MOZZARELLA DI BUFALA 250G - Qty: 1
+     Confermo l'ordine?"
 
 ### Stati ordine Odoo:
 - **draft**: Bozza (modificabile)
