@@ -80,29 +80,80 @@ function getConversationId(customerId?: number, parentId?: number, sessionId?: s
 // Flag per usare orchestratore AI vs fallback semplice
 const USE_AI_ORCHESTRATOR = process.env.LAPA_AI_ENABLED !== 'false';
 
-// Normalizza gli agentId per matchare quelli della dashboard
+// Normalizza gli agentId per raggruppare sub-agenti
+// NOTA: dashboard ora usa 'order', 'invoice', 'product' (singolare) - non più plurale!
 function normalizeAgentId(agentId: string): string {
   const mapping: Record<string, string> = {
-    'order': 'orders',
-    'order_detail': 'orders',
-    'invoice': 'invoices',
-    'invoice_filter': 'invoices',
-    'invoice_detail': 'invoices',
-    'product': 'products',
-    'shipping': 'shipping',
-    'helpdesk': 'helpdesk',
-    'sales_assistant': 'orders',
+    'order_detail': 'order',
+    'order_create': 'order',
+    'order_products': 'order',
+    'invoice_filter': 'invoice',
+    'invoice_detail': 'invoice',
+    'sales_assistant': 'order',
     'complaint': 'helpdesk',
     'followup': 'orchestrator',
-    'error_handler': 'helpdesk'
+    'error_handler': 'helpdesk',
+    'cart': 'order',
+    'lead_capture': 'helpdesk'
   };
   return mapping[agentId] || agentId;
+}
+
+/**
+ * Detect language from message text
+ * Returns: 'de' | 'fr' | 'en' | 'it' | 'auto'
+ */
+function detectLanguage(text: string): string {
+  const lowerText = text.toLowerCase();
+
+  // German indicators
+  const germanPatterns = [
+    /\b(ich|du|sie|wir|ihr|es|ist|sind|habe|haben|wird|werden|kann|können|muss|müssen|soll|sollen|wurde|waren|wäre|hätte|möchte|bitte|danke|guten|morgen|tag|abend|nacht|ja|nein|nicht|auch|sehr|gut|schlecht|mehr|weniger|heute|morgen|gestern|hier|dort|was|wer|wie|wo|wann|warum|welche|dieser|diese|dieses|mein|dein|sein|ihr|unser|mit|für|von|zu|bei|nach|aus|über|unter|lieferung|bestellung|rechnung|preis|produkt|bestellen|liefern)\b/,
+    /ä|ö|ü|ß/
+  ];
+
+  // French indicators
+  const frenchPatterns = [
+    /\b(je|tu|il|elle|nous|vous|ils|elles|suis|est|sont|ai|avons|ont|été|était|avoir|être|faire|aller|oui|non|merci|bonjour|bonsoir|salut|bien|très|plus|moins|aussi|encore|déjà|jamais|toujours|ici|là|où|quand|comment|pourquoi|quel|quelle|ce|cette|mon|ton|son|notre|votre|avec|pour|dans|sur|sous|livraison|commande|facture|prix|produit)\b/,
+    /é|è|ê|ë|à|â|ù|û|ç|œ/
+  ];
+
+  // English indicators
+  const englishPatterns = [
+    /\b(i|you|he|she|it|we|they|am|is|are|was|were|have|has|had|do|does|did|will|would|could|should|can|may|must|yes|no|please|thank|thanks|hello|hi|bye|good|bad|very|much|more|less|also|too|here|there|where|when|how|why|what|who|which|this|that|my|your|his|her|our|their|with|for|from|to|at|by|on|in|of|delivery|order|invoice|price|product)\b/
+  ];
+
+  let germanScore = 0;
+  let frenchScore = 0;
+  let englishScore = 0;
+
+  for (const pattern of germanPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) germanScore += matches.length;
+  }
+
+  for (const pattern of frenchPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) frenchScore += matches.length;
+  }
+
+  for (const pattern of englishPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) englishScore += matches.length;
+  }
+
+  const maxScore = Math.max(germanScore, frenchScore, englishScore);
+  if (maxScore === 0) return 'auto';
+  if (germanScore === maxScore) return 'de';
+  if (frenchScore === maxScore) return 'fr';
+  if (englishScore === maxScore) return 'en';
+  return 'auto';
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, customerType, customerId, parentId, customerName, customerEmail, sessionId, language = 'it', channel = 'web', attachments } = body;
+    const { message, customerType, customerId, parentId, customerName, customerEmail, sessionId, language: requestedLanguage, channel = 'web', attachments } = body;
 
     if (!message || typeof message !== 'string') {
       return jsonResponse(
@@ -110,6 +161,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Detect language from message if not explicitly provided
+    const language = requestedLanguage || detectLanguage(message);
+    console.log(`🌍 Language: ${language} (requested: ${requestedLanguage || 'auto-detect'})`);
 
     // Calcola l'ID conversazione consistente basato su customerId/parentId
     // Questo garantisce che lo stesso cliente veda sempre la sua cronologia

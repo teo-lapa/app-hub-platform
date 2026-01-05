@@ -16,6 +16,66 @@ import { getOdooClient } from '@/lib/odoo-client';
 import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
 import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
 
+/**
+ * Detect language from message text
+ * Returns: 'de' | 'fr' | 'en' | 'it' | 'auto'
+ * Claude will respond in the detected language
+ */
+function detectLanguage(text: string): string {
+  const lowerText = text.toLowerCase();
+
+  // German indicators
+  const germanPatterns = [
+    /\b(ich|du|sie|wir|ihr|es|ist|sind|habe|haben|wird|werden|kann|können|muss|müssen|soll|sollen|wird|wurde|waren|wäre|hätte|möchte|bitte|danke|guten|morgen|tag|abend|nacht|ja|nein|nicht|auch|sehr|gut|schlecht|mehr|weniger|heute|morgen|gestern|hier|dort|was|wer|wie|wo|wann|warum|welche|dieser|diese|dieses|mein|dein|sein|ihr|unser|euer|mit|für|von|zu|bei|nach|aus|über|unter|zwischen|vor|hinter|neben|auf|in|an|um|durch|ohne|gegen|bis|während|seit|trotz|wegen|lieferung|bestellung|rechnung|preis|produkt|artikel|bestellen|liefern)\b/,
+    /ä|ö|ü|ß/
+  ];
+
+  // French indicators
+  const frenchPatterns = [
+    /\b(je|tu|il|elle|nous|vous|ils|elles|suis|est|sont|ai|as|a|avons|avez|ont|été|était|étaient|serai|sera|seront|avoir|être|faire|aller|venir|voir|savoir|pouvoir|vouloir|devoir|falloir|oui|non|merci|bonjour|bonsoir|salut|bien|mal|très|plus|moins|aussi|encore|déjà|jamais|toujours|souvent|parfois|ici|là|où|quand|comment|pourquoi|combien|quel|quelle|quels|quelles|ce|cette|ces|mon|ton|son|notre|votre|leur|avec|pour|dans|sur|sous|entre|devant|derrière|avant|après|pendant|depuis|jusqu|vers|chez|sans|livraison|commande|facture|prix|produit|commander|livrer)\b/,
+    /é|è|ê|ë|à|â|ù|û|ç|œ/
+  ];
+
+  // English indicators
+  const englishPatterns = [
+    /\b(i|you|he|she|it|we|they|am|is|are|was|were|been|being|have|has|had|do|does|did|will|would|could|should|can|may|might|must|shall|yes|no|please|thank|thanks|hello|hi|bye|goodbye|good|bad|very|much|more|less|also|too|still|already|never|always|often|sometimes|here|there|where|when|how|why|what|who|which|this|that|these|those|my|your|his|her|its|our|their|with|for|from|to|at|by|on|in|of|about|into|through|during|before|after|above|below|between|under|again|delivery|order|invoice|price|product|item)\b/
+  ];
+
+  // Count matches for each language
+  let germanScore = 0;
+  let frenchScore = 0;
+  let englishScore = 0;
+
+  for (const pattern of germanPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) germanScore += matches.length;
+  }
+
+  for (const pattern of frenchPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) frenchScore += matches.length;
+  }
+
+  for (const pattern of englishPatterns) {
+    const matches = lowerText.match(pattern);
+    if (matches) englishScore += matches.length;
+  }
+
+  // Determine winner (need at least 1 match to be confident)
+  const maxScore = Math.max(germanScore, frenchScore, englishScore);
+
+  if (maxScore === 0) {
+    // No strong indicators, default to auto-detect (Claude will figure it out)
+    return 'auto';
+  }
+
+  if (germanScore === maxScore && germanScore > 0) return 'de';
+  if (frenchScore === maxScore && frenchScore > 0) return 'fr';
+  if (englishScore === maxScore && englishScore > 0) return 'en';
+
+  return 'auto'; // Let Claude decide
+}
+
 // Odoo native webhook format
 interface OdooWebhookPayload {
   _model?: string;
@@ -185,6 +245,10 @@ export async function POST(request: NextRequest) {
     }
     const orchestrator = getOrchestrator(odooClient);
 
+    // Detect language from message (DE, FR, EN, or auto for IT/other)
+    const detectedLanguage = detectLanguage(cleanMessage);
+    console.log(`[WHATSAPP-INCOMING] Detected language: ${detectedLanguage}`);
+
     // Process with AI agents
     const startTime = Date.now();
     const response = await orchestrator.processMessage(
@@ -196,7 +260,7 @@ export async function POST(request: NextRequest) {
         customerName,
         conversationHistory,
         metadata: {
-          language: 'it',
+          language: detectedLanguage,
           source: 'whatsapp'
         }
       }
