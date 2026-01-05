@@ -2158,7 +2158,9 @@ In the meantime, do you have other questions about our products?`
           console.warn('⚠️ Impossibile recuperare dati cliente:', odooError);
         }
 
-        const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
+        const langRaw = context.metadata?.language || 'it';
+        const langSafe = (langRaw === 'auto' ? 'it' : langRaw) as 'it' | 'en' | 'de';
+        const helpdeskAgent = createHelpdeskAgent(context.sessionId, langSafe);
 
         // 2. Costruisci conversazione completa con timestamp
         const conversationSummary = context.conversationHistory
@@ -2331,7 +2333,9 @@ ${conversationSummary}
         if (extractedEmail) {
           console.log('✅ Utente anonimo ha fornito dati sufficienti - creazione ticket');
 
-          const helpdeskAgent = createHelpdeskAgent(context.sessionId, (context.metadata?.language as 'it' | 'en' | 'de') || 'it');
+          const langRaw = context.metadata?.language || 'it';
+        const langSafe = (langRaw === 'auto' ? 'it' : langRaw) as 'it' | 'en' | 'de';
+        const helpdeskAgent = createHelpdeskAgent(context.sessionId, langSafe);
 
           // Costruisci descrizione ticket
           const ticketDescription = `
@@ -2463,7 +2467,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
   ): Promise<AgentResponse> {
     try {
       // Imposta la lingua del products-agent in base al context
-      const userLanguage = (context.metadata?.language || 'it') as 'it' | 'en' | 'fr' | 'de';
+      // NOTA: detectLanguage può ritornare 'auto' per lingue non riconosciute - usiamo 'it' come default
+      const rawLanguage = context.metadata?.language || 'it';
+      const userLanguage = (rawLanguage === 'auto' ? 'it' : rawLanguage) as 'it' | 'en' | 'fr' | 'de';
       this.productsAgent.setLanguage(userLanguage);
 
       const entities = intent.entities || {};
