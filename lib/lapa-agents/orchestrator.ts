@@ -3459,7 +3459,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
         if (lastCartInfo) {
           message += `\n\n🛒 Carrello (${lastCartInfo.cart_name}):\n- ${lastCartInfo.item_count} articoli\n- Totale: CHF ${lastCartInfo.total.toFixed(2)}`;
-          if (cartUrl) message += `\n\n[Vedi carrello](${cartUrl})`;
+          if (cartUrl) message += `\n\n👉 ${cartUrl}`;
         }
 
         return {
@@ -3807,7 +3807,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     let message = 'Ho trovato questi prodotti:\n\n';
     products.forEach((p: any, idx: number) => {
       const url = generateProductUrl(p.product_tmpl_id?.[0] || p.id, p.name);
-      message += `${idx + 1}. ${p.name} - CHF ${p.list_price.toFixed(2)} - [Vedi](${url})\n`;
+      message += `${idx + 1}. ${p.name} - CHF ${p.list_price.toFixed(2)}\n   👉 ${url}\n`;
     });
     message += '\nQuale vuoi aggiungere al carrello?';
 
@@ -4005,7 +4005,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       message += `🛒 Carrello (${cartName}):\n`;
       message += `- ${itemCount} articoli\n`;
       message += `- Totale: CHF ${total.toFixed(2)}\n\n`;
-      message += `[Vedi carrello](${cartUrl})`;
+      message += `👉 ${cartUrl}`;
 
       return {
         success: true,
@@ -4062,7 +4062,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     if (!cart.order_line || cart.order_line.length === 0) {
       return {
         success: true,
-        message: `🛒 Il tuo carrello (${cart.name}) è vuoto.\n\n[Vedi carrello](${cartUrl})`,
+        message: `🛒 Il tuo carrello (${cart.name}) è vuoto.\n\n👉 ${cartUrl}`,
         agentId: 'cart',
         suggestedActions: ['Cerca un prodotto', 'Mostra catalogo']
       };
@@ -4089,7 +4089,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
     message += `---\n`;
     message += `Totale: CHF ${cart.amount_total.toFixed(2)}\n\n`;
-    message += `[Vedi carrello completo](${cartUrl})`;
+    message += `👉 ${cartUrl}`;
 
     return {
       success: true,
@@ -4240,7 +4240,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       message: `✅ Ordine ${cart.name} confermato!\n\n` +
         `💰 Totale: CHF ${cart.amount_total.toFixed(2)}\n` +
         `📦 Riceverai una conferma via email\n\n` +
-        `[Vedi dettagli ordine](${orderUrl})\n\n` +
+        `👉 ${orderUrl}\n\n` +
         `Grazie per il tuo ordine! 🙏`,
       agentId: 'cart',
       data: {
@@ -4530,7 +4530,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           return {
             success: true,
             message: `📦 **Storico acquisti: ${productName}**\n\n` +
-                     `🔗 [Vedi prodotto](${productUrl})\n\n` +
+                     `👉 ${productUrl}\n\n` +
                      `🔢 Totale acquistato: ${totalQty} unità\n` +
                      `💰 Totale speso: CHF ${totalSpent.toFixed(2)}\n` +
                      `📅 Primo acquisto: ${purchases[purchases.length - 1].date.split(' ')[0]}\n` +
@@ -4653,7 +4653,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
         return `${idx + 1}. **${p.name}**\n` +
           `   Ultimo acquisto: ${p.lastDate.split(' ')[0]} (${p.lastOrder})\n` +
           `   Totale acquistato: ${p.totalQty} unità in ${p.orderCount} ordini\n` +
-          `   🔗 [Vedi prodotto](${url})`;
+          `   👉 ${url}`;
       }).join('\n\n');
 
       return {
@@ -5303,7 +5303,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       const orderUrl = generateOrderUrl(orderToShow.id, orderToShow.name);
       const message = `📦 **Dettagli Ordine ${orderToShow.name}**\n\n` +
-        `🔗 [Vedi ordine sul portale](${orderUrl})\n\n` +
+        `👉 ${orderUrl}\n\n` +
         `👤 Cliente: ${orderToShow.partner_id[1]}\n` +
         `📅 Data: ${orderToShow.date_order}\n` +
         `📊 Stato: ${stateLabels[orderToShow.state] || orderToShow.state}\n` +
@@ -5568,7 +5568,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       const invoiceUrl = generateInvoiceUrl(inv.id);
       const message = `📄 **Dettagli Fattura ${inv.name}**\n\n` +
-        `🔗 [Vedi/Scarica fattura sul portale](${invoiceUrl})\n\n` +
+        `👉 ${invoiceUrl}\n\n` +
         `👤 Cliente: ${inv.partner_name}\n` +
         `📅 Data: ${formatDateIT(inv.invoice_date)}\n` +
         `⏰ Scadenza: ${formatDateIT(inv.invoice_date_due)}\n` +
@@ -5728,7 +5728,7 @@ REGOLE IMPORTANTI:
 11. ⚠️ NON MANDARE MAI il cliente al supermercato! LAPA vende di tutto - proponi SEMPRE alternative dai prodotti LAPA
 12. Se un prodotto è esaurito, proponi SEMPRE alternative simili dal catalogo LAPA (es. pasta secca invece di fresca)
 13. Se nei dati ci sono più prodotti, mostrarli TUTTI - il cliente vuole vedere le opzioni disponibili
-14. 🔗 Per i PRODOTTI: usa SEMPRE link markdown cliccabili! Formato: [👉 Vedi NOME_PRODOTTO](URL_PRODOTTO) - il cliente deve poter cliccare!
+14. 🔗 Per i PRODOTTI: mostra SEMPRE il link su una riga separata! Formato: "👉 URL_PRODOTTO" (NO markdown, WhatsApp non lo supporta - metti solo l'URL che diventa cliccabile automaticamente)
 15. 📦 DISPONIBILITÀ: usa sempre il campo "disponibilita_testo" per indicare se è disponibile subito (consegna domani) o ordinabile (2-7 giorni)
 16. 🍝 RICETTE: Se l'argomento è "ricetta ingredienti", mostra TUTTI i prodotti raggruppati per ingrediente. Esempio: "Per la **Amatriciana** ti servono: **Guanciale**: [prodotto1], [prodotto2]... **Pecorino**: [prodotto1]..." etc. Mostra TUTTO quello che abbiamo!
 17. 🧠 MEMORIA: Se c'è la sezione "MEMORIA CLIENTE", USALA! Ricorda quello che il cliente ha cercato/comprato prima. Se ha già visto un prodotto prima, menzionalo ("Come ti avevo mostrato prima...", "Hai già visto il nostro guanciale..."). Questo rende la conversazione FLUIDA come con un umano che si ricorda di te!
@@ -5815,7 +5815,7 @@ Rispondi in modo naturale come se stessi parlando con un amico/cliente.`;
         lines.push(`  ${disponibilita}`);
       }
       if (url) {
-        lines.push(`  [👉 Vedi prodotto](${url})`);
+        lines.push(`  👉 ${url}`);
       }
       lines.push('');
     }
