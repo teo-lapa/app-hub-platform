@@ -50,6 +50,41 @@ function getTotalsKey(agentId: string): string {
   return `lapa_stats:totals:${agentId}`;
 }
 
+/**
+ * Normalizza gli agent ID per le statistiche
+ * Mappa tutti i sub-agent agli agenti principali della dashboard
+ */
+function normalizeAgentIdForStats(agentId: string): string {
+  const mapping: Record<string, string> = {
+    // Order-related agents -> order
+    'order_detail': 'order',
+    'order_create': 'order',
+    'order_products': 'order',
+    'cart': 'order',
+    'sales_assistant': 'order',
+
+    // Invoice-related agents -> invoice
+    'invoice_filter': 'invoice',
+    'invoice_detail': 'invoice',
+
+    // Support-related agents -> helpdesk
+    'complaint': 'helpdesk',
+    'error_handler': 'helpdesk',
+    'followup': 'helpdesk',
+    'lead_capture': 'helpdesk',
+
+    // These stay as-is (main agents)
+    'orchestrator': 'orchestrator',
+    'order': 'order',
+    'invoice': 'invoice',
+    'shipping': 'shipping',
+    'product': 'product',
+    'helpdesk': 'helpdesk'
+  };
+
+  return mapping[agentId] || agentId;
+}
+
 // Store class con KV
 class AgentStatsStore {
   // Cache locale per evitare troppe chiamate KV
@@ -68,7 +103,10 @@ class AgentStatsStore {
   /**
    * Registra una richiesta processata
    */
-  async recordRequest(agentId: string, duration: number, success: boolean, sessionId: string) {
+  async recordRequest(rawAgentId: string, duration: number, success: boolean, sessionId: string) {
+    // Normalizza l'agentId per aggregare le statistiche correttamente
+    const agentId = normalizeAgentIdForStats(rawAgentId);
+
     const record: RequestRecord = {
       agentId,
       timestamp: new Date().toISOString(),
