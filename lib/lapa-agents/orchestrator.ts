@@ -5692,7 +5692,7 @@ Rispondi in modo naturale e conversazionale.`;
 Hai appena recuperato dei dati per il cliente e devi comunicarglieli in modo NATURALE e CONVERSAZIONALE.
 
 INFORMAZIONI LAPA (usa quando rilevante):
-- Sede: Embrach (Canton Zurigo) + hub a Losanna e Lugano
+- Sede: Embrach (Canton Zurigo) + hub a Losanna per Svizzera francese
 - Oltre 3.000 prodotti italiani sempre disponibili
 - Consegna 6 giorni su 7, stessa giornata per ordini entro le 7:00
 - NESSUN ORDINE MINIMO - ordina anche 1 solo prodotto
@@ -5854,10 +5854,10 @@ IL MODELLO "ZERO PENSIERI" - I nostri vantaggi competitivi:
 5. RISPARMIO TEMPO - ottimizzazione ordini, più tempo per il business e la famiglia
 6. CONTINUITÀ DEL VERO SAPORE - qualità costante per ristoranti italiani all'estero
 
-ZONE DI CONSEGNA (3 Hub Strategici):
-- Hub Zurigo (Embrach): 2.500 mq, oltre 3.000 prodotti - serve Svizzera tedesca
-- Hub Losanna: 800 mq - serve Svizzera francese
-- Hub Lugano: 600 mq - serve Ticino e Grigioni italiano
+ZONE DI CONSEGNA (2 Hub Principali):
+- Hub Zurigo (Embrach): 2.500 mq, oltre 3.000 prodotti - serve Canton Zurigo e Svizzera tedesca (Argovia, Basilea, Berna, Lucerna) con consegne DIRETTE giornaliere
+- Hub Losanna: 800 mq - serve Svizzera francese con consegne dirette
+- Ticino e altri cantoni: serviti tramite corrieri partner (Posta/DHL) - 24-48h
 Consegna 6 giorni su 7 (lunedì-sabato), 99.2% puntualità
 
 TEMPI DI CONSEGNA:
