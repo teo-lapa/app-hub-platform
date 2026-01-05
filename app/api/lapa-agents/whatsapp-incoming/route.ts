@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrchestrator } from '@/lib/lapa-agents/orchestrator';
 import { getOdooClient } from '@/lib/odoo-client';
 import { addMessageToConversation, loadConversation } from '@/lib/lapa-agents/conversation-store';
+import { recordRequest, recordEscalation } from '@/lib/lapa-agents/stats';
 
 // Odoo native webhook format
 interface OdooWebhookPayload {
@@ -185,6 +186,7 @@ export async function POST(request: NextRequest) {
     const orchestrator = getOrchestrator(odooClient);
 
     // Process with AI agents
+    const startTime = Date.now();
     const response = await orchestrator.processMessage(
       cleanMessage,
       conversationId,
@@ -199,6 +201,12 @@ export async function POST(request: NextRequest) {
         }
       }
     );
+    const duration = Date.now() - startTime;
+
+    // Record stats for WhatsApp messages
+    const agentId = response.agentId || 'orchestrator';
+    recordRequest(agentId, duration, response.success !== false, conversationId);
+    console.log(`📊 [WHATSAPP] Stats recorded: ${agentId} - ${duration}ms`);
 
     console.log('[WHATSAPP-INCOMING] AI Response:', {
       agentId: response.agentId,
@@ -289,6 +297,10 @@ export async function POST(request: NextRequest) {
 
     // Handle escalation if needed
     if (response.requiresHumanEscalation) {
+      // Record escalation in stats
+      recordEscalation();
+      console.log('📊 [WHATSAPP] Escalation recorded');
+
       try {
         await createEscalationTicket(
           mobileNumber,
