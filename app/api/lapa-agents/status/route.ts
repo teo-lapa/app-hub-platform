@@ -36,7 +36,7 @@ const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
     capabilities: ['route requests', 'analyze intent', 'manage context']
   },
   {
-    id: 'orders',
+    id: 'order',
     name: 'Agente Ordini',
     status: 'active',
     enabled: true,
@@ -44,7 +44,7 @@ const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
     capabilities: ['read orders', 'create orders b2b', 'modify orders', 'cancel orders']
   },
   {
-    id: 'invoices',
+    id: 'invoice',
     name: 'Agente Fatture',
     status: 'active',
     enabled: true,
@@ -60,7 +60,7 @@ const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
     capabilities: ['track shipments', 'delivery eta', 'driver info', 'delivery history']
   },
   {
-    id: 'products',
+    id: 'product',
     name: 'Agente Prodotti',
     status: 'active',
     enabled: true,
