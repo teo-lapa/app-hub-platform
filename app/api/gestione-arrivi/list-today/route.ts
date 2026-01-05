@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
     }
 
-    console.log('📅 [GESTIONE-ARRIVI] Recupero arrivi di oggi...');
+    // Leggi company_id dalla query string (default: 1 = LAPA)
+    const { searchParams } = new URL(request.url);
+    const companyId = parseInt(searchParams.get('company_id') || '1');
+
+    console.log(`📅 [GESTIONE-ARRIVI] Recupero arrivi di oggi per company_id=${companyId}...`);
 
     // Calcola range di oggi (00:00:00 - 23:59:59)
     const today = new Date();
@@ -39,7 +43,8 @@ export async function GET(request: NextRequest) {
       ['scheduled_date', '>=', todayStartISO],
       ['scheduled_date', '<=', todayEndISO],
       ['state', 'in', ['assigned', 'confirmed', 'waiting', 'done']],
-      ['name', 'not ilike', '%RET%']  // Escludi resi
+      ['name', 'not ilike', '%RET%'],  // Escludi resi
+      ['company_id', '=', companyId]   // Filtra per azienda
     ];
 
     const pickings = await callOdoo(cookies, 'stock.picking', 'search_read', [

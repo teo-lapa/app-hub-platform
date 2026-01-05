@@ -18,7 +18,8 @@ import {
   Zap,
   Eye,
   FileJson,
-  Receipt
+  Receipt,
+  Building2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type {
@@ -28,6 +29,12 @@ import type {
   ProcessingStatus
 } from './types';
 
+// Aziende disponibili
+const COMPANIES = [
+  { id: 1, name: 'LAPA - Finest Italian Food' },
+  { id: 6, name: 'ItaEmpire S.r.l.' }
+];
+
 export default function GestioneArriviPage() {
   const router = useRouter();
 
@@ -35,6 +42,7 @@ export default function GestioneArriviPage() {
   const [arrivals, setArrivals] = useState<Arrival[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<number>(1); // Default LAPA
 
   // Batch processing
   const [batchState, setBatchState] = useState<BatchProcessingState>({
@@ -53,7 +61,7 @@ export default function GestioneArriviPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/gestione-arrivi/list-today', {
+      const response = await fetch(`/api/gestione-arrivi/list-today?company_id=${selectedCompany}`, {
         credentials: 'include'
       });
 
@@ -72,7 +80,7 @@ export default function GestioneArriviPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCompany]);
 
   useEffect(() => {
     loadArrivals();
@@ -333,6 +341,26 @@ export default function GestioneArriviPage() {
               Processa automaticamente tutti gli arrivi: lettura documenti → validazione → fattura bozza
             </p>
           </div>
+
+          {/* Selettore Azienda */}
+          <div className="mt-6 flex justify-center">
+            <div className="inline-flex items-center gap-3 bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
+              <Building2 className="text-indigo-600" size={20} />
+              <span className="text-sm font-medium text-gray-700">Azienda:</span>
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(parseInt(e.target.value))}
+                disabled={batchState.is_running}
+                className="bg-indigo-50 border border-indigo-200 text-indigo-900 font-semibold rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {COMPANIES.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </motion.div>
 
         {/* Error Display */}
@@ -487,7 +515,7 @@ export default function GestioneArriviPage() {
                           <AlertTriangle className="text-red-600" size={20} />
                         )}
                         <div>
-                          <span className="font-medium">{result.arrival_name}</span>
+                          <span className="font-medium text-gray-900">{result.arrival_name}</span>
                           {result.status === 'skipped_no_valid_docs' && (
                             <p className="text-xs text-orange-600">Manca fattura/DDT</p>
                           )}
