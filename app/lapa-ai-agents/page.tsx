@@ -117,15 +117,15 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['route_requests', 'analyze_intent', 'manage_context'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 156,
-      requestsTotal: 4523,
-      avgResponseTime: 0.8,
-      successRate: 98.5,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   },
   {
-    id: 'orders',
+    id: 'order',
     name: 'Agente Ordini',
     description: 'Gestisce ordini, storico, creazione e modifiche',
     icon: 'ShoppingCart',
@@ -135,15 +135,15 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['read_orders', 'create_orders_b2b', 'modify_orders', 'cancel_orders'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 45,
-      requestsTotal: 1234,
-      avgResponseTime: 1.2,
-      successRate: 96.8,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   },
   {
-    id: 'invoices',
+    id: 'invoice',
     name: 'Agente Fatture',
     description: 'Mostra fatture, scadenze e link pagamento',
     icon: 'FileText',
@@ -153,10 +153,10 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['read_invoices', 'generate_payment_links', 'send_reminders'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 32,
-      requestsTotal: 892,
-      avgResponseTime: 0.9,
-      successRate: 99.1,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   },
@@ -171,15 +171,15 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['track_shipments', 'get_eta', 'report_issues'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 28,
-      requestsTotal: 756,
-      avgResponseTime: 1.1,
-      successRate: 97.3,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   },
   {
-    id: 'products',
+    id: 'product',
     name: 'Agente Prodotti',
     description: 'Info prodotti, disponibilità e prezzi',
     icon: 'Package',
@@ -189,10 +189,10 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['search_products', 'check_availability', 'get_prices'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 67,
-      requestsTotal: 2341,
-      avgResponseTime: 0.7,
-      successRate: 99.5,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   },
@@ -207,10 +207,10 @@ const defaultAgents: AgentConfig[] = [
     permissions: ['create_tickets', 'escalate', 'notify_team'],
     supportedLanguages: ['it', 'de', 'fr', 'en'],
     stats: {
-      requestsToday: 12,
-      requestsTotal: 456,
-      avgResponseTime: 1.5,
-      successRate: 94.2,
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 0,
+      successRate: 100,
       lastActive: new Date().toISOString()
     }
   }
@@ -239,11 +239,11 @@ const colorMap: Record<string, { bg: string; text: string; border: string; gradi
 export default function LapaAIAgentsPage() {
   const [agents, setAgents] = useState<AgentConfig[]>(defaultAgents);
   const [stats, setStats] = useState<DashboardStats>({
-    totalRequests: 340,
-    activeConversations: 8,
-    resolvedToday: 145,
-    escalatedToday: 3,
-    avgResponseTime: 1.0,
+    totalRequests: 0,
+    activeConversations: 0,
+    resolvedToday: 0,
+    escalatedToday: 0,
+    avgResponseTime: 0,
     customerSatisfaction: 4.7
   });
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);

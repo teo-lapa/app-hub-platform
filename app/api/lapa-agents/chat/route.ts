@@ -370,7 +370,7 @@ function generateFallbackResponse(
       return {
         success: true,
         message: getOrderResponse(message, customerType, language),
-        agentId: 'orders',
+        agentId: 'order',
         suggestedActions: ['Vedi storico ordini', 'Crea nuovo ordine', 'Contatta supporto']
       };
 
@@ -378,7 +378,7 @@ function generateFallbackResponse(
       return {
         success: true,
         message: getInvoiceResponse(message, language),
-        agentId: 'invoices',
+        agentId: 'invoice',
         suggestedActions: ['Vedi fatture aperte', 'Scarica fattura', 'Paga online']
       };
 
@@ -394,7 +394,7 @@ function generateFallbackResponse(
       return {
         success: true,
         message: getProductResponse(message, language),
-        agentId: 'products',
+        agentId: 'product',
         suggestedActions: ['Vedi catalogo', 'Controlla disponibilità', 'Vedi offerte']
       };
 
@@ -507,13 +507,13 @@ function getGenericResponse(lang: string): string {
 export async function GET() {
   return jsonResponse({
     status: 'online',
-    version: 'v8-cors-fix',  // Per verificare deploy
+    version: 'v9-agent-id-fix',  // Per verificare deploy
     agents: [
       { id: 'orchestrator', status: 'active' },
-      { id: 'orders', status: 'active' },
-      { id: 'invoices', status: 'active' },
+      { id: 'order', status: 'active' },
+      { id: 'invoice', status: 'active' },
       { id: 'shipping', status: 'active' },
-      { id: 'products', status: 'active' },
+      { id: 'product', status: 'active' },
       { id: 'helpdesk', status: 'active' }
     ],
     timestamp: new Date().toISOString()

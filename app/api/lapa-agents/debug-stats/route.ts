@@ -48,7 +48,7 @@ export async function GET() {
     ]);
 
     // Leggi totali per ogni agente
-    const agentIds = ['orchestrator', 'orders', 'invoices', 'shipping', 'products', 'helpdesk', 'invoice', 'invoice_filter', 'invoice_detail'];
+    const agentIds = ['orchestrator', 'order', 'invoice', 'shipping', 'product', 'helpdesk', 'invoice_filter', 'invoice_detail'];
     const agentTotals: Record<string, any> = {};
 
     for (const agentId of agentIds) {
