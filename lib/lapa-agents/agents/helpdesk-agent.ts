@@ -296,12 +296,16 @@ export class HelpdeskAgent {
     }
 
     // Prepara i valori per il ticket
+    // IMPORTANTE: company_id = 1 è LAPA (non ItaEmpire che è company_id = 6)
+    const LAPA_COMPANY_ID = 1;
+
     const ticketValues: Record<string, any> = {
       name: params.subject,
       description: params.description,
       partner_id: params.customerId,
       priority: params.priority || '1',
       team_id: teamId,
+      company_id: LAPA_COMPANY_ID,  // Sempre LAPA, mai ItaEmpire
     };
 
     // Assegna al venditore del cliente se disponibile
