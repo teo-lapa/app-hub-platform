@@ -4,13 +4,21 @@
  * Endpoint per comunicare con Claude AI con accesso a strumenti Odoo.
  * Permette query, creazione, aggiornamento di record tramite linguaggio naturale.
  *
+ * FEATURES:
+ * - Usa la sessione dell'utente loggato per audit trail
+ * - Memoria conversazione persistente su Vercel KV
+ * - Claude conosce l'utente con cui sta parlando
+ *
  * POST /api/chat-gestionale
  * Body: { message: string, conversationId?: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getToolDefinitions, processToolCalls } from '@/lib/mcp-tools';
+import { kv } from '@vercel/kv';
+import { getToolDefinitions, processToolCalls, setOdooSessionContext } from '@/lib/mcp-tools';
+import { getOdooSession } from '@/lib/odoo-auth';
+import { searchReadOdoo } from '@/lib/odoo/odoo-helper';
 
 // ============================================================================
 // CONSTANTS
@@ -18,18 +26,25 @@ import { getToolDefinitions, processToolCalls } from '@/lib/mcp-tools';
 
 const CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 4096;
-const MAX_TOOL_ITERATIONS = 10; // Previeni loop infiniti
+const MAX_TOOL_ITERATIONS = 10;
+const CONVERSATION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
 
-// Rate limiting in-memory (per produzione usare Redis/DB)
+// Rate limiting
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 30; // requests per minute
-const RATE_WINDOW = 60 * 1000; // 1 minute in ms
+const RATE_LIMIT = 30;
+const RATE_WINDOW = 60 * 1000;
 
 // ============================================================================
-// SYSTEM PROMPT
+// SYSTEM PROMPT TEMPLATE
 // ============================================================================
 
-const SYSTEM_PROMPT = `Sei un assistente AI avanzato per la gestione di Odoo ERP. Hai accesso diretto al database Odoo attraverso una serie di strumenti che ti permettono di:
+function getSystemPrompt(userName: string, userEmail: string, userId: number): string {
+  return `Sei un assistente AI avanzato per la gestione di Odoo ERP di LAPA - finest italian food GmbH.
+
+# UTENTE ATTUALE
+Stai parlando con **${userName}** (${userEmail}, ID Odoo: ${userId}).
+Tutte le operazioni che esegui verranno registrate a nome di questo utente.
+Quando crei ordini o record, verranno automaticamente assegnati a ${userName}.
 
 # CAPACITA'
 1. **Interrogare dati** - Cercare e recuperare qualsiasi informazione:
@@ -96,16 +111,11 @@ const SYSTEM_PROMPT = `Sei un assistente AI avanzato per la gestione di Odoo ERP
 - Per date, usa formato italiano (GG/MM/AAAA)
 - Se recuperi molti dati, riassumi i punti chiave
 
-# ESEMPIO DI INTERAZIONE
-**User**: "Mostrami gli ultimi 5 ordini di Mario Rossi"
-**Tu**: [Uso search_read_model per trovare partner Mario Rossi]
-**Tu**: [Uso search_read_model per trovare ordini del partner]
-**Tu**: "Ecco gli ultimi 5 ordini di Mario Rossi:
-1. SO2024-001 - 15/01/2024 - EUR 1.250,00 - Confermato
-2. SO2024-002 - 22/01/2024 - EUR 890,00 - In consegna
-..."
+# MEMORIA CONVERSAZIONE
+Ricorda il contesto della conversazione. Se l'utente fa riferimento a qualcosa menzionato prima (es: "quello", "il cliente di prima", "l'ordine"), usa il contesto precedente per capire.
 
-Rispondi in modo professionale, conciso e utile. Sei qui per aiutare l'utente a lavorare meglio con Odoo!`;
+Rispondi in modo professionale, conciso e utile. Sei qui per aiutare ${userName} a lavorare meglio con Odoo!`;
+}
 
 // ============================================================================
 // TYPES
@@ -129,10 +139,15 @@ interface ChatResponse {
   tokensUsed?: number;
   error?: string;
   timestamp: string;
+  userName?: string;
 }
 
-// In-memory conversation store (per produzione usare Redis/DB)
-const conversations = new Map<string, ChatMessage[]>();
+interface StoredConversation {
+  messages: ChatMessage[];
+  userId: number;
+  userName: string;
+  updatedAt: string;
+}
 
 // ============================================================================
 // HELPERS
@@ -162,32 +177,101 @@ function checkRateLimit(identifier: string): boolean {
 }
 
 /**
- * Generate unique conversation ID
+ * Generate unique conversation ID based on user
  */
-function generateConversationId(): string {
-  return `chat_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+function generateConversationId(userId: number): string {
+  return `chat_gestionale:${userId}:${Date.now()}`;
 }
 
 /**
- * Load conversation history
+ * Get KV key for conversation
  */
-function loadConversation(conversationId: string): ChatMessage[] {
-  return conversations.get(conversationId) || [];
+function getConversationKey(conversationId: string): string {
+  return `chat_gestionale:conv:${conversationId}`;
 }
 
 /**
- * Save message to conversation
+ * Load conversation history from Vercel KV
  */
-function saveMessage(conversationId: string, role: 'user' | 'assistant', content: string | Anthropic.ContentBlock[]): void {
-  const history = conversations.get(conversationId) || [];
-  history.push({ role, content });
-
-  // Keep only last 20 messages to prevent context overflow
-  if (history.length > 20) {
-    history.splice(0, history.length - 20);
+async function loadConversation(conversationId: string): Promise<StoredConversation | null> {
+  try {
+    const key = getConversationKey(conversationId);
+    const data = await kv.get<StoredConversation>(key);
+    return data;
+  } catch (error) {
+    console.error('[CHAT-GESTIONALE] Error loading conversation from KV:', error);
+    return null;
   }
+}
 
-  conversations.set(conversationId, history);
+/**
+ * Save conversation to Vercel KV
+ */
+async function saveConversation(
+  conversationId: string,
+  messages: ChatMessage[],
+  userId: number,
+  userName: string
+): Promise<void> {
+  try {
+    const key = getConversationKey(conversationId);
+
+    // Keep only last 30 messages to prevent context overflow
+    const trimmedMessages = messages.slice(-30);
+
+    const data: StoredConversation = {
+      messages: trimmedMessages,
+      userId,
+      userName,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await kv.set(key, data, { ex: CONVERSATION_TTL });
+  } catch (error) {
+    console.error('[CHAT-GESTIONALE] Error saving conversation to KV:', error);
+  }
+}
+
+/**
+ * Get user info from Odoo session
+ */
+async function getUserFromSession(request: NextRequest): Promise<{
+  cookies: string;
+  uid: number;
+  userName: string;
+  userEmail: string;
+} | null> {
+  try {
+    const userCookies = request.headers.get('cookie');
+    const { cookies, uid } = await getOdooSession(userCookies || undefined);
+
+    if (!uid || !cookies) {
+      return null;
+    }
+
+    // Fetch user info from Odoo
+    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
+    const users = await searchReadOdoo('res.users', [['id', '=', uidNum]], ['name', 'login']);
+
+    if (!users || users.length === 0) {
+      return {
+        cookies,
+        uid: uidNum,
+        userName: 'Utente',
+        userEmail: 'unknown@lapa.ch',
+      };
+    }
+
+    return {
+      cookies,
+      uid: uidNum,
+      userName: users[0].name || 'Utente',
+      userEmail: users[0].login || 'unknown@lapa.ch',
+    };
+  } catch (error) {
+    console.error('[CHAT-GESTIONALE] Error getting user from session:', error);
+    return null;
+  }
 }
 
 // ============================================================================
@@ -220,11 +304,35 @@ export async function POST(request: NextRequest) {
 
     const message = body.message.trim();
 
-    // Get or create conversation ID
-    const conversationId = body.conversationId || generateConversationId();
+    // Get user from session - REQUIRED for proper audit trail
+    const userSession = await getUserFromSession(request);
 
-    // Rate limiting
-    if (!checkRateLimit(conversationId)) {
+    if (!userSession) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sessione non valida. Effettua il login.',
+          conversationId: '',
+          timestamp: new Date().toISOString(),
+        } as ChatResponse,
+        { status: 401 }
+      );
+    }
+
+    const { cookies, uid, userName, userEmail } = userSession;
+
+    // Set session context for Odoo tools - this ensures all operations are traced to user
+    setOdooSessionContext({
+      cookies,
+      uid,
+      userName,
+    });
+
+    // Get or create conversation ID
+    const conversationId = body.conversationId || generateConversationId(uid);
+
+    // Rate limiting per user
+    if (!checkRateLimit(`user:${uid}`)) {
       return NextResponse.json(
         {
           success: false,
@@ -250,7 +358,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[CHAT-GESTIONALE] Nuova richiesta - Conversazione: ${conversationId}`);
+    console.log(`[CHAT-GESTIONALE] Richiesta da ${userName} (UID: ${uid}) - Conv: ${conversationId}`);
     console.log(`[CHAT-GESTIONALE] Messaggio: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
 
     // Initialize Claude client
@@ -258,11 +366,9 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    // Load conversation history
-    const history = loadConversation(conversationId);
-
-    // Add user message
-    saveMessage(conversationId, 'user', message);
+    // Load conversation history from KV
+    const storedConv = await loadConversation(conversationId);
+    const history: ChatMessage[] = storedConv?.messages || [];
 
     // Get tool definitions for Claude API
     const toolDefinitions = getToolDefinitions();
@@ -272,7 +378,7 @@ export async function POST(request: NextRequest) {
       input_schema: tool.input_schema as Anthropic.Tool.InputSchema,
     }));
 
-    // Prepare messages for Claude
+    // Prepare messages for Claude - include history
     const messages: Anthropic.MessageParam[] = [
       ...history.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
@@ -280,6 +386,9 @@ export async function POST(request: NextRequest) {
       })),
       { role: 'user' as const, content: message },
     ];
+
+    // Get personalized system prompt
+    const systemPrompt = getSystemPrompt(userName, userEmail, uid);
 
     // Tool calling loop
     let currentMessages = [...messages];
@@ -297,7 +406,7 @@ export async function POST(request: NextRequest) {
       const response = await anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: MAX_TOKENS,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: currentMessages,
         tools,
       });
@@ -333,7 +442,7 @@ export async function POST(request: NextRequest) {
           allToolsUsed.push(toolCall.name);
         }
 
-        // Execute all tool calls using the mcp-tools library
+        // Execute all tool calls using the mcp-tools library (uses session context)
         const toolResults = await processToolCalls(toolUseBlocks);
 
         console.log(`[CHAT-GESTIONALE] ${toolResults.length} tool(s) completati`);
@@ -373,11 +482,19 @@ export async function POST(request: NextRequest) {
       finalResponse = 'Mi dispiace, non sono riuscito a elaborare una risposta. Riprova con una richiesta diversa.';
     }
 
-    // Save assistant response
-    saveMessage(conversationId, 'assistant', finalResponse);
+    // Save conversation to KV (includes both user message and assistant response)
+    const updatedHistory: ChatMessage[] = [
+      ...history,
+      { role: 'user', content: message },
+      { role: 'assistant', content: finalResponse },
+    ];
+    await saveConversation(conversationId, updatedHistory, uid, userName);
+
+    // Clear session context after request
+    setOdooSessionContext(null);
 
     const duration = Date.now() - startTime;
-    console.log(`[CHAT-GESTIONALE] Risposta generata in ${duration}ms, ${iterations} iterazioni, ${allToolsUsed.length} tool usati`);
+    console.log(`[CHAT-GESTIONALE] Risposta per ${userName} in ${duration}ms, ${iterations} iter, ${allToolsUsed.length} tools`);
 
     // Return response
     return NextResponse.json(
@@ -385,13 +502,17 @@ export async function POST(request: NextRequest) {
         success: true,
         message: finalResponse,
         conversationId,
-        toolsUsed: Array.from(new Set(allToolsUsed)), // Unique tools
+        toolsUsed: Array.from(new Set(allToolsUsed)),
         tokensUsed: totalTokens,
         timestamp: new Date().toISOString(),
+        userName,
       } as ChatResponse,
       { status: 200 }
     );
   } catch (error) {
+    // Clear session context on error
+    setOdooSessionContext(null);
+
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[CHAT-GESTIONALE] Errore dopo ${duration}ms:`, errorMessage);

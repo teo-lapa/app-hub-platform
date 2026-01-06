@@ -83,6 +83,10 @@ export {
   listModels,
   executeMethod,
   odooTools,
+  // Session context management
+  setOdooSessionContext,
+  getOdooSessionContext,
+  type OdooSessionContext,
 } from './odoo-tools';
 
 // Tool Executor (for Claude API integration)

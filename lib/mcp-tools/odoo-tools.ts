@@ -1,9 +1,9 @@
 /**
  * Odoo MCP Tool Implementations
- * These tools use the existing Odoo client from lib/odoo-client.ts
+ * These tools use the user's Odoo session for proper authentication and audit trail
  */
 
-import { getOdooClient } from '../odoo-client';
+import { callOdoo, getOdooSession } from '../odoo-auth';
 import {
   ToolResult,
   SearchReadModelInput,
@@ -23,12 +23,55 @@ import {
   ListModelsResult,
   ExecuteMethodResult,
   OdooModelFields,
-  OdooRelation,
 } from './types';
+
+// ============================================================================
+// Session Context - passed from the API route
+// ============================================================================
+
+export interface OdooSessionContext {
+  cookies: string;
+  uid: number;
+  userName?: string;
+}
+
+// Global session context for tool execution
+let currentSessionContext: OdooSessionContext | null = null;
+
+/**
+ * Set the session context for tool execution
+ * This should be called before processing tool calls
+ */
+export function setOdooSessionContext(context: OdooSessionContext | null) {
+  currentSessionContext = context;
+  console.log('🔐 [MCP-TOOLS] Session context set:', context ? `UID ${context.uid}` : 'null');
+}
+
+/**
+ * Get the current session context
+ */
+export function getOdooSessionContext(): OdooSessionContext | null {
+  return currentSessionContext;
+}
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Get cookies for Odoo calls - uses session context if available
+ */
+async function getOdooCookies(): Promise<string> {
+  if (currentSessionContext?.cookies) {
+    console.log('🔐 [MCP-TOOLS] Using user session context');
+    return currentSessionContext.cookies;
+  }
+
+  // Fallback to system session
+  console.log('⚠️ [MCP-TOOLS] No user session, using fallback');
+  const { cookies } = await getOdooSession();
+  return cookies || '';
+}
 
 /**
  * Create a successful result
@@ -50,10 +93,6 @@ function fail(error: string, errorType: string = 'Error'): ToolResult<never> {
 function validateModelName(modelName: string): ToolResult<never> | null {
   if (!modelName || typeof modelName !== 'string') {
     return fail('model_name is required and must be a string', 'ValidationError');
-  }
-  if (!modelName.includes('.') && !['base', 'mail'].includes(modelName.split('.')[0])) {
-    // Most Odoo models have format: module.model
-    // Allow both formats
   }
   return null;
 }
@@ -90,16 +129,18 @@ export async function searchReadModel(
     const validationError = validateModelName(input.model_name);
     if (validationError) return validationError;
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    const records = await client.searchReadKw(
+    const records = await callOdoo(
+      cookies,
       input.model_name,
-      input.domain || [],
-      input.fields || [],
+      'search_read',
+      [input.domain || []],
       {
+        fields: input.fields || [],
         limit: input.limit || 100,
         offset: input.offset || 0,
-        order: input.order,
+        order: input.order || '',
       }
     );
 
@@ -128,17 +169,28 @@ export async function createModel(
       return fail('values is required and must be an object', 'ValidationError');
     }
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // The Odoo client expects an array for create
-    const result = await client.create(input.model_name, [input.values]);
+    // Add user_id if available and not already set (for audit trail)
+    const values = { ...input.values };
+    if (currentSessionContext?.uid && !values.user_id) {
+      // Only set user_id for models that have this field (like sale.order)
+      if (['sale.order', 'purchase.order', 'crm.lead', 'helpdesk.ticket'].includes(input.model_name)) {
+        values.user_id = currentSessionContext.uid;
+      }
+    }
 
-    // Result can be a single ID or array of IDs
-    const recordId = Array.isArray(result) ? result[0] : result;
+    const recordId = await callOdoo(
+      cookies,
+      input.model_name,
+      'create',
+      [values],
+      {}
+    );
 
     return ok({
       model: input.model_name,
-      record_id: recordId,
+      record_id: Array.isArray(recordId) ? recordId[0] : recordId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -163,14 +215,20 @@ export async function writeModel(
       return fail('values is required and must be an object', 'ValidationError');
     }
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    const success = await client.write(input.model_name, input.record_ids, input.values);
+    const success = await callOdoo(
+      cookies,
+      input.model_name,
+      'write',
+      [input.record_ids, input.values],
+      {}
+    );
 
     return ok({
       model: input.model_name,
       record_ids: input.record_ids,
-      success,
+      success: success !== false,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -188,10 +246,10 @@ export async function getModelFields(
     const validationError = validateModelName(input.model_name);
     if (validationError) return validationError;
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // Use the call method to get fields_get
-    const fieldsInfo = await client.call(
+    const fieldsInfo = await callOdoo(
+      cookies,
       input.model_name,
       'fields_get',
       [],
@@ -219,10 +277,10 @@ export async function getModelRelations(
     const validationError = validateModelName(input.model_name);
     if (validationError) return validationError;
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // Get fields info with relation data
-    const fieldsInfo = await client.call(
+    const fieldsInfo = await callOdoo(
+      cookies,
       input.model_name,
       'fields_get',
       [],
@@ -285,10 +343,10 @@ export async function callButton(
       return fail('button_name is required and must be a string', 'ValidationError');
     }
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // Execute the button method on the records
-    const result = await client.call(
+    const result = await callOdoo(
+      cookies,
       input.model_name,
       input.button_name,
       [input.record_ids],
@@ -330,9 +388,8 @@ export async function listModels(
   input: ListModelsInput = {}
 ): Promise<ToolResult<ListModelsResult>> {
   try {
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // Build domain for ir.model search
     const domain: any[] = [];
     if (input.search) {
       domain.push('|');
@@ -340,11 +397,12 @@ export async function listModels(
       domain.push(['name', 'ilike', input.search]);
     }
 
-    const models = await client.searchReadKw(
+    const models = await callOdoo(
+      cookies,
       'ir.model',
-      domain,
-      ['model', 'name', 'info'],
-      { limit: 200, order: 'model' }
+      'search_read',
+      [domain],
+      { fields: ['model', 'name', 'info'], limit: 200, order: 'model' }
     );
 
     return ok({
@@ -375,15 +433,13 @@ export async function executeMethod(
       return fail('method_name is required and must be a string', 'ValidationError');
     }
 
-    // Validate record_ids if provided
     if (input.record_ids && input.record_ids.length > 0) {
       const recordIdsError = validateRecordIds(input.record_ids);
       if (recordIdsError) return recordIdsError;
     }
 
-    const client = await getOdooClient();
+    const cookies = await getOdooCookies();
 
-    // Build args: if record_ids provided, they go first
     const args: any[] = [];
     if (input.record_ids && input.record_ids.length > 0) {
       args.push(input.record_ids);
@@ -392,7 +448,8 @@ export async function executeMethod(
       args.push(...input.args);
     }
 
-    const result = await client.call(
+    const result = await callOdoo(
+      cookies,
       input.model_name,
       input.method_name,
       args,
