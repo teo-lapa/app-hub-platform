@@ -51,6 +51,7 @@ interface ChatResponse {
   message: string;
   error?: string;
   toolsUsed?: string[];
+  conversationId?: string;
   metadata?: {
     duration?: number;
     timestamp?: string;
@@ -376,6 +377,7 @@ export default function ChatGestionalePage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -442,15 +444,17 @@ export default function ChatGestionalePage() {
         },
         body: JSON.stringify({
           message: text,
-          conversationHistory: messages.map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
+          conversationId: conversationId,
         }),
         signal: abortControllerRef.current.signal,
       });
 
       const data: ChatResponse = await response.json();
+
+      // Save conversation ID for persistence
+      if (data.conversationId) {
+        setConversationId(data.conversationId);
+      }
 
       // Remove loading message and add response
       setMessages(prev => {
@@ -485,7 +489,7 @@ export default function ChatGestionalePage() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages]);
+  }, [input, isLoading, conversationId]);
 
   // Handle key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -499,6 +503,7 @@ export default function ChatGestionalePage() {
   const clearHistory = () => {
     if (confirm('Vuoi davvero cancellare tutta la cronologia chat?')) {
       setMessages([]);
+      setConversationId(null); // Reset conversation to start fresh
       setShowQuickActions(true);
     }
   };
