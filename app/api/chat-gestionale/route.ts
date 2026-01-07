@@ -39,7 +39,22 @@ const RATE_WINDOW = 60 * 1000;
 // ============================================================================
 
 function getSystemPrompt(userName: string, userEmail: string, userId: number): string {
+  // Get current date in Italian format
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  };
+  const currentDate = now.toLocaleDateString('it-IT', options);
+  const currentTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
   return `Sei un assistente AI avanzato per la gestione di Odoo ERP di LAPA - finest italian food GmbH.
+
+# DATA E ORA CORRENTE
+Oggi è **${currentDate}** e sono le **${currentTime}**.
+Usa questa data per tutte le query relative a "oggi", "questa settimana", "questo mese", ecc.
 
 # UTENTE ATTUALE
 Stai parlando con **${userName}** (${userEmail}, ID Odoo: ${userId}).
