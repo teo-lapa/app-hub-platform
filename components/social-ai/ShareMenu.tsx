@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import {
   Share2, Instagram, Facebook, Linkedin, MessageCircle,
-  Music, Copy, Download, X, CheckCircle2, Loader2, Send, Building2
+  Music, Copy, Download, X, CheckCircle2, Loader2, Send, Building2,
+  Calendar, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -59,6 +60,12 @@ export default function ShareMenu({
 }: ShareMenuProps) {
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [isPublishingToOdoo, setIsPublishingToOdoo] = useState(false);
+
+  // Stati per pubblicazione programmata
+  const [showScheduleSection, setShowScheduleSection] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [isScheduling, setIsScheduling] = useState(false);
 
   if (!isOpen) return null;
 
@@ -217,6 +224,55 @@ export default function ShareMenu({
       toast.error('Errore di connessione con Odoo. Riprova.', { duration: 5000 });
     } finally {
       setIsPublishingToOdoo(false);
+    }
+  };
+
+  // Programma pubblicazione su Odoo Social Marketing
+  const handleScheduleToOdoo = async () => {
+    if (!scheduledDate || !scheduledTime) {
+      toast.error('Seleziona data e ora per la programmazione!');
+      return;
+    }
+
+    // Combina data e ora in formato ISO per Odoo
+    const scheduledDateTime = `${scheduledDate} ${scheduledTime}:00`;
+
+    setIsScheduling(true);
+
+    try {
+      const response = await fetch('/api/social-ai/publish-to-odoo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption,
+          hashtags,
+          cta,
+          imageUrl,
+          videoUrl,
+          platform,
+          scheduledDate: scheduledDateTime
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(
+          `Post programmato per ${scheduledDate} alle ${scheduledTime}!`,
+          { duration: 5000 }
+        );
+        setShowScheduleSection(false);
+        setScheduledDate('');
+        setScheduledTime('');
+        setTimeout(onClose, 2000);
+      } else {
+        toast.error(data.error || 'Errore durante la programmazione', { duration: 6000 });
+      }
+    } catch (error) {
+      console.error('Errore programmazione Odoo:', error);
+      toast.error('Errore di connessione con Odoo. Riprova.', { duration: 5000 });
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -405,6 +461,92 @@ export default function ShareMenu({
               </div>
               <Send className="h-5 w-5 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
             </button>
+
+            {/* Pulsante Programma Pubblicazione */}
+            <button
+              onClick={() => setShowScheduleSection(!showScheduleSection)}
+              className="w-full flex items-center space-x-3 p-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 border border-amber-400/30 rounded-xl transition-all group shadow-lg shadow-amber-500/20"
+            >
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-white font-semibold">
+                  Programma Pubblicazione
+                </div>
+                <div className="text-xs text-amber-100">
+                  Scegli data e ora per la pubblicazione
+                </div>
+              </div>
+              <Clock className="h-5 w-5 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
+            </button>
+
+            {/* Sezione Programmazione */}
+            {showScheduleSection && (
+              <div className="mt-3 p-4 bg-slate-900/80 border border-amber-500/30 rounded-xl space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Data */}
+                  <div>
+                    <label className="block text-xs text-amber-300 mb-2 font-medium">
+                      Data
+                    </label>
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 bg-slate-800 border border-amber-500/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Ora */}
+                  <div>
+                    <label className="block text-xs text-amber-300 mb-2 font-medium">
+                      Ora
+                    </label>
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-800 border border-amber-500/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Riepilogo */}
+                {scheduledDate && scheduledTime && (
+                  <div className="bg-amber-900/30 border border-amber-500/30 rounded-lg p-3">
+                    <p className="text-xs text-amber-200">
+                      Il post verrà pubblicato il{' '}
+                      <span className="font-semibold text-amber-100">
+                        {new Date(scheduledDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>{' '}
+                      alle{' '}
+                      <span className="font-semibold text-amber-100">{scheduledTime}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Pulsante Conferma Programmazione */}
+                <button
+                  onClick={handleScheduleToOdoo}
+                  disabled={isScheduling || !scheduledDate || !scheduledTime}
+                  className="w-full flex items-center justify-center space-x-2 p-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isScheduling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Programmazione in corso...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="h-4 w-4" />
+                      <span>Conferma Programmazione</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Platform Buttons */}

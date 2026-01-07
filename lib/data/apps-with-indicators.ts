@@ -882,6 +882,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-12-16'),
     updatedAt: new Date('2025-12-16'),
   },
+  {
+    id: 'chat-gestionale1',
+    name: 'Chat Gestionale [P]',
+    description: '💬 Chat AI con accesso diretto a Odoo! Chiedi in linguaggio naturale: ordini, fatture, clienti, prodotti. Claude AI interroga il database e risponde con dati reali. Il tuo assistente ERP personale.',
+    icon: '💬',
+    badge: 'AZIENDALE',
+    category: 'AI & Tech',
+    url: '/chat-gestionale',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-06'),
+    updatedAt: new Date('2025-01-06'),
+  },
 ];
 
 // Combina tutte le app
