@@ -2104,6 +2104,77 @@ export default function ConvalidaResiduiPage() {
             font-size: 10px;
           }
         }
+
+        /* Mobile improvements - tablet/phone */
+        @media (max-width: 768px) {
+          .ghead {
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+          }
+          .card {
+            padding: 12px;
+          }
+          .pick-head {
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+          }
+          .pick-head .pill {
+            width: 100%;
+          }
+          .pick-head button {
+            width: 100%;
+            margin-top: 8px;
+          }
+          .qa-dialog {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 95vh;
+            border-radius: 16px;
+          }
+          .qa-search {
+            flex-direction: column;
+            gap: 10px;
+          }
+          .qa-search input {
+            width: 100% !important;
+          }
+          .qa-sugg {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .qa-sugg .stock-info {
+            width: 100%;
+            border-left: none;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
+            margin-top: 4px;
+          }
+          .qa-foot {
+            flex-direction: column;
+            gap: 10px;
+          }
+          .qa-foot button {
+            width: 100%;
+          }
+          select {
+            width: 100%;
+            padding: 12px;
+            min-height: 48px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .title {
+            font-size: 16px;
+          }
+          .pill {
+            font-size: 11px;
+            padding: 6px 10px;
+          }
+        }
       `}</style>
 
       <div id="convalida-app">
