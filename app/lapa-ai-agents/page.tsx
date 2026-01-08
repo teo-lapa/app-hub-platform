@@ -210,28 +210,28 @@ export default function LapaAiAgentsPage() {
             </div>
           </div>
 
-          {/* Chat Interface */}
-          <div className="bg-white rounded-lg shadow-md border">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
+          {/* Chat Interface - Futuristic Dark Theme */}
+          <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+            <div className="p-4 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-100">
+                <MessageSquare className="h-5 w-5 text-purple-400" />
                 Chat con {selectedAgent ? selectedAgent.replace('_', ' ').toUpperCase() : 'Agente'}
               </h2>
               {selectedAgent && (
-                <span className="text-sm text-gray-500">
-                  Agente selezionato
+                <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                  Agente attivo
                 </span>
               )}
             </div>
 
-            {/* Chat Messages */}
-            <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {/* Chat Messages - Dark Futuristic Style */}
+            <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-900 to-slate-800">
               {!selectedAgent ? (
-                <div className="text-center text-gray-500 py-10">
+                <div className="text-center text-slate-400 py-10">
                   Seleziona un agente per iniziare la conversazione
                 </div>
               ) : chatHistory.length === 0 ? (
-                <div className="text-center text-gray-500 py-10">
+                <div className="text-center text-slate-400 py-10">
                   Inizia una conversazione con l&apos;agente {selectedAgent.replace('_', ' ')}
                 </div>
               ) : (
@@ -241,33 +241,33 @@ export default function LapaAiAgentsPage() {
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[80%] p-4 rounded-2xl ${
                         msg.role === 'user'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white border shadow-sm'
+                          ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/20'
+                          : 'bg-slate-700/80 text-slate-100 border border-slate-600/50 shadow-lg'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                     </div>
                   </div>
                 ))
               )}
               {isSending && (
                 <div className="flex justify-start">
-                  <div className="bg-white border shadow-sm p-3 rounded-lg">
-                    <div className="flex space-x-1">
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" />
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  <div className="bg-slate-700/80 border border-slate-600/50 p-4 rounded-2xl">
+                    <div className="flex space-x-2">
+                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" />
+                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Chat Input */}
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
+            {/* Chat Input - Dark Futuristic Style */}
+            <div className="p-4 bg-slate-800 border-t border-slate-700">
+              <div className="flex gap-3">
                 <input
                   type="text"
                   value={chatMessage}
@@ -275,12 +275,12 @@ export default function LapaAiAgentsPage() {
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                   placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
                   disabled={!selectedAgent || isSending}
-                  className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
+                  className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-slate-800 disabled:text-slate-500 transition-all"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!selectedAgent || !chatMessage.trim() || isSending}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
                   Invia
                 </button>

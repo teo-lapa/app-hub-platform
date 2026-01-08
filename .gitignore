@@ -138,3 +138,5 @@ test-*.html
 .env*.local
 seo-geo-optimizer/scripts/chatbot-config.json
 seo-geo-optimizer/data/odoo-products-catalog.json
+.env.local.tokens
+lapa-ai-agents-backend/
