@@ -1,1474 +1,421 @@
 'use client';
 
-/**
- * LAPA AI AGENTS - Dashboard Agenti Clienti
- *
- * Pagina per gestire gli agenti AI che assistono i clienti:
- * - Orchestratore (smista le richieste)
- * - Agente Ordini
- * - Agente Fatture
- * - Agente Spedizioni
- * - Agente Prodotti
- * - Agente Helpdesk
- */
-
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import {
   Bot,
-  Home,
-  ShoppingCart,
-  FileText,
-  Truck,
-  Package,
-  HeadphonesIcon,
   Brain,
-  Activity,
-  Settings,
-  Play,
-  Pause,
-  RefreshCw,
-  MessageSquare,
-  Users,
-  TrendingUp,
-  Clock,
+  ShoppingCart,
+  Package,
+  Truck,
+  Receipt,
+  HeadphonesIcon,
+  Megaphone,
+  BarChart3,
+  Bell,
   CheckCircle,
   XCircle,
+  Clock,
+  MessageSquare,
   AlertTriangle,
-  ChevronRight,
-  Zap,
-  Globe,
-  Send,
-  Loader2,
-  Eye,
-  Edit3,
-  Save,
-  X,
-  Database,
-  Search,
-  HardDrive
+  RefreshCw
 } from 'lucide-react';
 
-// Tipi
-interface AgentConfig {
-  id: string;
+// Types
+interface Agent {
   name: string;
+  status: 'active' | 'inactive' | 'error';
   description: string;
-  icon: string;
-  color: string;
-  status: 'active' | 'paused' | 'error' | 'offline';
-  enabled: boolean;
-  permissions: string[];
-  supportedLanguages: string[];
-  stats: {
-    requestsToday: number;
-    requestsTotal: number;
-    avgResponseTime: number;
-    successRate: number;
-    lastActive: string;
-  };
-  systemPrompt?: string;
+  icon: React.ReactNode;
+  lastAction?: string;
 }
 
-interface ConversationLog {
-  id: string;
-  customerId?: number;
-  customerName?: string;
-  customerType: 'b2b' | 'b2c' | 'anonymous';
-  agentId: string;
-  messages: {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: string;
-  }[];
-  status: 'active' | 'resolved' | 'escalated';
-  createdAt: string;
+interface Approval {
+  id: number;
+  agent: string;
+  action_type: string;
+  description: string;
+  requested_at: string;
 }
 
-interface DashboardStats {
-  totalRequests: number;
-  activeConversations: number;
-  resolvedToday: number;
-  escalatedToday: number;
-  avgResponseTime: number;
-  customerSatisfaction: number;
+interface Alert {
+  id: number;
+  agent: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  title: string;
+  message: string;
+  created_at: string;
 }
 
-interface RAGStats {
-  totalEmbeddings: number;
-  lastUpdate: string | null;
-  firstSync: string | null;
-  recentUpdates24h: number;
-  indexHealth: 'healthy' | 'missing_index' | 'error' | 'unknown';
-  recentProducts: { productId: number; productName: string; updatedAt: string }[];
-}
-
-// Configurazione agenti di default
-const defaultAgents: AgentConfig[] = [
-  {
-    id: 'orchestrator',
-    name: 'Orchestratore',
-    description: 'Smista le richieste agli agenti specializzati',
-    icon: 'Brain',
-    color: 'purple',
-    status: 'active',
-    enabled: true,
-    permissions: ['route_requests', 'analyze_intent', 'manage_context'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  },
-  {
-    id: 'order',
-    name: 'Agente Ordini',
-    description: 'Gestisce ordini, storico, creazione e modifiche',
-    icon: 'ShoppingCart',
-    color: 'blue',
-    status: 'active',
-    enabled: true,
-    permissions: ['read_orders', 'create_orders_b2b', 'modify_orders', 'cancel_orders'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  },
-  {
-    id: 'invoice',
-    name: 'Agente Fatture',
-    description: 'Mostra fatture, scadenze e link pagamento',
-    icon: 'FileText',
-    color: 'green',
-    status: 'active',
-    enabled: true,
-    permissions: ['read_invoices', 'generate_payment_links', 'send_reminders'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  },
-  {
-    id: 'shipping',
-    name: 'Agente Spedizioni',
-    description: 'Tracking, ETA e info consegne',
-    icon: 'Truck',
-    color: 'orange',
-    status: 'active',
-    enabled: true,
-    permissions: ['track_shipments', 'get_eta', 'report_issues'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  },
-  {
-    id: 'product',
-    name: 'Agente Prodotti',
-    description: 'Info prodotti, disponibilità e prezzi',
-    icon: 'Package',
-    color: 'pink',
-    status: 'active',
-    enabled: true,
-    permissions: ['search_products', 'check_availability', 'get_prices'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  },
-  {
-    id: 'helpdesk',
-    name: 'Agente Helpdesk',
-    description: 'Supporto, ticket e escalation',
-    icon: 'HeadphonesIcon',
-    color: 'red',
-    status: 'active',
-    enabled: true,
-    permissions: ['create_tickets', 'escalate', 'notify_team'],
-    supportedLanguages: ['it', 'de', 'fr', 'en'],
-    stats: {
-      requestsToday: 0,
-      requestsTotal: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      lastActive: new Date().toISOString()
-    }
-  }
-];
-
-// Icone mapping
-const iconMap: Record<string, any> = {
-  Brain,
-  ShoppingCart,
-  FileText,
-  Truck,
-  Package,
-  HeadphonesIcon
+// Agent icons mapping
+const agentIcons: Record<string, React.ReactNode> = {
+  acquisti: <ShoppingCart className="h-5 w-5" />,
+  magazzino: <Package className="h-5 w-5" />,
+  vendite: <Receipt className="h-5 w-5" />,
+  consegne: <Truck className="h-5 w-5" />,
+  amministrazione: <Receipt className="h-5 w-5" />,
+  customer_service: <HeadphonesIcon className="h-5 w-5" />,
+  marketing: <Megaphone className="h-5 w-5" />,
+  direzione: <BarChart3 className="h-5 w-5" />,
 };
 
-// Colori mapping
-const colorMap: Record<string, { bg: string; text: string; border: string; gradient: string }> = {
-  purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', gradient: 'from-purple-600 to-purple-400' },
-  blue: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', gradient: 'from-blue-600 to-blue-400' },
-  green: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', gradient: 'from-green-600 to-green-400' },
-  orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', gradient: 'from-orange-600 to-orange-400' },
-  pink: { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/30', gradient: 'from-pink-600 to-pink-400' },
-  red: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', gradient: 'from-red-600 to-red-400' }
+const agentDescriptions: Record<string, string> = {
+  acquisti: 'Gestione fornitori, ordini acquisto, scorte',
+  magazzino: 'Inventario, picking, ricevimento merce',
+  vendite: 'Clienti, ordini vendita, preventivi',
+  consegne: 'Pianificazione consegne, autisti, DDT',
+  amministrazione: 'Fatturazione, pagamenti, contabilita',
+  customer_service: 'Supporto clienti, reclami, assistenza',
+  marketing: 'Social media, SEO, campagne',
+  direzione: 'Report, KPI, analisi business',
 };
 
-export default function LapaAIAgentsPage() {
-  const [agents, setAgents] = useState<AgentConfig[]>(defaultAgents);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalRequests: 0,
-    activeConversations: 0,
-    resolvedToday: 0,
-    escalatedToday: 0,
-    avgResponseTime: 0,
-    customerSatisfaction: 4.7
-  });
-  const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'logs' | 'test'>('overview');
-  const [loading, setLoading] = useState(false);
-  const [conversations, setConversations] = useState<ConversationLog[]>([]);
-  const [ragStats, setRagStats] = useState<RAGStats | null>(null);
+export default function LapaAiAgentsPage() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([]);
+  const [isSending, setIsSending] = useState(false);
 
-  // Test chat state
-  const [testMessages, setTestMessages] = useState<{role: 'user' | 'assistant'; content: string}[]>([]);
-  const [testInput, setTestInput] = useState('');
-  const [testSending, setTestSending] = useState(false);
-  const [testCustomerType, setTestCustomerType] = useState<'b2b' | 'b2c' | 'anonymous'>('b2b');
-
-  // Funzione per caricare dati dall'API
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Carica dati agenti
-      const response = await fetch('/api/lapa-agents/status');
-      const data = await response.json();
-
-      if (data.agents) {
-        // Mappa gli agenti dall'API mantenendo le configurazioni locali (icone, colori)
-        setAgents(prev => prev.map(localAgent => {
-          const apiAgent = data.agents.find((a: { id: string }) => a.id === localAgent.id);
-          if (apiAgent) {
-            return {
-              ...localAgent,
-              status: apiAgent.status,
-              enabled: apiAgent.enabled,
-              stats: apiAgent.stats
-            };
-          }
-          return localAgent;
-        }));
-      }
-
-      if (data.stats) {
-        setStats(data.stats);
-      }
-
-      // Carica statistiche RAG
-      try {
-        const ragResponse = await fetch('/api/lapa-ai/rag-stats');
-        const ragData = await ragResponse.json();
-        if (ragData.success && ragData.stats) {
-          setRagStats(ragData.stats);
-        }
-      } catch (ragError) {
-        console.error('Failed to load RAG stats:', ragError);
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Initialize with available agents
+  useEffect(() => {
+    const defaultAgents: Agent[] = [
+      { name: 'acquisti', status: 'active', description: agentDescriptions.acquisti, icon: agentIcons.acquisti },
+      { name: 'magazzino', status: 'inactive', description: agentDescriptions.magazzino, icon: agentIcons.magazzino },
+      { name: 'vendite', status: 'inactive', description: agentDescriptions.vendite, icon: agentIcons.vendite },
+      { name: 'consegne', status: 'inactive', description: agentDescriptions.consegne, icon: agentIcons.consegne },
+      { name: 'amministrazione', status: 'inactive', description: agentDescriptions.amministrazione, icon: agentIcons.amministrazione },
+      { name: 'customer_service', status: 'inactive', description: agentDescriptions.customer_service, icon: agentIcons.customer_service },
+      { name: 'marketing', status: 'inactive', description: agentDescriptions.marketing, icon: agentIcons.marketing },
+      { name: 'direzione', status: 'inactive', description: agentDescriptions.direzione, icon: agentIcons.direzione },
+    ];
+    setAgents(defaultAgents);
   }, []);
 
-  // Carica dati all'avvio e ogni 30 secondi
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, [loadData]);
+  // Send chat message
+  const sendMessage = async () => {
+    if (!chatMessage.trim() || !selectedAgent) return;
 
-  const toggleAgent = async (agentId: string) => {
-    setAgents(prev => prev.map(agent => {
-      if (agent.id === agentId) {
-        return {
-          ...agent,
-          enabled: !agent.enabled,
-          status: !agent.enabled ? 'active' : 'paused'
-        };
-      }
-      return agent;
-    }));
-  };
+    setIsSending(true);
+    const userMessage = chatMessage;
+    setChatMessage('');
 
-  const sendTestMessage = async () => {
-    if (!testInput.trim() || testSending) return;
-
-    const userMessage = { role: 'user' as const, content: testInput };
-    setTestMessages(prev => [...prev, userMessage]);
-    setTestInput('');
-    setTestSending(true);
+    // Add user message to history
+    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      const response = await fetch('/api/lapa-agents/chat', {
+      const response = await fetch('/api/agents/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: testInput,
-          customerType: testCustomerType,
-          sessionId: 'test-session'
+          content: userMessage,
+          user_id: 1, // Paul
+          channel: 'web',
+          target_agent: selectedAgent
         })
       });
 
       const data = await response.json();
 
-      setTestMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.message || 'Risposta ricevuta'
-      }]);
+      if (data.content) {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: data.content }]);
+      }
     } catch (error) {
-      setTestMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Errore nella comunicazione con gli agenti'
-      }]);
+      console.error('Error sending message:', error);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore di connessione con il backend.' }]);
     } finally {
-      setTestSending(false);
+      setIsSending(false);
+    }
+  };
+
+  // Handle approval decision
+  const handleApproval = async (approvalId: number, approved: boolean) => {
+    try {
+      await fetch(`/api/agents/approvals/${approvalId}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approved,
+          user_id: 1,
+          notes: approved ? 'Approvato' : 'Rifiutato'
+        })
+      });
+
+      // Remove from list
+      setApprovals(prev => prev.filter(a => a.id !== approvalId));
+    } catch (error) {
+      console.error('Error processing approval:', error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="container max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-                  title="Torna alla Home"
-                >
-                  <Home className="w-5 h-5" />
-                </motion.button>
-              </Link>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-400 flex items-center justify-center">
-                <Bot className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">LAPA AI Agents</h1>
-                <p className="text-sm text-slate-400">Sistema Multi-Agente per Assistenza Clienti</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={loadData}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </motion.button>
-
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/30">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-sm text-green-400 font-medium">Sistema Attivo</span>
-              </div>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Brain className="h-8 w-8 text-purple-600" />
+            LAPA AI Agents
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Sistema di 8 agenti AI per gestione aziendale
+          </p>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <StatsCard
-            icon={MessageSquare}
-            label="Richieste Oggi"
-            value={stats.totalRequests}
-            color="blue"
-          />
-          <StatsCard
-            icon={Activity}
-            label="Conversazioni Attive"
-            value={stats.activeConversations}
-            color="green"
-          />
-          <StatsCard
-            icon={CheckCircle}
-            label="Risolte Oggi"
-            value={stats.resolvedToday}
-            color="emerald"
-          />
-          <StatsCard
-            icon={AlertTriangle}
-            label="Escalation"
-            value={stats.escalatedToday}
-            color="orange"
-          />
-          <StatsCard
-            icon={Clock}
-            label="Tempo Medio"
-            value={`${stats.avgResponseTime}s`}
-            color="purple"
-          />
-          <StatsCard
-            icon={TrendingUp}
-            label="Soddisfazione"
-            value={`${stats.customerSatisfaction}/5`}
-            color="pink"
-          />
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {[
-            { id: 'overview', label: 'Panoramica', icon: Activity },
-            { id: 'agents', label: 'Agenti', icon: Bot },
-            { id: 'logs', label: 'Conversazioni', icon: MessageSquare },
-            { id: 'test', label: 'Test Chat', icon: Send }
-          ].map(tab => (
-            <motion.button
-              key={tab.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'overview' && (
-            <OverviewTab agents={agents} ragStats={ragStats} />
-          )}
-
-          {activeTab === 'agents' && (
-            <AgentsTab
-              agents={agents}
-              onToggle={toggleAgent}
-              onSelect={setSelectedAgent}
-            />
-          )}
-
-          {activeTab === 'logs' && (
-            <LogsTab conversations={conversations} />
-          )}
-
-          {activeTab === 'test' && (
-            <TestChatTab
-              messages={testMessages}
-              input={testInput}
-              setInput={setTestInput}
-              onSend={sendTestMessage}
-              sending={testSending}
-              customerType={testCustomerType}
-              setCustomerType={setTestCustomerType}
-            />
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Agent Detail Modal */}
-      <AnimatePresence>
-        {selectedAgent && (
-          <AgentDetailModal
-            agent={selectedAgent}
-            onClose={() => setSelectedAgent(null)}
-            onSave={(updated) => {
-              setAgents(prev => prev.map(a => a.id === updated.id ? updated : a));
-              setSelectedAgent(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// Stats Card Component
-function StatsCard({ icon: Icon, label, value, color }: {
-  icon: any;
-  label: string;
-  value: number | string;
-  color: string;
-}) {
-  const colors: Record<string, string> = {
-    blue: 'from-blue-600 to-blue-400',
-    green: 'from-green-600 to-green-400',
-    emerald: 'from-emerald-600 to-emerald-400',
-    orange: 'from-orange-600 to-orange-400',
-    purple: 'from-purple-600 to-purple-400',
-    pink: 'from-pink-600 to-pink-400'
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50"
-    >
-      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors[color]} flex items-center justify-center mb-3`}>
-        <Icon className="w-5 h-5 text-white" />
+        <button
+          onClick={() => window.location.reload()}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </button>
       </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="text-xs text-slate-400">{label}</div>
-    </motion.div>
-  );
-}
 
-// Overview Tab
-function OverviewTab({ agents, ragStats }: { agents: AgentConfig[]; ragStats: RAGStats | null }) {
-  return (
-    <motion.div
-      key="overview"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-    >
-      {/* RAG Database Stats */}
-      <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Database className="w-5 h-5 text-cyan-400" />
-          Database RAG - Ricerca Semantica Prodotti
-        </h3>
-
-        {ragStats ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {/* Total Products */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <HardDrive className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs text-slate-400">Prodotti Indicizzati</span>
-              </div>
-              <div className="text-2xl font-bold text-white">{ragStats.totalEmbeddings.toLocaleString()}</div>
-            </div>
-
-            {/* Last Update */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-4 h-4 text-green-400" />
-                <span className="text-xs text-slate-400">Ultimo Aggiornamento</span>
-              </div>
-              <div className="text-lg font-bold text-white">
-                {ragStats.lastUpdate
-                  ? new Date(ragStats.lastUpdate).toLocaleString('it-IT', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  : 'N/A'}
-              </div>
-            </div>
-
-            {/* Updates 24h */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <RefreshCw className="w-4 h-4 text-yellow-400" />
-                <span className="text-xs text-slate-400">Aggiornati (24h)</span>
-              </div>
-              <div className="text-2xl font-bold text-white">{ragStats.recentUpdates24h}</div>
-            </div>
-
-            {/* Index Health */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Search className="w-4 h-4 text-purple-400" />
-                <span className="text-xs text-slate-400">Stato Indice</span>
-              </div>
-              <div className={`text-lg font-bold ${
-                ragStats.indexHealth === 'healthy' ? 'text-green-400' :
-                ragStats.indexHealth === 'missing_index' ? 'text-yellow-400' :
-                'text-red-400'
-              }`}>
-                {ragStats.indexHealth === 'healthy' ? 'Sano' :
-                 ragStats.indexHealth === 'missing_index' ? 'Indice Mancante' :
-                 ragStats.indexHealth === 'error' ? 'Errore' : 'Sconosciuto'}
-              </div>
-            </div>
-
-            {/* First Sync */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4 text-blue-400" />
-                <span className="text-xs text-slate-400">Prima Sincronizzazione</span>
-              </div>
-              <div className="text-lg font-bold text-white">
-                {ragStats.firstSync
-                  ? new Date(ragStats.firstSync).toLocaleDateString('it-IT')
-                  : 'N/A'}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center py-8 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            Caricamento statistiche RAG...
-          </div>
-        )}
-
-        {/* Recent Products */}
-        {ragStats && ragStats.recentProducts.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-700/50">
-            <h4 className="text-sm font-medium text-slate-400 mb-2">Ultimi prodotti aggiornati:</h4>
-            <div className="flex flex-wrap gap-2">
-              {ragStats.recentProducts.slice(0, 5).map(p => (
-                <span
-                  key={p.productId}
-                  className="px-2 py-1 bg-slate-700/50 rounded text-xs text-slate-300"
-                  title={`ID: ${p.productId} - ${new Date(p.updatedAt).toLocaleString('it-IT')}`}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Agents Grid */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Agents Status */}
+          <div className="bg-white rounded-lg shadow-md p-6 border">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              Agenti AI
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {agents.map((agent) => (
+                <button
+                  key={agent.name}
+                  onClick={() => {
+                    setSelectedAgent(agent.name);
+                    setChatHistory([]);
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    selectedAgent === agent.name
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${agent.status === 'inactive' ? 'opacity-50' : ''}`}
                 >
-                  {p.productName.length > 30 ? p.productName.substring(0, 30) + '...' : p.productName}
-                </span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`${
+                      agent.status === 'active' ? 'text-purple-600' : 'text-gray-400'
+                    }`}>
+                      {agent.icon}
+                    </span>
+                    <span className={`h-2 w-2 rounded-full ${
+                      agent.status === 'active' ? 'bg-green-500' : 'bg-gray-300'
+                    }`} />
+                  </div>
+                  <p className="font-medium capitalize text-sm">{agent.name.replace('_', ' ')}</p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{agent.description}</p>
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Agents Grid */}
-      <div className="lg:col-span-2">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Bot className="w-5 h-5 text-red-400" />
-          Stato Agenti
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {agents.map(agent => {
-            const Icon = iconMap[agent.icon] || Bot;
-            const colors = colorMap[agent.color];
-
-            return (
-              <motion.div
-                key={agent.id}
-                whileHover={{ scale: 1.02 }}
-                className={`relative bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border ${colors.border} overflow-hidden`}
-              >
-                {/* Status indicator */}
-                <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${
-                  agent.status === 'active' ? 'bg-green-400 animate-pulse' :
-                  agent.status === 'paused' ? 'bg-yellow-400' :
-                  agent.status === 'error' ? 'bg-red-400' :
-                  'bg-slate-500'
-                }`} />
-
-                <div className={`w-12 h-12 rounded-xl ${colors.bg} flex items-center justify-center mb-3`}>
-                  <Icon className={`w-6 h-6 ${colors.text}`} />
-                </div>
-
-                <h4 className="text-white font-medium text-sm mb-1">{agent.name}</h4>
-                <p className="text-xs text-slate-400 mb-3 line-clamp-2">{agent.description}</p>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">{agent.stats.requestsToday} oggi</span>
-                  <span className={`${colors.text} font-medium`}>{agent.stats.successRate}%</span>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Activity Chart Placeholder */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-green-400" />
-          Attività Ultime 24h
-        </h3>
-        <div className="h-48 flex items-end gap-1">
-          {Array.from({ length: 24 }).map((_, i) => {
-            const height = 20 + Math.random() * 80;
-            return (
-              <div
-                key={i}
-                className="flex-1 bg-gradient-to-t from-red-600 to-red-400 rounded-t opacity-70 hover:opacity-100 transition-opacity"
-                style={{ height: `${height}%` }}
-              />
-            );
-          })}
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-slate-500">
-          <span>00:00</span>
-          <span>12:00</span>
-          <span>24:00</span>
-        </div>
-      </div>
-
-      {/* Languages */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Globe className="w-5 h-5 text-blue-400" />
-          Lingue Supportate
-        </h3>
-        <div className="space-y-3">
-          {[
-            { lang: 'Italiano', code: 'it', flag: '🇮🇹', percentage: 45 },
-            { lang: 'Tedesco', code: 'de', flag: '🇩🇪', percentage: 30 },
-            { lang: 'Francese', code: 'fr', flag: '🇫🇷', percentage: 15 },
-            { lang: 'Inglese', code: 'en', flag: '🇬🇧', percentage: 10 }
-          ].map(item => (
-            <div key={item.code}>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-300">{item.flag} {item.lang}</span>
-                <span className="text-slate-400">{item.percentage}%</span>
-              </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${item.percentage}%` }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-red-600 to-red-400"
-                />
-              </div>
+          {/* Chat Interface */}
+          <div className="bg-white rounded-lg shadow-md border">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Chat con {selectedAgent ? selectedAgent.replace('_', ' ').toUpperCase() : 'Agente'}
+              </h2>
+              {selectedAgent && (
+                <span className="text-sm text-gray-500">
+                  Agente selezionato
+                </span>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
-// Agents Tab
-function AgentsTab({ agents, onToggle, onSelect }: {
-  agents: AgentConfig[];
-  onToggle: (id: string) => void;
-  onSelect: (agent: AgentConfig) => void;
-}) {
-  return (
-    <motion.div
-      key="agents"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-4"
-    >
-      {agents.map(agent => {
-        const Icon = iconMap[agent.icon] || Bot;
-        const colors = colorMap[agent.color];
-
-        return (
-          <motion.div
-            key={agent.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className={`bg-slate-800/50 backdrop-blur-sm rounded-xl border ${colors.border} overflow-hidden`}
-          >
-            <div className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${colors.gradient} flex items-center justify-center`}>
-                    <Icon className="w-7 h-7 text-white" />
+            {/* Chat Messages */}
+            <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {!selectedAgent ? (
+                <div className="text-center text-gray-500 py-10">
+                  Seleziona un agente per iniziare la conversazione
+                </div>
+              ) : chatHistory.length === 0 ? (
+                <div className="text-center text-gray-500 py-10">
+                  Inizia una conversazione con l&apos;agente {selectedAgent.replace('_', ' ')}
+                </div>
+              ) : (
+                chatHistory.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        msg.role === 'user'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white border shadow-sm'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white mb-1">{agent.name}</h3>
-                    <p className="text-slate-400 text-sm mb-3">{agent.description}</p>
-
-                    {/* Permissions */}
-                    <div className="flex flex-wrap gap-2">
-                      {agent.permissions.map(perm => (
-                        <span
-                          key={perm}
-                          className={`px-2 py-1 rounded text-xs ${colors.bg} ${colors.text}`}
-                        >
-                          {perm.replace(/_/g, ' ')}
-                        </span>
-                      ))}
+                ))
+              )}
+              {isSending && (
+                <div className="flex justify-start">
+                  <div className="bg-white border shadow-sm p-3 rounded-lg">
+                    <div className="flex space-x-1">
+                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" />
+                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Stats */}
-                  <div className="text-right mr-4">
-                    <div className="text-2xl font-bold text-white">{agent.stats.requestsToday}</div>
-                    <div className="text-xs text-slate-400">richieste oggi</div>
+            {/* Chat Input */}
+            <div className="p-4 border-t">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                  placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
+                  disabled={!selectedAgent || isSending}
+                  className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!selectedAgent || !chatMessage.trim() || isSending}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Invia
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Approvals & Alerts */}
+        <div className="space-y-6">
+          {/* Pending Approvals */}
+          <div className="bg-white rounded-lg shadow-md p-6 border">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              Approvazioni Pendenti
+              {approvals.length > 0 && (
+                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full">
+                  {approvals.length}
+                </span>
+              )}
+            </h2>
+
+            {approvals.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-4">
+                Nessuna approvazione pendente
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {approvals.map((approval) => (
+                  <div key={approval.id} className="p-3 border rounded-lg bg-orange-50">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{approval.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {approval.agent} - {new Date(approval.requested_at).toLocaleString('it-IT')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleApproval(approval.id, true)}
+                        className="flex-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center justify-center gap-1"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Approva
+                      </button>
+                      <button
+                        onClick={() => handleApproval(approval.id, false)}
+                        className="flex-1 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center justify-center gap-1"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Rifiuta
+                      </button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-                  {/* Toggle */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => onToggle(agent.id)}
-                    className={`p-3 rounded-xl ${
-                      agent.enabled
-                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+          {/* Alerts */}
+          <div className="bg-white rounded-lg shadow-md p-6 border">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Bell className="h-5 w-5 text-blue-500" />
+              Alert Attivi
+              {alerts.length > 0 && (
+                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+                  {alerts.length}
+                </span>
+              )}
+            </h2>
+
+            {alerts.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-4">
+                Nessun alert attivo
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`p-3 border rounded-lg ${
+                      alert.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                      alert.severity === 'error' ? 'bg-orange-50 border-orange-200' :
+                      alert.severity === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                      'bg-blue-50 border-blue-200'
                     }`}
                   >
-                    {agent.enabled ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
-                  </motion.button>
-
-                  {/* Settings */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => onSelect(agent)}
-                    className="p-3 rounded-xl bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </motion.button>
-                </div>
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700/50">
-                <div>
-                  <div className="text-slate-400 text-xs mb-1">Totale Richieste</div>
-                  <div className="text-white font-medium">{agent.stats.requestsTotal.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-slate-400 text-xs mb-1">Tempo Medio</div>
-                  <div className="text-white font-medium">{agent.stats.avgResponseTime}s</div>
-                </div>
-                <div>
-                  <div className="text-slate-400 text-xs mb-1">Success Rate</div>
-                  <div className="text-green-400 font-medium">{agent.stats.successRate}%</div>
-                </div>
-                <div>
-                  <div className="text-slate-400 text-xs mb-1">Ultima Attività</div>
-                  <div className="text-white font-medium">
-                    {new Date(agent.stats.lastActive).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        );
-      })}
-    </motion.div>
-  );
-}
-
-// Interfaccia per conversazione dal KV
-interface StoredConversation {
-  sessionId: string;
-  customerId?: number;
-  parentId?: number;
-  customerName?: string;
-  customerType: 'b2b' | 'b2c' | 'anonymous';
-  channels?: ('web' | 'whatsapp' | 'api')[];
-  messages: {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: string;
-    agentId?: string;
-    channel?: 'web' | 'whatsapp' | 'api';
-    senderName?: string;
-  }[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Logs Tab
-function LogsTab({ conversations: initialConversations }: { conversations: ConversationLog[] }) {
-  const [conversations, setConversations] = useState<StoredConversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedConv, setSelectedConv] = useState<StoredConversation | null>(null);
-  const [filter, setFilter] = useState<'all' | 'web' | 'whatsapp'>('all');
-
-  // Carica conversazioni dal KV
-  useEffect(() => {
-    async function loadConversations() {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/lapa-agents/conversations?limit=50');
-        const data = await response.json();
-        if (data.success && data.conversations) {
-          setConversations(data.conversations);
-        }
-      } catch (error) {
-        console.error('Error loading conversations:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadConversations();
-    // Refresh ogni 30 secondi
-    const interval = setInterval(loadConversations, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Filtra e ordina conversazioni per canale (più recenti prima)
-  const filteredConversations = conversations
-    .filter(conv => {
-      if (filter === 'all') return true;
-      return conv.channels?.includes(filter) || conv.messages.some(m => m.channel === filter);
-    })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-  // Icona canale
-  const ChannelIcon = ({ channel }: { channel?: string }) => {
-    if (channel === 'whatsapp') return <span className="text-green-400">📱</span>;
-    if (channel === 'api') return <span className="text-purple-400">🔌</span>;
-    return <span className="text-blue-400">🌐</span>;
-  };
-
-  return (
-    <motion.div
-      key="logs"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-    >
-      {/* Lista conversazioni */}
-      <div className="lg:col-span-1 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 max-h-[600px] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-400" />
-            Conversazioni
-          </h3>
-          <span className="text-xs text-slate-400">{filteredConversations.length} totali</span>
-        </div>
-
-        {/* Filtri canale */}
-        <div className="flex gap-2 mb-4">
-          {[
-            { id: 'all', label: 'Tutti', icon: '📊' },
-            { id: 'web', label: 'Web', icon: '🌐' },
-            { id: 'whatsapp', label: 'WhatsApp', icon: '📱' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === f.id
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
-              {f.icon} {f.label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-          </div>
-        ) : filteredConversations.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Nessuna conversazione</p>
-          </div>
-        ) : (
-          <div className="space-y-2 overflow-y-auto flex-1">
-            {filteredConversations.map(conv => (
-              <motion.div
-                key={conv.sessionId}
-                whileHover={{ scale: 1.01 }}
-                onClick={() => setSelectedConv(conv)}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedConv?.sessionId === conv.sessionId
-                    ? 'bg-red-600/20 border border-red-500/30'
-                    : 'bg-slate-700/50 hover:bg-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-white font-medium text-sm truncate max-w-[120px]">
-                      {conv.customerName || 'Anonimo'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {conv.channels?.map(ch => (
-                      <ChannelIcon key={ch} channel={ch} />
-                    )) || <ChannelIcon channel="web" />}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className={`px-1.5 py-0.5 rounded text-xs ${
-                    conv.customerType === 'b2b' ? 'bg-blue-500/20 text-blue-400' :
-                    conv.customerType === 'b2c' ? 'bg-green-500/20 text-green-400' :
-                    'bg-slate-600 text-slate-400'
-                  }`}>
-                    {conv.customerType.toUpperCase()}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {conv.messages.length} msg
-                  </span>
-                </div>
-                <p className="text-slate-400 text-xs mt-1 line-clamp-1">
-                  {conv.messages[conv.messages.length - 1]?.content.substring(0, 50) || '...'}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  {new Date(conv.updatedAt).toLocaleString('it-IT', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Dettaglio conversazione */}
-      <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 max-h-[600px] overflow-hidden flex flex-col">
-        {selectedConv ? (
-          <>
-            {/* Header conversazione */}
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-400" />
-                  {selectedConv.customerName || 'Visitatore Anonimo'}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    selectedConv.customerType === 'b2b' ? 'bg-blue-500/20 text-blue-400' :
-                    selectedConv.customerType === 'b2c' ? 'bg-green-500/20 text-green-400' :
-                    'bg-slate-600 text-slate-400'
-                  }`}>
-                    {selectedConv.customerType.toUpperCase()}
-                  </span>
-                  {selectedConv.customerId && (
-                    <span className="text-xs text-slate-400">
-                      ID: {selectedConv.customerId}
-                    </span>
-                  )}
-                  {selectedConv.channels?.map(ch => (
-                    <span key={ch} className={`px-2 py-0.5 rounded text-xs ${
-                      ch === 'whatsapp' ? 'bg-green-500/20 text-green-400' :
-                      ch === 'api' ? 'bg-purple-500/20 text-purple-400' :
-                      'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {ch}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="text-right text-xs text-slate-400">
-                <div>Creata: {new Date(selectedConv.createdAt).toLocaleString('it-IT')}</div>
-                <div>Aggiornata: {new Date(selectedConv.updatedAt).toLocaleString('it-IT')}</div>
-              </div>
-            </div>
-
-            {/* Messaggi (più recenti in cima) */}
-            <div className="flex-1 overflow-y-auto space-y-3 flex flex-col-reverse">
-              {[...selectedConv.messages].reverse().map((msg, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center mr-2 flex-shrink-0">
-                      <Bot className="w-4 h-4 text-white" />
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className={`h-4 w-4 mt-0.5 ${
+                        alert.severity === 'critical' ? 'text-red-600' :
+                        alert.severity === 'error' ? 'text-orange-600' :
+                        alert.severity === 'warning' ? 'text-yellow-600' :
+                        'text-blue-600'
+                      }`} />
+                      <div>
+                        <p className="font-medium text-sm">{alert.title}</p>
+                        <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {alert.agent} - {new Date(alert.created_at).toLocaleString('it-IT')}
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  <div className={`max-w-[75%] ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-xl rounded-br-sm'
-                      : 'bg-slate-700 text-slate-100 rounded-xl rounded-bl-sm'
-                  } p-3`}>
-                    {/* Header messaggio */}
-                    <div className="flex items-center gap-2 mb-1 text-xs opacity-70">
-                      <ChannelIcon channel={msg.channel} />
-                      {msg.senderName && <span>{msg.senderName}</span>}
-                      {msg.agentId && (
-                        <span className="px-1.5 py-0.5 bg-black/20 rounded">
-                          {msg.agentId}
-                        </span>
-                      )}
-                      <span>
-                        {new Date(msg.timestamp).toLocaleTimeString('it-IT', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    {/* Contenuto */}
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
-                  {msg.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center ml-2 flex-shrink-0">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-400">
-            <div className="text-center">
-              <Eye className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p>Seleziona una conversazione per vedere i dettagli</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// Test Chat Tab
-function TestChatTab({
-  messages,
-  input,
-  setInput,
-  onSend,
-  sending,
-  customerType,
-  setCustomerType
-}: {
-  messages: { role: 'user' | 'assistant'; content: string }[];
-  input: string;
-  setInput: (v: string) => void;
-  onSend: () => void;
-  sending: boolean;
-  customerType: 'b2b' | 'b2c' | 'anonymous';
-  setCustomerType: (v: 'b2b' | 'b2c' | 'anonymous') => void;
-}) {
-  return (
-    <motion.div
-      key="test"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden"
-    >
-      {/* Header */}
-      <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <Send className="w-5 h-5 text-red-400" />
-          Test Chat - Simula Cliente
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">Tipo cliente:</span>
-          <select
-            value={customerType}
-            onChange={(e) => setCustomerType(e.target.value as any)}
-            className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600"
-          >
-            <option value="b2b">B2B (Azienda)</option>
-            <option value="b2c">B2C (Privato)</option>
-            <option value="anonymous">Anonimo</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="h-[400px] overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-slate-400 mt-16">
-            <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">Testa gli agenti LAPA AI</p>
-            <p className="text-sm">Prova a scrivere:</p>
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {[
-                'Vorrei ordinare della mozzarella',
-                'Dove si trova il mio ordine?',
-                'Ho fatture da pagare?',
-                'Avete la burrata disponibile?'
-              ].map(suggestion => (
-                <button
-                  key={suggestion}
-                  onClick={() => setInput(suggestion)}
-                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center mr-3 flex-shrink-0">
-                <Bot className="w-5 h-5 text-white" />
+                ))}
               </div>
             )}
-            <div className={`max-w-[70%] p-4 rounded-xl ${
-              msg.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-700 text-slate-100'
-            }`}>
-              {msg.content}
-            </div>
-          </motion.div>
-        ))}
+          </div>
 
-        {sending && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3"
-          >
-            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="bg-slate-700 p-4 rounded-xl">
-              <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Input */}
-      <div className="p-4 border-t border-slate-700/50">
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !sending && onSend()}
-            placeholder="Scrivi un messaggio come farebbe un cliente..."
-            disabled={sending}
-            className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl border border-slate-600 focus:outline-none focus:border-red-500 disabled:opacity-50"
-          />
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onSend}
-            disabled={sending || !input.trim()}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center gap-2 disabled:opacity-50"
-          >
-            {sending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Agent Detail Modal
-function AgentDetailModal({
-  agent,
-  onClose,
-  onSave
-}: {
-  agent: AgentConfig;
-  onClose: () => void;
-  onSave: (agent: AgentConfig) => void;
-}) {
-  const [editedAgent, setEditedAgent] = useState(agent);
-  const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt || '');
-  const Icon = iconMap[agent.icon] || Bot;
-  const colors = colorMap[agent.color];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-slate-800 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[80vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={`p-6 border-b border-slate-700 bg-gradient-to-r ${colors.gradient}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Icon className="w-7 h-7 text-white" />
+          {/* Quick Stats */}
+          <div className="bg-white rounded-lg shadow-md p-6 border">
+            <h2 className="text-lg font-semibold mb-4">Statistiche Rapide</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">
+                  {agents.filter(a => a.status === 'active').length}
+                </p>
+                <p className="text-xs text-gray-600">Agenti Attivi</p>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">{agent.name}</h2>
-                <p className="text-white/80 text-sm">{agent.description}</p>
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <p className="text-2xl font-bold text-orange-600">{approvals.length}</p>
+                <p className="text-xs text-gray-600">Da Approvare</p>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">{alerts.length}</p>
+                <p className="text-xs text-gray-600">Alert</p>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <p className="text-2xl font-bold text-purple-600">8</p>
+                <p className="text-xs text-gray-600">Agenti Totali</p>
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white"
-            >
-              <X className="w-5 h-5" />
-            </motion.button>
           </div>
         </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
-          {/* Status Toggle */}
-          <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
-            <div>
-              <div className="text-white font-medium">Stato Agente</div>
-              <div className="text-slate-400 text-sm">Attiva o disattiva questo agente</div>
-            </div>
-            <button
-              onClick={() => setEditedAgent(prev => ({
-                ...prev,
-                enabled: !prev.enabled,
-                status: !prev.enabled ? 'active' : 'paused'
-              }))}
-              className={`relative w-14 h-7 rounded-full transition-colors ${
-                editedAgent.enabled ? 'bg-green-500' : 'bg-slate-600'
-              }`}
-            >
-              <motion.div
-                animate={{ x: editedAgent.enabled ? 28 : 4 }}
-                className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-md"
-              />
-            </button>
-          </div>
-
-          {/* Permissions */}
-          <div>
-            <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-yellow-400" />
-              Permessi
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {agent.permissions.map(perm => (
-                <label key={perm} className="flex items-center gap-2 p-3 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={editedAgent.permissions.includes(perm)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setEditedAgent(prev => ({
-                          ...prev,
-                          permissions: [...prev.permissions, perm]
-                        }));
-                      } else {
-                        setEditedAgent(prev => ({
-                          ...prev,
-                          permissions: prev.permissions.filter(p => p !== perm)
-                        }));
-                      }
-                    }}
-                    className="w-4 h-4 rounded bg-slate-600 border-slate-500 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-slate-300 text-sm">{perm.replace(/_/g, ' ')}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* System Prompt */}
-          <div>
-            <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-blue-400" />
-              System Prompt (Istruzioni)
-            </h3>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Inserisci le istruzioni per questo agente..."
-              className="w-full h-32 bg-slate-700 text-white px-4 py-3 rounded-xl border border-slate-600 focus:outline-none focus:border-red-500 resize-none"
-            />
-          </div>
-
-          {/* Languages */}
-          <div>
-            <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-green-400" />
-              Lingue Attive
-            </h3>
-            <div className="flex gap-2">
-              {[
-                { code: 'it', flag: '🇮🇹', name: 'Italiano' },
-                { code: 'de', flag: '🇩🇪', name: 'Tedesco' },
-                { code: 'fr', flag: '🇫🇷', name: 'Francese' },
-                { code: 'en', flag: '🇬🇧', name: 'Inglese' }
-              ].map(lang => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    if (editedAgent.supportedLanguages.includes(lang.code)) {
-                      setEditedAgent(prev => ({
-                        ...prev,
-                        supportedLanguages: prev.supportedLanguages.filter(l => l !== lang.code)
-                      }));
-                    } else {
-                      setEditedAgent(prev => ({
-                        ...prev,
-                        supportedLanguages: [...prev.supportedLanguages, lang.code]
-                      }));
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    editedAgent.supportedLanguages.includes(lang.code)
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : 'bg-slate-700 text-slate-400 border border-slate-600'
-                  }`}
-                >
-                  {lang.flag} {lang.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-slate-700 flex justify-end gap-3">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onClose}
-            className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl"
-          >
-            Annulla
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onSave({ ...editedAgent, systemPrompt })}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            Salva Modifiche
-          </motion.button>
-        </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
