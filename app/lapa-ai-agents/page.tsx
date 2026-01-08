@@ -86,7 +86,7 @@ export default function LapaAiAgentsPage() {
   useEffect(() => {
     const defaultAgents: Agent[] = [
       { name: 'acquisti', status: 'active', description: agentDescriptions.acquisti, icon: agentIcons.acquisti },
-      { name: 'magazzino', status: 'inactive', description: agentDescriptions.magazzino, icon: agentIcons.magazzino },
+      { name: 'magazzino', status: 'active', description: agentDescriptions.magazzino, icon: agentIcons.magazzino },
       { name: 'vendite', status: 'inactive', description: agentDescriptions.vendite, icon: agentIcons.vendite },
       { name: 'consegne', status: 'inactive', description: agentDescriptions.consegne, icon: agentIcons.consegne },
       { name: 'amministrazione', status: 'inactive', description: agentDescriptions.amministrazione, icon: agentIcons.amministrazione },
