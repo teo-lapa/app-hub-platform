@@ -1303,12 +1303,6 @@ export default function ConvalidaResiduiPage() {
             🧾 Ordine: <b>{saleName || '-'}</b>
           </span>
           <button
-            className="btn slim blue"
-            type="button"
-            onClick={() => handleOpenQuickAdd(pick.id)}
-            disabled={!saleName || saleName === '-'}
-          >
-          <button
             onClick={() => handleConvalidaPicking(pick)}
             disabled={convalidaLoading === pick.id}
             style={{
