@@ -100,6 +100,8 @@ interface SostituzioneData {
   originalQty: number;
   locationId: number;
   locationDestId: number;
+  saleOrderId: number | null;
+  saleOrderName: string | null;
 }
 
 interface LotInfo {
@@ -1118,7 +1120,9 @@ export default function ConvalidaResiduiPage() {
       originalProductName: move.product_id[1],
       originalQty: move.product_uom_qty,
       locationId: move.location_id[0],
-      locationDestId: move.location_dest_id[0]
+      locationDestId: move.location_dest_id[0],
+      saleOrderId: pick.sale_id ? pick.sale_id[0] : null,
+      saleOrderName: pick.sale_id ? pick.sale_id[1] : null
     });
     setSostituzioneQty(move.product_uom_qty);
     setSelectedSostituto(null);
@@ -1154,34 +1158,55 @@ export default function ConvalidaResiduiPage() {
       return;
     }
 
+    if (!sostituzioneData.saleOrderId) {
+      showToastMessage('Ordine di vendita non trovato per questo picking');
+      return;
+    }
+
     setSostituzioneLoading(true);
     try {
-      // Crea nuovo move sostitutivo
-      const newMoveId = await callKwConvalida('stock.move', 'create', [{
-        picking_id: sostituzioneData.pickingId,
-        product_id: selectedSostituto.id,
-        name: `[SOSTITUZIONE] ${sostituzioneData.originalProductName} → ${selectedSostituto.name}`,
-        product_uom_qty: sostituzioneQty,
-        location_id: sostituzioneData.locationId,
-        location_dest_id: sostituzioneData.locationDestId,
-        product_uom: selectedSostituto.uom_id ? selectedSostituto.uom_id[0] : 1
-      }], {});
+      // Ottieni dettagli prodotto per UOM
+      const pdet = await searchReadConvalida<Product>(
+        'product.product',
+        [['id', '=', selectedSostituto.id]],
+        ['id', 'name', 'uom_id', 'product_tmpl_id'],
+        1
+      );
+      const uomId = pdet.length && pdet[0].uom_id ? pdet[0].uom_id[0] : null;
 
-      // Annulla move originale
-      await callKwConvalida('stock.move', 'action_cancel', [[sostituzioneData.moveId]], {});
+      // Crea riga ordine di vendita (come AGGIUNGI PRODOTTO)
+      const vals: any = {
+        order_id: sostituzioneData.saleOrderId,
+        product_id: selectedSostituto.id,
+        product_uom_qty: sostituzioneQty,
+      };
+      if (uomId) vals.product_uom = uomId;
+
+      const newLineId = await callKwConvalida<number>('sale.order.line', 'create', [vals], {});
+
+      // Ricalcola prezzo dal listino
+      try {
+        await callKwConvalida('sale.order.line', '_compute_price_unit', [[newLineId]]);
+      } catch (e) {
+        try {
+          await callKwConvalida('sale.order.line', 'product_uom_change', [[newLineId]]);
+        } catch (e2) {
+          console.log('Fallback: price will be computed by Odoo on save');
+        }
+      }
 
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
       const message = `
-        <p><strong>🔄 Sostituzione Prodotto eseguita</strong></p>
+        <p><strong>🔄 Sostituzione Prodotto</strong></p>
         <ul>
-          <li><strong>Prodotto originale:</strong> ${sostituzioneData.originalProductName}</li>
-          <li><strong>Quantità originale:</strong> ${sostituzioneData.originalQty}</li>
+          <li><strong>Prodotto originale (mancante):</strong> ${sostituzioneData.originalProductName}</li>
+          <li><strong>Quantità richiesta:</strong> ${sostituzioneData.originalQty}</li>
           <li><strong>Prodotto sostitutivo:</strong> ${selectedSostituto.name}</li>
           <li><strong>Quantità sostitutiva:</strong> ${sostituzioneQty}</li>
           <li><strong>Data:</strong> ${timestamp}</li>
         </ul>
-        <p><em>Move originale annullato, nuovo move creato (ID: ${newMoveId})</em></p>
+        <p><em>Aggiunto all'ordine ${sostituzioneData.saleOrderName}</em></p>
       `;
 
       await callKwConvalida('stock.picking', 'message_post', [[sostituzioneData.pickingId]], {
@@ -1190,7 +1215,7 @@ export default function ConvalidaResiduiPage() {
         subtype_xmlid: 'mail.mt_note'
       });
 
-      showToastMessage(`Sostituzione completata: ${sostituzioneData.originalProductName} → ${selectedSostituto.name}`);
+      showToastMessage(`Sostituzione: ${sostituzioneData.originalProductName} → ${selectedSostituto.name} (aggiunto a ${sostituzioneData.saleOrderName})`);
       setShowSostituzioneModal(false);
       setSostituzioneData(null);
       setSelectedSostituto(null);
@@ -1283,8 +1308,6 @@ export default function ConvalidaResiduiPage() {
             onClick={() => handleOpenQuickAdd(pick.id)}
             disabled={!saleName || saleName === '-'}
           >
-            AGGIUNGI PRODOTTO
-          </button>
           <button
             onClick={() => handleConvalidaPicking(pick)}
             disabled={convalidaLoading === pick.id}
