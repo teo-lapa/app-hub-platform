@@ -214,15 +214,7 @@ export default function ConvalidaResiduiPage() {
   const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
   const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
 
-  // Quick Add Modal
-  const [showModal, setShowModal] = useState(false);
-  const [modalOrder, setModalOrder] = useState<SaleOrder | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchQty, setSearchQty] = useState(1);
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productCache, setProductCache] = useState<Record<string, Product[]>>({});
-  const [searching, setSearching] = useState(false);
 
   // Forza Inventario Modal
   const [showForzaModal, setShowForzaModal] = useState(false);
@@ -249,8 +241,6 @@ export default function ConvalidaResiduiPage() {
 
   // Refs
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const modalInputRef = useRef<HTMLInputElement>(null);
   const sostituzioneInputRef = useRef<HTMLInputElement>(null);
   const sostituzioneSearchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -270,13 +260,6 @@ export default function ConvalidaResiduiPage() {
     }
   }, []);
 
-  // Focus automatico sul modal
-  useEffect(() => {
-    if (showModal && modalInputRef.current) {
-      setTimeout(() => modalInputRef.current?.focus(), 50);
-    }
-  }, [showModal]);
-
   // Focus automatico sul modal sostituzione
   useEffect(() => {
     if (showSostituzioneModal && sostituzioneInputRef.current) {
@@ -288,7 +271,6 @@ export default function ConvalidaResiduiPage() {
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
       if (sostituzioneSearchTimerRef.current) clearTimeout(sostituzioneSearchTimerRef.current);
     };
   }, []);
@@ -757,25 +739,6 @@ export default function ConvalidaResiduiPage() {
     return null;
   };
 
-  const handleOpenQuickAdd = async (pickId: number) => {
-    const pick = picks.find((p) => p.id === pickId);
-    if (!pick) {
-      showToastMessage('PICK non trovato');
-      return;
-    }
-    const order = await ensureOrderForPick(pick);
-    if (!order) {
-      showToastMessage('Ordine di vendita non trovato per questo PICK');
-      return;
-    }
-    setModalOrder(order);
-    setShowModal(true);
-    setSearchTerm('');
-    setSuggestions([]);
-    setSelectedProduct(null);
-    setSearchQty(1);
-  };
-
   const handleConvalidaPicking = async (pick: StockPicking) => {
     const pickMoves = moves.filter(m => m.picking_id[0] === pick.id);
     if (pickMoves.length === 0) {
@@ -853,80 +816,6 @@ export default function ConvalidaResiduiPage() {
     } catch (e) {
       return [];
     }
-  };
-
-  const handleSearchProduct = async (term: string) => {
-    if (term.length < 2) {
-      setSuggestions([]);
-      setSelectedProduct(null);
-      return;
-    }
-
-    setSearching(true);
-    try {
-      const results = await superSearch(term);
-      setSuggestions(results);
-      if (results.length > 0) {
-        setSelectedProduct(results[0]);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleConfirmAdd = async () => {
-    if (!selectedProduct || !modalOrder) {
-      showToastMessage('Seleziona un prodotto');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const pdet = await searchReadConvalida<Product>(
-        'product.product',
-        [['id', '=', selectedProduct.id]],
-        ['id', 'name', 'uom_id', 'product_tmpl_id'],
-        1
-      );
-      const uomId = pdet.length && pdet[0].uom_id ? pdet[0].uom_id[0] : null;
-
-      // Creiamo la riga SOLO con order_id, product_id e quantità
-      // Odoo deve calcolare il prezzo dal listino dell'ordine
-      const vals: any = {
-        order_id: modalOrder.id,
-        product_id: selectedProduct.id,
-        product_uom_qty: searchQty,
-      };
-      if (uomId) vals.product_uom = uomId;
-
-      const newLineId = await callKwConvalida<number>('sale.order.line', 'create', [vals], {});
-
-      // Forza il ricalcolo del prezzo usando _compute_price_unit
-      // Questo metodo legge il listino dall'ordine e calcola il prezzo corretto
-      try {
-        await callKwConvalida('sale.order.line', '_compute_price_unit', [[newLineId]]);
-      } catch (e) {
-        // Se _compute_price_unit non esiste, proviamo con product_uom_change
-        try {
-          await callKwConvalida('sale.order.line', 'product_uom_change', [[newLineId]]);
-        } catch (e2) {
-          console.log('Fallback: price will be computed by Odoo on save');
-        }
-      }
-
-      showToastMessage(`Aggiunto ${selectedProduct.display_name || selectedProduct.name} × ${searchQty} a ${modalOrder.name}`);
-      setShowModal(false);
-    } catch (error: any) {
-      showToastMessage('Errore: ordine bloccato o permessi');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSelectProduct = (product: Product) => {
-    setSelectedProduct(product);
   };
 
   // --------------------------------------------------------------------------
@@ -2302,103 +2191,6 @@ export default function ConvalidaResiduiPage() {
 
         <div id="convalida-toast" className={`toast ${showToast ? 'show' : ''}`}>
           {toastMessage}
-        </div>
-      </div>
-
-      {/* Modal Quick Add */}
-      <div className={`qa-modal-convalida ${showModal ? 'show' : ''}`}>
-        <div className="qa-dialog">
-          <div className="qa-head">
-            <h3>{modalOrder ? `🔎 Aggiungi prodotto a ${modalOrder.name}` : "🔎 Aggiungi prodotto all'ordine"}</h3>
-            <button className="qa-close" onClick={() => setShowModal(false)}>
-              ✕
-            </button>
-          </div>
-          <div className="qa-body">
-            <div className="qa-search">
-              <input
-                ref={modalInputRef}
-                type="text"
-                placeholder="Nome, codice interno o barcode…"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-                  searchTimerRef.current = setTimeout(() => {
-                    handleSearchProduct(e.target.value.trim());
-                  }, 160);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && selectedProduct) {
-                    handleConfirmAdd();
-                  }
-                }}
-              />
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={searchQty}
-                onChange={(e) => setSearchQty(Math.max(1, parseInt(e.target.value) || 1))}
-                title="Quantità"
-              />
-            </div>
-            <div className="qa-suggest">
-              {searching && <div style={{ color: '#b6c2da' }}>Ricerca in corso...</div>}
-              {!searching && suggestions.length === 0 && searchTerm.length >= 2 && (
-                <div style={{ color: '#b6c2da' }}>Nessun risultato</div>
-              )}
-              {suggestions.map((prod) => {
-                const uom = prod.uom_id ? prod.uom_id[1] : '';
-                const code = prod.default_code ? ` • Cod.: ${prod.default_code}` : '';
-                const bar = prod.barcode ? ` • Barcode: ${prod.barcode}` : '';
-
-                // Info stock e arrivi per questo prodotto
-                const stock = productStock[prod.id] || [];
-                const incoming = productIncoming[prod.id] || [];
-
-                return (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    className={`qa-sugg ${selectedProduct?.id === prod.id ? 'active' : ''}`}
-                    onClick={() => handleSelectProduct(prod)}
-                  >
-                    <div className="name">{prod.display_name || prod.name}</div>
-                    <div className="meta">
-                      {uom}
-                      {code}
-                      {bar}
-                    </div>
-
-                    {/* Info disponibilità e arrivi */}
-                    {(stock.length > 0 || incoming.length > 0) && (
-                      <div className="stock-info">
-                        {stock.length > 0 && (
-                          <span className="stock-available">
-                            📍 Disp: {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
-                          </span>
-                        )}
-                        {incoming.length > 0 && (
-                          <span className="stock-incoming">
-                            🚚 Arrivi: {incoming.reduce((sum, inc) => sum + inc.qty, 0).toFixed(1)} {uom}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="qa-foot">
-            <button className="btn light" onClick={() => setShowModal(false)}>
-              Annulla
-            </button>
-            <button className="btn blue" onClick={handleConfirmAdd} disabled={!selectedProduct || isLoading}>
-              Conferma
-            </button>
-          </div>
         </div>
       </div>
 
