@@ -69,11 +69,60 @@ interface LineInfo {
   lot: [number, string] | false;
 }
 
+interface StockQuant {
+  id: number;
+  product_id: [number, string];
+  location_id: [number, string];
+  quantity: number;
+  inventory_quantity: number;
+  lot_id: [number, string] | false;
+  reserved_quantity: number;
+}
+
+interface ForzaInventarioData {
+  productId: number;
+  productName: string;
+  pickingId: number;
+  pickingName: string;
+  moveId: number;
+  quants: StockQuant[];
+  selectedQuantId: number | null;
+  selectedLocationId: number | null;
+  newQuantity: number;
+}
+
+interface SostituzioneData {
+  moveId: number;
+  pickingId: number;
+  pickingName: string;
+  originalProductId: number;
+  originalProductName: string;
+  originalQty: number;
+  locationId: number;
+  locationDestId: number;
+}
+
+interface LotInfo {
+  id: number;
+  name: string;
+  expiration_date: string | false;
+  use_date: string | false;
+}
+
+interface ScadenzaModalData {
+  moveId: number;
+  pickingId: number;
+  productName: string;
+  lotId: number;
+  lotName: string;
+  currentExpiration: string | false;
+}
+
 // ============================================================================
 // FUNZIONI RPC
 // ============================================================================
 
-async function callKw<T = any>(
+async function callKwConvalida<T = any>(
   model: string,
   method: string,
   args: any[] = [],
@@ -107,21 +156,21 @@ async function callKw<T = any>(
   return data.result;
 }
 
-async function searchRead<T = any>(
+async function searchReadConvalida<T = any>(
   model: string,
   domain: any[],
   fields: string[] = [],
   limit = 0,
   order = ''
 ): Promise<T[]> {
-  return callKw<T[]>(model, 'search_read', [domain], { fields, limit, order });
+  return callKwConvalida<T[]>(model, 'search_read', [domain], { fields, limit, order });
 }
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
-function orDomain(leaves: any[][]): any[] {
+function orDomainConvalida(leaves: any[][]): any[] {
   if (!leaves || !leaves.length) return [];
   if (leaves.length === 1) return leaves[0];
   const out: any[] = [];
@@ -134,7 +183,7 @@ function orDomain(leaves: any[][]): any[] {
 // COMPONENTE PRINCIPALE
 // ============================================================================
 
-export default function PickResiduiPage() {
+export default function ConvalidaResiduiPage() {
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT
   // --------------------------------------------------------------------------
@@ -173,10 +222,35 @@ export default function PickResiduiPage() {
   const [productCache, setProductCache] = useState<Record<string, Product[]>>({});
   const [searching, setSearching] = useState(false);
 
+  // Forza Inventario Modal
+  const [showForzaModal, setShowForzaModal] = useState(false);
+  const [forzaData, setForzaData] = useState<ForzaInventarioData | null>(null);
+  const [forzaLoading, setForzaLoading] = useState(false);
+
+  // Correggi Scadenza Modal
+  const [showScadenzaModal, setShowScadenzaModal] = useState(false);
+  const [scadenzaData, setScadenzaData] = useState<ScadenzaModalData | null>(null);
+  const [newExpirationDate, setNewExpirationDate] = useState('');
+  const [scadenzaLoading, setScadenzaLoading] = useState(false);
+
+  // Sostituzione Prodotto Modal
+  const [showSostituzioneModal, setShowSostituzioneModal] = useState(false);
+  const [sostituzioneData, setSostituzioneData] = useState<SostituzioneData | null>(null);
+  const [sostituzioneSearch, setSostituzioneSearch] = useState('');
+  const [sostituzioneSuggestions, setSostituzioneSuggestions] = useState<Product[]>([]);
+  const [selectedSostituto, setSelectedSostituto] = useState<Product | null>(null);
+  const [sostituzioneQty, setSostituzioneQty] = useState(0);
+  const [sostituzioneLoading, setSostituzioneLoading] = useState(false);
+
+  // Convalida Picking
+  const [convalidaLoading, setConvalidaLoading] = useState<number | null>(null);
+
   // Refs
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const sostituzioneInputRef = useRef<HTMLInputElement>(null);
+  const sostituzioneSearchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // --------------------------------------------------------------------------
   // EFFECTS
@@ -201,11 +275,19 @@ export default function PickResiduiPage() {
     }
   }, [showModal]);
 
+  // Focus automatico sul modal sostituzione
+  useEffect(() => {
+    if (showSostituzioneModal && sostituzioneInputRef.current) {
+      setTimeout(() => sostituzioneInputRef.current?.focus(), 50);
+    }
+  }, [showSostituzioneModal]);
+
   // Cleanup timer
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      if (sostituzioneSearchTimerRef.current) clearTimeout(sostituzioneSearchTimerRef.current);
     };
   }, []);
 
@@ -317,7 +399,7 @@ export default function PickResiduiPage() {
         domain.push(['scheduled_date', '<=', dateRange.end]);
       }
 
-      const picksData = await searchRead<StockPicking>(
+      const picksData = await searchReadConvalida<StockPicking>(
         'stock.picking',
         domain,
         ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date', 'backorder_id'],
@@ -337,7 +419,7 @@ export default function PickResiduiPage() {
       }
 
       const pickIds = picksData.map((p) => p.id);
-      const movesData = await searchRead<StockMove>(
+      const movesData = await searchReadConvalida<StockMove>(
         'stock.move',
         [['picking_id', 'in', pickIds]],
         ['id', 'picking_id', 'product_id', 'product_uom_qty', 'location_id', 'location_dest_id', 'product_uom'],
@@ -347,7 +429,7 @@ export default function PickResiduiPage() {
 
       const moveIds = movesData.map((m) => m.id);
       const linesData = moveIds.length
-        ? await searchRead<StockMoveLine>(
+        ? await searchReadConvalida<StockMoveLine>(
             'stock.move.line',
             [['move_id', 'in', moveIds]],
             ['id', 'move_id', 'qty_done', 'location_id', 'lot_id'],
@@ -416,7 +498,7 @@ export default function PickResiduiPage() {
       console.log('🔍 Caricamento info per prodotti:', productIds);
 
       // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
-      const quants = await searchRead<any>(
+      const quants = await searchReadConvalida<any>(
         'stock.quant',
         [
           ['product_id', 'in', productIds],
@@ -440,7 +522,7 @@ export default function PickResiduiPage() {
       });
 
       // 2. Carica arrivi in corso (stock.move in entrata, non done/cancel)
-      const incomingMoves = await searchRead<any>(
+      const incomingMoves = await searchReadConvalida<any>(
         'stock.move',
         [
           ['product_id', 'in', productIds],
@@ -463,7 +545,7 @@ export default function PickResiduiPage() {
       });
 
       // 3. Carica prenotazioni (stock.move in stato assigned = riservato)
-      const reservedMoves = await searchRead<any>(
+      const reservedMoves = await searchReadConvalida<any>(
         'stock.move',
         [
           ['product_id', 'in', productIds],
@@ -482,7 +564,7 @@ export default function PickResiduiPage() {
       ));
 
       const pickingsForReservations = pickingIdsForReservations.length > 0
-        ? await searchRead<any>(
+        ? await searchReadConvalida<any>(
             'stock.picking',
             [['id', 'in', pickingIdsForReservations]],
             ['id', 'name', 'partner_id'],
@@ -538,7 +620,7 @@ export default function PickResiduiPage() {
 
       let lineIds = linesByMove[moveId] || [];
       if (lineIds.length) {
-        await callKw('stock.move.line', 'write', [[lineIds[0]], { qty_done: value }]);
+        await callKwConvalida('stock.move.line', 'write', [[lineIds[0]], { qty_done: value }]);
       } else {
         const vals = {
           move_id: moveId,
@@ -549,7 +631,7 @@ export default function PickResiduiPage() {
           location_dest_id: m.location_dest_id[0],
           product_uom_id: m.product_uom[0],
         };
-        const newId = await callKw<number>('stock.move.line', 'create', [vals]);
+        const newId = await callKwConvalida<number>('stock.move.line', 'create', [vals]);
         setLinesByMove((prev) => ({ ...prev, [moveId]: [newId] }));
       }
       setDoneByMove((prev) => ({ ...prev, [moveId]: value }));
@@ -579,7 +661,7 @@ export default function PickResiduiPage() {
         </ul>
       `;
 
-      await callKw('stock.picking', 'message_post', [[pickingId]], {
+      await callKwConvalida('stock.picking', 'message_post', [[pickingId]], {
         body: message,
         message_type: 'comment',
         subtype_xmlid: 'mail.mt_note'
@@ -591,7 +673,7 @@ export default function PickResiduiPage() {
   };
 
   const handleSaveOne = async (moveId: number) => {
-    const input = document.getElementById(`done_${moveId}`) as HTMLInputElement;
+    const input = document.getElementById(`convalida_done_${moveId}`) as HTMLInputElement;
     if (!input) return;
     const value = Number(input.value || 0);
     await updateOne(moveId, value);
@@ -601,9 +683,9 @@ export default function PickResiduiPage() {
   const handleSaveAll = async () => {
     setIsLoading(true);
     try {
-      const inputs = document.querySelectorAll<HTMLInputElement>('input[id^="done_"]');
+      const inputs = document.querySelectorAll<HTMLInputElement>('input[id^="convalida_done_"]');
       for (const input of Array.from(inputs)) {
-        const moveId = Number(input.id.replace('done_', ''));
+        const moveId = Number(input.id.replace('convalida_done_', ''));
         const value = Number(input.value || 0);
         await updateOne(moveId, value);
       }
@@ -626,7 +708,7 @@ export default function PickResiduiPage() {
         moves.filter((m) => m.picking_id && m.picking_id[0] === p.id).forEach((m) => ids.push(m.id));
       }
       for (const id of ids) {
-        const input = document.getElementById(`done_${id}`) as HTMLInputElement;
+        const input = document.getElementById(`convalida_done_${id}`) as HTMLInputElement;
         const val = input ? Number(input.value || 0) : Number(doneByMove[id] || 0);
         await updateOne(id, val);
       }
@@ -644,7 +726,7 @@ export default function PickResiduiPage() {
 
   const ensureOrderForPick = async (pick: StockPicking): Promise<SaleOrder | null> => {
     if (pick.sale_id) {
-      const o = await searchRead<SaleOrder>(
+      const o = await searchReadConvalida<SaleOrder>(
         'sale.order',
         [['id', '=', pick.sale_id[0]]],
         ['id', 'name', 'pricelist_id', 'partner_id', 'state'],
@@ -653,7 +735,7 @@ export default function PickResiduiPage() {
       return o && o[0];
     }
     if (pick.origin) {
-      const o = await searchRead<SaleOrder>(
+      const o = await searchReadConvalida<SaleOrder>(
         'sale.order',
         [['name', '=', pick.origin]],
         ['id', 'name', 'pricelist_id', 'partner_id', 'state'],
@@ -662,7 +744,7 @@ export default function PickResiduiPage() {
       if (o.length) return o[0];
     }
     if (pick.group_id) {
-      const o = await searchRead<SaleOrder>(
+      const o = await searchReadConvalida<SaleOrder>(
         'sale.order',
         [['procurement_group_id', '=', pick.group_id[0]]],
         ['id', 'name', 'pricelist_id', 'partner_id', 'state'],
@@ -692,6 +774,43 @@ export default function PickResiduiPage() {
     setSearchQty(1);
   };
 
+  const handleConvalidaPicking = async (pick: StockPicking) => {
+    const pickMoves = moves.filter(m => m.picking_id[0] === pick.id);
+    if (pickMoves.length === 0) {
+      setStatusMessage('Nessun movimento da convalidare');
+      return;
+    }
+    
+    const allDone = pickMoves.every(m => (doneByMove[m.id] || 0) > 0);
+    if (!allDone) {
+      if (!confirm('Alcuni prodotti hanno quantita 0. Convalidare comunque? Verra creato un backorder.')) {
+        return;
+      }
+    }
+    
+    setConvalidaLoading(pick.id);
+    try {
+      const result = await callKwConvalida('stock.picking', 'button_validate', [[pick.id]], {});
+      
+      if (result && typeof result === 'object' && result.res_model === 'stock.backorder.confirmation') {
+        await callKwConvalida('stock.backorder.confirmation', 'process', [[result.res_id]], {});
+      }
+      
+      await callKwConvalida('stock.picking', 'message_post', [[pick.id]], {
+        body: '<p><strong>Picking convalidato</strong> tramite App Convalida Residui</p>',
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note'
+      });
+      
+      setToastMessage('Picking ' + pick.name + ' convalidato!');
+      setShowToast(true);
+      await handleLoad();
+    } catch (e) {
+      setStatusMessage('Errore: ' + (e as Error).message);
+    }
+    setConvalidaLoading(null);
+  };
+
   const superSearch = async (term: string): Promise<Product[]> => {
     const key = term.toLowerCase();
     if (productCache[key]) return productCache[key];
@@ -701,8 +820,8 @@ export default function PickResiduiPage() {
         ['barcode', '=', term],
         ['default_code', '=', term],
       ];
-      const exactDomain = ['&', ['sale_ok', '=', true], ...orDomain(exactLeaves)];
-      const exact = await searchRead<Product>(
+      const exactDomain = ['&', ['sale_ok', '=', true], ...orDomainConvalida(exactLeaves)];
+      const exact = await searchReadConvalida<Product>(
         'product.product',
         exactDomain,
         ['id', 'display_name', 'name', 'default_code', 'barcode', 'uom_id', 'lst_price'],
@@ -720,8 +839,8 @@ export default function PickResiduiPage() {
         ['default_code', 'ilike', term],
         ['barcode', 'ilike', term],
       ];
-      const domain = ['&', ['sale_ok', '=', true], ...orDomain(leaves)];
-      const out = await searchRead<Product>(
+      const domain = ['&', ['sale_ok', '=', true], ...orDomainConvalida(leaves)];
+      const out = await searchReadConvalida<Product>(
         'product.product',
         domain,
         ['id', 'display_name', 'name', 'default_code', 'barcode', 'uom_id', 'lst_price'],
@@ -763,7 +882,7 @@ export default function PickResiduiPage() {
 
     setIsLoading(true);
     try {
-      const pdet = await searchRead<Product>(
+      const pdet = await searchReadConvalida<Product>(
         'product.product',
         [['id', '=', selectedProduct.id]],
         ['id', 'name', 'uom_id', 'product_tmpl_id'],
@@ -780,16 +899,16 @@ export default function PickResiduiPage() {
       };
       if (uomId) vals.product_uom = uomId;
 
-      const newLineId = await callKw<number>('sale.order.line', 'create', [vals], {});
+      const newLineId = await callKwConvalida<number>('sale.order.line', 'create', [vals], {});
 
       // Forza il ricalcolo del prezzo usando _compute_price_unit
       // Questo metodo legge il listino dall'ordine e calcola il prezzo corretto
       try {
-        await callKw('sale.order.line', '_compute_price_unit', [[newLineId]]);
+        await callKwConvalida('sale.order.line', '_compute_price_unit', [[newLineId]]);
       } catch (e) {
         // Se _compute_price_unit non esiste, proviamo con product_uom_change
         try {
-          await callKw('sale.order.line', 'product_uom_change', [[newLineId]]);
+          await callKwConvalida('sale.order.line', 'product_uom_change', [[newLineId]]);
         } catch (e2) {
           console.log('Fallback: price will be computed by Odoo on save');
         }
@@ -806,6 +925,285 @@ export default function PickResiduiPage() {
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
+  };
+
+  // --------------------------------------------------------------------------
+  // FORZA INVENTARIO FUNCTIONS
+  // --------------------------------------------------------------------------
+
+  const handleOpenForzaInventario = async (move: StockMove, pick: StockPicking) => {
+    setForzaLoading(true);
+    try {
+      const productId = move.product_id[0];
+      const productName = move.product_id[1];
+      const locationId = move.location_id[0];
+
+      // Cerca quant esistente per questo prodotto e ubicazione
+      const quants = await searchReadConvalida<StockQuant>(
+        'stock.quant',
+        [
+          ['product_id', '=', productId],
+          ['location_id.usage', '=', 'internal']
+        ],
+        ['id', 'product_id', 'location_id', 'quantity', 'inventory_quantity', 'lot_id', 'reserved_quantity'],
+        0
+      );
+
+      // Se non ci sono quant, cerca tutte le ubicazioni interne disponibili
+      let availableQuants = quants;
+      if (quants.length === 0) {
+        // Crea un quant "virtuale" per mostrare le info
+        availableQuants = [{
+          id: 0,
+          product_id: move.product_id,
+          location_id: move.location_id,
+          quantity: 0,
+          inventory_quantity: 0,
+          lot_id: false,
+          reserved_quantity: 0
+        }];
+      }
+
+      setForzaData({
+        productId,
+        productName,
+        pickingId: pick.id,
+        pickingName: pick.name,
+        moveId: move.id,
+        quants: availableQuants,
+        selectedQuantId: availableQuants.length > 0 ? availableQuants[0].id : null,
+        selectedLocationId: availableQuants.length > 0 ? availableQuants[0].location_id[0] : locationId,
+        newQuantity: availableQuants.length > 0 ? availableQuants[0].quantity : 0
+      });
+      setShowForzaModal(true);
+    } catch (error: any) {
+      showToastMessage(`Errore: ${error.message}`);
+    } finally {
+      setForzaLoading(false);
+    }
+  };
+
+  const handleConfirmForzaInventario = async () => {
+    if (!forzaData) return;
+
+    setForzaLoading(true);
+    try {
+      const { productId, productName, pickingId, pickingName, selectedQuantId, selectedLocationId, newQuantity, quants } = forzaData;
+      const selectedQuant = quants.find(q => q.id === selectedQuantId);
+      const oldQuantity = selectedQuant ? selectedQuant.quantity : 0;
+
+      if (selectedQuantId && selectedQuantId > 0) {
+        // Aggiorna il quant esistente
+        await callKwConvalida('stock.quant', 'write', [[selectedQuantId], {
+          inventory_quantity: newQuantity,
+          inventory_date: new Date().toISOString().slice(0, 10)
+        }], {});
+
+        // Applica l'inventario
+        await callKwConvalida('stock.quant', 'action_apply_inventory', [[selectedQuantId]], {});
+      } else {
+        // Se non esiste un quant, dobbiamo crearlo tramite un aggiustamento inventario
+        // Prima cerchiamo o creiamo un quant
+        const newQuants = await searchReadConvalida<StockQuant>(
+          'stock.quant',
+          [
+            ['product_id', '=', productId],
+            ['location_id', '=', selectedLocationId]
+          ],
+          ['id'],
+          1
+        );
+
+        let quantId: number;
+        if (newQuants.length > 0) {
+          quantId = newQuants[0].id;
+        } else {
+          // Crea un nuovo quant
+          quantId = await callKwConvalida<number>('stock.quant', 'create', [{
+            product_id: productId,
+            location_id: selectedLocationId,
+            quantity: 0,
+            inventory_quantity: newQuantity
+          }], {});
+        }
+
+        // Imposta la quantita' inventario
+        await callKwConvalida('stock.quant', 'write', [[quantId], {
+          inventory_quantity: newQuantity,
+          inventory_date: new Date().toISOString().slice(0, 10)
+        }], {});
+
+        // Applica
+        await callKwConvalida('stock.quant', 'action_apply_inventory', [[quantId]], {});
+      }
+
+      // Traccia nel chatter del picking
+      const timestamp = new Date().toLocaleString('it-IT');
+      const locationName = selectedQuant ? selectedQuant.location_id[1] : 'Ubicazione';
+      const message = `
+        <p><strong>📦 Forza Inventario eseguito</strong></p>
+        <ul>
+          <li><strong>Prodotto:</strong> ${productName}</li>
+          <li><strong>Ubicazione:</strong> ${locationName}</li>
+          <li><strong>Quantita' precedente:</strong> ${oldQuantity}</li>
+          <li><strong>Nuova quantita':</strong> ${newQuantity}</li>
+          <li><strong>Data:</strong> ${timestamp}</li>
+        </ul>
+      `;
+
+      await callKwConvalida('stock.picking', 'message_post', [[pickingId]], {
+        body: message,
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note'
+      });
+
+      showToastMessage(`Inventario forzato: ${productName} = ${newQuantity}`);
+      setShowForzaModal(false);
+      setForzaData(null);
+
+      // Ricarica i dati per aggiornare le disponibilita'
+      handleLoad();
+    } catch (error: any) {
+      showToastMessage(`Errore: ${error.message}`);
+    } finally {
+      setForzaLoading(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // CORREGGI SCADENZA FUNCTIONS
+  // --------------------------------------------------------------------------
+
+  const handleOpenScadenza = async (move: StockMove, lotInfo: [number, string], pick: StockPicking) => {
+    const lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date', 'use_date'], 1);
+    const lot = lots[0];
+    setScadenzaData({
+      moveId: move.id,
+      pickingId: pick.id,
+      productName: move.product_id[1],
+      lotId: lot.id,
+      lotName: lot.name,
+      currentExpiration: lot.expiration_date
+    });
+    setNewExpirationDate(lot.expiration_date ? lot.expiration_date.split(' ')[0] : '');
+    setShowScadenzaModal(true);
+  };
+
+  const handleConfirmScadenza = async () => {
+    if (!scadenzaData || !newExpirationDate) return;
+    setScadenzaLoading(true);
+    try {
+      await callKwConvalida('stock.production.lot', 'write', [[scadenzaData.lotId], { expiration_date: newExpirationDate }], {});
+      await callKwConvalida('stock.picking', 'message_post', [[scadenzaData.pickingId]], {
+        body: `<p>📅 <strong>Scadenza corretta</strong></p><p>Prodotto: ${scadenzaData.productName}<br/>Lotto: ${scadenzaData.lotName}<br/>Vecchia scadenza: ${scadenzaData.currentExpiration || 'N/A'}<br/>Nuova scadenza: ${newExpirationDate}</p>`,
+        message_type: 'comment', subtype_xmlid: 'mail.mt_note'
+      });
+      setToastMessage(`Scadenza aggiornata per lotto ${scadenzaData.lotName}`);
+      setShowToast(true);
+      setShowScadenzaModal(false);
+    } catch (e) { setStatusMessage('Errore: ' + (e as Error).message); }
+    setScadenzaLoading(false);
+  };
+
+  // --------------------------------------------------------------------------
+  // SOSTITUZIONE PRODOTTO FUNCTIONS
+  // --------------------------------------------------------------------------
+
+  const handleOpenSostituzione = (move: StockMove, pick: StockPicking) => {
+    setSostituzioneData({
+      moveId: move.id,
+      pickingId: pick.id,
+      pickingName: pick.name,
+      originalProductId: move.product_id[0],
+      originalProductName: move.product_id[1],
+      originalQty: move.product_uom_qty,
+      locationId: move.location_id[0],
+      locationDestId: move.location_dest_id[0]
+    });
+    setSostituzioneQty(move.product_uom_qty);
+    setSelectedSostituto(null);
+    setSostituzioneSearch('');
+    setSostituzioneSuggestions([]);
+    setShowSostituzioneModal(true);
+  };
+
+  const handleSearchSostituto = async (term: string) => {
+    if (term.length < 2) {
+      setSostituzioneSuggestions([]);
+      setSelectedSostituto(null);
+      return;
+    }
+
+    setSostituzioneLoading(true);
+    try {
+      const results = await superSearch(term);
+      setSostituzioneSuggestions(results);
+      if (results.length > 0) {
+        setSelectedSostituto(results[0]);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSostituzioneLoading(false);
+    }
+  };
+
+  const handleConfirmSostituzione = async () => {
+    if (!selectedSostituto || !sostituzioneData) {
+      showToastMessage('Seleziona un prodotto sostitutivo');
+      return;
+    }
+
+    setSostituzioneLoading(true);
+    try {
+      // Crea nuovo move sostitutivo
+      const newMoveId = await callKwConvalida('stock.move', 'create', [{
+        picking_id: sostituzioneData.pickingId,
+        product_id: selectedSostituto.id,
+        name: `[SOSTITUZIONE] ${sostituzioneData.originalProductName} → ${selectedSostituto.name}`,
+        product_uom_qty: sostituzioneQty,
+        location_id: sostituzioneData.locationId,
+        location_dest_id: sostituzioneData.locationDestId,
+        product_uom: selectedSostituto.uom_id ? selectedSostituto.uom_id[0] : 1
+      }], {});
+
+      // Annulla move originale
+      await callKwConvalida('stock.move', 'action_cancel', [[sostituzioneData.moveId]], {});
+
+      // Traccia nel chatter del picking
+      const timestamp = new Date().toLocaleString('it-IT');
+      const message = `
+        <p><strong>🔄 Sostituzione Prodotto eseguita</strong></p>
+        <ul>
+          <li><strong>Prodotto originale:</strong> ${sostituzioneData.originalProductName}</li>
+          <li><strong>Quantità originale:</strong> ${sostituzioneData.originalQty}</li>
+          <li><strong>Prodotto sostitutivo:</strong> ${selectedSostituto.name}</li>
+          <li><strong>Quantità sostitutiva:</strong> ${sostituzioneQty}</li>
+          <li><strong>Data:</strong> ${timestamp}</li>
+        </ul>
+        <p><em>Move originale annullato, nuovo move creato (ID: ${newMoveId})</em></p>
+      `;
+
+      await callKwConvalida('stock.picking', 'message_post', [[sostituzioneData.pickingId]], {
+        body: message,
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note'
+      });
+
+      showToastMessage(`Sostituzione completata: ${sostituzioneData.originalProductName} → ${selectedSostituto.name}`);
+      setShowSostituzioneModal(false);
+      setSostituzioneData(null);
+      setSelectedSostituto(null);
+      setSostituzioneSearch('');
+      setSostituzioneSuggestions([]);
+
+      // Ricarica i dati
+      handleLoad();
+    } catch (error: any) {
+      showToastMessage(`Errore: ${error.message}`);
+    } finally {
+      setSostituzioneLoading(false);
+    }
   };
 
   // --------------------------------------------------------------------------
@@ -887,6 +1285,24 @@ export default function PickResiduiPage() {
           >
             AGGIUNGI PRODOTTO
           </button>
+          <button
+            onClick={() => handleConvalidaPicking(pick)}
+            disabled={convalidaLoading === pick.id}
+            style={{
+              background: 'var(--ok)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: convalidaLoading === pick.id ? 'wait' : 'pointer',
+              marginLeft: 'auto',
+              minHeight: 44
+            }}
+          >
+            {convalidaLoading === pick.id ? 'Convalida...' : 'CONVALIDA'}
+          </button>
         </div>
         <div className="list">
           {righe.length === 0 ? (
@@ -894,14 +1310,14 @@ export default function PickResiduiPage() {
               <span style={{ color: 'var(--muted)' }}>Nessuna riga</span>
             </div>
           ) : (
-            righe.map((move) => renderMove(move))
+            righe.map((move) => renderMove(move, pick))
           )}
         </div>
       </div>
     );
   };
 
-  const renderMove = (move: StockMove) => {
+  const renderMove = (move: StockMove, pick: StockPicking) => {
     const done = Number(doneByMove[move.id] || 0);
     const plan = Number(move.product_uom_qty || 0);
     const perc = ratio(done, plan).toFixed(0);
@@ -913,6 +1329,10 @@ export default function PickResiduiPage() {
     const stock = productStock[productId] || [];
     const incoming = productIncoming[productId] || [];
     const reservations = productReservations[productId] || [];
+    
+    // Ottieni info lotto dal move
+    const lineInfos = lineInfoByMove[move.id] || [];
+    const lotInfo = lineInfos.length > 0 && lineInfos[0].lot ? lineInfos[0].lot : null;
 
     return (
       <div key={move.id} className="row" data-move={move.id}>
@@ -991,20 +1411,51 @@ export default function PickResiduiPage() {
             step="0.01"
             min="0"
             defaultValue={done}
-            id={`done_${move.id}`}
+            id={`convalida_done_${move.id}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSaveOne(move.id);
             }}
           />
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           <button className="btn slim green" type="button" onClick={() => handleSaveOne(move.id)}>
             SALVA
           </button>
+          <button
+            className="btn slim orange"
+            type="button"
+            onClick={() => handleOpenForzaInventario(move, pick)}
+            disabled={forzaLoading}
+            title="Forza quantita' inventario"
+            style={{ fontSize: '11px' }}
+          >
+            {forzaLoading ? '...' : '📦 FORZA'}
+          </button>
+          <button
+            className="btn slim purple"
+            type="button"
+            onClick={() => handleOpenSostituzione(move, pick)}
+            disabled={sostituzioneLoading}
+            title="Sostituisci prodotto"
+            style={{ fontSize: '11px' }}
+          >
+            {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
+          </button>
+          {lotInfo && (
+            <button
+              className="btn slim blue"
+              type="button"
+              onClick={() => handleOpenScadenza(move, lotInfo, pick)}
+              disabled={scadenzaLoading}
+              title="Correggi scadenza lotto"
+            >
+              {scadenzaLoading ? '...' : '📅 SCADENZA'}
+            </button>
+          )}
         </div>
-        <div className="status" id={`st_${move.id}`}></div>
+        <div className="status" id={`convalida_st_${move.id}`}></div>
         <div className="bar" style={{ gridColumn: '1 / -1' }}>
-          <span id={`bar_${move.id}`} style={{ width: `${perc}%` }}></span>
+          <span id={`convalida_bar_${move.id}`} style={{ width: `${perc}%` }}></span>
         </div>
       </div>
     );
@@ -1022,6 +1473,7 @@ export default function PickResiduiPage() {
           --text: #e5e7eb;
           --muted: #94a3b8;
           --card: #0f172a;
+          --card-alt: #131d2e;
           --border: #1f2937;
           --chip: #0b1220;
           --ok: #16a34a;
@@ -1030,13 +1482,19 @@ export default function PickResiduiPage() {
           --accent2: #2563eb;
           --btnText: #052112;
           --btnText2: #eaf2ff;
+          --orange: #f97316;
+          --blue: #3b82f6;
+          --purple: #8b5cf6;
+          --green: #22c55e;
         }
 
         [data-theme='light'] {
+          /* Light theme */
           --bg: #f6f8fc;
           --text: #0a1628;
           --muted: #5b6a7f;
           --card: #ffffff;
+          --card-alt: #f8fafc;
           --border: #e5e9f2;
           --chip: #eef3fb;
           --accent: #0ea5e9;
@@ -1053,10 +1511,10 @@ export default function PickResiduiPage() {
           margin: 0;
           background: var(--bg);
           color: var(--text);
-          font: 15px/1.5 system-ui, Segoe UI, Arial;
+          font: 16px/1.5 system-ui, Segoe UI, Arial;
         }
 
-        #app {
+        #convalida-app {
           position: fixed;
           inset: 0;
           z-index: 999999;
@@ -1077,7 +1535,7 @@ export default function PickResiduiPage() {
         }
 
         @media (prefers-reduced-motion: no-preference) {
-          [data-theme='light'] #app {
+          [data-theme='light'] #convalida-app {
             background: linear-gradient(120deg, #e6f3ff 0%, #fff5f9 40%, #f5f7ff 70%, #eaf9ff 100%);
             background-size: 200% 200%;
             animation: gradientShift 18s ease infinite;
@@ -1096,8 +1554,9 @@ export default function PickResiduiPage() {
         .topbar {
           position: sticky;
           top: 0;
-          z-index: 5;
-          backdrop-filter: blur(8px);
+          z-index: 100;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           background: color-mix(in oklab, var(--bg) 80%, transparent);
           border-bottom: 1px solid var(--border);
           padding: 12px 16px;
@@ -1106,22 +1565,30 @@ export default function PickResiduiPage() {
           gap: 10px;
           align-items: center;
           flex-wrap: wrap;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .title {
-          font-size: 22px;
-          font-weight: 800;
+          font-size: 20px;
+          font-weight: 700;
           letter-spacing: 0.2px;
           margin-right: auto;
         }
 
         .btn {
-          padding: 12px 16px;
+          min-height: 44px;
+          padding: 12px 18px;
           border: 0;
           border-radius: 14px;
           cursor: pointer;
-          font-weight: 800;
-          transition: 0.15s transform;
+          font-weight: 700;
+          font-size: 15px;
+          transition: all 0.15s ease;
+          touch-action: manipulation;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
 
         .btn:active {
@@ -1132,8 +1599,16 @@ export default function PickResiduiPage() {
           color: var(--btnText);
         }
         .btn.blue {
-          background: var(--accent2);
-          color: var(--btnText2);
+          background: var(--blue);
+          color: white;
+        }
+        .btn.orange {
+          background: var(--orange);
+          color: white;
+        }
+        .btn.purple {
+          background: var(--purple);
+          color: white;
         }
         .btn.ghost {
           background: var(--chip);
@@ -1141,9 +1616,26 @@ export default function PickResiduiPage() {
           border: 1px solid var(--border);
         }
         .btn.slim {
-          padding: 8px 12px;
-          font-size: 12px;
+          min-height: 40px;
+          padding: 10px 14px;
+          font-size: 13px;
           border-radius: 10px;
+        }
+        .btn.slim.green {
+          background: var(--green);
+          color: white;
+        }
+        .btn.slim.blue {
+          background: var(--blue);
+          color: white;
+        }
+        .btn.slim.orange {
+          background: var(--orange);
+          color: white;
+        }
+        .btn.slim.purple {
+          background: var(--purple);
+          color: white;
         }
         .btn:disabled {
           opacity: 0.5;
@@ -1179,8 +1671,9 @@ export default function PickResiduiPage() {
         }
 
         .btn.filter-btn {
-          padding: 6px 12px;
-          font-size: 12px;
+          min-height: 40px;
+          padding: 10px 16px;
+          font-size: 14px;
           border-radius: 8px;
           background: var(--chip);
           color: var(--muted);
@@ -1215,12 +1708,13 @@ export default function PickResiduiPage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 6px 10px;
+          min-height: 36px;
+          padding: 8px 14px;
           border-radius: 999px;
           background: var(--chip);
           border: 1px solid var(--border);
           color: var(--muted);
-          font-size: 12px;
+          font-size: 14px;
         }
         .pill.strong {
           color: var(--text);
@@ -1230,9 +1724,13 @@ export default function PickResiduiPage() {
           background: var(--card);
           border: 1px solid var(--border);
           border-radius: 16px;
-          padding: 14px 14px 10px;
-          margin: 10px 0;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          padding: 16px;
+          margin: 12px 0;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .card:nth-child(even) {
+          background: var(--card-alt);
         }
 
         .pick-head {
@@ -1240,7 +1738,9 @@ export default function PickResiduiPage() {
           gap: 10px;
           align-items: center;
           flex-wrap: wrap;
-          margin-bottom: 8px;
+          margin-bottom: 14px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--border);
         }
 
         .list .row {
@@ -1248,14 +1748,16 @@ export default function PickResiduiPage() {
           grid-template-columns: minmax(280px, 1fr) 120px 160px auto auto;
           gap: 10px;
           align-items: center;
-          padding: 10px;
-          border: 1px dashed var(--border);
+          padding: 16px;
+          border: 1px solid var(--border);
           border-radius: 12px;
-          margin: 10px 0;
+          margin: 12px 0;
+          border-left: 4px solid var(--accent);
         }
 
         .prod {
-          font-weight: 800;
+          font-weight: 700;
+          font-size: 15px;
           color: var(--text);
         }
 
@@ -1274,13 +1776,22 @@ export default function PickResiduiPage() {
         }
 
         input[type='number'] {
-          width: 140px;
-          padding: 10px 12px;
-          border-radius: 10px;
-          border: 1px solid var(--border);
+          width: 100%;
+          max-width: 140px;
+          min-height: 48px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 2px solid var(--border);
           background: color-mix(in oklab, var(--bg) 92%, white 8%);
           color: var(--text);
-          font-weight: 600;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+
+        input[type='number']:focus {
+          outline: none;
+          border-color: var(--accent);
         }
 
         .status {
@@ -1297,7 +1808,7 @@ export default function PickResiduiPage() {
         }
 
         .bar {
-          height: 8px;
+          height: 10px;
           background: color-mix(in oklab, var(--bg) 85%, white 15%);
           border-radius: 999px;
           overflow: hidden;
@@ -1349,7 +1860,7 @@ export default function PickResiduiPage() {
           }
         }
 
-        .qa-modal {
+        .qa-modal-convalida {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.68);
@@ -1359,7 +1870,7 @@ export default function PickResiduiPage() {
           z-index: 1000000;
         }
 
-        .qa-modal.show {
+        .qa-modal-convalida.show {
           display: flex;
         }
 
@@ -1415,8 +1926,8 @@ export default function PickResiduiPage() {
 
         .qa-search input[type='number'] {
           width: 110px;
-          padding: 10px 12px;
-          border-radius: 10px;
+          padding: 12px 14px;
+          border-radius: 12px;
           border: 1px solid #cbd5e1;
           background: #ffffff;
           color: #0f172a;
@@ -1436,7 +1947,7 @@ export default function PickResiduiPage() {
           width: 100%;
           text-align: left;
           padding: 12px;
-          border-radius: 10px;
+          border-radius: 12px;
           border: 1px solid #e2e8f0;
           background: #ffffff;
           color: #0f172a;
@@ -1459,7 +1970,10 @@ export default function PickResiduiPage() {
           color: #64748b;
         }
         .qa-sugg .stock-info {
-          font-size: 11px;
+          font-size: 13px;
+          }
+          .bar {
+            height: 12px;
           margin-top: 6px;
           display: flex;
           gap: 12px;
@@ -1467,7 +1981,14 @@ export default function PickResiduiPage() {
         }
         .qa-sugg .stock-available {
           color: #16a34a;
-          font-weight: 600;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+
+        input[type='number']:focus {
+          outline: none;
+          border-color: var(--accent);
         }
         .qa-sugg .stock-incoming {
           color: #f59e0b;
@@ -1527,15 +2048,17 @@ export default function PickResiduiPage() {
 
         @media (max-width: 768px) {
           body {
-            font-size: 13px;
+            font-size: 16px;
           }
           .btn {
-            padding: 8px 10px;
+            min-height: 48px;
+            padding: 14px 16px;
             font-size: 13px;
           }
           .btn.slim {
-            padding: 6px 10px;
-            font-size: 11px;
+            min-height: 44px;
+            padding: 12px 14px;
+            font-size: 13px;
           }
           .btn.filter-btn {
             padding: 5px 10px;
@@ -1555,11 +2078,11 @@ export default function PickResiduiPage() {
           }
           input[type='number'] {
             width: 90px;
-            padding: 8px 10px;
+            padding: 14px;
           }
           .topbar {
             gap: 6px;
-            padding: 10px 12px;
+            padding: 12px 14px;
           }
           .title {
             font-size: 16px;
@@ -1581,32 +2104,35 @@ export default function PickResiduiPage() {
           }
           .list .row {
             grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 8px;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            padding: 16px;
           }
           .prod {
             font-size: 13px;
           }
           .sub {
-            font-size: 11px;
+            font-size: 13px;
+          }
+          .bar {
+            height: 12px;
           }
           .qa-dialog {
             width: 96vw;
             max-height: 90vh;
           }
           .qa-head h3 {
-            font-size: 15px;
           }
           .qa-search input[type='text'] {
             font-size: 14px;
-            padding: 10px;
+            padding: 16px;
           }
           .qa-search input[type='number'] {
             width: 80px;
-            padding: 10px;
+            padding: 16px;
           }
           .qa-sugg {
-            padding: 10px;
+            padding: 16px;
           }
           .qa-sugg .name {
             font-size: 13px;
@@ -1620,7 +2146,7 @@ export default function PickResiduiPage() {
         }
       `}</style>
 
-      <div id="app">
+      <div id="convalida-app">
         <div className="wrap">
           <div className="topbar">
             <a
@@ -1637,7 +2163,7 @@ export default function PickResiduiPage() {
             >
               🏠 Home
             </a>
-            <div className="title">Pick – Edit rapido</div>
+            <div className="title">Convalida Residui</div>
             <button className="btn ghost" type="button" onClick={toggleTheme} title="Cambia tema">
               {theme === 'light' ? '☀️ Chiaro' : '🌙 Scuro'}
             </button>
@@ -1703,13 +2229,13 @@ export default function PickResiduiPage() {
           {renderGroups()}
         </div>
 
-        <div id="toast" className={`toast ${showToast ? 'show' : ''}`}>
+        <div id="convalida-toast" className={`toast ${showToast ? 'show' : ''}`}>
           {toastMessage}
         </div>
       </div>
 
       {/* Modal Quick Add */}
-      <div className={`qa-modal ${showModal ? 'show' : ''}`}>
+      <div className={`qa-modal-convalida ${showModal ? 'show' : ''}`}>
         <div className="qa-dialog">
           <div className="qa-head">
             <h3>{modalOrder ? `🔎 Aggiungi prodotto a ${modalOrder.name}` : "🔎 Aggiungi prodotto all'ordine"}</h3>
@@ -1800,6 +2326,397 @@ export default function PickResiduiPage() {
             </button>
             <button className="btn blue" onClick={handleConfirmAdd} disabled={!selectedProduct || isLoading}>
               Conferma
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Forza Inventario */}
+      <div className={`qa-modal-convalida ${showForzaModal ? 'show' : ''}`}>
+        <div className="qa-dialog" style={{ width: '560px' }}>
+          <div className="qa-head">
+            <h3>📦 Forza Inventario</h3>
+            <button className="qa-close" onClick={() => { setShowForzaModal(false); setForzaData(null); }}>
+              ✕
+            </button>
+          </div>
+          <div className="qa-body">
+            {forzaData && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Prodotto</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                    {forzaData.productName}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Picking</div>
+                  <div style={{ fontSize: '14px', color: '#0f172a' }}>
+                    {forzaData.pickingName}
+                  </div>
+                </div>
+
+                {forzaData.quants.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
+                      Seleziona ubicazione e quantita' attuale
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {forzaData.quants.map((quant) => (
+                        <button
+                          key={quant.id || `loc-${quant.location_id[0]}`}
+                          type="button"
+                          onClick={() => setForzaData({
+                            ...forzaData,
+                            selectedQuantId: quant.id,
+                            selectedLocationId: quant.location_id[0],
+                            newQuantity: quant.quantity
+                          })}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '12px',
+                            borderRadius: '10px',
+                            border: forzaData.selectedQuantId === quant.id ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                            background: forzaData.selectedQuantId === quant.id ? '#eff6ff' : '#ffffff',
+                            color: '#0f172a',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <div style={{ fontWeight: '600' }}>{quant.location_id[1]}</div>
+                          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                            Quantita' attuale: <b style={{ color: '#16a34a' }}>{quant.quantity}</b>
+                            {quant.reserved_quantity > 0 && (
+                              <span style={{ color: '#f59e0b', marginLeft: '8px' }}>
+                                (Riservato: {quant.reserved_quantity})
+                              </span>
+                            )}
+                            {quant.lot_id && (
+                              <span style={{ marginLeft: '8px' }}>
+                                Lotto: {quant.lot_id[1]}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
+                    Nuova quantita' da forzare
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={forzaData.newQuantity}
+                    onChange={(e) => setForzaData({
+                      ...forzaData,
+                      newQuantity: parseFloat(e.target.value) || 0
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '16px',
+                      fontWeight: '600'
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  padding: '12px',
+                  background: '#fef3c7',
+                  borderRadius: '10px',
+                  border: '1px solid #fcd34d',
+                  color: '#92400e',
+                  fontSize: '13px'
+                }}>
+                  <strong>Attenzione:</strong> Questa operazione modifichera' direttamente la quantita'
+                  in magazzino e verra' tracciata nel chatter del picking.
+                </div>
+              </>
+            )}
+          </div>
+          <div className="qa-foot">
+            <button className="btn light" onClick={() => { setShowForzaModal(false); setForzaData(null); }}>
+              Annulla
+            </button>
+            <button
+              className="btn green"
+              onClick={handleConfirmForzaInventario}
+              disabled={!forzaData || forzaLoading}
+            >
+              {forzaLoading ? 'Salvataggio...' : 'Conferma Forza Inventario'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Sostituzione Prodotto */}
+      <div className={`qa-modal-convalida ${showSostituzioneModal ? 'show' : ''}`}>
+        <div className="qa-dialog" style={{ width: '720px' }}>
+          <div className="qa-head">
+            <h3>🔄 Sostituisci Prodotto</h3>
+            <button className="qa-close" onClick={() => {
+              setShowSostituzioneModal(false);
+              setSostituzioneData(null);
+              setSelectedSostituto(null);
+              setSostituzioneSearch('');
+              setSostituzioneSuggestions([]);
+            }}>
+              ✕
+            </button>
+          </div>
+          <div className="qa-body">
+            {sostituzioneData && (
+              <>
+                {/* Info prodotto originale */}
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '12px',
+                  background: '#fee2e2',
+                  borderRadius: '10px',
+                  border: '1px solid #fecaca'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '4px', fontWeight: '600' }}>
+                    Prodotto da sostituire
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#7f1d1d' }}>
+                    {sostituzioneData.originalProductName}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#991b1b', marginTop: '4px' }}>
+                    Picking: <b>{sostituzioneData.pickingName}</b> • Quantità: <b>{sostituzioneData.originalQty}</b>
+                  </div>
+                </div>
+
+                {/* Ricerca prodotto sostitutivo */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
+                    Cerca prodotto sostitutivo
+                  </div>
+                  <div className="qa-search">
+                    <input
+                      ref={sostituzioneInputRef}
+                      type="text"
+                      placeholder="Nome, codice interno o barcode..."
+                      value={sostituzioneSearch}
+                      onChange={(e) => {
+                        setSostituzioneSearch(e.target.value);
+                        if (sostituzioneSearchTimerRef.current) clearTimeout(sostituzioneSearchTimerRef.current);
+                        sostituzioneSearchTimerRef.current = setTimeout(() => {
+                          handleSearchSostituto(e.target.value.trim());
+                        }, 160);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && selectedSostituto) {
+                          handleConfirmSostituzione();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Lista suggerimenti */}
+                <div className="qa-suggest" style={{ maxHeight: '250px' }}>
+                  {sostituzioneLoading && <div style={{ color: '#b6c2da' }}>Ricerca in corso...</div>}
+                  {!sostituzioneLoading && sostituzioneSuggestions.length === 0 && sostituzioneSearch.length >= 2 && (
+                    <div style={{ color: '#b6c2da' }}>Nessun risultato</div>
+                  )}
+                  {sostituzioneSuggestions.map((prod) => {
+                    const uom = prod.uom_id ? prod.uom_id[1] : '';
+                    const code = prod.default_code ? ` • Cod.: ${prod.default_code}` : '';
+                    const bar = prod.barcode ? ` • Barcode: ${prod.barcode}` : '';
+                    const stock = productStock[prod.id] || [];
+
+                    return (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        className={`qa-sugg ${selectedSostituto?.id === prod.id ? 'active' : ''}`}
+                        onClick={() => setSelectedSostituto(prod)}
+                      >
+                        <div className="name">{prod.display_name || prod.name}</div>
+                        <div className="meta">
+                          {uom}
+                          {code}
+                          {bar}
+                        </div>
+                        {stock.length > 0 && (
+                          <div className="stock-info">
+                            <span className="stock-available">
+                              📍 Disp: {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Prodotto selezionato e quantità */}
+                {selectedSostituto && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: '#dcfce7',
+                    borderRadius: '10px',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: '600' }}>
+                      Prodotto sostitutivo selezionato
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#14532d' }}>
+                      {selectedSostituto.display_name || selectedSostituto.name}
+                    </div>
+                    <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '14px', color: '#166534' }}>Quantità:</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={sostituzioneQty}
+                        onChange={(e) => setSostituzioneQty(parseFloat(e.target.value) || 0)}
+                        style={{
+                          width: '120px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #86efac',
+                          background: '#ffffff',
+                          color: '#14532d',
+                          fontSize: '16px',
+                          fontWeight: '600'
+                        }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#166534' }}>
+                        {selectedSostituto.uom_id ? selectedSostituto.uom_id[1] : ''}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Avviso */}
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  background: '#fef3c7',
+                  borderRadius: '10px',
+                  border: '1px solid #fcd34d',
+                  color: '#92400e',
+                  fontSize: '13px'
+                }}>
+                  <strong>Attenzione:</strong> Questa operazione creerà un nuovo movimento con il prodotto
+                  sostitutivo e annullerà il movimento originale. La sostituzione verrà tracciata nel chatter del picking.
+                </div>
+              </>
+            )}
+          </div>
+          <div className="qa-foot">
+            <button className="btn light" onClick={() => {
+              setShowSostituzioneModal(false);
+              setSostituzioneData(null);
+              setSelectedSostituto(null);
+              setSostituzioneSearch('');
+              setSostituzioneSuggestions([]);
+            }}>
+              Annulla
+            </button>
+            <button
+              className="btn blue"
+              onClick={handleConfirmSostituzione}
+              disabled={!selectedSostituto || !sostituzioneData || sostituzioneLoading || sostituzioneQty <= 0}
+            >
+              {sostituzioneLoading ? 'Sostituzione in corso...' : 'Conferma Sostituzione'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Correggi Scadenza */}
+      <div className={`qa-modal-convalida ${showScadenzaModal ? 'show' : ''}`}>
+        <div className="qa-dialog" style={{ width: '480px' }}>
+          <div className="qa-head">
+            <h3>📅 Correggi Scadenza</h3>
+            <button className="qa-close" onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }}>
+              ✕
+            </button>
+          </div>
+          <div className="qa-body">
+            {scadenzaData && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Prodotto</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                    {scadenzaData.productName}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Lotto</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+                    {scadenzaData.lotName}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Scadenza attuale</div>
+                  <div style={{ fontSize: '14px', color: scadenzaData.currentExpiration ? '#0f172a' : '#94a3b8' }}>
+                    {scadenzaData.currentExpiration || 'Non impostata'}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
+                    Nuova scadenza
+                  </div>
+                  <input
+                    type="date"
+                    value={newExpirationDate}
+                    onChange={(e) => setNewExpirationDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '16px',
+                      fontWeight: '600'
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  padding: '12px',
+                  background: '#dbeafe',
+                  borderRadius: '10px',
+                  border: '1px solid #93c5fd',
+                  color: '#1e40af',
+                  fontSize: '13px'
+                }}>
+                  <strong>Nota:</strong> Questa operazione aggiornera' la data di scadenza del lotto
+                  e verra' tracciata nel chatter del picking.
+                </div>
+              </>
+            )}
+          </div>
+          <div className="qa-foot">
+            <button className="btn light" onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }}>
+              Annulla
+            </button>
+            <button
+              className="btn blue"
+              onClick={handleConfirmScadenza}
+              disabled={!scadenzaData || !newExpirationDate || scadenzaLoading}
+            >
+              {scadenzaLoading ? 'Salvataggio...' : 'Conferma'}
             </button>
           </div>
         </div>
