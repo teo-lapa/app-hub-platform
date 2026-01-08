@@ -14,7 +14,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
-  Sparkles
+  Sparkles,
+  Paperclip,
+  X,
+  FileText,
+  Image as ImageIcon,
+  File,
+  Music,
+  Video
 } from 'lucide-react';
 
 // Types
@@ -23,6 +30,12 @@ interface Agent {
   status: 'active' | 'inactive' | 'error';
   description: string;
   icon: React.ReactNode;
+}
+
+interface AttachedFile {
+  file: File;
+  preview?: string;
+  type: 'image' | 'pdf' | 'audio' | 'video' | 'other';
 }
 
 // Agent icons mapping
@@ -55,7 +68,9 @@ export default function LapaAiAgentsPage() {
   const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([]);
   const [isSending, setIsSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -81,25 +96,116 @@ export default function LapaAiAgentsPage() {
     setAgents(defaultAgents);
   }, []);
 
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles: AttachedFile[] = [];
+
+    Array.from(files).forEach(file => {
+      let fileType: AttachedFile['type'] = 'other';
+
+      if (file.type.startsWith('image/')) {
+        fileType = 'image';
+      } else if (file.type === 'application/pdf') {
+        fileType = 'pdf';
+      } else if (file.type.startsWith('audio/')) {
+        fileType = 'audio';
+      } else if (file.type.startsWith('video/')) {
+        fileType = 'video';
+      }
+
+      const attachedFile: AttachedFile = {
+        file,
+        type: fileType
+      };
+
+      // Create preview for images and videos
+      if (fileType === 'image' || fileType === 'video') {
+        attachedFile.preview = URL.createObjectURL(file);
+      }
+
+      newFiles.push(attachedFile);
+    });
+
+    setAttachedFiles(prev => [...prev, ...newFiles]);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove attached file
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles(prev => {
+      const newFiles = [...prev];
+      // Revoke preview URL if exists
+      if (newFiles[index].preview) {
+        URL.revokeObjectURL(newFiles[index].preview!);
+      }
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:xxx;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
   // Send message
   const sendMessage = async () => {
-    if (!chatMessage.trim() || !selectedAgent) return;
+    if ((!chatMessage.trim() && attachedFiles.length === 0) || !selectedAgent) return;
 
     setIsSending(true);
     const userMessage = chatMessage;
+    const filesToSend = [...attachedFiles];
     setChatMessage('');
+    setAttachedFiles([]);
 
-    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
+    // Build user message display
+    let displayMessage = userMessage;
+    if (filesToSend.length > 0) {
+      const fileNames = filesToSend.map(f => f.file.name).join(', ');
+      displayMessage = userMessage
+        ? `${userMessage}\n\n📎 Allegati: ${fileNames}`
+        : `📎 Allegati: ${fileNames}`;
+    }
+
+    setChatHistory(prev => [...prev, { role: 'user', content: displayMessage }]);
 
     try {
+      // Prepare attachments as base64
+      const attachments = await Promise.all(
+        filesToSend.map(async (f) => ({
+          filename: f.file.name,
+          mimetype: f.file.type,
+          data: await fileToBase64(f.file),
+          size: f.file.size
+        }))
+      );
+
       const response = await fetch('/api/agents/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: userMessage,
+          content: userMessage || `Ho allegato ${filesToSend.length} file. Per favore analizzali.`,
           user_id: 1,
           channel: 'web',
-          target_agent: selectedAgent
+          target_agent: selectedAgent,
+          attachments: attachments.length > 0 ? attachments : undefined
         })
       });
 
@@ -115,6 +221,10 @@ export default function LapaAiAgentsPage() {
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore di connessione.' }]);
     } finally {
       setIsSending(false);
+      // Clean up preview URLs
+      filesToSend.forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
     }
   };
 
@@ -258,23 +368,91 @@ export default function LapaAiAgentsPage() {
 
         {/* Input Area */}
         <div className="p-4 bg-slate-900/80 backdrop-blur border-t border-slate-800">
-          <div className="max-w-4xl mx-auto flex gap-3">
-            <input
-              type="text"
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
-              disabled={!selectedAgent || isSending}
-              className="flex-1 px-5 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 transition-all text-sm"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!selectedAgent || !chatMessage.trim() || isSending}
-              className="px-6 py-4 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-2xl font-medium hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
-            >
-              <Send className="h-5 w-5" />
-            </button>
+          <div className="max-w-4xl mx-auto">
+            {/* Attached Files Preview */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {attachedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 group"
+                  >
+                    {file.type === 'image' && file.preview ? (
+                      <img
+                        src={file.preview}
+                        alt={file.file.name}
+                        className="h-8 w-8 object-cover rounded"
+                      />
+                    ) : file.type === 'video' && file.preview ? (
+                      <video
+                        src={file.preview}
+                        className="h-8 w-8 object-cover rounded"
+                      />
+                    ) : file.type === 'pdf' ? (
+                      <FileText className="h-5 w-5 text-red-400" />
+                    ) : file.type === 'audio' ? (
+                      <Music className="h-5 w-5 text-green-400" />
+                    ) : file.type === 'video' ? (
+                      <Video className="h-5 w-5 text-blue-400" />
+                    ) : (
+                      <File className="h-5 w-5 text-slate-400" />
+                    )}
+                    <span className="text-sm text-slate-300 max-w-[150px] truncate">
+                      {file.file.name}
+                    </span>
+                    <button
+                      onClick={() => removeAttachedFile(index)}
+                      className="p-1 hover:bg-slate-700 rounded-full transition-colors"
+                    >
+                      <X className="h-4 w-4 text-slate-400 hover:text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input Row */}
+            <div className="flex gap-3">
+              {/* Hidden File Input - accepts all media types */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* Attach Button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!selectedAgent || isSending}
+                className="px-4 py-4 bg-slate-800 border border-slate-700 text-slate-400 rounded-2xl hover:bg-slate-700 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Allega file"
+              >
+                <Paperclip className="h-5 w-5" />
+              </button>
+
+              {/* Text Input */}
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
+                disabled={!selectedAgent || isSending}
+                className="flex-1 px-5 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 transition-all text-sm"
+              />
+
+              {/* Send Button */}
+              <button
+                onClick={sendMessage}
+                disabled={!selectedAgent || (!chatMessage.trim() && attachedFiles.length === 0) || isSending}
+                className="px-6 py-4 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-2xl font-medium hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
