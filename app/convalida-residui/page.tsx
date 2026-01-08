@@ -2006,16 +2006,20 @@ export default function ConvalidaResiduiPage() {
         }
 
         .qa-sugg {
-          display: block;
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
           width: 100%;
           text-align: left;
-          padding: 12px;
-          border-radius: 12px;
-          border: 1px solid #e2e8f0;
+          padding: 14px 16px;
+          border-radius: 10px;
+          border: 2px solid #e2e8f0;
           background: #ffffff;
           color: #0f172a;
           cursor: pointer;
           transition: all 0.15s;
+          gap: 16px;
         }
 
         .qa-sugg:hover,
@@ -2025,28 +2029,32 @@ export default function ConvalidaResiduiPage() {
           box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
         }
 
+        .qa-sugg .prod-info {
+          flex: 1;
+          min-width: 0;
+        }
+
         .qa-sugg .name {
           font-weight: 700;
+          font-size: 15px;
+          margin-bottom: 4px;
         }
         .qa-sugg .meta {
           font-size: 12px;
           color: #64748b;
         }
         .qa-sugg .stock-info {
-          font-size: 13px;
-          }
-          .bar {
-            height: 12px;
-          margin-top: 6px;
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
+          flex-shrink: 0;
+          text-align: right;
+          padding: 8px 12px;
+          background: #f0fdf4;
+          border-radius: 8px;
         }
         .qa-sugg .stock-available {
           color: #16a34a;
           font-weight: 700;
-          font-size: 18px;
-          text-align: center;
+          font-size: 14px;
+          white-space: nowrap;
         }
 
         input[type='number']:focus {
@@ -2606,16 +2614,16 @@ export default function ConvalidaResiduiPage() {
                         className={`qa-sugg ${selectedSostituto?.id === prod.id ? 'active' : ''}`}
                         onClick={() => setSelectedSostituto(prod)}
                       >
-                        <div className="name">{prod.display_name || prod.name}</div>
-                        <div className="meta">
-                          {uom}
-                          {code}
-                          {bar}
+                        <div className="prod-info">
+                          <div className="name">{prod.display_name || prod.name}</div>
+                          <div className="meta">
+                            {uom}{code}{bar}
+                          </div>
                         </div>
                         {stock.length > 0 && (
                           <div className="stock-info">
                             <span className="stock-available">
-                              📍 Disp: {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
+                              📍 {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
                             </span>
                           </div>
                         )}
