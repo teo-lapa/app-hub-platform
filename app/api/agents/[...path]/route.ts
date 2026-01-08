@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const RAILWAY_BACKEND_URL = process.env.LAPA_AGENTS_BACKEND_URL || 'http://localhost:8000';
+const RAILWAY_BACKEND_URL = process.env.LAPA_AGENTS_BACKEND_URL || process.env.RAILWAY_BACKEND_URL || 'https://lapa-ai-agents-production.up.railway.app';
 const RAILWAY_API_SECRET = process.env.LAPA_AGENTS_API_SECRET || '';
 
 export async function GET(
