@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bot,
   ShoppingCart,
@@ -21,7 +21,11 @@ import {
   Image as ImageIcon,
   File,
   Music,
-  Video
+  Video,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock
 } from 'lucide-react';
 
 // Types
@@ -36,6 +40,18 @@ interface AttachedFile {
   file: File;
   preview?: string;
   type: 'image' | 'pdf' | 'audio' | 'video' | 'other';
+}
+
+interface BackgroundTask {
+  task_id: number;
+  agent: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  task_description: string;
+  result?: string;
+  error?: string;
+  actions_taken?: Array<{ tool: string; status: string }>;
+  created_at?: string;
+  completed_at?: string;
 }
 
 // Agent icons mapping
@@ -69,9 +85,12 @@ export default function LapaAiAgentsPage() {
   const [isSending, setIsSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [backgroundTasks, setBackgroundTasks] = useState<BackgroundTask[]>([]);
+  const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -81,6 +100,72 @@ export default function LapaAiAgentsPage() {
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory]);
+
+  // Poll for task status
+  const pollTaskStatus = useCallback(async (taskId: number) => {
+    try {
+      const response = await fetch(`/api/agents/chat/task/${taskId}`);
+      const data = await response.json();
+
+      if (data.task_id) {
+        // Update task in list
+        setBackgroundTasks(prev => {
+          const existing = prev.find(t => t.task_id === taskId);
+          if (existing) {
+            return prev.map(t => t.task_id === taskId ? data : t);
+          }
+          return [...prev, data];
+        });
+
+        // If task completed or failed, show result and stop polling
+        if (data.status === 'completed' || data.status === 'failed') {
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          setActiveTaskId(null);
+
+          // Add result to chat
+          if (data.status === 'completed' && data.result) {
+            const actionsInfo = data.actions_taken?.length
+              ? `\n\n[${data.actions_taken.length} azioni eseguite]`
+              : '';
+            setChatHistory(prev => [...prev, {
+              role: 'assistant',
+              content: data.result + actionsInfo
+            }]);
+          } else if (data.status === 'failed') {
+            setChatHistory(prev => [...prev, {
+              role: 'assistant',
+              content: `Task fallito: ${data.error || 'Errore sconosciuto'}`
+            }]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error polling task:', error);
+    }
+  }, []);
+
+  // Start polling when we have an active task
+  useEffect(() => {
+    if (activeTaskId) {
+      // Poll immediately
+      pollTaskStatus(activeTaskId);
+
+      // Then poll every 3 seconds
+      pollingRef.current = setInterval(() => {
+        pollTaskStatus(activeTaskId);
+      }, 3000);
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [activeTaskId, pollTaskStatus]);
 
   // Initialize agents
   useEffect(() => {
@@ -212,7 +297,22 @@ export default function LapaAiAgentsPage() {
 
       const data = await response.json();
 
-      if (data.content) {
+      // Check if it's a background task
+      if (data.task_id) {
+        // Background task started
+        const newTask: BackgroundTask = {
+          task_id: data.task_id,
+          agent: selectedAgent,
+          status: 'pending',
+          task_description: userMessage
+        };
+        setBackgroundTasks(prev => [...prev, newTask]);
+        setActiveTaskId(data.task_id);
+        setChatHistory(prev => [...prev, {
+          role: 'assistant',
+          content: `Task avviato in background (ID: ${data.task_id}). Puoi chiudere la pagina, il risultato sarà salvato nella conversazione.`
+        }]);
+      } else if (data.content) {
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.content }]);
       } else if (data.error) {
         setChatHistory(prev => [...prev, { role: 'assistant', content: `Errore: ${data.error}` }]);
@@ -316,10 +416,19 @@ export default function LapaAiAgentsPage() {
             </div>
           </div>
           {selectedAgent && (
-            <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-              Online
-            </span>
+            <div className="flex items-center gap-3">
+              {/* Active task indicator */}
+              {activeTaskId && (
+                <span className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Task #{activeTaskId} in corso...
+                </span>
+              )}
+              <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                Online
+              </span>
+            </div>
           )}
         </div>
 
