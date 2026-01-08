@@ -1346,7 +1346,14 @@ export default function ConvalidaResiduiPage() {
     const stock = productStock[productId] || [];
     const incoming = productIncoming[productId] || [];
     const reservations = productReservations[productId] || [];
-    
+
+    // Calcola stock totale disponibile (libero = qty - reserved)
+    const totalAvailable = stock.reduce((sum, s) => sum + Math.max(0, s.qty - s.reserved), 0);
+    const hasStock = totalAvailable > 0;
+
+    // Valore originale per confronto
+    const originalDone = doneByMove[move.id] || 0;
+
     // Ottieni info lotto dal move
     const lineInfos = lineInfoByMove[move.id] || [];
     const lotInfo = lineInfos.length > 0 && lineInfos[0].lot ? lineInfos[0].lot : null;
@@ -1421,6 +1428,40 @@ export default function ConvalidaResiduiPage() {
         <div className="qty">
           Previsto: <b>{plan}</b>
         </div>
+
+        {/* Selezione ubicazione */}
+        {stock.length > 1 && (
+          <div style={{ marginTop: '8px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--muted)' }}>📍 Preleva da: </label>
+            <select
+              style={{
+                background: 'var(--card)',
+                color: 'var(--text)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '13px',
+                marginLeft: '8px'
+              }}
+              defaultValue=""
+              onChange={(e) => {
+                // Salva la selezione in un ref o state se necessario
+                console.log('Ubicazione selezionata:', e.target.value);
+              }}
+            >
+              <option value="">-- Seleziona ubicazione --</option>
+              {stock.map((s, i) => {
+                const available = Math.max(0, s.qty - s.reserved);
+                return (
+                  <option key={i} value={s.location} disabled={available <= 0}>
+                    {s.location} (Libero: {available.toFixed(1)} {uom})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
         <div>
           Fatto:
           <input
@@ -1435,15 +1476,20 @@ export default function ConvalidaResiduiPage() {
           />
         </div>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          <button className="btn slim green" type="button" onClick={() => handleSaveOne(move.id)}>
+          <button
+            className="btn slim green"
+            type="button"
+            onClick={() => handleSaveOne(move.id)}
+            id={`convalida_save_${move.id}`}
+          >
             SALVA
           </button>
           <button
             className="btn slim orange"
             type="button"
             onClick={() => handleOpenForzaInventario(move, pick)}
-            disabled={forzaLoading}
-            title="Forza quantita' inventario"
+            disabled={forzaLoading || hasStock}
+            title={hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
             style={{ fontSize: '11px' }}
           >
             {forzaLoading ? '...' : '📦 FORZA'}
