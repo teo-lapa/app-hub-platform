@@ -71,6 +71,7 @@ export default function LapaAiAgentsPage() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -225,6 +226,8 @@ export default function LapaAiAgentsPage() {
       filesToSend.forEach(f => {
         if (f.preview) URL.revokeObjectURL(f.preview);
       });
+      // Refocus input after sending
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
@@ -435,12 +438,14 @@ export default function LapaAiAgentsPage() {
 
               {/* Text Input */}
               <input
+                ref={inputRef}
                 type="text"
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
                 disabled={!selectedAgent || isSending}
+                autoFocus
                 className="flex-1 px-5 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 transition-all text-sm"
               />
 
