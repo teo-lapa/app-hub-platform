@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Bot,
-  Brain,
   ShoppingCart,
   Package,
   Truck,
@@ -11,13 +10,11 @@ import {
   HeadphonesIcon,
   Megaphone,
   BarChart3,
-  Bell,
-  CheckCircle,
-  XCircle,
-  Clock,
   MessageSquare,
-  AlertTriangle,
-  RefreshCw
+  ChevronLeft,
+  ChevronRight,
+  Send,
+  Sparkles
 } from 'lucide-react';
 
 // Types
@@ -26,24 +23,6 @@ interface Agent {
   status: 'active' | 'inactive' | 'error';
   description: string;
   icon: React.ReactNode;
-  lastAction?: string;
-}
-
-interface Approval {
-  id: number;
-  agent: string;
-  action_type: string;
-  description: string;
-  requested_at: string;
-}
-
-interface Alert {
-  id: number;
-  agent: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  title: string;
-  message: string;
-  created_at: string;
 }
 
 // Agent icons mapping
@@ -59,26 +38,35 @@ const agentIcons: Record<string, React.ReactNode> = {
 };
 
 const agentDescriptions: Record<string, string> = {
-  acquisti: 'Gestione fornitori, ordini acquisto, scorte',
-  magazzino: 'Inventario, picking, ricevimento merce',
-  vendite: 'Clienti, ordini vendita, preventivi',
-  consegne: 'Pianificazione consegne, autisti, DDT',
-  amministrazione: 'Fatturazione, pagamenti, contabilita',
-  customer_service: 'Supporto clienti, reclami, assistenza',
-  marketing: 'Social media, SEO, campagne',
-  direzione: 'Report, KPI, analisi business',
+  acquisti: 'Fornitori, ordini, scorte',
+  magazzino: 'Inventario, picking',
+  vendite: 'Clienti, preventivi',
+  consegne: 'Consegne, autisti',
+  amministrazione: 'Fatture, pagamenti',
+  customer_service: 'Supporto clienti',
+  marketing: 'Social, campagne',
+  direzione: 'Report, KPI',
 };
 
 export default function LapaAiAgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>('acquisti');
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([]);
   const [isSending, setIsSending] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with available agents
+  // Auto-scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory]);
+
+  // Initialize agents
   useEffect(() => {
     const defaultAgents: Agent[] = [
       { name: 'acquisti', status: 'active', description: agentDescriptions.acquisti, icon: agentIcons.acquisti },
@@ -93,7 +81,7 @@ export default function LapaAiAgentsPage() {
     setAgents(defaultAgents);
   }, []);
 
-  // Send chat message
+  // Send message
   const sendMessage = async () => {
     if (!chatMessage.trim() || !selectedAgent) return;
 
@@ -101,7 +89,6 @@ export default function LapaAiAgentsPage() {
     const userMessage = chatMessage;
     setChatMessage('');
 
-    // Add user message to history
     setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
@@ -110,7 +97,7 @@ export default function LapaAiAgentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: userMessage,
-          user_id: 1, // Paul
+          user_id: 1,
           channel: 'web',
           target_agent: selectedAgent
         })
@@ -120,299 +107,174 @@ export default function LapaAiAgentsPage() {
 
       if (data.content) {
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.content }]);
+      } else if (data.error) {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: `Errore: ${data.error}` }]);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore di connessione con il backend.' }]);
+      console.error('Error:', error);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore di connessione.' }]);
     } finally {
       setIsSending(false);
     }
   };
 
-  // Handle approval decision
-  const handleApproval = async (approvalId: number, approved: boolean) => {
-    try {
-      await fetch(`/api/agents/approvals/${approvalId}/decide`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          approved,
-          user_id: 1,
-          notes: approved ? 'Approvato' : 'Rifiutato'
-        })
-      });
-
-      // Remove from list
-      setApprovals(prev => prev.filter(a => a.id !== approvalId));
-    } catch (error) {
-      console.error('Error processing approval:', error);
-    }
-  };
+  const selectedAgentData = agents.find(a => a.name === selectedAgent);
 
   return (
-    <div className="container max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Brain className="h-8 w-8 text-purple-600" />
-            LAPA AI Agents
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Sistema di 8 agenti AI per gestione aziendale
-          </p>
+    <div className="h-screen flex bg-slate-950 overflow-hidden">
+      {/* Sidebar - Agents */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Bot className="h-6 w-6 text-purple-500" />
+            <span className="font-bold text-white">LAPA AI</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">8 Agenti Intelligenti</p>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <RefreshCw className="h-5 w-5" />
-        </button>
+
+        {/* Agents List */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {agents.map((agent) => (
+            <button
+              key={agent.name}
+              onClick={() => {
+                setSelectedAgent(agent.name);
+                setChatHistory([]);
+              }}
+              className={`w-full p-3 rounded-xl text-left transition-all ${
+                selectedAgent === agent.name
+                  ? 'bg-gradient-to-r from-purple-600/20 to-violet-600/20 border border-purple-500/30'
+                  : 'hover:bg-slate-800/50 border border-transparent'
+              } ${agent.status === 'inactive' ? 'opacity-50' : ''}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${
+                  selectedAgent === agent.name ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {agent.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`font-medium text-sm capitalize truncate ${
+                      selectedAgent === agent.name ? 'text-white' : 'text-slate-300'
+                    }`}>
+                      {agent.name.replace('_', ' ')}
+                    </p>
+                    {agent.status === 'active' && (
+                      <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 truncate">{agent.description}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Agents Grid */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Agents Status */}
-          <div className="bg-white rounded-lg shadow-md p-6 border">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              Agenti AI
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {agents.map((agent) => (
-                <button
-                  key={agent.name}
-                  onClick={() => {
-                    setSelectedAgent(agent.name);
-                    setChatHistory([]);
-                  }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
-                    selectedAgent === agent.name
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  } ${agent.status === 'inactive' ? 'opacity-50' : ''}`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`${
-                      agent.status === 'active' ? 'text-purple-600' : 'text-gray-400'
-                    }`}>
-                      {agent.icon}
-                    </span>
-                    <span className={`h-2 w-2 rounded-full ${
-                      agent.status === 'active' ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
-                  </div>
-                  <p className="font-medium capitalize text-sm">{agent.name.replace('_', ' ')}</p>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{agent.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Toggle Sidebar Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-slate-800 hover:bg-slate-700 text-slate-400 p-1.5 rounded-r-lg border border-l-0 border-slate-700 transition-all"
+        style={{ left: sidebarOpen ? '256px' : '0' }}
+      >
+        {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
 
-          {/* Chat Interface - Futuristic Dark Theme */}
-          <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
-            <div className="p-4 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-100">
-                <MessageSquare className="h-5 w-5 text-purple-400" />
-                Chat con {selectedAgent ? selectedAgent.replace('_', ' ').toUpperCase() : 'Agente'}
-              </h2>
-              {selectedAgent && (
-                <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-                  Agente attivo
-                </span>
-              )}
-            </div>
-
-            {/* Chat Messages - Dark Futuristic Style */}
-            <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-900 to-slate-800">
-              {!selectedAgent ? (
-                <div className="text-center text-slate-400 py-10">
-                  Seleziona un agente per iniziare la conversazione
-                </div>
-              ) : chatHistory.length === 0 ? (
-                <div className="text-center text-slate-400 py-10">
-                  Inizia una conversazione con l&apos;agente {selectedAgent.replace('_', ' ')}
-                </div>
-              ) : (
-                chatHistory.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-4 rounded-2xl ${
-                        msg.role === 'user'
-                          ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/20'
-                          : 'bg-slate-700/80 text-slate-100 border border-slate-600/50 shadow-lg'
-                      }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-              {isSending && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-700/80 border border-slate-600/50 p-4 rounded-2xl">
-                    <div className="flex space-x-2">
-                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" />
-                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                      <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Chat Input - Dark Futuristic Style */}
-            <div className="p-4 bg-slate-800 border-t border-slate-700">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
-                  disabled={!selectedAgent || isSending}
-                  className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-slate-800 disabled:text-slate-500 transition-all"
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={!selectedAgent || !chatMessage.trim() || isSending}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  Invia
-                </button>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat Header */}
+        <div className="px-6 py-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {selectedAgentData && (
+              <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/20">
+                {selectedAgentData.icon}
               </div>
+            )}
+            <div>
+              <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                {selectedAgent ? selectedAgent.replace('_', ' ').toUpperCase() : 'Seleziona Agente'}
+                <Sparkles className="h-4 w-4 text-purple-400" />
+              </h1>
+              <p className="text-xs text-slate-500">
+                {selectedAgentData?.description || 'Scegli un agente dalla sidebar'}
+              </p>
             </div>
           </div>
+          {selectedAgent && (
+            <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+              Online
+            </span>
+          )}
         </div>
 
-        {/* Right Column - Approvals & Alerts */}
-        <div className="space-y-6">
-          {/* Pending Approvals */}
-          <div className="bg-white rounded-lg shadow-md p-6 border">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-500" />
-              Approvazioni Pendenti
-              {approvals.length > 0 && (
-                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full">
-                  {approvals.length}
-                </span>
-              )}
-            </h2>
-
-            {approvals.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">
-                Nessuna approvazione pendente
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+          {chatHistory.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/20 mb-4">
+                <MessageSquare className="h-12 w-12 text-purple-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-white mb-2">
+                Ciao! Sono il tuo assistente {selectedAgent?.replace('_', ' ')}
+              </h2>
+              <p className="text-slate-400 max-w-md">
+                Scrivi un messaggio per iniziare la conversazione. Posso aiutarti con {selectedAgentData?.description.toLowerCase()}.
               </p>
-            ) : (
-              <div className="space-y-3">
-                {approvals.map((approval) => (
-                  <div key={approval.id} className="p-3 border rounded-lg bg-orange-50">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{approval.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {approval.agent} - {new Date(approval.requested_at).toLocaleString('it-IT')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => handleApproval(approval.id, true)}
-                        className="flex-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center justify-center gap-1"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Approva
-                      </button>
-                      <button
-                        onClick={() => handleApproval(approval.id, false)}
-                        className="flex-1 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center justify-center gap-1"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Rifiuta
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            </div>
+          ) : (
+            chatHistory.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[70%] p-4 rounded-2xl ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/20'
+                      : 'bg-slate-800/80 text-slate-100 border border-slate-700/50'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Alerts */}
-          <div className="bg-white rounded-lg shadow-md p-6 border">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Bell className="h-5 w-5 text-blue-500" />
-              Alert Attivi
-              {alerts.length > 0 && (
-                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-                  {alerts.length}
-                </span>
-              )}
-            </h2>
-
-            {alerts.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">
-                Nessun alert attivo
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`p-3 border rounded-lg ${
-                      alert.severity === 'critical' ? 'bg-red-50 border-red-200' :
-                      alert.severity === 'error' ? 'bg-orange-50 border-orange-200' :
-                      alert.severity === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-                      'bg-blue-50 border-blue-200'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className={`h-4 w-4 mt-0.5 ${
-                        alert.severity === 'critical' ? 'text-red-600' :
-                        alert.severity === 'error' ? 'text-orange-600' :
-                        alert.severity === 'warning' ? 'text-yellow-600' :
-                        'text-blue-600'
-                      }`} />
-                      <div>
-                        <p className="font-medium text-sm">{alert.title}</p>
-                        <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {alert.agent} - {new Date(alert.created_at).toLocaleString('it-IT')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Stats */}
-          <div className="bg-white rounded-lg shadow-md p-6 border">
-            <h2 className="text-lg font-semibold mb-4">Statistiche Rapide</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">
-                  {agents.filter(a => a.status === 'active').length}
-                </p>
-                <p className="text-xs text-gray-600">Agenti Attivi</p>
-              </div>
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">{approvals.length}</p>
-                <p className="text-xs text-gray-600">Da Approvare</p>
-              </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{alerts.length}</p>
-                <p className="text-xs text-gray-600">Alert</p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <p className="text-2xl font-bold text-purple-600">8</p>
-                <p className="text-xs text-gray-600">Agenti Totali</p>
+            ))
+          )}
+          {isSending && (
+            <div className="flex justify-start">
+              <div className="bg-slate-800/80 border border-slate-700/50 p-4 rounded-2xl">
+                <div className="flex space-x-2">
+                  <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" />
+                  <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                  <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                </div>
               </div>
             </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 bg-slate-900/80 backdrop-blur border-t border-slate-800">
+          <div className="max-w-4xl mx-auto flex gap-3">
+            <input
+              type="text"
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              placeholder={selectedAgent ? "Scrivi un messaggio..." : "Seleziona prima un agente"}
+              disabled={!selectedAgent || isSending}
+              className="flex-1 px-5 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 transition-all text-sm"
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!selectedAgent || !chatMessage.trim() || isSending}
+              className="px-6 py-4 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-2xl font-medium hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
+            >
+              <Send className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
