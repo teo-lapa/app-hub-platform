@@ -907,7 +907,7 @@ export const standaloneApps: App[] = [
     icon: '🧠',
     badge: 'AZIENDALE',
     category: 'AI & Tech',
-    url: '/lapa-ai-agents',
+    url: '/agenti-ia-gestionale',
     requiredRole: 'admin',
     isNew: true,
     isPopular: true,
