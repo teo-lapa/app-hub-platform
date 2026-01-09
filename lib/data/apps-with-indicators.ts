@@ -900,6 +900,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-01-06'),
     updatedAt: new Date('2025-01-06'),
   },
+  {
+    id: 'agenti-ia-gestionale',
+    name: 'Agenti IA Gestionale',
+    description: '🧠 8 Agenti AI specializzati per il gestionale interno: Acquisti, Magazzino, Vendite, Consegne, Amministrazione, Marketing, Customer Service, Direzione. Automazioni schedulate, analisi scorte, report KPI e comunicazione fornitori.',
+    icon: '🧠',
+    badge: 'AZIENDALE',
+    category: 'AI & Tech',
+    url: '/lapa-ai-agents',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-09'),
+    updatedAt: new Date('2025-01-09'),
+  },
 ];
 
 // Combina tutte le app
