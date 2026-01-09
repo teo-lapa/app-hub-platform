@@ -2000,9 +2000,19 @@ export default function ConvalidaResiduiPage() {
           .qa-dialog {
             width: 95vw;
             max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+          }
+          .qa-body {
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(85vh - 140px);
+          }
+          .qa-foot {
+            flex-shrink: 0;
           }
           .qa-suggest {
-            max-height: 40vh;
+            max-height: 30vh;
           }
         }
 
