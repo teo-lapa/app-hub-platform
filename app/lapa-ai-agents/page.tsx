@@ -229,8 +229,8 @@ export default function LapaAiAgentsPage() {
           icon: agentIcons[(a.key || a.name) as string],
           currentTask: a.current_task as string | undefined,
           lastActivity: a.last_activity as string | undefined,
-          todayActions: (a.actions_today || a.today_actions) as number | undefined,
-          todayMessages: a.today_messages as number | undefined,
+          todayActions: (a.actions_today || 0) as number,
+          todayMessages: (a.messages_today || 0) as number,
         }));
         setAgents(updatedAgents);
       }
