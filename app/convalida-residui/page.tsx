@@ -1020,6 +1020,73 @@ export default function ConvalidaResiduiPage() {
     setShowSostituzioneModal(true);
   };
 
+  // Apre il modal sostituzione con i prodotti alternativi già caricati
+  const handleOpenAlternativa = async (move: StockMove, pick: StockPicking) => {
+    setSostituzioneData({
+      moveId: move.id,
+      pickingId: pick.id,
+      pickingName: pick.name,
+      originalProductId: move.product_id[0],
+      originalProductName: move.product_id[1],
+      originalQty: move.product_uom_qty,
+      locationId: move.location_id[0],
+      locationDestId: move.location_dest_id[0],
+      saleOrderId: pick.sale_id ? pick.sale_id[0] : null,
+      saleOrderName: pick.sale_id ? pick.sale_id[1] : null
+    });
+    setSostituzioneQty(move.product_uom_qty);
+    setSelectedSostituto(null);
+    setSostituzioneSearch('ALTERNATIVE');
+    setSostituzioneSuggestions([]);
+    setShowSostituzioneModal(true);
+
+    // Carica i prodotti alternativi da product.template
+    setSostituzioneLoading(true);
+    try {
+      // Prima otteniamo il product.template dal product.product
+      const productData = await searchReadConvalida<{ product_tmpl_id: [number, string] }>(
+        'product.product',
+        [['id', '=', move.product_id[0]]],
+        ['product_tmpl_id'],
+        1
+      );
+
+      if (productData.length > 0 && productData[0].product_tmpl_id) {
+        const templateId = productData[0].product_tmpl_id[0];
+
+        // Ora otteniamo i prodotti alternativi dal template
+        const templateData = await searchReadConvalida<{ alternative_product_ids: number[] }>(
+          'product.template',
+          [['id', '=', templateId]],
+          ['alternative_product_ids'],
+          1
+        );
+
+        if (templateData.length > 0 && templateData[0].alternative_product_ids && templateData[0].alternative_product_ids.length > 0) {
+          // Carichiamo i dettagli dei prodotti alternativi (sono product.template, dobbiamo prendere i product.product)
+          const alternativeProducts = await searchReadConvalida<Product>(
+            'product.product',
+            [['product_tmpl_id', 'in', templateData[0].alternative_product_ids]],
+            ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price'],
+            100
+          );
+
+          setSostituzioneSuggestions(alternativeProducts);
+          if (alternativeProducts.length > 0) {
+            setSelectedSostituto(alternativeProducts[0]);
+          }
+        } else {
+          showToastMessage('Nessun prodotto alternativo configurato per questo prodotto');
+        }
+      }
+    } catch (error: any) {
+      console.error('Errore caricamento alternative:', error);
+      showToastMessage(`Errore: ${error.message}`);
+    } finally {
+      setSostituzioneLoading(false);
+    }
+  };
+
   const handleSearchSostituto = async (term: string) => {
     if (term.length < 2) {
       setSostituzioneSuggestions([]);
@@ -1392,6 +1459,16 @@ export default function ConvalidaResiduiPage() {
             style={{ fontSize: '11px' }}
           >
             {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
+          </button>
+          <button
+            className="btn slim teal"
+            type="button"
+            onClick={() => handleOpenAlternativa(move, pick)}
+            disabled={sostituzioneLoading}
+            title="Mostra prodotti alternativi configurati"
+            style={{ fontSize: '11px', background: '#14b8a6', borderColor: '#0d9488' }}
+          >
+            {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
           </button>
           {lotInfo && (
             <button
