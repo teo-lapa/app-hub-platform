@@ -2214,100 +2214,70 @@ export default function ConvalidaResiduiPage() {
 
         @media (max-width: 768px) {
           body {
-            font-size: 16px;
+            font-size: 14px;
           }
           .btn {
-            min-height: 48px;
-            padding: 14px 16px;
-            font-size: 13px;
+            min-height: 36px;
+            padding: 8px 12px;
+            font-size: 12px;
           }
           .btn.slim {
-            min-height: 44px;
-            padding: 12px 14px;
-            font-size: 13px;
+            min-height: 30px;
+            padding: 6px 10px;
+            font-size: 10px;
           }
           .btn.filter-btn {
-            padding: 5px 10px;
-            font-size: 11px;
+            padding: 4px 8px;
+            font-size: 10px;
+            min-height: 26px;
           }
           .filters-bar {
-            gap: 10px;
-            padding: 10px 0;
+            gap: 6px;
+            padding: 6px 0;
           }
           .filter-group {
-            gap: 4px;
+            gap: 3px;
           }
           .filter-label {
-            font-size: 11px;
-            width: 100%;
-            margin-bottom: 4px;
+            font-size: 10px;
           }
           input[type='number'] {
-            width: 90px;
-            padding: 14px;
+            width: 60px;
+            padding: 8px;
+            min-height: 34px;
           }
           .topbar {
             gap: 6px;
-            padding: 12px 14px;
+            padding: 8px 10px;
           }
           .title {
-            font-size: 16px;
-            width: 100%;
-            margin-bottom: 6px;
+            font-size: 14px;
           }
           .pill {
-            font-size: 11px;
-            padding: 5px 8px;
+            font-size: 9px;
+            padding: 3px 6px;
           }
           .pick-head {
-            gap: 6px;
+            gap: 4px;
           }
           .ghead {
-            gap: 6px;
+            gap: 4px;
           }
           .info {
-            font-size: 11px;
+            font-size: 10px;
           }
           .list .row {
-            grid-template-columns: 1fr;
-            grid-template-columns: 1fr;
-            gap: 14px;
-            padding: 16px;
+            gap: 8px;
+            padding: 10px;
           }
           .prod {
-            font-size: 13px;
-          }
-          .sub {
-            font-size: 13px;
-          }
-          .bar {
-            height: 12px;
-          }
-          .qa-dialog {
-            width: 96vw;
-            max-height: 90vh;
-          }
-          .qa-head h3 {
-          }
-          .qa-search input[type='text'] {
-            font-size: 14px;
-            padding: 16px;
-          }
-          .qa-search input[type='number'] {
-            width: 80px;
-            padding: 16px;
-          }
-          .qa-sugg {
-            padding: 16px;
-          }
-          .qa-sugg .name {
-            font-size: 13px;
-          }
-          .qa-sugg .meta {
             font-size: 11px;
           }
-          .qa-sugg .stock-info {
+          .sub {
             font-size: 10px;
+          }
+          .bar {
+            height: 6px;
           }
         }
 
@@ -2315,60 +2285,103 @@ export default function ConvalidaResiduiPage() {
         @media (max-width: 768px) {
           .ghead {
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             align-items: flex-start;
           }
           .card {
-            padding: 12px;
+            padding: 10px;
           }
           .pick-head {
-            flex-direction: column;
-            gap: 8px;
-            align-items: stretch;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
           }
           .pick-head .pill {
-            width: 100%;
+            font-size: 10px;
+            padding: 4px 8px;
           }
           .pick-head button {
-            width: 100%;
-            margin-top: 8px;
+            min-height: 36px;
+            padding: 8px 16px;
+            font-size: 12px;
+            flex-shrink: 0;
           }
+          /* Modal compatto per tablet */
           .qa-dialog {
             width: 100% !important;
             max-width: 100% !important;
-            max-height: 95vh;
-            border-radius: 16px;
+            max-height: 85vh;
+            border-radius: 12px;
+            margin: 10px;
+          }
+          .qa-head {
+            padding: 12px 16px;
+          }
+          .qa-head h3 {
+            font-size: 16px;
+          }
+          .qa-body {
+            padding: 12px 16px;
+            max-height: calc(85vh - 160px);
+            overflow-y: auto;
           }
           .qa-search {
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
           }
           .qa-search input {
             width: 100% !important;
+            font-size: 14px;
+            padding: 10px 12px;
+            min-height: 40px;
+          }
+          .qa-suggest {
+            max-height: 25vh;
           }
           .qa-sugg {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
+            padding: 10px 12px;
+          }
+          .qa-sugg .name {
+            font-size: 12px;
+          }
+          .qa-sugg .meta {
+            font-size: 10px;
           }
           .qa-sugg .stock-info {
-            width: 100%;
-            border-left: none;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 8px;
-            margin-top: 4px;
+            font-size: 10px;
           }
           .qa-foot {
-            flex-direction: column;
-            gap: 10px;
+            padding: 12px 16px;
+            gap: 8px;
+            position: sticky;
+            bottom: 0;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
           }
           .qa-foot button {
-            width: 100%;
+            min-height: 40px;
+            font-size: 13px;
+            padding: 10px 16px;
           }
           select {
             width: 100%;
-            padding: 12px;
-            min-height: 48px;
+            padding: 8px 10px;
+            min-height: 36px;
+            font-size: 12px;
+          }
+          /* Pulsanti azioni riga compatti */
+          .btn.slim {
+            min-height: 32px !important;
+            padding: 6px 10px !important;
+            font-size: 10px !important;
+          }
+          /* Input quantità compatto */
+          input[type='number'] {
+            width: 60px !important;
+            min-height: 36px !important;
+            padding: 6px 8px !important;
+            font-size: 14px !important;
           }
         }
 
