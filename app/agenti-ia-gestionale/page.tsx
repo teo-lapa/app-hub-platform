@@ -1351,6 +1351,15 @@ export default function LapaAiAgentsPage() {
               </span>
             )}
           </button>
+
+          {/* Link a Prodotti Critici */}
+          <a
+            href="/agent-dashboard?tab=critical"
+            className="w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 text-slate-300 hover:bg-slate-800/50 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20"
+          >
+            <Package className="h-5 w-5 text-orange-400" />
+            <span className="font-medium text-orange-300">Prodotti Critici</span>
+          </a>
         </div>
 
         {/* Agents List */}

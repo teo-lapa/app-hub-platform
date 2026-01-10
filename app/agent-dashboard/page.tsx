@@ -5,7 +5,8 @@
  * Dashboard completa per controllare il sistema multi-agente
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
@@ -78,7 +79,8 @@ interface CriticalProduct {
   supplier_name: string;
 }
 
-export default function AgentDashboard() {
+function AgentDashboardContent() {
+  const searchParams = useSearchParams();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,14 @@ export default function AgentDashboard() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Read URL tab parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'critical') {
+      setActiveTab('critical');
+    }
+  }, [searchParams]);
 
   // Load initial data
   useEffect(() => {
@@ -1051,5 +1061,18 @@ function ChatTab({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// Export wrapper with Suspense for useSearchParams
+export default function AgentDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <AgentDashboardContent />
+    </Suspense>
   );
 }
