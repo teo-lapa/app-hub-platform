@@ -2060,6 +2060,125 @@ export default function ConvalidaResiduiPage() {
           color: #0f172a;
         }
 
+        /* TABLET OPTIMIZATION (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .wrap {
+            padding: 0 12px 24px;
+          }
+          .title {
+            font-size: 16px;
+          }
+          .topbar {
+            gap: 8px;
+            padding: 10px 12px;
+          }
+          .btn {
+            min-height: 38px;
+            padding: 8px 12px;
+            font-size: 12px;
+          }
+          .btn.slim {
+            min-height: 32px;
+            padding: 6px 10px;
+            font-size: 11px;
+          }
+          .btn.filter-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            min-height: 28px;
+          }
+          .filters-bar {
+            gap: 8px;
+            padding: 8px 0;
+          }
+          .filter-group {
+            gap: 3px;
+          }
+          .filter-label {
+            font-size: 10px;
+          }
+          .pill {
+            font-size: 10px;
+            padding: 4px 8px;
+          }
+          .card {
+            padding: 10px;
+          }
+          .pick-head {
+            gap: 6px;
+            flex-wrap: wrap;
+          }
+          .pick-head button {
+            min-height: 36px;
+            padding: 8px 14px;
+            font-size: 12px;
+          }
+          .ghead {
+            gap: 6px;
+          }
+          .ghead .pill {
+            font-size: 11px;
+          }
+          .list .row {
+            grid-template-columns: 1fr auto auto;
+            gap: 8px;
+            padding: 10px;
+          }
+          .row .prod {
+            grid-column: 1 / -1;
+            font-size: 12px;
+          }
+          .row .bar {
+            grid-column: 1 / -1;
+            height: 8px;
+          }
+          .row .sub {
+            font-size: 11px;
+          }
+          .row .info {
+            font-size: 10px;
+          }
+          .row .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: flex-end;
+          }
+          .row .actions .btn.slim {
+            min-height: 30px;
+            padding: 5px 8px;
+            font-size: 10px;
+          }
+          input[type='number'] {
+            width: 70px;
+            min-height: 36px;
+            padding: 8px 10px;
+            font-size: 14px;
+          }
+          select {
+            min-height: 36px;
+            padding: 6px 10px;
+            font-size: 11px;
+          }
+          .qa-dialog {
+            width: 95vw;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+          }
+          .qa-body {
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(85vh - 140px);
+          }
+          .qa-foot {
+            flex-shrink: 0;
+          }
+          .qa-suggest {
+            max-height: 30vh;
+          }
+        }
+
         @media (max-width: 1024px) {
           .wrap {
             padding: 0 10px 24px;
