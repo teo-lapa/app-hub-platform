@@ -177,6 +177,20 @@ export default function LapaAiAgentsPage() {
   const [activityFilter, setActivityFilter] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Date filter state
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    // Default: 7 days ago
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState<string>(() => {
+    // Default: today
+    return new Date().toISOString().split('T')[0];
+  });
+  const [activityTotalCount, setActivityTotalCount] = useState(0);
+  const [hasMoreActivities, setHasMoreActivities] = useState(false);
+
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -244,9 +258,13 @@ export default function LapaAiAgentsPage() {
   // Fetch activity feed
   const fetchActivityFeed = useCallback(async () => {
     try {
-      const url = activityFilter
-        ? `${API_BASE}/control-room/activity-feed?agent=${activityFilter}`
-        : `${API_BASE}/control-room/activity-feed`;
+      const params = new URLSearchParams();
+      params.append('limit', '500'); // Get more activities
+      if (activityFilter) params.append('agent', activityFilter);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+
+      const url = `${API_BASE}/control-room/activity-feed?${params.toString()}`;
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
@@ -260,16 +278,23 @@ export default function LapaAiAgentsPage() {
           metadata: a
         }));
         setActivityFeed(activities);
+        setActivityTotalCount(data.total_count || activities.length);
+        setHasMoreActivities(data.has_more || false);
       }
     } catch (error) {
       console.error('Error fetching activity feed:', error);
     }
-  }, [activityFilter]);
+  }, [activityFilter, dateFrom, dateTo]);
 
   // Fetch unified messages
   const fetchUnifiedMessages = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/control-room/unified-messages`);
+      const params = new URLSearchParams();
+      params.append('limit', '500');
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+
+      const response = await fetch(`${API_BASE}/control-room/unified-messages?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setUnifiedMessages(data.messages || []);
@@ -277,7 +302,7 @@ export default function LapaAiAgentsPage() {
     } catch (error) {
       console.error('Error fetching unified messages:', error);
     }
-  }, []);
+  }, [dateFrom, dateTo]);
 
   // Fetch alerts
   const fetchAlerts = useCallback(async () => {
@@ -610,6 +635,25 @@ export default function LapaAiAgentsPage() {
     return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Format full date and time
+  const formatDateTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+
+    if (isToday) {
+      return `Oggi ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    return date.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const selectedAgentData = agents.find(a => a.name === selectedAgent);
   const pendingAlerts = alerts.filter(a => !a.acknowledged).length;
 
@@ -724,12 +768,24 @@ export default function LapaAiAgentsPage() {
 
       {/* Recent Activity */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-purple-400" />
-          Attività Recente
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Activity className="h-5 w-5 text-purple-400" />
+            Attività Recente
+            <span className="text-xs text-slate-400 font-normal">
+              ({activityTotalCount} totali)
+            </span>
+          </h2>
+          <button
+            onClick={() => setCurrentView('activity')}
+            className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
+          >
+            Vedi tutto
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl divide-y divide-slate-700">
-          {activityFeed.slice(0, 5).map((activity) => (
+          {activityFeed.slice(0, 10).map((activity) => (
             <div key={activity.id} className="p-4 flex items-start gap-3">
               <div className={`p-2 rounded-lg bg-gradient-to-br ${agentColors[activity.agent]} bg-opacity-20`}>
                 {agentIcons[activity.agent]}
@@ -737,7 +793,7 @@ export default function LapaAiAgentsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-white capitalize">{activity.agent.replace('_', ' ')}</span>
-                  <span className="text-xs text-slate-500">{formatTime(activity.timestamp)}</span>
+                  <span className="text-xs text-slate-500">{formatDateTime(activity.timestamp)}</span>
                 </div>
                 <p className="text-sm text-slate-300 truncate">{activity.content}</p>
               </div>
@@ -823,22 +879,102 @@ export default function LapaAiAgentsPage() {
   // Activity View
   const renderActivityView = () => (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <History className="h-5 w-5 text-purple-400" />
-          Storico Attività
-        </h2>
-        <div className="flex items-center gap-2">
-          <select
-            value={activityFilter || ''}
-            onChange={(e) => setActivityFilter(e.target.value || null)}
-            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white"
-          >
-            <option value="">Tutti gli agenti</option>
-            {agents.map(a => (
-              <option key={a.name} value={a.name}>{a.name.replace('_', ' ')}</option>
-            ))}
-          </select>
+      <div className="px-6 py-4 bg-slate-900/80 backdrop-blur border-b border-slate-800">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <History className="h-5 w-5 text-purple-400" />
+            Storico Attività
+            <span className="text-xs text-slate-400 font-normal ml-2">
+              ({activityTotalCount} totali)
+            </span>
+          </h2>
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Agent Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400">Agente:</label>
+            <select
+              value={activityFilter || ''}
+              onChange={(e) => setActivityFilter(e.target.value || null)}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white"
+            >
+              <option value="">Tutti</option>
+              {agents.map(a => (
+                <option key={a.name} value={a.name}>{a.name.replace('_', ' ')}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date From */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400">Da:</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white"
+            />
+          </div>
+
+          {/* Date To */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400">A:</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white"
+            />
+          </div>
+
+          {/* Quick Filters */}
+          <div className="flex items-center gap-1 ml-2">
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setDateFrom(today);
+                setDateTo(today);
+              }}
+              className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            >
+              Oggi
+            </button>
+            <button
+              onClick={() => {
+                const d = new Date();
+                setDateTo(d.toISOString().split('T')[0]);
+                d.setDate(d.getDate() - 7);
+                setDateFrom(d.toISOString().split('T')[0]);
+              }}
+              className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            >
+              7 giorni
+            </button>
+            <button
+              onClick={() => {
+                const d = new Date();
+                setDateTo(d.toISOString().split('T')[0]);
+                d.setDate(d.getDate() - 30);
+                setDateFrom(d.toISOString().split('T')[0]);
+              }}
+              className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            >
+              30 giorni
+            </button>
+            <button
+              onClick={() => {
+                const d = new Date();
+                setDateTo(d.toISOString().split('T')[0]);
+                d.setFullYear(d.getFullYear() - 1);
+                setDateFrom(d.toISOString().split('T')[0]);
+              }}
+              className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            >
+              1 anno
+            </button>
+          </div>
         </div>
       </div>
 
@@ -864,7 +1000,7 @@ export default function LapaAiAgentsPage() {
                   }`}>
                     {activity.type}
                   </span>
-                  <span className="text-xs text-slate-500">{formatTime(activity.timestamp)}</span>
+                  <span className="text-xs text-slate-500">{formatDateTime(activity.timestamp)}</span>
                 </div>
                 <p className="text-sm text-slate-300">{activity.content}</p>
               </div>
