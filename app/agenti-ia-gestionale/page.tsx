@@ -198,14 +198,17 @@ export default function LapaAiAgentsPage() {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom (only for agent chat, not unified chat)
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Only auto-scroll in agent chat when new messages arrive
   useEffect(() => {
-    scrollToBottom();
-  }, [chatHistory, unifiedMessages]);
+    if (currentView === 'agent-chat') {
+      scrollToBottom();
+    }
+  }, [chatHistory, currentView]);
 
   // Fetch dashboard summary
   const fetchSummary = useCallback(async () => {
