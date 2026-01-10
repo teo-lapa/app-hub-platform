@@ -20,7 +20,11 @@ import {
   TrendingUp,
   AlertCircle,
   Send,
-  Loader2
+  Loader2,
+  Package,
+  AlertTriangle,
+  ArrowRight,
+  Check
 } from 'lucide-react';
 
 interface Agent {
@@ -56,13 +60,37 @@ interface ChatMessage {
   success?: boolean;
 }
 
+interface CriticalProduct {
+  product_id: number;
+  product_name: string;
+  default_code: string;
+  giacenza_fisica: number;
+  merce_in_arrivo: number;
+  ordini_da_consegnare: number;
+  giacenza_disponibile: number;
+  consumo_medio_giorno: number;
+  giorni_copertura: number;
+  lead_time_fornitore: number;
+  soglia_critica: number;
+  qty_suggerita: number;
+  urgenza: 'ROTTURA_STOCK' | 'CRITICO' | 'ALTO' | 'NORMALE';
+  supplier_id: number;
+  supplier_name: string;
+}
+
 export default function AgentDashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
   const [discovering, setDiscovering] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'chat' | 'critical'>('overview');
+
+  // Critical Products state
+  const [criticalProducts, setCriticalProducts] = useState<CriticalProduct[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+  const [loadingCritical, setLoadingCritical] = useState(false);
+  const [sendingToMagazzino, setSendingToMagazzino] = useState(false);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -172,6 +200,92 @@ export default function AgentDashboard() {
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setSendingMessage(false);
+    }
+  };
+
+  // Critical Products functions
+  const calculateCriticalProducts = async () => {
+    setLoadingCritical(true);
+    try {
+      const response = await fetch('/api/agents/dashboard/trigger-critical-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await response.json();
+
+      if (data.status === 'success' && data.result?.products) {
+        setCriticalProducts(data.result.products);
+        setSelectedProducts(new Set()); // Reset selection
+      } else {
+        console.error('Failed to calculate critical products:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to calculate critical products:', error);
+    } finally {
+      setLoadingCritical(false);
+    }
+  };
+
+  const sendSelectedToMagazzino = async () => {
+    if (selectedProducts.size === 0) return;
+
+    setSendingToMagazzino(true);
+    try {
+      const productsToSend = criticalProducts.filter(p => selectedProducts.has(p.product_id));
+
+      // Format matching the backend HandoffRequest schema
+      const response = await fetch('/api/agents/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from_agent: 'dashboard_user',
+          to_agent: 'magazzino',
+          message_type: 'critical_products_verification',
+          payload: {
+            products: productsToSend,
+            requires_verification: true,
+            next_step: 'acquisti',
+            summary: `${productsToSend.length} prodotti critici da verificare. Urgenze: ${
+              productsToSend.filter(p => p.urgenza === 'ROTTURA_STOCK').length} rottura stock, ${
+              productsToSend.filter(p => p.urgenza === 'CRITICO').length} critici, ${
+              productsToSend.filter(p => p.urgenza === 'ALTO').length} alti.`
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.status === 'handoff_accepted') {
+        alert(`${productsToSend.length} prodotti inviati a Magazzino per verifica!`);
+        setSelectedProducts(new Set());
+      } else {
+        alert(`Errore: ${data.error || data.message || 'Invio fallito'}`);
+      }
+    } catch (error) {
+      console.error('Failed to send to Magazzino:', error);
+      alert('Errore di connessione');
+    } finally {
+      setSendingToMagazzino(false);
+    }
+  };
+
+  const toggleProductSelection = (productId: number) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === criticalProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(criticalProducts.map(p => p.product_id)));
     }
   };
 
@@ -322,19 +436,20 @@ export default function AgentDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
-          {['overview', 'agents', 'chat'].map(tab => (
+          {['overview', 'agents', 'chat', 'critical'].map(tab => (
             <motion.button
               key={tab}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab(tab as any)}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
                 activeTab === tab
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'critical' && <Package className="w-4 h-4" />}
+              {tab === 'critical' ? 'Prodotti Critici' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </motion.button>
           ))}
         </div>
@@ -356,6 +471,19 @@ export default function AgentDashboard() {
               setInput={setChatInput}
               onSend={sendChatMessage}
               sending={sendingMessage}
+            />
+          )}
+
+          {activeTab === 'critical' && (
+            <CriticalProductsTab
+              products={criticalProducts}
+              selectedProducts={selectedProducts}
+              loading={loadingCritical}
+              sending={sendingToMagazzino}
+              onCalculate={calculateCriticalProducts}
+              onToggleSelect={toggleProductSelection}
+              onToggleSelectAll={toggleSelectAll}
+              onSendToMagazzino={sendSelectedToMagazzino}
             />
           )}
         </AnimatePresence>
@@ -554,6 +682,259 @@ function AgentsTab({
           </div>
         </motion.div>
       ))}
+    </motion.div>
+  );
+}
+
+// Critical Products Tab
+function CriticalProductsTab({
+  products,
+  selectedProducts,
+  loading,
+  sending,
+  onCalculate,
+  onToggleSelect,
+  onToggleSelectAll,
+  onSendToMagazzino
+}: {
+  products: CriticalProduct[];
+  selectedProducts: Set<number>;
+  loading: boolean;
+  sending: boolean;
+  onCalculate: () => void;
+  onToggleSelect: (productId: number) => void;
+  onToggleSelectAll: () => void;
+  onSendToMagazzino: () => void;
+}) {
+  const getUrgencyColor = (urgenza: string) => {
+    switch (urgenza) {
+      case 'ROTTURA_STOCK':
+        return 'bg-red-600 text-white';
+      case 'CRITICO':
+        return 'bg-orange-500 text-white';
+      case 'ALTO':
+        return 'bg-yellow-500 text-black';
+      default:
+        return 'bg-blue-500 text-white';
+    }
+  };
+
+  const getUrgencyIcon = (urgenza: string) => {
+    switch (urgenza) {
+      case 'ROTTURA_STOCK':
+        return <XCircle className="w-4 h-4" />;
+      case 'CRITICO':
+        return <AlertTriangle className="w-4 h-4" />;
+      case 'ALTO':
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <motion.div
+      key="critical"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden"
+    >
+      {/* Header con pulsanti */}
+      <div className="p-6 border-b border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Package className="w-6 h-6 text-orange-400" />
+              Calcolo Prodotti Critici
+            </h3>
+            <p className="text-gray-400 text-sm mt-1">
+              Calcola i prodotti sotto soglia e seleziona quali passare a Magazzino per verifica
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onCalculate}
+              disabled={loading}
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-5 h-5" />
+              )}
+              Calcola Ora
+            </motion.button>
+
+            {selectedProducts.size > 0 && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onSendToMagazzino}
+                disabled={sending}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+              >
+                {sending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-5 h-5" />
+                )}
+                Passa a Magazzino ({selectedProducts.size})
+              </motion.button>
+            )}
+          </div>
+        </div>
+
+        {/* Riepilogo urgenze */}
+        {products.length > 0 && (
+          <div className="flex gap-4 text-sm">
+            {['ROTTURA_STOCK', 'CRITICO', 'ALTO', 'NORMALE'].map(urgenza => {
+              const count = products.filter(p => p.urgenza === urgenza).length;
+              if (count === 0) return null;
+              return (
+                <div key={urgenza} className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getUrgencyColor(urgenza)}`}>
+                    {urgenza.replace('_', ' ')}
+                  </span>
+                  <span className="text-gray-400">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Tabella prodotti */}
+      <div className="max-h-[600px] overflow-auto">
+        {products.length === 0 ? (
+          <div className="text-center text-gray-400 py-20">
+            <Package className="w-16 h-16 mx-auto mb-4 opacity-30" />
+            <p className="text-lg">Nessun prodotto critico calcolato</p>
+            <p className="text-sm mt-2">Clicca "Calcola Ora" per analizzare i prodotti</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-900 sticky top-0">
+              <tr>
+                <th className="px-4 py-3 text-left">
+                  <button
+                    onClick={onToggleSelectAll}
+                    className="flex items-center gap-2 text-gray-400 hover:text-white"
+                  >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      selectedProducts.size === products.length
+                        ? 'bg-purple-600 border-purple-600'
+                        : 'border-gray-500'
+                    }`}>
+                      {selectedProducts.size === products.length && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">Urgenza</th>
+                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">Codice</th>
+                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">Prodotto</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Giacenza</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">In Arrivo</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Da Consegnare</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Disponibile</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Giorni Cop.</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Soglia</th>
+                <th className="px-4 py-3 text-right text-gray-400 text-sm font-medium">Qty Suggerita</th>
+                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">Fornitore</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product, index) => (
+                <motion.tr
+                  key={product.product_id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.02 }}
+                  onClick={() => onToggleSelect(product.product_id)}
+                  className={`border-t border-gray-700 cursor-pointer transition-colors ${
+                    selectedProducts.has(product.product_id)
+                      ? 'bg-purple-600/20'
+                      : 'hover:bg-gray-700/50'
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      selectedProducts.has(product.product_id)
+                        ? 'bg-purple-600 border-purple-600'
+                        : 'border-gray-500'
+                    }`}>
+                      {selectedProducts.has(product.product_id) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 w-fit ${getUrgencyColor(product.urgenza)}`}>
+                      {getUrgencyIcon(product.urgenza)}
+                      {product.urgenza.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-300 font-mono text-sm">
+                    {product.default_code || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-white font-medium max-w-[200px] truncate" title={product.product_name}>
+                    {product.product_name}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-300">
+                    {product.giacenza_fisica}
+                  </td>
+                  <td className="px-4 py-3 text-right text-green-400">
+                    +{product.merce_in_arrivo}
+                  </td>
+                  <td className="px-4 py-3 text-right text-red-400">
+                    -{product.ordini_da_consegnare}
+                  </td>
+                  <td className="px-4 py-3 text-right text-white font-medium">
+                    {product.giacenza_disponibile}
+                  </td>
+                  <td className={`px-4 py-3 text-right font-bold ${
+                    product.giorni_copertura <= 0 ? 'text-red-400' :
+                    product.giorni_copertura < product.soglia_critica * 0.5 ? 'text-orange-400' :
+                    'text-yellow-400'
+                  }`}>
+                    {product.giorni_copertura}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-400">
+                    {product.soglia_critica}
+                  </td>
+                  <td className="px-4 py-3 text-right text-purple-400 font-bold">
+                    {product.qty_suggerita}
+                  </td>
+                  <td className="px-4 py-3 text-gray-300 text-sm max-w-[150px] truncate" title={product.supplier_name}>
+                    {product.supplier_name || 'N/A'}
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Footer con info */}
+      {products.length > 0 && (
+        <div className="p-4 border-t border-gray-700 bg-gray-900">
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <span>
+              {selectedProducts.size} di {products.length} prodotti selezionati
+            </span>
+            <span>
+              Formula: Giorni Copertura = (Giacenza + In Arrivo - Da Consegnare) / Consumo Medio
+            </span>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
