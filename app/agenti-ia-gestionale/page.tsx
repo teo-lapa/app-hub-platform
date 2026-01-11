@@ -66,7 +66,7 @@ interface AttachedFile {
 interface BackgroundTask {
   task_id: number;
   agent: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   task_description: string;
   result?: string;
   error?: string;
@@ -189,32 +189,48 @@ export default function LapaAiAgentsPage() {
   const chatHistory = selectedAgent ? (chatHistoryByAgent[selectedAgent] || []) : [];
   const activeTaskId = selectedAgent ? (activeTaskByAgent[selectedAgent] || null) : null;
 
-  // Helper to update chat history for current agent
-  const setChatHistory = (updater: Array<{ role: string; content: string }> | ((prev: Array<{ role: string; content: string }>) => Array<{ role: string; content: string }>)) => {
-    if (!selectedAgent) return;
-    setChatHistoryByAgent(prev => ({
-      ...prev,
-      [selectedAgent]: typeof updater === 'function' ? updater(prev[selectedAgent] || []) : updater
-    }));
-  };
+  // Helper to update chat history for a specific agent
+  const updateChatHistory = useCallback((agentName: string, updater: Array<{ role: string; content: string }> | ((prev: Array<{ role: string; content: string }>) => Array<{ role: string; content: string }>)) => {
+    if (!agentName) {
+      console.error('[updateChatHistory] Called with no agentName!');
+      return;
+    }
+    console.log('[updateChatHistory] Updating chat for agent:', agentName);
+    setChatHistoryByAgent(prev => {
+      const newHistory = typeof updater === 'function' ? updater(prev[agentName] || []) : updater;
+      console.log('[updateChatHistory] New history length for', agentName, ':', newHistory.length);
+      return {
+        ...prev,
+        [agentName]: newHistory
+      };
+    });
+  }, []);
 
-  // Helper to set active task for current agent
-  const setActiveTaskId = (taskId: number | null) => {
-    if (!selectedAgent) return;
+  // Helper to set active task for a specific agent
+  const updateActiveTaskId = useCallback((agentName: string, taskId: number | null) => {
+    if (!agentName) return;
     setActiveTaskByAgent(prev => ({
       ...prev,
-      [selectedAgent]: taskId
+      [agentName]: taskId
     }));
-  };
+  }, []);
+
+  // Compatibility helpers that use selectedAgent (for backward compatibility)
+  const setChatHistory = useCallback((updater: Array<{ role: string; content: string }> | ((prev: Array<{ role: string; content: string }>) => Array<{ role: string; content: string }>)) => {
+    if (!selectedAgent) return;
+    updateChatHistory(selectedAgent, updater);
+  }, [selectedAgent, updateChatHistory]);
+
+  const setActiveTaskId = useCallback((taskId: number | null) => {
+    if (!selectedAgent) return;
+    updateActiveTaskId(selectedAgent, taskId);
+  }, [selectedAgent, updateActiveTaskId]);
 
   // Clear chat for current agent
-  const clearCurrentChat = () => {
+  const clearCurrentChat = useCallback(() => {
     if (!selectedAgent) return;
-    setChatHistoryByAgent(prev => ({
-      ...prev,
-      [selectedAgent]: []
-    }));
-  };
+    updateChatHistory(selectedAgent, []);
+  }, [selectedAgent, updateChatHistory]);
 
   // UI state
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -425,7 +441,17 @@ export default function LapaAiAgentsPage() {
       const response = await fetch(`${API_BASE}/chat/task/${taskId}`);
       const data = await response.json();
 
+      console.log(`[POLL] Task ${taskId}:`, data.status, 'agent:', data.agent);
+
       if (data.task_id) {
+        // Trova l'agente del task - DEVE essere presente
+        const taskAgent = data.agent;
+
+        if (!taskAgent) {
+          console.error(`[POLL] Task ${taskId} has no agent!`);
+          return;
+        }
+
         setBackgroundTasks(prev => {
           const existing = prev.find(t => t.task_id === taskId);
           if (existing) {
@@ -434,25 +460,38 @@ export default function LapaAiAgentsPage() {
           return [...prev, data];
         });
 
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+          console.log(`[POLL] Task ${taskId} finished with status: ${data.status}`);
+
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
           }
-          setActiveTaskId(null);
 
+          // Aggiorna l'active task per l'agente specifico del task
+          updateActiveTaskId(taskAgent, null);
+
+          // Aggiorna la chat dell'agente specifico del task
           if (data.status === 'completed' && data.result) {
             const actionsInfo = data.actions_taken?.length
               ? `\n\n[${data.actions_taken.length} azioni eseguite]`
               : '';
-            setChatHistory(prev => [...prev, {
+            console.log(`[POLL] Adding result to chat for agent: ${taskAgent}`);
+            updateChatHistory(taskAgent, prev => [...prev, {
               role: 'assistant',
               content: data.result + actionsInfo
             }]);
           } else if (data.status === 'failed') {
-            setChatHistory(prev => [...prev, {
+            console.log(`[POLL] Adding error to chat for agent: ${taskAgent}`);
+            updateChatHistory(taskAgent, prev => [...prev, {
               role: 'assistant',
               content: `Task fallito: ${data.error || 'Errore sconosciuto'}`
+            }]);
+          } else if (data.status === 'cancelled') {
+            console.log(`[POLL] Adding cancelled message to chat for agent: ${taskAgent}`);
+            updateChatHistory(taskAgent, prev => [...prev, {
+              role: 'assistant',
+              content: `Task interrotto.`
             }]);
           }
 
@@ -463,24 +502,37 @@ export default function LapaAiAgentsPage() {
     } catch (error) {
       console.error('Error polling task:', error);
     }
-  }, [refreshAll]);
+  }, [refreshAll, updateActiveTaskId, updateChatHistory]);
 
-  // Start polling when we have an active task - poll faster (1.5s) for live progress
+  // Get all active task IDs (from all agents)
+  const allActiveTaskIds = Object.values(activeTaskByAgent).filter((id): id is number => id !== null);
+
+  // Start polling when we have active tasks - poll faster (1.5s) for live progress
+  // Monitora TUTTI i task attivi, non solo quello dell'agente corrente
   useEffect(() => {
-    if (activeTaskId) {
-      pollTaskStatus(activeTaskId);
+    console.log('[EFFECT] Active tasks:', allActiveTaskIds, 'activeTaskByAgent:', activeTaskByAgent);
+
+    if (allActiveTaskIds.length > 0) {
+      console.log('[EFFECT] Starting polling for tasks:', allActiveTaskIds);
+      // Poll all active tasks immediately
+      allActiveTaskIds.forEach(taskId => pollTaskStatus(taskId));
+
       pollingRef.current = setInterval(() => {
-        pollTaskStatus(activeTaskId);
+        console.log('[EFFECT] Polling interval triggered for tasks:', allActiveTaskIds);
+        allActiveTaskIds.forEach(taskId => pollTaskStatus(taskId));
       }, 1500); // 1.5 seconds for live updates
+    } else {
+      console.log('[EFFECT] No active tasks, not polling');
     }
 
     return () => {
       if (pollingRef.current) {
+        console.log('[EFFECT] Cleanup: stopping polling');
         clearInterval(pollingRef.current);
         pollingRef.current = null;
       }
     };
-  }, [activeTaskId, pollTaskStatus]);
+  }, [allActiveTaskIds.join(','), pollTaskStatus]); // Use join to create stable dependency
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -551,6 +603,9 @@ export default function LapaAiAgentsPage() {
   const sendMessage = async () => {
     if ((!chatMessage.trim() && attachedFiles.length === 0) || !selectedAgent) return;
 
+    // Cattura selectedAgent all'inizio per evitare problemi di race condition
+    const targetAgent = selectedAgent;
+
     setIsSending(true);
     const userMessage = chatMessage;
     const filesToSend = [...attachedFiles];
@@ -565,7 +620,8 @@ export default function LapaAiAgentsPage() {
         : `📎 Allegati: ${fileNames}`;
     }
 
-    setChatHistory(prev => [...prev, { role: 'user', content: displayMessage }]);
+    // Usa updateChatHistory con l'agente catturato
+    updateChatHistory(targetAgent, prev => [...prev, { role: 'user', content: displayMessage }]);
 
     try {
       const attachments = await Promise.all(
@@ -584,34 +640,39 @@ export default function LapaAiAgentsPage() {
           content: userMessage || `Ho allegato ${filesToSend.length} file. Per favore analizzali.`,
           user_id: 1,
           channel: 'web',
-          target_agent: selectedAgent,
+          target_agent: targetAgent,
           attachments: attachments.length > 0 ? attachments : undefined
         })
       });
 
       const data = await response.json();
 
+      console.log('[SEND] Response:', data);
+
       if (data.task_id) {
+        console.log(`[SEND] Task ${data.task_id} created for agent: ${targetAgent}`);
         const newTask: BackgroundTask = {
           task_id: data.task_id,
-          agent: selectedAgent,
+          agent: targetAgent,
           status: 'pending',
           task_description: userMessage
         };
         setBackgroundTasks(prev => [...prev, newTask]);
-        setActiveTaskId(data.task_id);
-        setChatHistory(prev => [...prev, {
+        updateActiveTaskId(targetAgent, data.task_id);
+        updateChatHistory(targetAgent, prev => [...prev, {
           role: 'assistant',
           content: `Task avviato in background (ID: ${data.task_id}). Sto elaborando...`
         }]);
       } else if (data.content) {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: data.content }]);
+        console.log(`[SEND] Direct response for agent: ${targetAgent}`);
+        updateChatHistory(targetAgent, prev => [...prev, { role: 'assistant', content: data.content }]);
       } else if (data.error) {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: `Errore: ${data.error}` }]);
+        console.log(`[SEND] Error for agent: ${targetAgent}`, data.error);
+        updateChatHistory(targetAgent, prev => [...prev, { role: 'assistant', content: `Errore: ${data.error}` }]);
       }
     } catch (error) {
       console.error('Error:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore di connessione.' }]);
+      updateChatHistory(targetAgent, prev => [...prev, { role: 'assistant', content: 'Errore di connessione.' }]);
     } finally {
       setIsSending(false);
       filesToSend.forEach(f => {
@@ -669,10 +730,8 @@ export default function LapaAiAgentsPage() {
         const data = await response.json();
         console.log(`Stopped ${data.stopped_count || 0} tasks for agent ${agentName}`);
 
-        // Clear active task if it belongs to this agent
-        if (activeTaskId) {
-          setActiveTaskId(null);
-        }
+        // Clear active task per questo agente specifico
+        updateActiveTaskId(agentName, null);
 
         // Clear polling
         if (pollingRef.current) {
@@ -680,8 +739,8 @@ export default function LapaAiAgentsPage() {
           pollingRef.current = null;
         }
 
-        // Add message to chat
-        setChatHistory(prev => [...prev, {
+        // Add message to chat dell'agente specifico
+        updateChatHistory(agentName, prev => [...prev, {
           role: 'assistant',
           content: `Agente fermato. ${data.stopped_count || 0} task interrotti.`
         }]);
@@ -690,9 +749,17 @@ export default function LapaAiAgentsPage() {
         await fetchAgentsStatus();
       } else {
         console.error('Failed to stop agent');
+        updateChatHistory(agentName, prev => [...prev, {
+          role: 'assistant',
+          content: 'Errore nel fermare l\'agente.'
+        }]);
       }
     } catch (error) {
       console.error('Error stopping agent:', error);
+      updateChatHistory(agentName, prev => [...prev, {
+        role: 'assistant',
+        content: 'Errore di connessione nel fermare l\'agente.'
+      }]);
     } finally {
       setStoppingAgent(false);
     }
