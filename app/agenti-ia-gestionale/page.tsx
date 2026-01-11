@@ -42,7 +42,8 @@ import {
   LayoutDashboard,
   History,
   Radio,
-  Square
+  Square,
+  TrendingUp
 } from 'lucide-react';
 
 // Types
@@ -1506,6 +1507,153 @@ export default function LapaAiAgentsPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Quick Actions - Pulsanti rapidi per agente */}
+          {selectedAgent && chatHistory.length === 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {selectedAgent === 'magazzino' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Verifica i prodotti critici da ordinare');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <Package className="h-4 w-4" />
+                    Verifica prodotti critici
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra i prodotti in scadenza nei prossimi 7 giorni');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Prodotti in scadenza
+                  </button>
+                </>
+              )}
+              {selectedAgent === 'acquisti' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra gli arrivi previsti per oggi');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <Truck className="h-4 w-4" />
+                    Arrivi oggi
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra i prodotti sotto scorta minima');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Sotto scorta
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra gli ordini acquisto in bozza');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Ordini bozza
+                  </button>
+                </>
+              )}
+              {selectedAgent === 'vendite' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra i preventivi in attesa di conferma');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Preventivi in attesa
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra i clienti inattivi da più di 30 giorni');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <Users className="h-4 w-4" />
+                    Clienti inattivi
+                  </button>
+                </>
+              )}
+              {selectedAgent === 'consegne' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra le consegne di oggi');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <Truck className="h-4 w-4" />
+                    Consegne oggi
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra le consegne in ritardo');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    In ritardo
+                  </button>
+                </>
+              )}
+              {selectedAgent === 'direzione' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Genera il report giornaliero');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Report giornaliero
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Mostra i KPI di oggi');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    KPI oggi
+                  </button>
+                </>
+              )}
             </div>
           )}
 
