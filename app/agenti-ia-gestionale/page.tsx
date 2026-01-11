@@ -177,13 +177,44 @@ export default function LapaAiAgentsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
-  // Chat state
+  // Chat state - PER AGENTE
   const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([]);
+  const [chatHistoryByAgent, setChatHistoryByAgent] = useState<Record<string, Array<{ role: string; content: string }>>>({});
   const [isSending, setIsSending] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [backgroundTasks, setBackgroundTasks] = useState<BackgroundTask[]>([]);
-  const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
+  const [activeTaskByAgent, setActiveTaskByAgent] = useState<Record<string, number | null>>({});
+
+  // Get chat history for current agent
+  const chatHistory = selectedAgent ? (chatHistoryByAgent[selectedAgent] || []) : [];
+  const activeTaskId = selectedAgent ? (activeTaskByAgent[selectedAgent] || null) : null;
+
+  // Helper to update chat history for current agent
+  const setChatHistory = (updater: Array<{ role: string; content: string }> | ((prev: Array<{ role: string; content: string }>) => Array<{ role: string; content: string }>)) => {
+    if (!selectedAgent) return;
+    setChatHistoryByAgent(prev => ({
+      ...prev,
+      [selectedAgent]: typeof updater === 'function' ? updater(prev[selectedAgent] || []) : updater
+    }));
+  };
+
+  // Helper to set active task for current agent
+  const setActiveTaskId = (taskId: number | null) => {
+    if (!selectedAgent) return;
+    setActiveTaskByAgent(prev => ({
+      ...prev,
+      [selectedAgent]: taskId
+    }));
+  };
+
+  // Clear chat for current agent
+  const clearCurrentChat = () => {
+    if (!selectedAgent) return;
+    setChatHistoryByAgent(prev => ({
+      ...prev,
+      [selectedAgent]: []
+    }));
+  };
 
   // UI state
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -788,7 +819,7 @@ export default function LapaAiAgentsPage() {
               onClick={() => {
                 setSelectedAgent(agent.name);
                 setCurrentView('agent-chat');
-                setChatHistory([]);
+                // Chat history is now per-agent, preserved when switching
               }}
               className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-left hover:border-purple-500/50 transition-all group"
             >
@@ -1195,6 +1226,17 @@ export default function LapaAiAgentsPage() {
               <span className={`h-1.5 w-1.5 rounded-full ${getStatusColor(selectedAgentData?.status || 'idle')} ${selectedAgentData?.status === 'working' ? 'animate-pulse' : ''}`} />
               {getStatusText(selectedAgentData?.status || 'idle')}
             </span>
+            {/* Clear Chat Button */}
+            {chatHistory.length > 0 && !activeTaskId && (
+              <button
+                onClick={clearCurrentChat}
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+                title="Pulisci chat"
+              >
+                <X className="h-3 w-3" />
+                Pulisci
+              </button>
+            )}
             {/* Stop Agent Button */}
             {(selectedAgentData?.status === 'working' || activeTaskId) && (
               <button
@@ -1540,7 +1582,7 @@ export default function LapaAiAgentsPage() {
               onClick={() => {
                 setSelectedAgent(agent.name);
                 setCurrentView('agent-chat');
-                setChatHistory([]);
+                // Chat history is now per-agent, preserved when switching
               }}
               className={`w-full p-3 rounded-xl text-left transition-all ${
                 currentView === 'agent-chat' && selectedAgent === agent.name
