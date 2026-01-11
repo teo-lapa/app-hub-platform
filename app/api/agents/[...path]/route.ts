@@ -40,7 +40,17 @@ export async function POST(
   const path = params.path.join('/');
 
   try {
-    const body = await request.json();
+    // Handle requests with or without body
+    let body = null;
+    const contentType = request.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      try {
+        body = await request.json();
+      } catch {
+        // No body or invalid JSON - continue without body
+        body = null;
+      }
+    }
 
     const response = await fetch(`${RAILWAY_BACKEND_URL}/api/${path}`, {
       method: 'POST',
@@ -48,7 +58,7 @@ export async function POST(
         'Authorization': `Bearer ${RAILWAY_API_SECRET}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      ...(body && { body: JSON.stringify(body) }),
     });
 
     const data = await response.json();
