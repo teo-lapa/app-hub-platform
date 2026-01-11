@@ -41,7 +41,8 @@ import {
   Filter,
   LayoutDashboard,
   History,
-  Radio
+  Radio,
+  Square
 } from 'lucide-react';
 
 // Types
@@ -176,6 +177,7 @@ export default function LapaAiAgentsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activityFilter, setActivityFilter] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [stoppingAgent, setStoppingAgent] = useState(false);
 
   // Date filter state
   const [dateFrom, setDateFrom] = useState<string>(() => {
@@ -607,6 +609,49 @@ export default function LapaAiAgentsPage() {
       ));
     } catch (error) {
       console.error('Error acknowledging alert:', error);
+    }
+  };
+
+  // Stop agent - force stop all running tasks for an agent
+  const stopAgent = async (agentName: string) => {
+    if (!agentName) return;
+
+    setStoppingAgent(true);
+    try {
+      const response = await fetch(`${API_BASE}/control-room/force-stop-agent/${agentName}`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Stopped ${data.stopped_count || 0} tasks for agent ${agentName}`);
+
+        // Clear active task if it belongs to this agent
+        if (activeTaskId) {
+          setActiveTaskId(null);
+        }
+
+        // Clear polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+
+        // Add message to chat
+        setChatHistory(prev => [...prev, {
+          role: 'assistant',
+          content: `Agente fermato. ${data.stopped_count || 0} task interrotti.`
+        }]);
+
+        // Refresh agent status
+        await fetchAgentsStatus();
+      } else {
+        console.error('Failed to stop agent');
+      }
+    } catch (error) {
+      console.error('Error stopping agent:', error);
+    } finally {
+      setStoppingAgent(false);
     }
   };
 
@@ -1138,6 +1183,22 @@ export default function LapaAiAgentsPage() {
               <span className={`h-1.5 w-1.5 rounded-full ${getStatusColor(selectedAgentData?.status || 'idle')} ${selectedAgentData?.status === 'working' ? 'animate-pulse' : ''}`} />
               {getStatusText(selectedAgentData?.status || 'idle')}
             </span>
+            {/* Stop Agent Button */}
+            {(selectedAgentData?.status === 'working' || activeTaskId) && (
+              <button
+                onClick={() => selectedAgent && stopAgent(selectedAgent)}
+                disabled={stoppingAgent}
+                className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                title="Ferma agente"
+              >
+                {stoppingAgent ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Square className="h-3 w-3" />
+                )}
+                Stop
+              </button>
+            )}
           </div>
         )}
       </div>
