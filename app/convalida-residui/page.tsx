@@ -1368,12 +1368,23 @@ export default function ConvalidaResiduiPage() {
           )}
 
           {/* Arrivi in corso - formato compatto */}
-          {incoming.length > 0 && (
-            <div className="sub" style={{ marginTop: '4px', color: '#f59e0b', fontSize: '12px' }}>
-              🚚 <b>{incoming.reduce((sum, inc) => sum + inc.qty, 0)}</b> {uom}
-              {incoming.some(inc => inc.date) && ` - ${[...new Set(incoming.filter(inc => inc.date).map(inc => new Date(inc.date).toLocaleDateString('it-IT')))].join(', ')}`}
-            </div>
-          )}
+          {incoming.length > 0 && (() => {
+            const totalQty = incoming.reduce((sum, inc) => sum + inc.qty, 0);
+            const validDates = incoming.filter(inc => inc.date && inc.date.length > 0).map(inc => inc.date);
+            const uniqueDates = Array.from(new Set(validDates));
+            const formattedDates = uniqueDates.map(d => {
+              try {
+                return new Date(d).toLocaleDateString('it-IT');
+              } catch {
+                return d;
+              }
+            }).join(', ');
+            return (
+              <div className="sub" style={{ marginTop: '4px', color: '#f59e0b', fontSize: '12px' }}>
+                🚚 <b>{totalQty}</b> {uom}{formattedDates ? ` - ${formattedDates}` : ''}
+              </div>
+            );
+          })()}
         </div>
         <div className="qty">
           Previsto: <b>{plan}</b>
