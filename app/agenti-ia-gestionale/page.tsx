@@ -70,9 +70,21 @@ interface BackgroundTask {
   task_description: string;
   result?: string;
   error?: string;
-  actions_taken?: Array<{ tool: string; status: string }>;
+  actions_taken?: Array<{ tool: string; status: string; result_summary?: string; input?: Record<string, unknown> }>;
   created_at?: string;
   completed_at?: string;
+  progress?: {
+    iteration: number;
+    max_iterations: number;
+    status: 'thinking' | 'executing_tool';
+    current_tool?: {
+      name: string;
+      input: Record<string, unknown>;
+    };
+    actions: Array<{ tool: string; status: string; result_summary?: string; input?: Record<string, unknown> }>;
+    elapsed_seconds: number;
+    tokens?: { input: number; output: number };
+  };
 }
 
 interface ActivityItem {
@@ -422,13 +434,13 @@ export default function LapaAiAgentsPage() {
     }
   }, [refreshAll]);
 
-  // Start polling when we have an active task
+  // Start polling when we have an active task - poll faster (1.5s) for live progress
   useEffect(() => {
     if (activeTaskId) {
       pollTaskStatus(activeTaskId);
       pollingRef.current = setInterval(() => {
         pollTaskStatus(activeTaskId);
-      }, 3000);
+      }, 1500); // 1.5 seconds for live updates
     }
 
     return () => {
@@ -1235,7 +1247,7 @@ export default function LapaAiAgentsPage() {
             </div>
           ))
         )}
-        {isSending && (
+        {isSending && !activeTaskId && (
           <div className="flex justify-start">
             <div className="bg-slate-800/80 border border-slate-700/50 p-4 rounded-2xl">
               <div className="flex space-x-2">
@@ -1243,6 +1255,100 @@ export default function LapaAiAgentsPage() {
                 <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
                 <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Progress Display */}
+        {activeTaskId && backgroundTasks.find(t => t.task_id === activeTaskId)?.progress && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] bg-slate-800/90 border border-purple-500/30 rounded-2xl p-4 space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-white">
+                    Agente in esecuzione...
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400">
+                  {backgroundTasks.find(t => t.task_id === activeTaskId)?.progress?.elapsed_seconds?.toFixed(1)}s
+                </span>
+              </div>
+
+              {/* Current Operation */}
+              {(() => {
+                const task = backgroundTasks.find(t => t.task_id === activeTaskId);
+                const progress = task?.progress;
+                if (!progress) return null;
+
+                return (
+                  <>
+                    {/* Iteration Info */}
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span>Iterazione {progress.iteration}/{progress.max_iterations}</span>
+                      {progress.tokens && (
+                        <>
+                          <span className="text-slate-600">|</span>
+                          <span>{progress.tokens.input + progress.tokens.output} tokens</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Current Tool Being Executed */}
+                    {progress.status === 'executing_tool' && progress.current_tool && (
+                      <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 text-purple-400 animate-spin" />
+                          <span className="text-sm text-purple-300 font-mono">
+                            {progress.current_tool.name}
+                          </span>
+                        </div>
+                        {progress.current_tool.input && Object.keys(progress.current_tool.input).length > 0 && (
+                          <div className="mt-2 text-xs text-slate-400 font-mono">
+                            {Object.entries(progress.current_tool.input).slice(0, 3).map(([key, value]) => (
+                              <div key={key} className="truncate">
+                                <span className="text-slate-500">{key}:</span>{' '}
+                                <span className="text-slate-300">{String(value).substring(0, 50)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Thinking Indicator */}
+                    {progress.status === 'thinking' && (
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-blue-400 animate-pulse" />
+                          <span className="text-sm text-blue-300">Elaborando risposta...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completed Actions */}
+                    {progress.actions && progress.actions.length > 0 && (
+                      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                        <div className="text-xs text-slate-500 mb-2">Azioni completate:</div>
+                        {progress.actions.map((action, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
+                            {action.status === 'success' ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-400 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                            )}
+                            <span className="text-slate-400 font-mono">{action.tool}</span>
+                            {action.result_summary && (
+                              <span className="text-slate-500 truncate">→ {action.result_summary}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
