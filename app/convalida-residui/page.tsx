@@ -1335,51 +1335,49 @@ export default function ConvalidaResiduiPage() {
             Ubic.: <b>{ubic}</b>
           </div>
 
-          {/* Disponibilità ubicazioni */}
+          {/* Disponibilità ubicazioni - formato compatto */}
           {stock.length > 0 && (
-            <div className="sub" style={{ marginTop: '6px', color: 'var(--accent)' }}>
-              📍 Disponibile: {stock.map((s, i) => {
+            <div className="sub" style={{ marginTop: '6px', color: 'var(--accent)', fontSize: '12px' }}>
+              {stock.map((s, i) => {
                 const available = s.qty - s.reserved;
+                const shortLocation = s.location.split('/').pop() || s.location;
+                // Trova il cliente che ha riservato (se presente)
+                const reservedCustomer = reservations.length > 0 ? reservations.map(r => r.customer).join(', ') : '';
                 return (
-                  <span key={i}>
-                    <b>{s.location}</b> ({s.qty} {uom}
-                    {s.reserved > 0 && (
-                      <span style={{ color: '#f59e0b' }}> - Riservato: {s.reserved} {uom}</span>
-                    )}
+                  <div key={i} style={{ marginBottom: i < stock.length - 1 ? '2px' : 0 }}>
+                    📍 <b>{shortLocation}</b>
+                    <span style={{ color: 'var(--muted)' }}> | </span>
+                    Giac: <b>{s.qty}</b> {uom}
                     {available > 0 && (
-                      <span style={{ color: '#16a34a', fontWeight: '700' }}> = Libero: {available.toFixed(1)} {uom}</span>
+                      <>
+                        <span style={{ color: 'var(--muted)' }}> | </span>
+                        <span style={{ color: '#16a34a' }}>Libero: <b>{available.toFixed(1)}</b> {uom}</span>
+                      </>
                     )}
-                    ){i < stock.length - 1 ? ', ' : ''}
-                  </span>
+                    {s.reserved > 0 && (
+                      <>
+                        <span style={{ color: 'var(--muted)' }}> | </span>
+                        <span style={{ color: '#f59e0b' }}>Ris: <b>{s.reserved}</b> {uom}</span>
+                        {reservedCustomer && <span style={{ color: '#f59e0b' }}> ({reservedCustomer})</span>}
+                      </>
+                    )}
+                  </div>
                 );
               })}
             </div>
           )}
 
-          {/* Prenotazioni (da chi) */}
-          {reservations.length > 0 && (
-            <div className="sub" style={{ marginTop: '4px', color: '#dc2626' }}>
-              🔒 Prenotato: {reservations.map((res, i) => (
-                <span key={i}>
-                  <b>{res.qty} {uom}</b> da <b>{res.customer}</b> ({res.picking}){i < reservations.length - 1 ? ', ' : ''}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Arrivi in corso */}
-          {incoming.length > 0 && (
-            <div className="sub" style={{ marginTop: '4px', color: '#f59e0b' }}>
-              🚚 Arrivi: {incoming.map((inc, i) => {
-                const date = inc.date ? new Date(inc.date).toLocaleDateString('it-IT') : '';
-                return (
-                  <span key={i}>
-                    <b>{inc.qty} {uom}</b> ({inc.name}{date ? ` - ${date}` : ''}){i < incoming.length - 1 ? ', ' : ''}
-                  </span>
-                );
-              })}
-            </div>
-          )}
+          {/* Arrivi in corso - formato compatto */}
+          {incoming.length > 0 && (() => {
+            const totalQty = incoming.reduce((sum, inc) => sum + inc.qty, 0);
+            const dates = [...new Set(incoming.map(inc => inc.date).filter(Boolean))];
+            const formattedDates = dates.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
+            return (
+              <div className="sub" style={{ marginTop: '4px', color: '#f59e0b', fontSize: '12px' }}>
+                🚚 <b>{totalQty}</b> {uom} {formattedDates && `- ${formattedDates}`}
+              </div>
+            );
+          })()}
         </div>
         <div className="qty">
           Previsto: <b>{plan}</b>
@@ -1431,12 +1429,13 @@ export default function ConvalidaResiduiPage() {
             }}
           />
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           <button
             className="btn slim green"
             type="button"
             onClick={() => handleSaveOne(move.id)}
             id={`convalida_save_${move.id}`}
+            style={{ fontSize: '10px', padding: '4px 8px' }}
           >
             SALVA
           </button>
@@ -1446,7 +1445,7 @@ export default function ConvalidaResiduiPage() {
             onClick={() => handleOpenForzaInventario(move, pick)}
             disabled={forzaLoading || hasStock}
             title={hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '10px', padding: '4px 8px' }}
           >
             {forzaLoading ? '...' : '📦 FORZA'}
           </button>
@@ -1456,7 +1455,7 @@ export default function ConvalidaResiduiPage() {
             onClick={() => handleOpenSostituzione(move, pick)}
             disabled={sostituzioneLoading}
             title="Sostituisci prodotto"
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '10px', padding: '4px 8px' }}
           >
             {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
           </button>
@@ -1466,7 +1465,7 @@ export default function ConvalidaResiduiPage() {
             onClick={() => handleOpenAlternativa(move, pick)}
             disabled={sostituzioneLoading}
             title="Mostra prodotti alternativi configurati"
-            style={{ fontSize: '11px', background: '#14b8a6', borderColor: '#0d9488' }}
+            style={{ fontSize: '10px', padding: '4px 8px', background: '#14b8a6', borderColor: '#0d9488' }}
           >
             {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
           </button>
@@ -1477,6 +1476,7 @@ export default function ConvalidaResiduiPage() {
               onClick={() => handleOpenScadenza(move, lotInfo, pick)}
               disabled={scadenzaLoading}
               title="Correggi scadenza lotto"
+              style={{ fontSize: '10px', padding: '4px 8px' }}
             >
               {scadenzaLoading ? '...' : '📅 SCADENZA'}
             </button>
