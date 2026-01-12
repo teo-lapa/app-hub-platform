@@ -76,20 +76,56 @@ interface ProcessedAttachment {
 
 /**
  * Transcribe audio using OpenAI Whisper
+ * Handles browser-recorded audio (webm/opus) using OpenAI's toFile helper
  */
 async function transcribeAudio(file: File): Promise<string> {
-  console.log(`[CHAT-GESTIONALE] Transcribing audio: ${file.name} (${file.size} bytes)`);
+  console.log(`[CHAT-GESTIONALE] Transcribing audio: ${file.name} (${file.size} bytes, type: ${file.type})`);
 
   const openai = getOpenAI();
-  const transcription = await openai.audio.transcriptions.create({
-    file: file,
-    model: 'whisper-1',
-    language: 'it',
-    response_format: 'text',
-  });
 
-  console.log(`[CHAT-GESTIONALE] Audio transcribed: ${transcription.substring(0, 100)}...`);
-  return transcription;
+  // Get the file buffer
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Determine the correct file extension based on content type
+  let mimeType = file.type || 'audio/webm';
+
+  // Map mime types to extensions Whisper accepts
+  const mimeToExt: Record<string, string> = {
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/mp4': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/ogg;codecs=opus': 'ogg',
+    'audio/flac': 'flac',
+  };
+
+  // Get extension from mime type
+  const ext = mimeToExt[mimeType] || 'webm';
+  const fileName = `audio_${Date.now()}.${ext}`;
+
+  console.log(`[CHAT-GESTIONALE] Audio file prepared: ${fileName}, mime: ${mimeType}, size: ${buffer.length}`);
+
+  // Use OpenAI's toFile helper to create a proper file object for Node.js
+  const { toFile } = await import('openai/uploads');
+  const audioFile = await toFile(buffer, fileName, { type: mimeType });
+
+  try {
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      language: 'it',
+      response_format: 'text',
+    });
+
+    console.log(`[CHAT-GESTIONALE] Audio transcribed successfully: ${transcription.substring(0, 100)}...`);
+    return transcription;
+  } catch (error: any) {
+    console.error(`[CHAT-GESTIONALE] Whisper transcription error:`, error.message);
+    throw new Error(`Trascrizione audio fallita: ${error.message}`);
+  }
 }
 
 /**
