@@ -42,7 +42,11 @@ import {
   StopCircle,
   Plus,
   Volume2,
-  VolumeX
+  VolumeX,
+  BarChart3,
+  CheckSquare,
+  Calendar,
+  StickyNote
 } from 'lucide-react';
 
 // Types
@@ -106,12 +110,14 @@ function generateId(): string {
 
 // Quick action suggestions for sales team
 const QUICK_ACTIONS = [
+  { icon: BarChart3, label: 'La mia performance', prompt: 'Mostrami la mia performance di vendita di questa settimana: ordini creati, valore totale, confronto con settimana scorsa' },
   { icon: ShoppingCart, label: 'I miei ordini', prompt: 'Mostrami i miei ordini di oggi' },
   { icon: Users, label: 'Cerca cliente', prompt: 'Cerca il cliente' },
+  { icon: CheckSquare, label: 'Attivita', prompt: 'Mostrami le mie attivita in scadenza oggi e domani. Posso anche creare, completare o spostare attivita.' },
+  { icon: Calendar, label: 'Calendario', prompt: 'Mostrami i miei appuntamenti di oggi e domani. Posso anche creare nuovi appuntamenti.' },
+  { icon: StickyNote, label: 'Aggiungi nota', prompt: 'Voglio aggiungere una nota. Dimmi a quale cliente o ordine.' },
   { icon: Package, label: 'Disponibilita', prompt: 'Controlla la disponibilita del prodotto' },
   { icon: FileText, label: 'Storico cliente', prompt: 'Mostrami lo storico ordini del cliente' },
-  { icon: TrendingUp, label: 'Le mie vendite', prompt: 'Come stanno andando le mie vendite questo mese?' },
-  { icon: Database, label: 'Prodotti frequenti', prompt: 'Quali prodotti ordina piu spesso il cliente?' },
 ];
 
 // Markdown renderer component
