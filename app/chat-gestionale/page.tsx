@@ -32,7 +32,13 @@ import {
   Users,
   Package,
   TrendingUp,
-  ChevronDown
+  ChevronDown,
+  Paperclip,
+  Image,
+  Mic,
+  X,
+  File,
+  StopCircle
 } from 'lucide-react';
 
 // Types
@@ -44,6 +50,16 @@ interface Message {
   isLoading?: boolean;
   toolExecution?: string;
   error?: boolean;
+  attachments?: AttachmentPreview[];
+}
+
+interface AttachmentPreview {
+  id: string;
+  file: File;
+  name: string;
+  type: 'image' | 'pdf' | 'audio' | 'document';
+  preview?: string; // base64 for images
+  isProcessing?: boolean;
 }
 
 interface ChatResponse {
@@ -57,6 +73,27 @@ interface ChatResponse {
     timestamp?: string;
   };
 }
+
+// File type detection helper
+function getFileType(file: File): 'image' | 'pdf' | 'audio' | 'document' {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type === 'application/pdf') return 'pdf';
+  if (file.type.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
+// Supported file types
+const SUPPORTED_FILE_TYPES = {
+  image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  pdf: ['application/pdf'],
+  audio: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg', 'audio/webm'],
+};
+
+const ALL_SUPPORTED_TYPES = [
+  ...SUPPORTED_FILE_TYPES.image,
+  ...SUPPORTED_FILE_TYPES.pdf,
+  ...SUPPORTED_FILE_TYPES.audio,
+];
 
 // Generate unique ID
 function generateId(): string {
@@ -378,8 +415,15 @@ export default function ChatGestionalePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Scroll to bottom
@@ -405,18 +449,23 @@ export default function ChatGestionalePage() {
   // Send message
   const sendMessage = useCallback(async (messageText?: string) => {
     const text = messageText || input.trim();
-    if (!text || isLoading) return;
+    if ((!text && attachments.length === 0) || isLoading) return;
 
-    // Clear input
+    // Capture current attachments before clearing
+    const currentAttachments = [...attachments];
+
+    // Clear input and attachments
     setInput('');
+    setAttachments([]);
     setShowQuickActions(false);
 
-    // Add user message
+    // Add user message with attachment info
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: text,
+      content: text || (currentAttachments.length > 0 ? `[${currentAttachments.length} allegato/i]` : ''),
       timestamp: new Date(),
+      attachments: currentAttachments,
     };
     setMessages(prev => [...prev, userMessage]);
 
@@ -428,7 +477,7 @@ export default function ChatGestionalePage() {
       content: '',
       timestamp: new Date(),
       isLoading: true,
-      toolExecution: 'Elaborando richiesta...',
+      toolExecution: currentAttachments.length > 0 ? 'Elaborando allegati...' : 'Elaborando richiesta...',
     }]);
 
     setIsLoading(true);
@@ -437,15 +486,23 @@ export default function ChatGestionalePage() {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Prepare FormData for file upload
+      const formData = new FormData();
+      formData.append('message', text);
+      if (conversationId) {
+        formData.append('conversationId', conversationId);
+      }
+
+      // Add attachments
+      currentAttachments.forEach((att, index) => {
+        formData.append(`attachment_${index}`, att.file);
+        formData.append(`attachment_${index}_type`, att.type);
+      });
+      formData.append('attachmentCount', currentAttachments.length.toString());
+
       const response = await fetch('/api/chat-gestionale', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: text,
-          conversationId: conversationId,
-        }),
+        body: formData,
         signal: abortControllerRef.current.signal,
       });
 
@@ -489,7 +546,7 @@ export default function ChatGestionalePage() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, conversationId]);
+  }, [input, isLoading, conversationId, attachments]);
 
   // Handle key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -515,7 +572,155 @@ export default function ChatGestionalePage() {
     }
   };
 
+  // Handle file selection
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newAttachments: AttachmentPreview[] = [];
+
+    for (const file of Array.from(files)) {
+      // Check file type
+      if (!ALL_SUPPORTED_TYPES.includes(file.type)) {
+        alert(`Tipo file non supportato: ${file.type}\n\nFormati supportati:\n- Immagini: JPEG, PNG, GIF, WebP\n- Documenti: PDF\n- Audio: MP3, WAV, M4A, OGG, WebM`);
+        continue;
+      }
+
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File troppo grande: ${file.name}\nDimensione massima: 10MB`);
+        continue;
+      }
+
+      const attachment: AttachmentPreview = {
+        id: generateId(),
+        file,
+        name: file.name,
+        type: getFileType(file),
+      };
+
+      // Generate preview for images
+      if (attachment.type === 'image') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setAttachments(prev => prev.map(a =>
+            a.id === attachment.id
+              ? { ...a, preview: e.target?.result as string }
+              : a
+          ));
+        };
+        reader.readAsDataURL(file);
+      }
+
+      newAttachments.push(attachment);
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  // Remove attachment
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  // Start audio recording
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Determine best supported mime type
+      const mimeType = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported
+        ? (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4')
+        : 'audio/webm';
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+        const fileName = `registrazione_${Date.now()}.webm`;
+
+        // Create File-like object that works with FormData
+        const audioFile = Object.assign(audioBlob, {
+          name: fileName,
+          lastModified: Date.now(),
+        }) as File;
+
+        const attachment: AttachmentPreview = {
+          id: generateId(),
+          file: audioFile,
+          name: fileName,
+          type: 'audio',
+        };
+
+        setAttachments(prev => [...prev, attachment]);
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Impossibile accedere al microfono. Verifica i permessi del browser.');
+    }
+  }, []);
+
+  // Stop audio recording
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    }
+  }, [isRecording]);
+
+  // Format recording time
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isRecording]);
+
   const hasMessages = messages.length > 0;
+  const hasAttachments = attachments.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -623,7 +828,7 @@ export default function ChatGestionalePage() {
       <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 py-4">
           {/* Quick actions bar (when messages exist) */}
-          {hasMessages && (
+          {hasMessages && !hasAttachments && !isRecording && (
             <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
               {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
                 <button
@@ -639,7 +844,145 @@ export default function ChatGestionalePage() {
             </div>
           )}
 
-          <div className="flex items-end gap-3">
+          {/* Attachments Preview */}
+          <AnimatePresence>
+            {hasAttachments && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-3"
+              >
+                <div className="flex gap-2 flex-wrap">
+                  {attachments.map((att) => (
+                    <motion.div
+                      key={att.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="relative group"
+                    >
+                      <div className={`
+                        flex items-center gap-2 px-3 py-2 rounded-lg border
+                        ${att.type === 'image' ? 'bg-blue-500/10 border-blue-500/30' : ''}
+                        ${att.type === 'pdf' ? 'bg-orange-500/10 border-orange-500/30' : ''}
+                        ${att.type === 'audio' ? 'bg-green-500/10 border-green-500/30' : ''}
+                        ${att.type === 'document' ? 'bg-purple-500/10 border-purple-500/30' : ''}
+                      `}>
+                        {/* Preview or Icon */}
+                        {att.preview ? (
+                          <img
+                            src={att.preview}
+                            alt={att.name}
+                            className="w-10 h-10 rounded object-cover"
+                          />
+                        ) : (
+                          <div className={`
+                            w-10 h-10 rounded flex items-center justify-center
+                            ${att.type === 'image' ? 'bg-blue-500/20 text-blue-400' : ''}
+                            ${att.type === 'pdf' ? 'bg-orange-500/20 text-orange-400' : ''}
+                            ${att.type === 'audio' ? 'bg-green-500/20 text-green-400' : ''}
+                            ${att.type === 'document' ? 'bg-purple-500/20 text-purple-400' : ''}
+                          `}>
+                            {att.type === 'image' && <Image className="w-5 h-5" />}
+                            {att.type === 'pdf' && <FileText className="w-5 h-5" />}
+                            {att.type === 'audio' && <Mic className="w-5 h-5" />}
+                            {att.type === 'document' && <File className="w-5 h-5" />}
+                          </div>
+                        )}
+
+                        {/* File info */}
+                        <div className="flex flex-col">
+                          <span className="text-xs text-slate-300 max-w-[120px] truncate">
+                            {att.name}
+                          </span>
+                          <span className="text-[10px] text-slate-500 uppercase">
+                            {att.type}
+                          </span>
+                        </div>
+
+                        {/* Remove button */}
+                        <button
+                          onClick={() => removeAttachment(att.id)}
+                          className="ml-1 p-1 rounded-full hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Recording indicator */}
+          <AnimatePresence>
+            {isRecording && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-3"
+              >
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-400 font-medium">Registrazione in corso...</span>
+                  <span className="text-red-300 font-mono">{formatRecordingTime(recordingTime)}</span>
+                  <button
+                    onClick={stopRecording}
+                    className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                  >
+                    <StopCircle className="w-4 h-4" />
+                    Stop
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ALL_SUPPORTED_TYPES.join(',')}
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <div className="flex items-end gap-2">
+            {/* Attachment button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isRecording}
+              className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Allega file (immagini, PDF, audio)"
+            >
+              <Paperclip className="w-5 h-5" />
+            </motion.button>
+
+            {/* Microphone button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
+              className={`
+                flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors
+                ${isRecording
+                  ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'
+                }
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+              title={isRecording ? 'Ferma registrazione' : 'Registra audio'}
+            >
+              {isRecording ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </motion.button>
+
             {/* Textarea */}
             <div className="flex-1 relative">
               <textarea
@@ -647,8 +990,8 @@ export default function ChatGestionalePage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Chiedi qualcosa... (es. 'Mostrami gli ordini di oggi')"
-                disabled={isLoading}
+                placeholder={hasAttachments ? "Aggiungi un messaggio (opzionale)..." : "Chiedi qualcosa... (es. 'Mostrami gli ordini di oggi')"}
+                disabled={isLoading || isRecording}
                 rows={1}
                 className="
                   w-full resize-none rounded-xl px-4 py-3 pr-4
@@ -681,12 +1024,12 @@ export default function ChatGestionalePage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => sendMessage()}
-                disabled={!input.trim()}
+                disabled={(!input.trim() && !hasAttachments) || isRecording}
                 className={`
                   flex-shrink-0 w-12 h-12 rounded-xl
                   flex items-center justify-center
                   transition-all duration-200
-                  ${input.trim()
+                  ${(input.trim() || hasAttachments) && !isRecording
                     ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20'
                     : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                   }
@@ -704,14 +1047,12 @@ export default function ChatGestionalePage() {
               <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">
                 Enter
               </kbd>{' '}
-              per inviare,{' '}
-              <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">
-                Shift+Enter
-              </kbd>{' '}
-              per nuova riga
+              per inviare |{' '}
+              <Paperclip className="w-3 h-3 inline" /> Immagini, PDF |{' '}
+              <Mic className="w-3 h-3 inline" /> Audio
             </span>
             <span className="text-slate-600">
-              Powered by Claude AI
+              Powered by Claude + Gemini + Whisper
             </span>
           </div>
         </div>

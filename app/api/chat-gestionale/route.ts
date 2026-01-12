@@ -8,13 +8,16 @@
  * - Usa la sessione dell'utente loggato per audit trail
  * - Memoria conversazione persistente su Vercel KV
  * - Claude conosce l'utente con cui sta parlando
+ * - Supporto multimodale: immagini, PDF (Gemini), audio (Whisper)
  *
  * POST /api/chat-gestionale
- * Body: { message: string, conversationId?: string }
+ * Body: FormData con message, conversationId, attachments
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { kv } from '@vercel/kv';
 import { getToolDefinitions, processToolCalls, setOdooSessionContext } from '@/lib/mcp-tools';
 import { getOdooSession } from '@/lib/odoo-auth';
@@ -28,11 +31,191 @@ const CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 4096;
 const MAX_TOOL_ITERATIONS = 10;
 const CONVERSATION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Rate limiting
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 30;
 const RATE_WINDOW = 60 * 1000;
+
+// Lazy AI clients initialization
+let openaiClient: OpenAI | null = null;
+let geminiClient: GoogleGenerativeAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not configured');
+    }
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openaiClient;
+}
+
+function getGemini(): GoogleGenerativeAI {
+  if (!geminiClient) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+    geminiClient = new GoogleGenerativeAI(apiKey);
+  }
+  return geminiClient;
+}
+
+// ============================================================================
+// ATTACHMENT PROCESSING
+// ============================================================================
+
+interface ProcessedAttachment {
+  type: 'image' | 'pdf' | 'audio';
+  name: string;
+  content: string; // Extracted text or transcription
+  originalSize: number;
+}
+
+/**
+ * Transcribe audio using OpenAI Whisper
+ */
+async function transcribeAudio(file: File): Promise<string> {
+  console.log(`[CHAT-GESTIONALE] Transcribing audio: ${file.name} (${file.size} bytes)`);
+
+  const openai = getOpenAI();
+  const transcription = await openai.audio.transcriptions.create({
+    file: file,
+    model: 'whisper-1',
+    language: 'it',
+    response_format: 'text',
+  });
+
+  console.log(`[CHAT-GESTIONALE] Audio transcribed: ${transcription.substring(0, 100)}...`);
+  return transcription;
+}
+
+/**
+ * Analyze image or PDF using Gemini Vision
+ */
+async function analyzeWithGemini(file: File): Promise<string> {
+  console.log(`[CHAT-GESTIONALE] Analyzing with Gemini: ${file.name} (${file.size} bytes)`);
+
+  const genAI = getGemini();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  // Convert file to base64
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const base64Data = buffer.toString('base64');
+
+  const prompt = `Analizza questo documento/immagine nel contesto di un gestionale aziendale per LAPA, distributore di prodotti alimentari italiani.
+
+ISTRUZIONI:
+1. Descrivi il contenuto in modo completo e dettagliato
+2. Se è un documento (fattura, ordine, bolla, scontrino):
+   - Estrai tutti i dati: numeri, date, importi, prodotti, quantità
+   - Identifica mittente e destinatario
+   - Estrai codici prodotto, descrizioni, prezzi unitari
+3. Se è un'immagine di prodotti:
+   - Identifica i prodotti visibili
+   - Nota eventuali problemi (danneggiamenti, etichette, scadenze)
+4. Se contiene testo, trascrivilo integralmente
+5. Organizza le informazioni in modo strutturato
+
+Rispondi in italiano in modo dettagliato.`;
+
+  const imagePart = {
+    inlineData: {
+      data: base64Data,
+      mimeType: file.type,
+    },
+  };
+
+  const result = await model.generateContent([prompt, imagePart]);
+  const response = await result.response;
+  const text = response.text();
+
+  console.log(`[CHAT-GESTIONALE] Gemini analysis complete: ${text.substring(0, 100)}...`);
+  return text;
+}
+
+/**
+ * Process all attachments and return extracted content
+ */
+async function processAttachments(formData: FormData): Promise<ProcessedAttachment[]> {
+  const attachmentCount = parseInt(formData.get('attachmentCount') as string || '0');
+  if (attachmentCount === 0) return [];
+
+  console.log(`[CHAT-GESTIONALE] Processing ${attachmentCount} attachments...`);
+
+  const processed: ProcessedAttachment[] = [];
+
+  for (let i = 0; i < attachmentCount; i++) {
+    const file = formData.get(`attachment_${i}`) as File;
+    const type = formData.get(`attachment_${i}_type`) as string;
+
+    if (!file) continue;
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      console.warn(`[CHAT-GESTIONALE] File too large: ${file.name} (${file.size} bytes)`);
+      processed.push({
+        type: type as any,
+        name: file.name,
+        content: `[File troppo grande: ${file.name} - max 10MB]`,
+        originalSize: file.size,
+      });
+      continue;
+    }
+
+    try {
+      let content: string;
+
+      if (type === 'audio') {
+        // Transcribe with Whisper
+        content = await transcribeAudio(file);
+      } else if (type === 'image' || type === 'pdf') {
+        // Analyze with Gemini
+        content = await analyzeWithGemini(file);
+      } else {
+        content = `[Tipo file non supportato: ${file.type}]`;
+      }
+
+      processed.push({
+        type: type as any,
+        name: file.name,
+        content,
+        originalSize: file.size,
+      });
+    } catch (error) {
+      console.error(`[CHAT-GESTIONALE] Error processing ${file.name}:`, error);
+      processed.push({
+        type: type as any,
+        name: file.name,
+        content: `[Errore elaborazione: ${error instanceof Error ? error.message : 'errore sconosciuto'}]`,
+        originalSize: file.size,
+      });
+    }
+  }
+
+  return processed;
+}
+
+/**
+ * Build enriched message with attachment content
+ */
+function buildEnrichedMessage(message: string, attachments: ProcessedAttachment[]): string {
+  if (attachments.length === 0) return message;
+
+  let enriched = message || '';
+
+  // Add attachment content
+  const attachmentSection = attachments.map((att, idx) => {
+    const icon = att.type === 'audio' ? '🎤' : att.type === 'image' ? '📷' : '📄';
+    return `\n\n--- ${icon} ALLEGATO ${idx + 1}: ${att.name} ---\n${att.content}`;
+  }).join('');
+
+  enriched += attachmentSection;
+
+  return enriched;
+}
 
 // ============================================================================
 // SYSTEM PROMPT TEMPLATE
@@ -128,6 +311,18 @@ Quando crei ordini o record, verranno automaticamente assegnati a ${userName}.
 
 # MEMORIA CONVERSAZIONE
 Ricorda il contesto della conversazione. Se l'utente fa riferimento a qualcosa menzionato prima (es: "quello", "il cliente di prima", "l'ordine"), usa il contesto precedente per capire.
+
+# ALLEGATI E FILE
+L'utente puo' inviarti allegati (immagini, PDF, audio). Il contenuto degli allegati viene estratto automaticamente e incluso nel messaggio:
+- 🎤 **Audio**: Trascritto automaticamente in testo (Whisper)
+- 📷 **Immagini**: Analizzate e descritte (foto prodotti, documenti, ecc.)
+- 📄 **PDF**: Estratto il contenuto testuale e dati strutturati
+
+Quando ricevi allegati:
+1. Leggi attentamente il contenuto estratto
+2. Se e' un documento (fattura, ordine, DDT), estrai i dati chiave
+3. Se l'utente chiede di cercare in Odoo basandoti sull'allegato, usa i dati estratti
+4. Se e' un audio, considera il testo trascritto come se l'utente l'avesse scritto
 
 Rispondi in modo professionale, conciso e utile. Sei qui per aiutare ${userName} a lavorare meglio con Odoo!`;
 }
@@ -296,16 +491,38 @@ async function getUserFromSession(request: NextRequest): Promise<{
 /**
  * POST /api/chat-gestionale
  * Process chat message with Claude and Odoo tools
+ * Supports FormData for file uploads
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Parse request body
-    const body: ChatRequest = await request.json();
+    // Parse request - support both FormData and JSON
+    let message: string;
+    let conversationIdFromRequest: string | undefined;
+    let processedAttachments: ProcessedAttachment[] = [];
 
-    // Validate message
-    if (!body.message || typeof body.message !== 'string' || body.message.trim().length === 0) {
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData (with potential file uploads)
+      const formData = await request.formData();
+      message = (formData.get('message') as string || '').trim();
+      conversationIdFromRequest = formData.get('conversationId') as string || undefined;
+
+      // Process attachments
+      processedAttachments = await processAttachments(formData);
+
+      console.log(`[CHAT-GESTIONALE] FormData received: message="${message.substring(0, 50)}...", attachments=${processedAttachments.length}`);
+    } else {
+      // Handle JSON (backwards compatible)
+      const body: ChatRequest = await request.json();
+      message = (body.message || '').trim();
+      conversationIdFromRequest = body.conversationId;
+    }
+
+    // Validate - allow empty message if there are attachments
+    if (!message && processedAttachments.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -317,7 +534,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const message = body.message.trim();
+    // Build enriched message with attachment content
+    const enrichedMessage = buildEnrichedMessage(message, processedAttachments);
 
     // Get user from session - REQUIRED for proper audit trail
     const userSession = await getUserFromSession(request);
@@ -344,7 +562,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Get or create conversation ID
-    const conversationId = body.conversationId || generateConversationId(uid);
+    const conversationId = conversationIdFromRequest || generateConversationId(uid);
 
     // Rate limiting per user
     if (!checkRateLimit(`user:${uid}`)) {
@@ -375,6 +593,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[CHAT-GESTIONALE] Richiesta da ${userName} (UID: ${uid}) - Conv: ${conversationId}`);
     console.log(`[CHAT-GESTIONALE] Messaggio: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
+    if (processedAttachments.length > 0) {
+      console.log(`[CHAT-GESTIONALE] Allegati processati: ${processedAttachments.map(a => `${a.name} (${a.type})`).join(', ')}`);
+    }
 
     // Initialize Claude client
     const anthropic = new Anthropic({
@@ -393,13 +614,13 @@ export async function POST(request: NextRequest) {
       input_schema: tool.input_schema as Anthropic.Tool.InputSchema,
     }));
 
-    // Prepare messages for Claude - include history
+    // Prepare messages for Claude - include history and enriched message with attachments
     const messages: Anthropic.MessageParam[] = [
       ...history.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
       })),
-      { role: 'user' as const, content: message },
+      { role: 'user' as const, content: enrichedMessage },
     ];
 
     // Get personalized system prompt
@@ -498,9 +719,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Save conversation to KV (includes both user message and assistant response)
+    // Use original message + attachment summary (not full content) to keep history manageable
+    const attachmentSummary = processedAttachments.length > 0
+      ? `\n[Allegati: ${processedAttachments.map(a => `${a.name} (${a.type})`).join(', ')}]`
+      : '';
+    const messageForHistory = message + attachmentSummary;
+
     const updatedHistory: ChatMessage[] = [
       ...history,
-      { role: 'user', content: message },
+      { role: 'user', content: messageForHistory },
       { role: 'assistant', content: finalResponse },
     ];
     await saveConversation(conversationId, updatedHistory, uid, userName);
