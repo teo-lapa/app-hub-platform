@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { loadSkill, logSkillInfo } from '@/lib/ai/skills-loader';
 
 export const dynamic = 'force-dynamic';
@@ -263,39 +264,75 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
 
     console.log('🤖 Invio a Claude per matching intelligente...');
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8000,
-      temperature: 0,
-      messages: [
-        {
-          role: 'user',
-          content: `${skill.content}\n\n---\n\n${matchingData}`,
-        },
-      ],
-    });
+    let responseText = '';
+    let providerUsed = 'claude';
 
-    const firstContent = message.content[0];
-    const responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
-    console.log('📥 Risposta Claude matching:', responseText.substring(0, 300) + '...');
+    try {
+      // Prova prima con Claude
+      const message = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: `${skill.content}\n\n---\n\n${matchingData}`,
+          },
+        ],
+      });
+
+      const firstContent = message.content[0];
+      responseText = firstContent && firstContent.type === 'text' ? firstContent.text : '';
+
+    } catch (claudeError: any) {
+      // Se errore 529 (overloaded) o 429 (rate limit) → fallback a Gemini
+      const isOverloaded = claudeError.status === 529 ||
+                           claudeError.status === 429 ||
+                           claudeError.message?.includes('Overloaded') ||
+                           claudeError.message?.includes('overloaded');
+
+      if (isOverloaded) {
+        console.log('⚠️ Claude overloaded (529), switching to Gemini...');
+        providerUsed = 'gemini';
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const geminiResult = await model.generateContent(`${skill.content}\n\n---\n\n${matchingData}`);
+        responseText = geminiResult.response.text();
+      } else {
+        // Altri errori → propaga
+        throw claudeError;
+      }
+    }
+
+    console.log(`📥 Risposta ${providerUsed} matching:`, responseText.substring(0, 300) + '...');
 
     let matches;
     try {
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      // Pulisci la risposta (rimuovi markdown code blocks se presenti)
+      const cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         matches = JSON.parse(jsonMatch[0]);
       } else {
-        matches = JSON.parse(responseText);
+        matches = JSON.parse(cleanedText);
       }
     } catch (parseError) {
       console.error('❌ Errore parsing matching:', parseError);
       return NextResponse.json({
-        error: 'Errore nel parsing del matching AI',
+        error: `Errore nel parsing del matching AI (${providerUsed})`,
         details: responseText
       }, { status: 500 });
     }
 
-    console.log('✅ Matches trovati:', matches.length);
+    console.log(`✅ Matches trovati: ${matches.length} (provider: ${providerUsed})`);
 
     // ===== STEP 5: Processa i matches =====
     const usedMoveLineIds = new Set<number>();
