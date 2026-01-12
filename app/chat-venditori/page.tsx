@@ -108,16 +108,16 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-// Quick action suggestions for sales team
+// Quick action suggestions for sales team - FOCUS ON SELLING!
 const QUICK_ACTIONS = [
-  { icon: BarChart3, label: 'La mia performance', prompt: 'Mostrami la mia performance di vendita di questa settimana: ordini creati, valore totale, confronto con settimana scorsa' },
-  { icon: ShoppingCart, label: 'I miei ordini', prompt: 'Mostrami i miei ordini di oggi' },
-  { icon: Users, label: 'Cerca cliente', prompt: 'Cerca il cliente' },
-  { icon: CheckSquare, label: 'Attivita', prompt: 'Mostrami le mie attivita in scadenza oggi e domani. Posso anche creare, completare o spostare attivita.' },
-  { icon: Calendar, label: 'Calendario', prompt: 'Mostrami i miei appuntamenti di oggi e domani. Posso anche creare nuovi appuntamenti.' },
-  { icon: StickyNote, label: 'Aggiungi nota', prompt: 'Voglio aggiungere una nota. Dimmi a quale cliente o ordine.' },
-  { icon: Package, label: 'Disponibilita', prompt: 'Controlla la disponibilita del prodotto' },
-  { icon: FileText, label: 'Storico cliente', prompt: 'Mostrami lo storico ordini del cliente' },
+  { icon: FileText, label: 'Crea preventivo', prompt: 'Aiutami a creare un preventivo per un cliente. Dimmi per quale cliente.' },
+  { icon: TrendingUp, label: 'Consigli vendita', prompt: 'Dammi consigli per aumentare le vendite con questo cliente. Analizza cosa compra e suggeriscimi prodotti da proporre in up-selling e cross-selling.' },
+  { icon: Users, label: 'Nuovo cliente', prompt: 'Voglio acquisire un nuovo cliente. Aiutami a creare il contatto e preparare una proposta commerciale.' },
+  { icon: Package, label: 'Cross-selling', prompt: 'Quali prodotti posso proporre a questo cliente che non ha mai ordinato ma che comprano clienti simili a lui?' },
+  { icon: BarChart3, label: 'Performance', prompt: 'Mostrami la mia performance di vendita di questa settimana: ordini creati, valore totale, confronto con settimana scorsa' },
+  { icon: CheckSquare, label: 'Attivita', prompt: 'Mostrami le mie attivita in scadenza oggi e domani' },
+  { icon: Calendar, label: 'Calendario', prompt: 'Mostrami i miei appuntamenti di oggi e domani' },
+  { icon: StickyNote, label: 'Nota', prompt: 'Aggiungi una nota a un cliente o ordine' },
 ];
 
 // Markdown renderer component
@@ -928,8 +928,8 @@ export default function ChatGestionalePage() {
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Chat Venditori</h1>
-                <p className="text-xs text-slate-400">Assistente AI per le vendite</p>
+                <h1 className="text-lg font-bold text-white">Sales Coach AI</h1>
+                <p className="text-xs text-slate-400">Ti aiuto a vendere di piu!</p>
               </div>
             </div>
 
@@ -970,10 +970,10 @@ export default function ChatGestionalePage() {
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-2">
-                  Ciao! Sono il tuo assistente vendite LAPA
+                  Ciao! Sono il tuo Sales Coach AI
                 </h2>
                 <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                  Posso aiutarti a cercare clienti, controllare ordini, verificare disponibilita prodotti e molto altro.
+                  Ti aiuto a vendere di piu: creo preventivi, ti suggerisco prodotti per up-selling e cross-selling, e ti aiuto ad acquisire nuovi clienti.
                 </p>
 
                 {/* Quick Actions */}
