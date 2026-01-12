@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle, FileText, X, Loader2, Bell, Tag } from 'lucide-react';
+import { ArrowLeft, Home, ShoppingCart, Sparkles, CheckCircle, AlertCircle, FileText, X, Loader2, Bell, Tag, MessageCircle } from 'lucide-react';
 import CustomerSelector from './components/CustomerSelector';
 import AIOrderInput from './components/AIOrderInput';
 import SmartCart from './components/SmartCart';
@@ -458,6 +458,17 @@ export default function CatalogoVenditoriPage() {
               >
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-xs sm:text-base font-medium hidden lg:inline">Revisione</span>
+              </button>
+
+              {/* Chat AI Button */}
+              <button
+                onClick={() => router.push('/chat-venditori')}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-violet-600/80 to-purple-600/80 hover:from-violet-600 hover:to-purple-600 text-white rounded-lg border border-violet-500 transition-colors min-h-[44px] shrink-0"
+                aria-label="Chat AI"
+                title="Assistente AI per venditori"
+              >
+                <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline">Chat AI</span>
               </button>
 
               {/* Title */}
