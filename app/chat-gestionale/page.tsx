@@ -457,7 +457,8 @@ export default function ChatGestionalePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingIntervalRef = useRef<number | null>(null);
+  const recordingStartTimeRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Scroll to bottom
@@ -479,6 +480,45 @@ export default function ChatGestionalePage() {
     const newHeight = Math.min(textarea.scrollHeight, 150);
     textarea.style.height = `${newHeight}px`;
   }, [input]);
+
+  // Recording timer effect - runs when isRecording changes
+  useEffect(() => {
+    if (!isRecording) {
+      // Clean up when not recording
+      if (recordingIntervalRef.current) {
+        window.clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      recordingStartTimeRef.current = null;
+      return;
+    }
+
+    // Start the timer
+    recordingStartTimeRef.current = Date.now();
+    setRecordingTime(0);
+
+    const updateTimer = () => {
+      if (recordingStartTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+        setRecordingTime(elapsed);
+      }
+    };
+
+    // Update immediately and then every second
+    updateTimer();
+    const intervalId = window.setInterval(updateTimer, 1000);
+    recordingIntervalRef.current = intervalId;
+
+    console.log('[Recording] Timer started, interval:', intervalId);
+
+    return () => {
+      if (recordingIntervalRef.current) {
+        window.clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      recordingStartTimeRef.current = null;
+    };
+  }, [isRecording]);
 
   // Send message
   const sendMessage = useCallback(async (messageText?: string) => {
@@ -739,21 +779,10 @@ export default function ChatGestionalePage() {
       // Request data every second to ensure we get chunks
       mediaRecorder.start(1000);
 
+      // Set recording state - this triggers the useEffect that handles the timer
       setIsRecording(true);
-      setRecordingTime(0);
 
-      // Clear any existing interval first
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-
-      // Start timer with explicit interval
-      const intervalId = setInterval(() => {
-        setRecordingTime(t => t + 1);
-      }, 1000);
-      recordingIntervalRef.current = intervalId;
-
-      console.log('[Recording] Started recording with interval ID:', intervalId);
+      console.log('[Recording] Started recording');
 
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -838,17 +867,21 @@ export default function ChatGestionalePage() {
   useEffect(() => {
     return () => {
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
+        window.clearInterval(recordingIntervalRef.current);
       }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          // Ignore if already stopped
+        }
       }
       // Stop TTS
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [isRecording]);
+  }, []);
 
   // Close attach menu when clicking outside
   useEffect(() => {
