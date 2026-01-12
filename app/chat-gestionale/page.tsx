@@ -38,7 +38,10 @@ import {
   Mic,
   X,
   File,
-  StopCircle
+  StopCircle,
+  Plus,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 // Types
@@ -319,8 +322,14 @@ function formatTimestamp(date: Date): string {
 // Chat Message Component
 const ChatMessage = memo(function ChatMessage({
   message,
+  onSpeak,
+  isSpeaking,
+  onStopSpeaking,
 }: {
   message: Message;
+  onSpeak?: (text: string) => void;
+  isSpeaking?: boolean;
+  onStopSpeaking?: () => void;
 }) {
   const isUser = message.role === 'user';
 
@@ -397,11 +406,33 @@ const ChatMessage = memo(function ChatMessage({
           )}
         </div>
 
-        {/* Timestamp */}
+        {/* Timestamp and TTS button */}
         {!message.isLoading && (
-          <span className="text-xs text-slate-500 px-2">
-            {formatTimestamp(message.timestamp)}
-          </span>
+          <div className="flex items-center gap-2 px-2">
+            <span className="text-xs text-slate-500">
+              {formatTimestamp(message.timestamp)}
+            </span>
+            {/* TTS button for assistant messages */}
+            {!isUser && !message.error && onSpeak && (
+              <button
+                onClick={() => isSpeaking ? onStopSpeaking?.() : onSpeak(message.content)}
+                className={`
+                  p-1 rounded-full transition-colors
+                  ${isSpeaking
+                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                    : 'hover:bg-slate-700 text-slate-400 hover:text-slate-300'
+                  }
+                `}
+                title={isSpeaking ? 'Ferma lettura' : 'Leggi ad alta voce'}
+              >
+                {isSpeaking ? (
+                  <VolumeX className="w-4 h-4" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </motion.div>
@@ -418,6 +449,9 @@ export default function ChatGestionalePage() {
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -631,26 +665,55 @@ export default function ChatGestionalePage() {
   // Start audio recording
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Close attach menu
+      setShowAttachMenu(false);
 
-      // Determine best supported mime type
-      const mimeType = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported
-        ? (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4')
-        : 'audio/webm';
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        }
+      });
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      // Determine best supported mime type - Whisper prefers webm with opus codec
+      let mimeType = 'audio/webm;codecs=opus';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus';
+        }
+      }
+
+      console.log('[Recording] Using mimeType:', mimeType);
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 128000, // 128kbps for good quality
+      });
 
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
+        console.log('[Recording] Data available:', e.data.size, 'bytes');
         if (e.data.size > 0) {
           audioChunksRef.current.push(e.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
-        const fileName = `registrazione_${Date.now()}.webm`;
+        console.log('[Recording] Stopped. Chunks:', audioChunksRef.current.length);
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log('[Recording] Created blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+
+        // Use .webm extension for webm audio (Whisper compatible)
+        const extension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+        const fileName = `registrazione_${Date.now()}.${extension}`;
 
         // Create File-like object that works with FormData
         const audioFile = Object.assign(audioBlob, {
@@ -672,14 +735,25 @@ export default function ChatGestionalePage() {
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
+
+      // Request data every second to ensure we get chunks
+      mediaRecorder.start(1000);
+
       setIsRecording(true);
       setRecordingTime(0);
 
-      // Start timer
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+      // Clear any existing interval first
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+
+      // Start timer with explicit interval
+      const intervalId = setInterval(() => {
+        setRecordingTime(t => t + 1);
       }, 1000);
+      recordingIntervalRef.current = intervalId;
+
+      console.log('[Recording] Started recording with interval ID:', intervalId);
 
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -707,6 +781,59 @@ export default function ChatGestionalePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Text-to-Speech: Read message aloud
+  const speakText = useCallback((text: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert('Il tuo browser non supporta la sintesi vocale');
+      return;
+    }
+
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Clean text - remove markdown formatting
+    const cleanText = text
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic
+      .replace(/#{1,6}\s/g, '') // Remove headers
+      .replace(/`[^`]+`/g, '') // Remove inline code
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links, keep text
+      .replace(/---.*?---/gs, '') // Remove dividers with content
+      .replace(/\n+/g, '. '); // Replace newlines with pauses
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'it-IT';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // Try to use an Italian voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const italianVoice = voices.find(v => v.lang.startsWith('it'));
+    if (italianVoice) {
+      utterance.voice = italianVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  // Stop speech
+  const stopSpeaking = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
+
+  // Toggle file select (from menu)
+  const handleFileClick = useCallback(() => {
+    setShowAttachMenu(false);
+    fileInputRef.current?.click();
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -716,8 +843,26 @@ export default function ChatGestionalePage() {
       if (mediaRecorderRef.current && isRecording) {
         mediaRecorderRef.current.stop();
       }
+      // Stop TTS
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, [isRecording]);
+
+  // Close attach menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showAttachMenu) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.attach-menu-container')) {
+          setShowAttachMenu(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAttachMenu]);
 
   const hasMessages = messages.length > 0;
   const hasAttachments = attachments.length > 0;
@@ -816,7 +961,13 @@ export default function ChatGestionalePage() {
 
           {/* Messages */}
           {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage
+              key={message.id}
+              message={message}
+              onSpeak={speakText}
+              isSpeaking={isSpeaking}
+              onStopSpeaking={stopSpeaking}
+            />
           ))}
 
           {/* Scroll anchor */}
@@ -952,36 +1103,70 @@ export default function ChatGestionalePage() {
           />
 
           <div className="flex items-end gap-2">
-            {/* Attachment button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading || isRecording}
-              className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Allega file (immagini, PDF, audio)"
-            >
-              <Paperclip className="w-5 h-5" />
-            </motion.button>
+            {/* Plus button with dropdown menu */}
+            <div className="relative attach-menu-container">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                disabled={isLoading || isRecording}
+                className={`
+                  flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all
+                  ${showAttachMenu
+                    ? 'bg-red-600 text-white rotate-45'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'
+                  }
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                `}
+                title="Aggiungi allegato"
+              >
+                <Plus className="w-5 h-5 transition-transform" />
+              </motion.button>
 
-            {/* Microphone button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isLoading}
-              className={`
-                flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors
-                ${isRecording
-                  ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'
-                }
-                disabled:opacity-50 disabled:cursor-not-allowed
-              `}
-              title={isRecording ? 'Ferma registrazione' : 'Registra audio'}
-            >
-              {isRecording ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </motion.button>
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showAttachMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full left-0 mb-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[180px]"
+                  >
+                    {/* File upload option */}
+                    <button
+                      onClick={handleFileClick}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <Paperclip className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Carica file</div>
+                        <div className="text-xs text-slate-500">Immagini, PDF</div>
+                      </div>
+                    </button>
+
+                    {/* Divider */}
+                    <div className="border-t border-slate-700" />
+
+                    {/* Voice recording option */}
+                    <button
+                      onClick={startRecording}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <Mic className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Registra audio</div>
+                        <div className="text-xs text-slate-500">Usa il microfono</div>
+                      </div>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Textarea */}
             <div className="flex-1 relative">
@@ -1048,8 +1233,8 @@ export default function ChatGestionalePage() {
                 Enter
               </kbd>{' '}
               per inviare |{' '}
-              <Paperclip className="w-3 h-3 inline" /> Immagini, PDF |{' '}
-              <Mic className="w-3 h-3 inline" /> Audio
+              <Plus className="w-3 h-3 inline" /> File, Audio |{' '}
+              <Volume2 className="w-3 h-3 inline" /> Ascolta risposte
             </span>
             <span className="text-slate-600">
               Powered by Claude + Gemini + Whisper
