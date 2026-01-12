@@ -460,15 +460,21 @@ export default function CatalogoVenditoriPage() {
                 <span className="text-xs sm:text-base font-medium hidden lg:inline">Revisione</span>
               </button>
 
-              {/* Chat AI Button */}
+              {/* Chat AI Button - NEW with pulse animation */}
               <button
                 onClick={() => router.push('/chat-venditori')}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-violet-600/80 to-purple-600/80 hover:from-violet-600 hover:to-purple-600 text-white rounded-lg border border-violet-500 transition-colors min-h-[44px] shrink-0"
+                className="relative flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-lg border border-violet-400 transition-all min-h-[44px] shrink-0 shadow-lg shadow-violet-500/30 animate-pulse"
                 aria-label="Chat AI"
-                title="Assistente AI per venditori"
+                title="NUOVO! Assistente AI per venditori"
               >
-                <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="text-xs sm:text-base font-medium hidden lg:inline">Chat AI</span>
+                {/* Glow effect */}
+                <span className="absolute inset-0 rounded-lg bg-violet-400/20 animate-ping" style={{ animationDuration: '2s' }} />
+                <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 relative z-10" />
+                <span className="text-xs sm:text-base font-medium hidden lg:inline relative z-10">Chat AI</span>
+                {/* NEW badge */}
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-bounce z-20">
+                  NEW
+                </span>
               </button>
 
               {/* Title */}
