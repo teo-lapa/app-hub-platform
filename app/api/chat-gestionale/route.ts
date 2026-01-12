@@ -258,16 +258,22 @@ function buildEnrichedMessage(message: string, attachments: ProcessedAttachment[
 // ============================================================================
 
 function getSystemPrompt(userName: string, userEmail: string, userId: number): string {
-  // Get current date in Italian format
+  // Get current date in Italian format with Swiss timezone
   const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
+  const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'Europe/Zurich'
   };
-  const currentDate = now.toLocaleDateString('it-IT', options);
-  const currentTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Zurich'
+  };
+  const currentDate = now.toLocaleDateString('it-IT', dateOptions);
+  const currentTime = now.toLocaleTimeString('it-IT', timeOptions);
 
   return `Sei un assistente AI avanzato per la gestione di Odoo ERP di LAPA - finest italian food GmbH.
 
