@@ -706,7 +706,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       invoice_id: invoiceId,
       invoice_name: invoiceName,
       results,
-      tokens_used: message.usage
+      ai_provider: providerUsed
     });
 
   } catch (error: any) {
