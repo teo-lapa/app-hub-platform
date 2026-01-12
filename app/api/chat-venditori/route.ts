@@ -23,6 +23,14 @@ import { kv } from '@vercel/kv';
 import { getToolDefinitions, processToolCalls, setOdooSessionContext } from '@/lib/mcp-tools';
 import { getOdooSession } from '@/lib/odoo-auth';
 import { searchReadOdoo } from '@/lib/odoo/odoo-helper';
+import {
+  saveConversation as saveToCentralStore,
+  loadConversation as loadFromCentralStore,
+  addMessageToConversation,
+  type StoredConversation as CentralConversation,
+  type Message as CentralMessage,
+} from '@/lib/lapa-agents/conversation-store';
+import { recordRequest } from '@/lib/lapa-agents/stats';
 
 // ============================================================================
 // CONSTANTS
@@ -867,10 +875,55 @@ export async function POST(request: NextRequest) {
     ];
     await saveConversation(conversationId, updatedHistory, uid, userName);
 
+    // === SALVA ANCHE NEL SISTEMA CENTRALE LAPA AI AGENTS ===
+    // Questo permette di vedere le conversazioni nella dashboard LAPA AI Agents
+    const centralSessionId = `sales-coach-${uid}-${conversationId}`;
+    const duration = Date.now() - startTime;
+
+    // Converti uid in number se necessario
+    const uidNumber = uid ? (typeof uid === 'string' ? parseInt(uid, 10) : uid) : undefined;
+
+    try {
+      // Salva messaggio utente
+      await addMessageToConversation(
+        centralSessionId,
+        {
+          role: 'user',
+          content: messageForHistory,
+          timestamp: new Date(),
+          agentId: 'sales-coach',
+          channel: 'web',
+          senderName: userName,
+        },
+        {
+          customerId: uidNumber,
+          customerName: userName,
+          customerType: 'b2b',
+        }
+      );
+
+      // Salva risposta assistente
+      await addMessageToConversation(
+        centralSessionId,
+        {
+          role: 'assistant',
+          content: finalResponse,
+          timestamp: new Date(),
+          agentId: 'sales-coach',
+        }
+      );
+
+      // Registra statistiche
+      recordRequest('sales-coach', duration, true, centralSessionId);
+
+      console.log(`[CHAT-VENDITORI] Conversazione salvata in LAPA AI Agents: ${centralSessionId}`);
+    } catch (centralError) {
+      console.error('[CHAT-VENDITORI] Errore salvataggio centrale (non bloccante):', centralError);
+    }
+
     // Clear session context after request
     setOdooSessionContext(null);
 
-    const duration = Date.now() - startTime;
     console.log(`[CHAT-VENDITORI] Risposta per ${userName} in ${duration}ms, ${iterations} iter, ${allToolsUsed.length} tools`);
 
     // Return response

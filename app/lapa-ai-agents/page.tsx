@@ -213,6 +213,24 @@ const defaultAgents: AgentConfig[] = [
       successRate: 94.2,
       lastActive: new Date().toISOString()
     }
+  },
+  {
+    id: 'sales-coach',
+    name: 'Sales Coach AI',
+    description: 'Coach vendite per venditori interni',
+    icon: 'TrendingUp',
+    color: 'yellow',
+    status: 'active',
+    enabled: true,
+    permissions: ['view_customers', 'view_orders', 'view_products', 'create_quotes', 'sales_tips'],
+    supportedLanguages: ['it', 'de', 'fr', 'en'],
+    stats: {
+      requestsToday: 0,
+      requestsTotal: 0,
+      avgResponseTime: 2.0,
+      successRate: 100,
+      lastActive: new Date().toISOString()
+    }
   }
 ];
 
@@ -223,7 +241,8 @@ const iconMap: Record<string, any> = {
   FileText,
   Truck,
   Package,
-  HeadphonesIcon
+  HeadphonesIcon,
+  TrendingUp
 };
 
 // Colori mapping
@@ -233,7 +252,8 @@ const colorMap: Record<string, { bg: string; text: string; border: string; gradi
   green: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', gradient: 'from-green-600 to-green-400' },
   orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', gradient: 'from-orange-600 to-orange-400' },
   pink: { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/30', gradient: 'from-pink-600 to-pink-400' },
-  red: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', gradient: 'from-red-600 to-red-400' }
+  red: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', gradient: 'from-red-600 to-red-400' },
+  yellow: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30', gradient: 'from-yellow-600 to-yellow-400' }
 };
 
 export default function LapaAIAgentsPage() {

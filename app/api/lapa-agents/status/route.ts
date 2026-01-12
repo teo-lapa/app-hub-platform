@@ -74,6 +74,14 @@ const agentDefinitions: Array<Omit<AgentStatus, 'stats'>> = [
     enabled: true,
     description: 'Supporto generico e escalation a operatore',
     capabilities: ['create tickets', 'escalation', 'general support', 'faq']
+  },
+  {
+    id: 'sales-coach',
+    name: 'Sales Coach AI',
+    status: 'active',
+    enabled: true,
+    description: 'Coach vendite per venditori interni - Preventivi, Up-selling, Cross-selling',
+    capabilities: ['view customers', 'view orders', 'view products', 'create quotes', 'sales tips', 'cross-selling', 'up-selling']
   }
 ];
 

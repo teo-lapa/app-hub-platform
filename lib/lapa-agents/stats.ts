@@ -79,7 +79,8 @@ function normalizeAgentIdForStats(agentId: string): string {
     'invoice': 'invoice',
     'shipping': 'shipping',
     'product': 'product',
-    'helpdesk': 'helpdesk'
+    'helpdesk': 'helpdesk',
+    'sales-coach': 'sales-coach'
   };
 
   return mapping[agentId] || agentId;
