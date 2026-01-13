@@ -171,7 +171,32 @@ export async function GET(request: NextRequest) {
 
           const assignmentsResult = await sql.query(queryText, productIdsArray);
 
-          // Raggruppa per product_id
+          // Raccogli tutti i customer_id unici per caricare i nomi da Odoo
+          const customerIds = new Set<number>();
+          for (const row of assignmentsResult.rows) {
+            customerIds.add(row.customer_id);
+          }
+
+          // 🔥 Carica i nomi dei clienti da Odoo
+          const customerNamesMap = new Map<number, string>();
+          if (customerIds.size > 0) {
+            try {
+              const customers = await rpc.searchRead(
+                'res.partner',
+                [['id', 'in', Array.from(customerIds)]],
+                ['id', 'name', 'display_name']
+              );
+              for (const customer of customers) {
+                customerNamesMap.set(customer.id, customer.display_name || customer.name || 'Cliente');
+              }
+              console.log(`✅ Caricati ${customers.length} nomi clienti da Odoo`);
+            } catch (customerError) {
+              console.error('⚠️ Errore caricamento nomi clienti:', customerError);
+              // Continua comunque, useremo "Cliente sconosciuto" come fallback
+            }
+          }
+
+          // Raggruppa per product_id con i nomi clienti
           for (const row of assignmentsResult.rows) {
             const productId = row.product_id;
             if (!assignmentsByProduct.has(productId)) {
@@ -179,7 +204,7 @@ export async function GET(request: NextRequest) {
             }
             assignmentsByProduct.get(productId)!.push({
               customerId: row.customer_id,
-              customerName: '', // Verrà caricato dal front-end
+              customerName: customerNamesMap.get(row.customer_id) || 'Cliente sconosciuto',
               quantity: parseFloat(row.quantity),
               notes: row.notes
             });
