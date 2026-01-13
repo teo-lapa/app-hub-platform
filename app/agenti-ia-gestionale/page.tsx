@@ -443,7 +443,7 @@ export default function LapaAiAgentsPage() {
       const response = await fetch(`${API_BASE}/chat/task/${taskId}`);
       const data = await response.json();
 
-      console.log(`[POLL] Task ${taskId}:`, data.status, 'agent:', data.agent);
+      console.log(`[POLL] Task ${taskId}:`, data.status, 'agent:', data.agent, 'model:', data.model, 'progress:', data.progress);
 
       if (data.task_id) {
         // Trova l'agente del task - DEVE essere presente
@@ -1299,6 +1299,7 @@ export default function LapaAiAgentsPage() {
             {(() => {
               const task = backgroundTasks.find(t => t.task_id === activeTaskId);
               const model = task?.model || (task?.progress as Record<string, unknown>)?.model as string || '';
+              console.log('[LED] activeTaskId:', activeTaskId, 'task:', task?.task_id, 'model:', model, 'progress:', task?.progress);
               const isOpus = model.includes('opus');
               const isHaiku = model.includes('haiku');
               const isSonnet = model.includes('sonnet') || (!isOpus && !isHaiku && model !== '');
