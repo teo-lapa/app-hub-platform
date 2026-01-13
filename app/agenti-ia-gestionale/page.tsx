@@ -74,6 +74,7 @@ interface BackgroundTask {
   actions_taken?: Array<{ tool: string; status: string; result_summary?: string; input?: Record<string, unknown> }>;
   created_at?: string;
   completed_at?: string;
+  model?: string;  // Modello Claude in uso (opus, sonnet, haiku)
   progress?: {
     iteration: number;
     max_iterations: number;
@@ -1385,6 +1386,39 @@ export default function LapaAiAgentsPage() {
                   {backgroundTasks.find(t => t.task_id === activeTaskId)?.progress?.elapsed_seconds?.toFixed(1)}s
                 </span>
               </div>
+
+              {/* Model Indicator - "Lampadine" per mostrare quale modello e in uso */}
+              {(() => {
+                const task = backgroundTasks.find(t => t.task_id === activeTaskId);
+                // Il modello può essere in task.model o in task.progress.model
+                const model = task?.model || (task?.progress as Record<string, unknown>)?.model as string || '';
+                const isOpus = model.includes('opus');
+                const isHaiku = model.includes('haiku');
+                const isSonnet = model.includes('sonnet') || (!isOpus && !isHaiku && model !== '');
+
+                return (
+                  <div className="flex items-center gap-3 py-2 px-3 bg-slate-900/50 rounded-lg">
+                    <span className="text-xs text-slate-500">Modello:</span>
+                    <div className="flex items-center gap-2">
+                      {/* OPUS - Arancione/Oro */}
+                      <div className="flex items-center gap-1">
+                        <div className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${isOpus ? 'bg-amber-400 shadow-lg shadow-amber-400/50 animate-pulse' : 'bg-slate-600'}`} />
+                        <span className={`text-xs ${isOpus ? 'text-amber-400 font-medium' : 'text-slate-500'}`}>Opus</span>
+                      </div>
+                      {/* SONNET - Viola */}
+                      <div className="flex items-center gap-1">
+                        <div className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${isSonnet ? 'bg-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : 'bg-slate-600'}`} />
+                        <span className={`text-xs ${isSonnet ? 'text-purple-400 font-medium' : 'text-slate-500'}`}>Sonnet</span>
+                      </div>
+                      {/* HAIKU - Verde */}
+                      <div className="flex items-center gap-1">
+                        <div className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${isHaiku ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse' : 'bg-slate-600'}`} />
+                        <span className={`text-xs ${isHaiku ? 'text-emerald-400 font-medium' : 'text-slate-500'}`}>Haiku</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Current Operation */}
               {(() => {
