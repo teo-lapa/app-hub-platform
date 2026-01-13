@@ -123,7 +123,19 @@ export default function ProdottiPreordinePage() {
           daysOfStock: p.daysOfStock,
           hasVariants: p.hasVariants || false,
           variantCount: p.variantCount || 0,
-          variants: p.variants || []
+          // 🔥 Mappa correttamente le varianti con assignedCustomers
+          variants: (p.variants || []).map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            stock: v.stock || 0,
+            price: v.price || 0,
+            code: v.code || '',
+            assignedCustomers: (v.assigned_customers || []).map((a: any) => ({
+              customerId: a.customerId,
+              customerName: a.customerName || 'Cliente',
+              quantity: a.quantity
+            }))
+          }))
         }))
 
         setAllProducts(products)
@@ -1038,15 +1050,12 @@ export default function ProdottiPreordinePage() {
                                 >
                                   {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
                                     <div className="space-y-1">
-                                      {variant.assignedCustomers.map((a: any, i: number) => {
-                                        const customer = customersCache.get(a.customerId);
-                                        return (
-                                          <div key={i} className="flex justify-between items-center">
-                                            <span className="truncate text-xs">{customer?.name || 'Cliente sconosciuto'}</span>
-                                            <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
-                                          </div>
-                                        );
-                                      })}
+                                      {variant.assignedCustomers.map((a: any, i: number) => (
+                                        <div key={i} className="flex justify-between items-center">
+                                          <span className="truncate text-xs">{a.customerName || 'Cliente'}</span>
+                                          <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
+                                        </div>
+                                      ))}
                                     </div>
                                   ) : (
                                     <div className="text-xs text-gray-500 italic">Nessun cliente</div>
@@ -1247,15 +1256,12 @@ export default function ProdottiPreordinePage() {
                               >
                                 {variant.assignedCustomers && variant.assignedCustomers.length > 0 ? (
                                   <div className="space-y-1">
-                                    {variant.assignedCustomers.map((a: any, i: number) => {
-                                      const customer = customersCache.get(a.customerId);
-                                      return (
-                                        <div key={i} className="flex justify-between items-center">
-                                          <span className="truncate">{customer?.name || 'Cliente sconosciuto'}</span>
-                                          <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
-                                        </div>
-                                      );
-                                    })}
+                                    {variant.assignedCustomers.map((a: any, i: number) => (
+                                      <div key={i} className="flex justify-between items-center">
+                                        <span className="truncate">{a.customerName || 'Cliente'}</span>
+                                        <span className="ml-2 text-purple-300 font-semibold">({a.quantity})</span>
+                                      </div>
+                                    ))}
                                     <div className="text-center pt-2 border-t border-white/10 text-purple-300 font-bold">
                                       Totale: {variantTotalQty}
                                     </div>
