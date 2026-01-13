@@ -1295,6 +1295,28 @@ export default function LapaAiAgentsPage() {
               <span className={`h-1.5 w-1.5 rounded-full ${getStatusColor(selectedAgentData?.status || 'idle')} ${selectedAgentData?.status === 'working' ? 'animate-pulse' : ''}`} />
               {getStatusText(selectedAgentData?.status || 'idle')}
             </span>
+            {/* Model LEDs - Always visible in header */}
+            {(() => {
+              const task = backgroundTasks.find(t => t.task_id === activeTaskId);
+              const model = task?.model || (task?.progress as Record<string, unknown>)?.model as string || '';
+              const isOpus = model.includes('opus');
+              const isHaiku = model.includes('haiku');
+              const isSonnet = model.includes('sonnet') || (!isOpus && !isHaiku && model !== '');
+              const hasActiveModel = isOpus || isSonnet || isHaiku;
+
+              return (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 rounded-full border border-slate-700/50">
+                  <div className={`h-2 w-2 rounded-full transition-all duration-300 ${isOpus ? 'bg-amber-400 shadow-md shadow-amber-400/50' : 'bg-slate-600'}`} title="Opus" />
+                  <div className={`h-2 w-2 rounded-full transition-all duration-300 ${isSonnet ? 'bg-purple-400 shadow-md shadow-purple-400/50' : 'bg-slate-600'}`} title="Sonnet" />
+                  <div className={`h-2 w-2 rounded-full transition-all duration-300 ${isHaiku ? 'bg-emerald-400 shadow-md shadow-emerald-400/50' : 'bg-slate-600'}`} title="Haiku" />
+                  {hasActiveModel && (
+                    <span className={`text-[10px] ml-1 ${isOpus ? 'text-amber-400' : isSonnet ? 'text-purple-400' : 'text-emerald-400'}`}>
+                      {isOpus ? 'O' : isSonnet ? 'S' : 'H'}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
             {/* Clear Chat Button */}
             {chatHistory.length > 0 && !activeTaskId && (
               <button
@@ -1428,17 +1450,6 @@ export default function LapaAiAgentsPage() {
 
                 return (
                   <>
-                    {/* Iteration Info */}
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span>Iterazione {progress.iteration}/{progress.max_iterations}</span>
-                      {progress.tokens && (
-                        <>
-                          <span className="text-slate-600">|</span>
-                          <span>{progress.tokens.input + progress.tokens.output} tokens</span>
-                        </>
-                      )}
-                    </div>
-
                     {/* Current Tool Being Executed */}
                     {progress.status === 'executing_tool' && progress.current_tool && (
                       <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
