@@ -1280,9 +1280,9 @@ export default function ProdottiPreordinePage() {
       {/* Customer Assignment Modal */}
       {showCustomerModal && selectedProduct && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 z-50">
-          <div className="bg-slate-800 rounded-none sm:rounded-xl max-w-3xl w-full h-full sm:h-auto sm:max-h-[80vh] overflow-hidden border-0 sm:border border-purple-500/30">
+          <div className="bg-slate-800 rounded-none sm:rounded-xl max-w-3xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden border-0 sm:border border-purple-500/30 flex flex-col">
             {/* Header - Mobile optimized */}
-            <div className="p-4 sm:p-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="p-4 sm:p-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
               <div className="flex items-start justify-between sm:gap-4 flex-1">
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg sm:text-xl font-bold text-white">Assegna Clienti</h2>
@@ -1321,7 +1321,7 @@ export default function ProdottiPreordinePage() {
               </div>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto" style={{maxHeight: 'calc(100vh - 140px)'}}>
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {/* Search bar - Mobile optimized */}
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -1421,7 +1421,7 @@ export default function ProdottiPreordinePage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-white/10 flex gap-3">
+            <div className="p-4 sm:p-6 border-t border-white/10 flex gap-3 flex-shrink-0 bg-slate-800">
               <button
                 onClick={() => {
                   setShowCustomerModal(false)
@@ -1429,13 +1429,13 @@ export default function ProdottiPreordinePage() {
                   setCustomerAssignments([])
                   setCustomerSearchTerm('')
                 }}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors min-h-[48px]"
               >
                 Annulla
               </button>
               <button
                 onClick={saveCustomerAssignments}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg transition-all font-semibold"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg transition-all font-semibold min-h-[48px]"
               >
                 Salva Assegnazioni
               </button>
