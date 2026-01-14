@@ -8,9 +8,13 @@
  * Se non disponibile, usa credenziali di fallback (solo per sviluppo)
  *
  * NEW: Now integrated with SessionManager for automatic session refresh
+ * NEW: Estrae odooUserId dal JWT per supportare login Google
  */
 
 import { getOdooSessionManager } from './odoo/sessionManager';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
 // Lazy eval env vars to allow dotenv to load first
 // Fallback allineati con sessionManager - usa DB main
@@ -48,6 +52,21 @@ export async function getOdooSession(userCookies?: string) {
       const sessionId = odooSessionIdMatch[1];
       console.log('✅ [ODOO-AUTH] Trovata sessione Odoo dal cookie odoo_session_id (NEW SYSTEM)');
       const odooCookie = `session_id=${sessionId}`;
+
+      // IMPORTANTE: Prima controlla se c'è odooUserId nel JWT (login Google)
+      // Il JWT contiene l'ID dell'utente REALE, mentre la sessione potrebbe essere dell'admin
+      const tokenMatch = userCookies.match(/token=([^;]+)/);
+      if (tokenMatch) {
+        try {
+          const decoded = jwt.verify(tokenMatch[1], JWT_SECRET) as any;
+          if (decoded.odooUserId) {
+            console.log('🔑 [ODOO-AUTH] Trovato odooUserId nel JWT:', decoded.odooUserId, '- usando questo invece della sessione');
+            return { cookies: odooCookie, uid: decoded.odooUserId };
+          }
+        } catch (e) {
+          console.log('⚠️ [ODOO-AUTH] JWT non valido, provo con session_info');
+        }
+      }
 
       // Estrai UID dalla sessione Odoo chiamando l'endpoint /web/session/get_session_info
       try {
