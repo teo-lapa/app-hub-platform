@@ -133,41 +133,35 @@ export class PickingOdooClient {
     }
   }
 
-  // Cerca picking singoli per nome o riferimento
-  async searchSinglePickings(searchTerm: string): Promise<any[]> {
+  // Carica tutti i WH/PICK pronti che sono in un batch
+  async getReadyPickings(): Promise<any[]> {
     try {
-      console.log('🔄 [Picking] Ricerca picking singoli:', searchTerm);
+      console.log('🔄 [Picking] Caricamento WH/PICK pronti (in batch)...');
 
-      // Cerca nei picking che sono "assigned" (pronti per il prelievo) e di tipo outgoing
+      // Filtro: solo WH/PICK pronti che sono GIÀ in un batch (no residui)
       const domain: any[] = [
         ['state', '=', 'assigned'],
-        ['picking_type_code', '=', 'outgoing'],
-        '|',
-        ['name', 'ilike', searchTerm],
-        ['origin', 'ilike', searchTerm]
+        ['picking_type_code', '=', 'internal'],  // Solo WH/PICK
+        ['batch_id', '!=', false]  // Solo quelli IN un batch (no residui)
       ];
 
       const fields = [
         'id', 'name', 'state', 'partner_id', 'origin',
-        'scheduled_date', 'move_line_ids', 'note'
+        'scheduled_date', 'move_line_ids', 'note', 'batch_id'
       ];
 
       const pickings = await this.rpc(
         'stock.picking',
         'search_read',
         [domain, fields],
-        { limit: 20, order: 'name desc' }
+        { limit: 50, order: 'scheduled_date asc, name asc' }
       );
 
-      console.log(`✅ [Picking] Trovati ${pickings.length} picking singoli`);
+      console.log(`✅ [Picking] Trovati ${pickings.length} WH/PICK pronti`);
 
-      // Per ogni picking, conta i prodotti
-      const pickingsWithCounts = await Promise.all(pickings.map(async (picking: any) => {
-        let productCount = 0;
-
-        if (picking.move_line_ids && Array.isArray(picking.move_line_ids) && picking.move_line_ids.length > 0) {
-          productCount = picking.move_line_ids.length;
-        }
+      // Per ogni picking, conta i prodotti e aggiungi info batch
+      const pickingsWithCounts = pickings.map((picking: any) => {
+        const productCount = picking.move_line_ids?.length || 0;
 
         return {
           id: picking.id,
@@ -177,14 +171,16 @@ export class PickingOdooClient {
           origin: picking.origin || '',
           scheduled_date: picking.scheduled_date || '',
           product_count: productCount,
-          note: picking.note || ''
+          note: picking.note || '',
+          batch_id: picking.batch_id ? picking.batch_id[0] : null,
+          batch_name: picking.batch_id ? picking.batch_id[1] : null
         };
-      }));
+      });
 
       return pickingsWithCounts;
 
     } catch (error) {
-      console.error('Errore ricerca picking singoli:', error);
+      console.error('Errore caricamento WH/PICK:', error);
       throw error;
     }
   }

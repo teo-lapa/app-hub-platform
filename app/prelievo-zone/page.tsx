@@ -344,25 +344,27 @@ export default function PrelievoZonePage() {
   };
 
   // Funzioni per picking singolo
-  const searchSinglePickings = async () => {
-    if (singlePickingSearch.trim().length < 2) {
-      toast('Inserisci almeno 2 caratteri per la ricerca', { icon: 'ℹ️' });
-      return;
-    }
-
+  const loadReadyPickings = async () => {
     setIsSearchingPickings(true);
     try {
-      const results = await pickingClient.searchSinglePickings(singlePickingSearch);
+      const results = await pickingClient.getReadyPickings();
       setSinglePickingResults(results);
 
       if (results.length === 0) {
-        toast('Nessun picking trovato', { icon: 'ℹ️' });
+        toast('Nessun WH/PICK pronto', { icon: 'ℹ️' });
       }
     } catch (error: any) {
-      toast.error(`Errore nella ricerca: ${error.message || 'Errore sconosciuto'}`);
+      toast.error(`Errore nel caricamento: ${error.message || 'Errore sconosciuto'}`);
     } finally {
       setIsSearchingPickings(false);
     }
+  };
+
+  // Apri modal e carica automaticamente i pick
+  const openSinglePickingModal = async () => {
+    setShowSinglePickingModal(true);
+    setSinglePickingSearch('');
+    await loadReadyPickings();
   };
 
   const selectSinglePicking = async (picking: any) => {
@@ -1189,11 +1191,11 @@ export default function PrelievoZonePage() {
               </span>
             </div>
 
-            {/* Pulsante Picking Singolo */}
+            {/* Pulsante Pick Singolo */}
             <button
-              onClick={() => setShowSinglePickingModal(true)}
+              onClick={openSinglePickingModal}
               className="glass px-3 py-2 rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 border border-purple-500/50"
-              title="Cerca Picking Singolo"
+              title="Pick Singolo"
             >
               <FileText className="w-5 h-5 text-purple-400" />
               <span className="text-sm font-medium hidden sm:inline text-purple-400">Pick Singolo</span>
@@ -2131,7 +2133,7 @@ export default function PrelievoZonePage() {
         </div>
       )}
 
-      {/* MODAL RICERCA PICKING SINGOLO */}
+      {/* MODAL PICK SINGOLO */}
       {showSinglePickingModal && (
         <div
           className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
@@ -2145,7 +2147,7 @@ export default function PrelievoZonePage() {
             <div className="flex items-center justify-between mb-6 border-b border-white/20 pb-4">
               <div className="flex items-center gap-3">
                 <FileText className="w-8 h-8 text-purple-400" />
-                <h2 className="text-2xl md:text-3xl font-bold">Picking Singolo</h2>
+                <h2 className="text-2xl md:text-3xl font-bold">Pick Singolo</h2>
               </div>
               <button
                 onClick={() => setShowSinglePickingModal(false)}
@@ -2155,45 +2157,19 @@ export default function PrelievoZonePage() {
               </button>
             </div>
 
-            {/* Barra di ricerca */}
-            <div className="flex gap-3 mb-6">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={singlePickingSearch}
-                  onChange={(e) => setSinglePickingSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      searchSinglePickings();
-                    }
-                  }}
-                  placeholder="Cerca per nome picking o riferimento (es. WH/OUT/00123)"
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  autoFocus
-                />
-              </div>
-              <button
-                onClick={searchSinglePickings}
-                disabled={isSearchingPickings}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isSearchingPickings ? (
-                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-                ) : (
-                  <Search className="w-5 h-5" />
-                )}
-                Cerca
-              </button>
-            </div>
-
-            {/* Risultati */}
+            {/* Lista Pick */}
             <div className="flex-1 overflow-y-auto space-y-3">
+              {isSearchingPickings && (
+                <div className="text-center py-12">
+                  <div className="animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4" />
+                  <p className="text-gray-400">Caricamento pick...</p>
+                </div>
+              )}
+
               {singlePickingResults.length === 0 && !isSearchingPickings && (
                 <div className="text-center py-12 text-gray-400">
-                  <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">Cerca un picking per nome o riferimento</p>
-                  <p className="text-sm mt-2">Es: WH/OUT/00123, SO0001</p>
+                  <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Nessun WH/PICK pronto</p>
                 </div>
               )}
 
@@ -2208,14 +2184,12 @@ export default function PrelievoZonePage() {
                       <h3 className="font-bold text-lg text-purple-400">{picking.name}</h3>
                       <p className="text-sm text-gray-300">{picking.partner_name}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      picking.state === 'assigned' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {picking.state === 'assigned' ? 'Pronto' : picking.state}
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                      Pronto
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-4 text-sm text-gray-400 flex-wrap">
                     {picking.origin && (
                       <span>Rif: {picking.origin}</span>
                     )}
@@ -2224,6 +2198,13 @@ export default function PrelievoZonePage() {
                       <span>{new Date(picking.scheduled_date).toLocaleDateString('it-IT')}</span>
                     )}
                   </div>
+
+                  {/* Batch di appartenenza */}
+                  {picking.batch_name && (
+                    <div className="mt-2 px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-lg inline-block">
+                      📦 {picking.batch_name}
+                    </div>
+                  )}
 
                   {picking.note && (
                     <div className="mt-2 flex items-center gap-2 text-yellow-400 text-sm">
