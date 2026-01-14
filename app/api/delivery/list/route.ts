@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // Timeout 30 secondi (ottimizzato)
@@ -39,6 +42,15 @@ export async function GET(request: NextRequest) {
     // Usa la sessione dell'utente loggato invece di credenziali hardcoded
     const userCookies = request.headers.get('cookie');
 
+    // DEBUG: Log dei cookies ricevuti
+    console.log('🍪 [DELIVERY] Cookies ricevuti:', userCookies ? 'SI' : 'NO');
+    if (userCookies) {
+      const hasOdooSession = userCookies.includes('odoo_session_id');
+      const hasToken = userCookies.includes('token');
+      console.log('🍪 [DELIVERY] Ha odoo_session_id:', hasOdooSession);
+      console.log('🍪 [DELIVERY] Ha token:', hasToken);
+    }
+
     if (!userCookies) {
       return NextResponse.json({
         error: 'Devi effettuare il login sulla piattaforma prima di usare l\'app delivery'
@@ -46,6 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { cookies, uid } = await getOdooSession(userCookies);
+    console.log('🔐 [DELIVERY] getOdooSession result - UID:', uid, '- Cookies:', cookies ? 'SI' : 'NO');
 
     if (!uid || !cookies) {
       return NextResponse.json({
@@ -53,10 +66,26 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    console.log('✅ [DELIVERY] Utente autenticato con UID:', uid);
+    // IMPORTANTE: Estrai odooUserId dal JWT se presente (per login Google)
+    // Il JWT contiene l'ID dell'utente REALE, mentre la sessione Odoo potrebbe essere dell'admin
+    let realUid = uid;
+    const tokenMatch = userCookies.match(/token=([^;]+)/);
+    if (tokenMatch) {
+      try {
+        const decoded = jwt.verify(tokenMatch[1], JWT_SECRET) as any;
+        if (decoded.odooUserId) {
+          console.log('🔑 [DELIVERY] Trovato odooUserId nel JWT:', decoded.odooUserId);
+          realUid = decoded.odooUserId;
+        }
+      } catch (e) {
+        console.log('⚠️ [DELIVERY] JWT non valido o scaduto, uso UID dalla sessione');
+      }
+    }
+
+    console.log('✅ [DELIVERY] Utente autenticato con UID:', realUid, '(originale:', uid, ')');
 
     // Cerca employee_id dell'utente loggato
-    const uidNum = typeof uid === 'string' ? parseInt(uid) : uid;
+    const uidNum = typeof realUid === 'string' ? parseInt(realUid) : realUid;
 
     const employees = await callOdoo(
       cookies,
