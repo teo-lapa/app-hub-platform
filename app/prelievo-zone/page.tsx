@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon, RefreshCw, Zap } from 'lucide-react';
+import { Package, Truck, MapPin, BarChart3, Settings, ChevronRight, Clock, CheckCircle2, Camera, Sun, Moon, RefreshCw, Zap, Search, X, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
@@ -95,6 +95,14 @@ export default function PrelievoZonePage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
   const [customerNoteText, setCustomerNoteText] = useState('');
+
+  // Stati per picking singolo
+  const [showSinglePickingModal, setShowSinglePickingModal] = useState(false);
+  const [singlePickingSearch, setSinglePickingSearch] = useState('');
+  const [singlePickingResults, setSinglePickingResults] = useState<any[]>([]);
+  const [isSearchingPickings, setIsSearchingPickings] = useState(false);
+  const [currentSinglePicking, setCurrentSinglePicking] = useState<any | null>(null);
+  const [isSinglePickingMode, setIsSinglePickingMode] = useState(false);
 
   // Statistiche (totalTime rimosso - ora calcolato dal TimerDisplay)
   const [workStats, setWorkStats] = useState<WorkStats>({
@@ -335,6 +343,155 @@ export default function PrelievoZonePage() {
     }
   };
 
+  // Funzioni per picking singolo
+  const searchSinglePickings = async () => {
+    if (singlePickingSearch.trim().length < 2) {
+      toast('Inserisci almeno 2 caratteri per la ricerca', { icon: 'ℹ️' });
+      return;
+    }
+
+    setIsSearchingPickings(true);
+    try {
+      const results = await pickingClient.searchSinglePickings(singlePickingSearch);
+      setSinglePickingResults(results);
+
+      if (results.length === 0) {
+        toast('Nessun picking trovato', { icon: 'ℹ️' });
+      }
+    } catch (error: any) {
+      toast.error(`Errore nella ricerca: ${error.message || 'Errore sconosciuto'}`);
+    } finally {
+      setIsSearchingPickings(false);
+    }
+  };
+
+  const selectSinglePicking = async (picking: any) => {
+    // Svuota cache
+    operationsCacheRef.current = {};
+    cacheTimestampsRef.current = {};
+    locationStatusCacheRef.current = {};
+    sessionStorage.removeItem('pickingOperationsCache');
+    sessionStorage.removeItem('pickingCacheTimestamps');
+    sessionStorage.removeItem('pickingLocationStatusCache');
+
+    setCurrentSinglePicking(picking);
+    setIsSinglePickingMode(true);
+    setShowSinglePickingModal(false);
+    setShowBatchSelector(false);
+    setShowZoneSelector(false);
+    setShowLocationList(true);
+
+    // Reset statistiche
+    setWorkStats({
+      zonesCompleted: 0,
+      totalOperations: 0,
+      completedOperations: 0,
+      startTime: new Date(),
+      currentZoneTime: 0,
+      totalTime: 0
+    });
+
+    // Carica ubicazioni per il picking singolo
+    await loadSinglePickingLocations(picking.id);
+
+    toast.success(`Picking ${picking.name} selezionato`);
+  };
+
+  const loadSinglePickingLocations = async (pickingId: number) => {
+    try {
+      const odooLocations = await pickingClient.getSinglePickingLocations(pickingId);
+
+      // Ordina ubicazioni
+      const sortedLocations = odooLocations.sort((a, b) => {
+        const getLastPart = (name: string) => {
+          const parts = name.split(/[\/\.]/);
+          return parts[parts.length - 1] || name;
+        };
+        return getLastPart(a.name).localeCompare(getLastPart(b.name), undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setLocations(sortedLocations);
+
+      if (odooLocations.length === 0) {
+        toast('Nessuna operazione da prelevare', { icon: 'ℹ️' });
+      } else {
+        toast.success(`✅ ${odooLocations.length} ubicazioni caricate!`);
+      }
+    } catch (error: any) {
+      toast.error('Errore nel caricamento delle ubicazioni');
+    }
+  };
+
+  const loadSinglePickingOperations = async (location: StockLocation) => {
+    try {
+      if (!currentSinglePicking) {
+        toast.error('Nessun picking selezionato');
+        return;
+      }
+
+      const cacheKey = `single-${currentSinglePicking.id}-${location.id}`;
+
+      if (operationsCacheRef.current[cacheKey]) {
+        setCurrentOperations(operationsCacheRef.current[cacheKey]);
+        return;
+      }
+
+      setIsLoading(true);
+
+      const odooOperations = await pickingClient.getSinglePickingLocationOperations(
+        currentSinglePicking.id,
+        location.id
+      );
+
+      const sortedOperations = odooOperations.sort((a, b) => {
+        return a.productName.localeCompare(b.productName, 'it-IT');
+      });
+
+      // Salva in cache
+      const now = Date.now();
+      operationsCacheRef.current[cacheKey] = sortedOperations;
+      cacheTimestampsRef.current[cacheKey] = now;
+
+      const fullyCompletedOps = sortedOperations.filter(op => op.qty_done >= op.quantity).length;
+      const partialOps = sortedOperations.filter(op => op.qty_done > 0 && op.qty_done < op.quantity).length;
+      const completedOps = fullyCompletedOps + partialOps;
+      const totalOps = sortedOperations.length;
+      const isFullyCompleted = totalOps > 0 && fullyCompletedOps === totalOps;
+
+      locationStatusCacheRef.current[location.id] = { completedOps, totalOps, isFullyCompleted };
+
+      sessionStorage.setItem('pickingOperationsCache', JSON.stringify(operationsCacheRef.current));
+      sessionStorage.setItem('pickingCacheTimestamps', JSON.stringify(cacheTimestampsRef.current));
+      sessionStorage.setItem('pickingLocationStatusCache', JSON.stringify(locationStatusCacheRef.current));
+
+      setCurrentOperations(sortedOperations);
+
+      setWorkStats(prev => ({
+        ...prev,
+        totalOperations: prev.totalOperations + odooOperations.length
+      }));
+
+      if (odooOperations.length === 0) {
+        toast(`Nessuna operazione da prelevare in ${location.name}`, { icon: 'ℹ️' });
+      }
+    } catch (error: any) {
+      toast.error('Errore nel caricamento delle operazioni');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const exitSinglePickingMode = () => {
+    setIsSinglePickingMode(false);
+    setCurrentSinglePicking(null);
+    setShowLocationList(false);
+    setShowBatchSelector(true);
+    setLocations([]);
+    setCurrentOperations([]);
+    setSinglePickingSearch('');
+    setSinglePickingResults([]);
+  };
+
   const selectBatch = async (batch: Batch) => {
     // IMPORTANTE: Svuota TUTTA la cache quando cambi batch!
     // Questo risolve il problema delle ubicazioni che rimangono verdi
@@ -492,8 +649,12 @@ export default function PrelievoZonePage() {
     setShowLocationList(false);
     setShowOperations(true);
 
-    // Carica operazioni per l'ubicazione
-    await loadLocationOperations(location);
+    // Carica operazioni per l'ubicazione (gestisce sia batch che picking singolo)
+    if (isSinglePickingMode) {
+      await loadSinglePickingOperations(location);
+    } else {
+      await loadLocationOperations(location);
+    }
 
     toast.success(`Ubicazione ${location.name} selezionata`);
   };
@@ -1028,6 +1189,16 @@ export default function PrelievoZonePage() {
               </span>
             </div>
 
+            {/* Pulsante Picking Singolo */}
+            <button
+              onClick={() => setShowSinglePickingModal(true)}
+              className="glass px-3 py-2 rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 border border-purple-500/50"
+              title="Cerca Picking Singolo"
+            >
+              <FileText className="w-5 h-5 text-purple-400" />
+              <span className="text-sm font-medium hidden sm:inline text-purple-400">Pick Singolo</span>
+            </button>
+
             {/* Performance Mode Toggle Button */}
             <button
               onClick={togglePerformanceMode}
@@ -1076,22 +1247,37 @@ export default function PrelievoZonePage() {
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-6 flex-wrap">
-              {/* Informazioni Batch */}
+              {/* Informazioni Batch/Picking */}
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4 text-orange-400" />
                 <span className="text-sm">
-                  Batch: <strong>{currentBatch?.name}</strong>
+                  {isSinglePickingMode ? (
+                    <>Pick: <strong>{currentSinglePicking?.name}</strong></>
+                  ) : (
+                    <>Batch: <strong>{currentBatch?.name}</strong></>
+                  )}
                 </span>
               </div>
 
-              {/* Informazioni Autista */}
-              {currentBatch?.x_studio_autista_del_giro && (
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-cyan-400" />
-                  <span className="text-sm">
-                    Autista: <strong>{currentBatch.x_studio_autista_del_giro[1]}</strong>
-                  </span>
-                </div>
+              {/* Informazioni Autista/Cliente */}
+              {isSinglePickingMode ? (
+                currentSinglePicking?.partner_name && (
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-cyan-400" />
+                    <span className="text-sm">
+                      Cliente: <strong>{currentSinglePicking.partner_name}</strong>
+                    </span>
+                  </div>
+                )
+              ) : (
+                currentBatch?.x_studio_autista_del_giro && (
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-cyan-400" />
+                    <span className="text-sm">
+                      Autista: <strong>{currentBatch.x_studio_autista_del_giro[1]}</strong>
+                    </span>
+                  </div>
+                )
               )}
 
               {/* Tempo */}
@@ -1273,34 +1459,45 @@ export default function PrelievoZonePage() {
         {/* Locations List */}
         {showLocationList && (
           <div className="slide-in-right"
-            
+
           >
             <div className="mb-6 flex items-center justify-between">
               <button
                 onClick={async () => {
-                  // Genera e salva report prima di tornare alle zone
-                  await generateAndSaveZoneReport();
+                  if (isSinglePickingMode) {
+                    // Esci dalla modalità picking singolo
+                    exitSinglePickingMode();
+                  } else {
+                    // Genera e salva report prima di tornare alle zone
+                    await generateAndSaveZoneReport();
 
-                  // Reset tempi zona per la prossima zona
-                  setZoneStartTime(null);
-                  setOperationStartTimes({});
-                  setOperationDurations({});
+                    // Reset tempi zona per la prossima zona
+                    setZoneStartTime(null);
+                    setOperationStartTimes({});
+                    setOperationDurations({});
 
-                  setShowLocationList(false);
-                  setShowZoneSelector(true);
-                  setCurrentZone(null);
+                    setShowLocationList(false);
+                    setShowZoneSelector(true);
+                    setCurrentZone(null);
+                  }
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
               >
-                ← Torna alle Zone
+                {isSinglePickingMode ? '← Torna ai Batch' : '← Torna alle Zone'}
               </button>
 
-              <div
-                className="px-4 py-2 rounded-lg font-semibold"
-                style={{ backgroundColor: `${currentZone?.color}20`, color: currentZone?.color }}
-              >
-                {currentZone?.displayName}
-              </div>
+              {isSinglePickingMode ? (
+                <div className="px-4 py-2 rounded-lg font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  📦 {currentSinglePicking?.name} - {currentSinglePicking?.partner_name}
+                </div>
+              ) : (
+                <div
+                  className="px-4 py-2 rounded-lg font-semibold"
+                  style={{ backgroundColor: `${currentZone?.color}20`, color: currentZone?.color }}
+                >
+                  {currentZone?.displayName}
+                </div>
+              )}
             </div>
 
             {/* Input invisibile per scanner pistola */}
@@ -1479,7 +1676,7 @@ export default function PrelievoZonePage() {
         {/* Operations List */}
         {showOperations && (
           <div className="slide-in-right"
-            
+
           >
             <div className="mb-6 flex items-center justify-between">
               <button
@@ -1494,17 +1691,23 @@ export default function PrelievoZonePage() {
               </button>
 
               <div className="flex items-center gap-2">
-                <div
-                  className="px-4 py-2 rounded-xl text-lg font-black shadow-lg border-2"
-                  style={{
-                    backgroundColor: currentZone?.color,
-                    color: '#ffffff',
-                    borderColor: currentZone?.color,
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                  }}
-                >
-                  {currentZone?.displayName}
-                </div>
+                {isSinglePickingMode ? (
+                  <div className="px-4 py-2 rounded-xl text-lg font-black shadow-lg border-2 bg-purple-600 text-white border-purple-600">
+                    📦 {currentSinglePicking?.name}
+                  </div>
+                ) : (
+                  <div
+                    className="px-4 py-2 rounded-xl text-lg font-black shadow-lg border-2"
+                    style={{
+                      backgroundColor: currentZone?.color,
+                      color: '#ffffff',
+                      borderColor: currentZone?.color,
+                      textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    {currentZone?.displayName}
+                  </div>
+                )}
                 <div className="px-4 py-2 rounded-lg text-base font-bold bg-gray-700">
                   📍 {currentLocation?.name?.split('/').pop() || currentLocation?.name}
                 </div>
@@ -1924,6 +2127,113 @@ export default function PrelievoZonePage() {
             >
               OK, Ho Capito ✓
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RICERCA PICKING SINGOLO */}
+      {showSinglePickingModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setShowSinglePickingModal(false)}
+        >
+          <div
+            className={`w-full max-w-2xl ${darkMode ? 'glass-picking-strong' : 'glass-strong'} rounded-2xl p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 border-b border-white/20 pb-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-8 h-8 text-purple-400" />
+                <h2 className="text-2xl md:text-3xl font-bold">Picking Singolo</h2>
+              </div>
+              <button
+                onClick={() => setShowSinglePickingModal(false)}
+                className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Barra di ricerca */}
+            <div className="flex gap-3 mb-6">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={singlePickingSearch}
+                  onChange={(e) => setSinglePickingSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      searchSinglePickings();
+                    }
+                  }}
+                  placeholder="Cerca per nome picking o riferimento (es. WH/OUT/00123)"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={searchSinglePickings}
+                disabled={isSearchingPickings}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSearchingPickings ? (
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <Search className="w-5 h-5" />
+                )}
+                Cerca
+              </button>
+            </div>
+
+            {/* Risultati */}
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {singlePickingResults.length === 0 && !isSearchingPickings && (
+                <div className="text-center py-12 text-gray-400">
+                  <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Cerca un picking per nome o riferimento</p>
+                  <p className="text-sm mt-2">Es: WH/OUT/00123, SO0001</p>
+                </div>
+              )}
+
+              {singlePickingResults.map((picking) => (
+                <button
+                  key={picking.id}
+                  onClick={() => selectSinglePicking(picking)}
+                  className="w-full glass p-4 rounded-xl hover:bg-white/20 transition-all text-left border border-purple-500/30"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="font-bold text-lg text-purple-400">{picking.name}</h3>
+                      <p className="text-sm text-gray-300">{picking.partner_name}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      picking.state === 'assigned' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {picking.state === 'assigned' ? 'Pronto' : picking.state}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                    {picking.origin && (
+                      <span>Rif: {picking.origin}</span>
+                    )}
+                    <span>{picking.product_count} prodotti</span>
+                    {picking.scheduled_date && (
+                      <span>{new Date(picking.scheduled_date).toLocaleDateString('it-IT')}</span>
+                    )}
+                  </div>
+
+                  {picking.note && (
+                    <div className="mt-2 flex items-center gap-2 text-yellow-400 text-sm">
+                      <span>⚠️</span>
+                      <span>Ha un messaggio</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

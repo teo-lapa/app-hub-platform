@@ -133,6 +133,220 @@ export class PickingOdooClient {
     }
   }
 
+  // Cerca picking singoli per nome o riferimento
+  async searchSinglePickings(searchTerm: string): Promise<any[]> {
+    try {
+      console.log('🔄 [Picking] Ricerca picking singoli:', searchTerm);
+
+      // Cerca nei picking che sono "assigned" (pronti per il prelievo) e di tipo outgoing
+      const domain: any[] = [
+        ['state', '=', 'assigned'],
+        ['picking_type_code', '=', 'outgoing'],
+        '|',
+        ['name', 'ilike', searchTerm],
+        ['origin', 'ilike', searchTerm]
+      ];
+
+      const fields = [
+        'id', 'name', 'state', 'partner_id', 'origin',
+        'scheduled_date', 'move_line_ids', 'note'
+      ];
+
+      const pickings = await this.rpc(
+        'stock.picking',
+        'search_read',
+        [domain, fields],
+        { limit: 20, order: 'name desc' }
+      );
+
+      console.log(`✅ [Picking] Trovati ${pickings.length} picking singoli`);
+
+      // Per ogni picking, conta i prodotti
+      const pickingsWithCounts = await Promise.all(pickings.map(async (picking: any) => {
+        let productCount = 0;
+
+        if (picking.move_line_ids && Array.isArray(picking.move_line_ids) && picking.move_line_ids.length > 0) {
+          productCount = picking.move_line_ids.length;
+        }
+
+        return {
+          id: picking.id,
+          name: picking.name,
+          state: picking.state,
+          partner_name: picking.partner_id ? picking.partner_id[1] : 'N/A',
+          origin: picking.origin || '',
+          scheduled_date: picking.scheduled_date || '',
+          product_count: productCount,
+          note: picking.note || ''
+        };
+      }));
+
+      return pickingsWithCounts;
+
+    } catch (error) {
+      console.error('Errore ricerca picking singoli:', error);
+      throw error;
+    }
+  }
+
+  // Carica le ubicazioni per un picking singolo (senza batch)
+  async getSinglePickingLocations(pickingId: number): Promise<(StockLocation & { operationCount?: number })[]> {
+    try {
+      console.log(`🔄 [Picking] Caricamento ubicazioni per picking singolo: ${pickingId}`);
+
+      // Carica le move lines per il picking
+      const moveLines = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [[['picking_id', '=', pickingId], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done']],
+        {}
+      );
+
+      console.log(`📦 [Picking] Caricate ${moveLines.length} move lines dal picking ${pickingId}`);
+
+      if (moveLines.length === 0) {
+        return [];
+      }
+
+      // Raggruppa per ubicazione
+      const sublocationMap = new Map();
+
+      for (const line of moveLines) {
+        const locationId = line.location_id[0];
+        const locationName = line.location_id[1];
+        const productName = line.product_id && Array.isArray(line.product_id) ? line.product_id[1] : 'Prodotto sconosciuto';
+        const qtyDone = line.qty_done || 0;
+        const quantity = line.quantity || 0;
+        const isCompleted = qtyDone >= quantity;
+
+        if (!sublocationMap.has(locationId)) {
+          sublocationMap.set(locationId, {
+            id: locationId,
+            name: locationName,
+            complete_name: locationName,
+            barcode: '',
+            operationCount: 0,
+            completedOps: 0,
+            totalOps: 0,
+            productPreview: []
+          });
+        }
+
+        const subloc = sublocationMap.get(locationId);
+        subloc.totalOps++;
+
+        if (isCompleted) {
+          subloc.completedOps++;
+        }
+
+        subloc.isFullyCompleted = subloc.totalOps > 0 && subloc.completedOps === subloc.totalOps;
+        subloc.operationCount = subloc.totalOps;
+
+        if (!subloc.productPreview.includes(productName)) {
+          subloc.productPreview.push(productName);
+        }
+      }
+
+      const result = Array.from(sublocationMap.values());
+
+      console.log(`✅ [Picking] Trovate ${result.length} ubicazioni per picking singolo`);
+
+      return result;
+
+    } catch (error) {
+      console.error('Errore caricamento ubicazioni picking singolo:', error);
+      throw error;
+    }
+  }
+
+  // Carica operazioni per picking singolo e ubicazione
+  async getSinglePickingLocationOperations(pickingId: number, locationId: number): Promise<Operation[]> {
+    try {
+      const domain = [
+        ['picking_id', '=', pickingId],
+        ['location_id', '=', locationId],
+        ['state', 'not in', ['done', 'cancel']]
+      ];
+
+      const moveLines: OdooStockMoveLine[] = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [domain]
+      );
+
+      if (moveLines.length === 0) {
+        return [];
+      }
+
+      // Raccogli ID unici necessari
+      const productIds = Array.from(new Set(moveLines.map(ml => ml.product_id[0])));
+      const lotIds = Array.from(new Set(moveLines
+        .filter(ml => ml.lot_id && Array.isArray(ml.lot_id))
+        .map(ml => (ml.lot_id as [number, string])[0])
+      ));
+
+      // Carica prodotti
+      const uncachedProductIds = productIds.filter(id => !this.productCache.has(id));
+      if (uncachedProductIds.length > 0) {
+        const products = await this.getProducts(uncachedProductIds);
+        products.forEach(p => this.productCache.set(p.id, p));
+      }
+
+      // Carica lotti
+      const uncachedLotIds = lotIds.filter(id => !this.lotCache.has(id));
+      if (uncachedLotIds.length > 0) {
+        const lots = await this.rpc(
+          'stock.lot',
+          'search_read',
+          [[['id', 'in', uncachedLotIds]], ['id', 'name', 'expiration_date']]
+        );
+        lots.forEach((lot: any) => this.lotCache.set(lot.id, lot));
+      }
+
+      // Carica info picking
+      if (!this.pickingCache.has(pickingId)) {
+        const pickings = await this.getPickings([pickingId]);
+        pickings.forEach(p => this.pickingCache.set(p.id, p));
+      }
+
+      const picking = this.pickingCache.get(pickingId);
+
+      return moveLines.map((ml) => {
+        const product = this.productCache.get(ml.product_id[0]);
+        const lot = ml.lot_id ? this.lotCache.get((ml.lot_id as [number, string])[0]) : null;
+
+        return {
+          id: ml.id,
+          lineId: ml.id,
+          moveId: ml.move_id ? ml.move_id[0] : undefined,
+          productId: ml.product_id[0],
+          productName: ml.product_id[1],
+          productCode: product?.default_code || '',
+          productBarcode: product?.barcode || '',
+          locationId: ml.location_id[0],
+          locationName: ml.location_id[1],
+          quantity: ml.quantity || 0,
+          qty_done: ml.qty_done || 0,
+          uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
+          lot_id: ml.lot_id || undefined,
+          lot_name: ml.lot_name || undefined,
+          expiry_date: lot?.expiration_date || undefined,
+          package_id: ml.package_id || undefined,
+          note: picking?.note || '',
+          customer: picking?.partner_name || '',
+          image: product?.image_128 ? `data:image/png;base64,${product.image_128}` : undefined,
+          isCompleted: ml.qty_done >= (ml.quantity || 0),
+          needsQRVerification: false,
+          scannedQR: false
+        };
+      });
+
+    } catch (error) {
+      console.error('Errore caricamento operazioni picking singolo:', error);
+      throw error;
+    }
+  }
+
   // Carica tutti i batch disponibili
   async getBatches(): Promise<Batch[]> {
     try {
