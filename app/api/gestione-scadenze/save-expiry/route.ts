@@ -91,13 +91,44 @@ export async function POST(req: NextRequest) {
 
     // ACTION: Update expiry data
     if (action === 'update_expiry') {
-      const { productId, quantId, lotName, expiryDate } = body;
+      const { productId, quantId, lotId, lotName, expiryDate } = body;
 
-      if (!productId) {
-        return NextResponse.json({ success: false, error: 'ID prodotto mancante' });
+      if (!productId && !lotId) {
+        return NextResponse.json({ success: false, error: 'ID prodotto o lotto mancante' });
       }
 
-      console.log(`📅 [save-expiry] Aggiornando scadenza - Prodotto: ${productId}, Lotto: ${lotName}, Scadenza: ${expiryDate}`);
+      console.log(`📅 [save-expiry] Aggiornando scadenza - Prodotto: ${productId}, LottoID: ${lotId}, LottoName: ${lotName}, Scadenza: ${expiryDate}`);
+
+      // Se abbiamo un lotId diretto, aggiorniamo direttamente il lotto
+      if (lotId && expiryDate) {
+        try {
+          // 1. Aggiorna il lotto
+          await callOdoo('stock.lot', 'write', [[lotId], { expiration_date: expiryDate }]);
+          console.log(`✅ [save-expiry] Aggiornata scadenza lotto ${lotId} a ${expiryDate}`);
+
+          // 2. Aggiorna anche tutte le move lines associate a questo lotto
+          // (il campo expiration_date sulla move line potrebbe non aggiornarsi automaticamente)
+          const moveLines = await callOdoo('stock.move.line', 'search_read',
+            [[['lot_id', '=', lotId], ['state', 'not in', ['done', 'cancel']]]],
+            { fields: ['id'] }
+          );
+
+          if (moveLines && moveLines.length > 0) {
+            const moveLineIds = moveLines.map((ml: any) => ml.id);
+            await callOdoo('stock.move.line', 'write', [moveLineIds, { expiration_date: expiryDate }]);
+            console.log(`✅ [save-expiry] Aggiornate ${moveLineIds.length} move lines con nuova scadenza`);
+          }
+
+          return NextResponse.json({
+            success: true,
+            message: 'Scadenza aggiornata',
+            lotId
+          });
+        } catch (err: any) {
+          console.error(`❌ [save-expiry] Errore aggiornamento lotto ${lotId}:`, err.message);
+          return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+        }
+      }
 
       // Se abbiamo un quantId, aggiorniamo quel quant specifico
       if (quantId) {

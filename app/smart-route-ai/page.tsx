@@ -577,20 +577,25 @@ export default function SmartRouteAIPage() {
   async function updateLotExpiry(lotId: number, productId: number, newExpirationDate: string) {
     try {
       setSavingExpiry(true);
+
+      const requestBody = {
+        action: 'update_expiry',
+        productId: productId,
+        lotId: lotId,
+        expiryDate: `${newExpirationDate} 23:59:59`
+      };
+
+      console.log('📤 [Smart Route AI] Sending expiry update:', JSON.stringify(requestBody));
       debugLog(`Updating expiry for lot ${lotId} to ${newExpirationDate}...`, 'info');
 
       const response = await fetch('/api/gestione-scadenze/save-expiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_expiry',
-          productId: productId,
-          lotId: lotId,
-          expiryDate: `${newExpirationDate} 23:59:59`
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
+      console.log('📥 [Smart Route AI] Expiry update response:', JSON.stringify(result));
 
       if (!result.success) {
         throw new Error(result.error || 'Errore aggiornamento scadenza');
@@ -1637,50 +1642,48 @@ export default function SmartRouteAIPage() {
 
       {/* Expired Products Modal - Cambio Scadenza */}
       {showExpiredModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4 overflow-y-auto" onClick={() => setShowExpiredModal(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full my-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
-                <span className="text-3xl">⚠️</span>
-                Prodotto Scaduto!
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-2 overflow-y-auto" onClick={() => setShowExpiredModal(false)}>
+          <div className="bg-white rounded-lg p-3 max-w-sm w-full my-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-bold text-red-600 flex items-center gap-1">
+                <span className="text-xl">⚠️</span>
+                Prodotto Scaduto
               </h3>
               <button
                 onClick={() => setShowExpiredModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {expiredBatchInfo && (
-              <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg text-center">
-                <div className="text-sm text-yellow-700">Batch:</div>
-                <div className="font-bold text-yellow-900">{expiredBatchInfo.name}</div>
+              <div className="mb-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-center">
+                <div className="text-xs text-yellow-700">Batch: <span className="font-bold text-yellow-900">{expiredBatchInfo.name}</span></div>
               </div>
             )}
 
-            <div className="mb-6">
-              <div className="text-center text-gray-600 mb-4">
-                Questo prodotto ha una scadenza passata.<br/>
-                <span className="font-semibold">Cambia la data di scadenza per procedere.</span>
+            <div className="mb-3">
+              <div className="text-center text-gray-600 mb-2 text-sm">
+                Cambia la data di scadenza per procedere.
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {expiredProducts.map((product) => (
-                  <div key={product.moveLineId} className="border-2 border-red-300 rounded-xl p-5 bg-gradient-to-br from-red-50 to-orange-50">
-                    {/* Nome prodotto grande */}
-                    <div className="text-lg font-bold text-gray-900 mb-3 text-center">
+                  <div key={product.moveLineId} className="border border-red-300 rounded-lg p-3 bg-gradient-to-br from-red-50 to-orange-50">
+                    {/* Nome prodotto */}
+                    <div className="text-sm font-bold text-gray-900 mb-2 text-center">
                       {product.productName}
                     </div>
 
                     {/* Info lotto */}
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                      <div className="bg-white rounded-lg p-3 text-center border">
-                        <div className="text-gray-500 text-xs">Lotto</div>
+                    <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                      <div className="bg-white rounded p-2 text-center border">
+                        <div className="text-gray-500">Lotto</div>
                         <div className="font-bold text-gray-800">{product.lotName}</div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 text-center border border-red-300">
-                        <div className="text-red-500 text-xs">Scadenza Attuale</div>
+                      <div className="bg-white rounded p-2 text-center border border-red-300">
+                        <div className="text-red-500">Scadenza</div>
                         <div className="font-bold text-red-700">
                           {product.expirationDate
                             ? new Date(product.expirationDate).toLocaleDateString('it-IT')
@@ -1690,17 +1693,16 @@ export default function SmartRouteAIPage() {
                     </div>
 
                     {/* Quantità e consegna */}
-                    <div className="text-xs text-gray-500 text-center mb-4">
-                      Quantità: <span className="font-semibold">{product.quantity}</span> •
-                      Consegna: <span className="font-semibold">{product.pickingName}</span>
+                    <div className="text-xs text-gray-500 text-center mb-2">
+                      Qtà: <span className="font-semibold">{product.quantity}</span> | {product.pickingName}
                     </div>
 
                     {/* Input nuova scadenza */}
-                    <div className="bg-white rounded-lg p-4 border-2 border-green-300">
-                      <label className="text-sm text-green-700 font-semibold block mb-2 text-center">
-                        📅 Nuova Data di Scadenza:
+                    <div className="bg-white rounded p-2 border border-green-300">
+                      <label className="text-xs text-green-700 font-semibold block mb-1 text-center">
+                        Nuova Scadenza:
                       </label>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <input
                           type="date"
                           value={product.newExpirationDate || ''}
@@ -1714,7 +1716,7 @@ export default function SmartRouteAIPage() {
                               )
                             );
                           }}
-                          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-base font-semibold focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="flex-1 px-2 py-2 border border-gray-300 rounded text-sm font-semibold focus:ring-1 focus:ring-green-500 focus:border-green-500"
                         />
                         <button
                           onClick={() => {
@@ -1725,9 +1727,9 @@ export default function SmartRouteAIPage() {
                             updateLotExpiry(product.lotId, product.productId, product.newExpirationDate);
                           }}
                           disabled={savingExpiry || !product.newExpirationDate}
-                          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base shadow-lg"
+                          className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded font-bold hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
-                          {savingExpiry ? '...' : '✓ Salva'}
+                          {savingExpiry ? '...' : 'Salva'}
                         </button>
                       </div>
                     </div>
@@ -1736,14 +1738,14 @@ export default function SmartRouteAIPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <div className="flex gap-2 pt-2 border-t border-gray-200">
               <button
                 onClick={() => {
                   setShowExpiredModal(false);
                   setExpiredProducts([]);
                   setExpiredBatchInfo(null);
                 }}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 rounded font-semibold hover:bg-gray-300 transition-colors text-sm"
               >
                 Annulla
               </button>
@@ -1751,9 +1753,9 @@ export default function SmartRouteAIPage() {
                 <button
                   onClick={retryBatchCompletion}
                   disabled={loading}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-bold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50"
+                  className="flex-1 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded font-bold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 text-sm"
                 >
-                  🚀 Riprova Completamento
+                  Riprova
                 </button>
               )}
             </div>
