@@ -78,6 +78,23 @@ export default function SmartRouteAIPage() {
   const [expandedPickingId, setExpandedPickingId] = useState<number | null>(null);
   const [loadingPickings, setLoadingPickings] = useState(false);
 
+  // Expired products modal state
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [expiredProducts, setExpiredProducts] = useState<Array<{
+    moveLineId: number;
+    pickingId: number;
+    pickingName: string;
+    productId: number;
+    productName: string;
+    lotId: number;
+    lotName: string;
+    expirationDate: string;
+    quantity: number;
+    newExpirationDate?: string;
+  }>>([]);
+  const [expiredBatchInfo, setExpiredBatchInfo] = useState<{id: number, name: string} | null>(null);
+  const [savingExpiry, setSavingExpiry] = useState(false);
+
   // Route colors - well distinguished colors
   const ROUTE_COLORS = [
     '#4f46e5', // indigo
@@ -448,6 +465,36 @@ export default function SmartRouteAIPage() {
     setShowBatchStateModal(true);
   }
 
+  // Check for expired products in batch BEFORE completing
+  async function checkExpiredProductsInBatch(batchId: number): Promise<any[]> {
+    try {
+      // Get all pickings in this batch
+      const batchPickingsData = pickings.filter(p => p.batchId === batchId);
+      if (batchPickingsData.length === 0) return [];
+
+      // Check for expired lots via API
+      const response = await fetch('/api/smart-route-ai/batches/update-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId: batchId,
+          checkOnlyExpired: true // New flag to just check without updating
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.expiredProducts && result.expiredProducts.length > 0) {
+        return result.expiredProducts;
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error checking expired products:', error);
+      return [];
+    }
+  }
+
   // Confirm batch state change
   async function confirmBatchStateChange() {
     if (!selectedBatchForStateChange) return;
@@ -490,9 +537,23 @@ export default function SmartRouteAIPage() {
         })
       });
 
-      if (!response.ok) throw new Error('Error updating batch state');
-
       const result = await response.json();
+
+      // Check if it's an expiry error (either from error response or wizard)
+      if (!response.ok && (result.errorType === 'EXPIRY_ERROR' || result.errorType === 'EXPIRY_WIZARD')) {
+        debugLog(`Expiry error detected: ${result.expiredProducts?.length || 0} expired products`, 'warning');
+
+        // Show expired products modal
+        setExpiredProducts(result.expiredProducts || []);
+        setExpiredBatchInfo({ id: result.batchId, name: result.batchName });
+        setShowBatchStateModal(false);
+        setShowExpiredModal(true);
+
+        showToast('Ci sono prodotti scaduti! Cambia la scadenza per procedere.', 'warning');
+        return;
+      }
+
+      if (!response.ok) throw new Error(result.error || 'Error updating batch state');
 
       debugLog(`Batch state updated to ${result.newState}`, 'success');
       showToast(`Batch passato a ${selectedBatchForStateChange.nextState}`, 'success');
@@ -507,6 +568,93 @@ export default function SmartRouteAIPage() {
     } catch (error: any) {
       debugLog(`Error updating batch state: ${error.message}`, 'error');
       showToast('Errore aggiornamento stato batch', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Update expiration date for a lot
+  async function updateLotExpiry(lotId: number, productId: number, newExpirationDate: string) {
+    try {
+      setSavingExpiry(true);
+      debugLog(`Updating expiry for lot ${lotId} to ${newExpirationDate}...`, 'info');
+
+      const response = await fetch('/api/gestione-scadenze/save-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_expiry',
+          productId: productId,
+          lotId: lotId,
+          expiryDate: `${newExpirationDate} 23:59:59`
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Errore aggiornamento scadenza');
+      }
+
+      debugLog(`Lot ${lotId} expiry updated successfully`, 'success');
+      showToast('Scadenza aggiornata con successo!', 'success');
+
+      // Update local state to reflect the change
+      setExpiredProducts(prev => prev.filter(p => p.lotId !== lotId));
+
+      // If no more expired products, close modal and retry batch completion
+      if (expiredProducts.length <= 1) {
+        setShowExpiredModal(false);
+        showToast('Tutte le scadenze aggiornate! Riprova a completare il batch.', 'info');
+      }
+
+    } catch (error: any) {
+      debugLog(`Error updating lot expiry: ${error.message}`, 'error');
+      showToast(`Errore: ${error.message}`, 'error');
+    } finally {
+      setSavingExpiry(false);
+    }
+  }
+
+  // Retry completing the batch after fixing expiry dates
+  async function retryBatchCompletion() {
+    if (!expiredBatchInfo) return;
+
+    try {
+      setLoading(true);
+      debugLog(`Retrying batch completion for ${expiredBatchInfo.name}...`, 'info');
+
+      const response = await fetch('/api/smart-route-ai/batches/update-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId: expiredBatchInfo.id
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok && result.errorType === 'EXPIRY_ERROR') {
+        // Still has expired products
+        setExpiredProducts(result.expiredProducts || []);
+        showToast('Ci sono ancora prodotti scaduti!', 'warning');
+        return;
+      }
+
+      if (!response.ok) throw new Error(result.error || 'Error updating batch state');
+
+      debugLog(`Batch completed successfully!`, 'success');
+      showToast('Batch completato con successo!', 'success');
+
+      // Reload batches and close modal
+      await loadBatches(dateFrom);
+      setShowExpiredModal(false);
+      setExpiredProducts([]);
+      setExpiredBatchInfo(null);
+
+    } catch (error: any) {
+      debugLog(`Error retrying batch completion: ${error.message}`, 'error');
+      showToast(`Errore: ${error.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -1267,69 +1415,69 @@ export default function SmartRouteAIPage() {
                 </div>
               </div>
 
-              {/* Vehicle Selection - Show only if changing from draft and no vehicle assigned */}
-              {selectedBatchForStateChange.currentState === 'draft' && !selectedBatchForStateChange.hasVehicle && (
-                <div className="mb-4">
-                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <span>🚗</span> Seleziona veicolo e autista:
-                  </div>
-                  {selectedVehicleForStateChange ? (
-                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 relative">
-                      <button
-                        onClick={() => setSelectedVehicleForStateChange(null)}
-                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                      <div className="font-bold text-indigo-900">
-                        {(() => {
-                          const nameParts = selectedVehicleForStateChange.name.split('/');
-                          const model = nameParts[0]?.trim() || 'Veicolo';
-                          return `${model} ${selectedVehicleForStateChange.plate}`;
-                        })()}
-                      </div>
-                      <div className="text-sm text-indigo-700 mt-1">
-                        Autista: {(() => {
-                          const parts = selectedVehicleForStateChange.driver.split(',');
-                          const namePart = parts.length > 1 ? parts[1].trim() : selectedVehicleForStateChange.driver;
-                          return namePart;
-                        })()}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="max-h-48 overflow-y-auto space-y-2">
-                      {vehicles.length === 0 ? (
-                        <div className="text-center text-gray-500 py-4 text-sm">
-                          Nessun veicolo disponibile
-                        </div>
-                      ) : (
-                        vehicles.map(vehicle => (
-                          <button
-                            key={vehicle.id}
-                            onClick={() => setSelectedVehicleForStateChange(vehicle)}
-                            className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
-                          >
-                            <div className="font-semibold text-sm text-gray-900">
-                              {(() => {
-                                const nameParts = vehicle.name.split('/');
-                                const model = nameParts[0]?.trim() || 'Veicolo';
-                                return `${model} ${vehicle.plate}`;
-                              })()}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {(() => {
-                                const parts = vehicle.driver.split(',');
-                                const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
-                                return namePart;
-                              })()}
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+              {/* Vehicle Selection - Always show to allow changing driver/vehicle */}
+              <div className="mb-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>🚗</span>
+                  {selectedBatchForStateChange.hasVehicle ? 'Cambia veicolo/autista:' : 'Seleziona veicolo e autista:'}
                 </div>
-              )}
+                {selectedVehicleForStateChange ? (
+                  <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 relative">
+                    <button
+                      onClick={() => setSelectedVehicleForStateChange(null)}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div className="text-xs text-green-600 font-semibold mb-1">✓ Nuovo veicolo selezionato:</div>
+                    <div className="font-bold text-indigo-900">
+                      {(() => {
+                        const nameParts = selectedVehicleForStateChange.name.split('/');
+                        const model = nameParts[0]?.trim() || 'Veicolo';
+                        return `${model} ${selectedVehicleForStateChange.plate}`;
+                      })()}
+                    </div>
+                    <div className="text-sm text-indigo-700 mt-1">
+                      Autista: {(() => {
+                        const parts = selectedVehicleForStateChange.driver.split(',');
+                        const namePart = parts.length > 1 ? parts[1].trim() : selectedVehicleForStateChange.driver;
+                        return namePart;
+                      })()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {vehicles.length === 0 ? (
+                      <div className="text-center text-gray-500 py-4 text-sm">
+                        Nessun veicolo disponibile
+                      </div>
+                    ) : (
+                      vehicles.map(vehicle => (
+                        <button
+                          key={vehicle.id}
+                          onClick={() => setSelectedVehicleForStateChange(vehicle)}
+                          className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+                        >
+                          <div className="font-semibold text-sm text-gray-900">
+                            {(() => {
+                              const nameParts = vehicle.name.split('/');
+                              const model = nameParts[0]?.trim() || 'Veicolo';
+                              return `${model} ${vehicle.plate}`;
+                            })()}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {(() => {
+                              const parts = vehicle.driver.split(',');
+                              const namePart = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                              return namePart;
+                            })()}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Batch Pickings List */}
               <div className="mb-4">
@@ -1486,6 +1634,132 @@ export default function SmartRouteAIPage() {
         </div>
       )}
 
+
+      {/* Expired Products Modal - Cambio Scadenza */}
+      {showExpiredModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4 overflow-y-auto" onClick={() => setShowExpiredModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full my-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
+                <span className="text-3xl">⚠️</span>
+                Prodotto Scaduto!
+              </h3>
+              <button
+                onClick={() => setShowExpiredModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {expiredBatchInfo && (
+              <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg text-center">
+                <div className="text-sm text-yellow-700">Batch:</div>
+                <div className="font-bold text-yellow-900">{expiredBatchInfo.name}</div>
+              </div>
+            )}
+
+            <div className="mb-6">
+              <div className="text-center text-gray-600 mb-4">
+                Questo prodotto ha una scadenza passata.<br/>
+                <span className="font-semibold">Cambia la data di scadenza per procedere.</span>
+              </div>
+
+              <div className="space-y-4">
+                {expiredProducts.map((product) => (
+                  <div key={product.moveLineId} className="border-2 border-red-300 rounded-xl p-5 bg-gradient-to-br from-red-50 to-orange-50">
+                    {/* Nome prodotto grande */}
+                    <div className="text-lg font-bold text-gray-900 mb-3 text-center">
+                      {product.productName}
+                    </div>
+
+                    {/* Info lotto */}
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="bg-white rounded-lg p-3 text-center border">
+                        <div className="text-gray-500 text-xs">Lotto</div>
+                        <div className="font-bold text-gray-800">{product.lotName}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center border border-red-300">
+                        <div className="text-red-500 text-xs">Scadenza Attuale</div>
+                        <div className="font-bold text-red-700">
+                          {product.expirationDate
+                            ? new Date(product.expirationDate).toLocaleDateString('it-IT')
+                            : 'Non impostata'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quantità e consegna */}
+                    <div className="text-xs text-gray-500 text-center mb-4">
+                      Quantità: <span className="font-semibold">{product.quantity}</span> •
+                      Consegna: <span className="font-semibold">{product.pickingName}</span>
+                    </div>
+
+                    {/* Input nuova scadenza */}
+                    <div className="bg-white rounded-lg p-4 border-2 border-green-300">
+                      <label className="text-sm text-green-700 font-semibold block mb-2 text-center">
+                        📅 Nuova Data di Scadenza:
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="date"
+                          value={product.newExpirationDate || ''}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => {
+                            setExpiredProducts(prev =>
+                              prev.map(p =>
+                                p.moveLineId === product.moveLineId
+                                  ? { ...p, newExpirationDate: e.target.value }
+                                  : p
+                              )
+                            );
+                          }}
+                          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-base font-semibold focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                        <button
+                          onClick={() => {
+                            if (!product.newExpirationDate) {
+                              showToast('Seleziona una nuova data di scadenza', 'warning');
+                              return;
+                            }
+                            updateLotExpiry(product.lotId, product.productId, product.newExpirationDate);
+                          }}
+                          disabled={savingExpiry || !product.newExpirationDate}
+                          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base shadow-lg"
+                        >
+                          {savingExpiry ? '...' : '✓ Salva'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowExpiredModal(false);
+                  setExpiredProducts([]);
+                  setExpiredBatchInfo(null);
+                }}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Annulla
+              </button>
+              {expiredProducts.length === 0 && (
+                <button
+                  onClick={retryBatchCompletion}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-bold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50"
+                >
+                  🚀 Riprova Completamento
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading Overlay */}
       {loading && (
