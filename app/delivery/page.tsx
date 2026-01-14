@@ -241,6 +241,7 @@ export default function DeliveryPage() {
       const response = await fetch(`/api/delivery/list${cacheBuster}`, {
         signal: AbortSignal.timeout(30000), // 30 second timeout for Android
         cache: 'no-store', // Force no caching
+        credentials: 'include', // IMPORTANTE: Invia i cookies per identificare l'utente loggato
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
@@ -406,6 +407,7 @@ export default function DeliveryPage() {
       setLoading(true);
       const res = await fetch('/api/vehicle-check/get-info', {
         method: 'GET',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
 
@@ -530,6 +532,7 @@ export default function DeliveryPage() {
 
       const res = await fetch('/api/vehicle-check/save', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vehicle_id: vehicleInfo.id,
@@ -566,6 +569,7 @@ export default function DeliveryPage() {
 
       const res = await fetch('/api/vehicle-check/resolve-issue', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vehicle_id: vehicleInfo.id,
@@ -1638,6 +1642,7 @@ export default function DeliveryPage() {
       // Chiama la nostra API che scarica il PDF da Odoo
       const response = await fetch('/api/delivery/print', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1840,6 +1845,7 @@ export default function DeliveryPage() {
   async function calculateETA(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }) {
     const response = await fetch('/api/delivery/calculate-eta', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin, destination })
     });
@@ -1862,6 +1868,7 @@ export default function DeliveryPage() {
 
       const response = await fetch('/api/delivery/optimize-route', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           origin: currentPosition,
