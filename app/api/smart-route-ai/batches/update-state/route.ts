@@ -230,6 +230,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Fetch all expired products (move lines with expired lots) in a batch
+ * Filters ONLY products where is_expired=true OR expiration_date < now
  */
 async function fetchExpiredProductsInBatch(rpcClient: any, batchId: number): Promise<ExpiredProduct[]> {
   try {
@@ -251,18 +252,12 @@ async function fetchExpiredProductsInBatch(rpcClient: any, batchId: number): Pro
       pickingsMap[p.id] = p.name;
     });
 
-    // Get current datetime for comparison
-    const now = new Date().toISOString();
-
-    // Get all move lines with lot that are expired
+    // Get all move lines with lot (we'll filter expired ones in JS)
     const moveLines = await rpcClient.searchRead(
       'stock.move.line',
       [
         ['picking_id', 'in', pickingIds],
-        ['lot_id', '!=', false],
-        '|',
-        ['is_expired', '=', true],
-        ['expiration_date', '<', now]
+        ['lot_id', '!=', false]
       ],
       [
         'id', 'picking_id', 'product_id', 'lot_id',
@@ -271,9 +266,30 @@ async function fetchExpiredProductsInBatch(rpcClient: any, batchId: number): Pro
       500
     );
 
-    console.log(`[Smart Route AI] Found ${moveLines.length} expired move lines in batch ${batchId}`);
+    // Get current datetime for comparison
+    const now = new Date();
 
-    const expiredProducts: ExpiredProduct[] = moveLines.map((ml: any) => ({
+    // Filter ONLY expired products (is_expired=true OR expiration_date < now)
+    const expiredMoveLines = moveLines.filter((ml: any) => {
+      // Check is_expired flag
+      if (ml.is_expired === true) {
+        return true;
+      }
+
+      // Check expiration_date
+      if (ml.expiration_date) {
+        const expiryDate = new Date(ml.expiration_date);
+        if (expiryDate < now) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    console.log(`[Smart Route AI] Found ${expiredMoveLines.length} expired move lines out of ${moveLines.length} total in batch ${batchId}`);
+
+    const expiredProducts: ExpiredProduct[] = expiredMoveLines.map((ml: any) => ({
       moveLineId: ml.id,
       pickingId: ml.picking_id ? ml.picking_id[0] : 0,
       pickingName: ml.picking_id ? pickingsMap[ml.picking_id[0]] || ml.picking_id[1] : 'Unknown',
