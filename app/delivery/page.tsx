@@ -2613,7 +2613,7 @@ export default function DeliveryPage() {
               </div>
 
               {/* Lista Prodotti */}
-              <div className="space-y-2 pb-[140px]">
+              <div className="space-y-2 pb-[160px]">
                 <div className="text-sm font-semibold text-gray-600 mb-2">
                   📦 PRODOTTI DA RITIRARE ({pickupProducts.length})
                 </div>
@@ -2665,24 +2665,24 @@ export default function DeliveryPage() {
               </div>
             </div>
 
-            {/* Footer Azioni */}
-            <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-4 space-y-2">
-              {/* Progress */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
+            {/* Footer Azioni - z-index alto per stare sopra */}
+            <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-3 z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
+              {/* Progress bar compatta */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 bg-gray-200 rounded-full h-3">
                   <div
-                    className="bg-green-500 h-2 rounded-full transition-all"
+                    className="bg-green-500 h-3 rounded-full transition-all"
                     style={{ width: `${pickupProducts.length > 0 ? (pickupProducts.filter(p => p.picked).length / pickupProducts.length) * 100 : 0}%` }}
                   />
                 </div>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-semibold text-gray-700 min-w-[40px] text-right">
                   {pickupProducts.filter(p => p.picked).length}/{pickupProducts.length}
                 </span>
               </div>
 
               <button
                 onClick={openPickupConfirmModal}
-                className="w-full py-4 bg-purple-600 text-white rounded-lg font-bold text-lg hover:bg-purple-700 transition-colors"
+                className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-base hover:bg-purple-700 active:scale-[0.98] transition-all shadow-lg"
               >
                 ✅ CONFERMA RITIRO
               </button>
