@@ -1069,18 +1069,17 @@ export default function ConvalidaResiduiPage() {
         );
 
         if (templateData.length > 0 && templateData[0].alternative_product_ids && templateData[0].alternative_product_ids.length > 0) {
-          // Carichiamo i dettagli dei prodotti alternativi (sono product.template, dobbiamo prendere i product.product)
+          // Carichiamo i dettagli dei prodotti alternativi con immagini e giacenza
           const alternativeProducts = await searchReadConvalida<Product>(
             'product.product',
             [['product_tmpl_id', 'in', templateData[0].alternative_product_ids]],
-            ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price'],
+            ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'image_128', 'qty_available'],
             100
           );
 
           setSostituzioneSuggestions(alternativeProducts);
-          if (alternativeProducts.length > 0) {
-            setSelectedSostituto(alternativeProducts[0]);
-          }
+          // Non selezionare automaticamente il primo
+          setSelectedSostituto(null);
         } else {
           showToastMessage('Nessun prodotto alternativo configurato per questo prodotto');
         }
