@@ -49,6 +49,7 @@ export interface Product {
   move_line_id?: number; // ID della stock.move.line
   quantity_done?: number;
   reso_qty?: number;
+  unit?: string; // Unità di misura (es: 'pz', 'kg', 'lt')
 }
 
 export interface Attachment {
