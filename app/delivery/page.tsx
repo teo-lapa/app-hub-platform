@@ -736,6 +736,15 @@ export default function DeliveryPage() {
     loadDeliveries(); // Ricarica per aggiornare
   }
 
+  // Handler per click marker dalla mappa - gestisce sia pickup che delivery
+  function handleMapMarkerClick(delivery: Delivery) {
+    if (delivery.type === 'pickup') {
+      openPickupModal(delivery);
+    } else {
+      openScaricoView(delivery);
+    }
+  }
+
   function toggleProductPicked(productId: number) {
     setScaricoProducts(prev => prev.map(p => {
       if (p.id === productId) {
@@ -2419,7 +2428,7 @@ export default function DeliveryPage() {
             <DeliveryMap
               deliveries={deliveries}
               currentPosition={currentPosition}
-              onMarkerClick={openScaricoView}
+              onMarkerClick={handleMapMarkerClick}
             />
           </div>
         )}
@@ -2552,20 +2561,19 @@ export default function DeliveryPage() {
         {/* VISTA PICKUP (RITIRO) */}
         {view === 'pickup' && currentDelivery && (
           <div className="min-h-screen bg-gray-50">
-            {/* Header Pickup */}
-            <div className="bg-purple-600 text-white p-4 sticky top-[60px] z-10">
-              <div className="flex items-center justify-between mb-2">
-                <button onClick={closePickupView} className="text-white text-2xl">←</button>
-                <div className="flex-1 text-center">
-                  <div className="text-xs opacity-80">📥 RITIRO MERCE</div>
-                  <div className="font-semibold">{currentDelivery.name}</div>
+            {/* Header Pickup - compatto */}
+            <div className="bg-purple-600 text-white px-3 py-2 sticky top-[60px] z-10">
+              <div className="flex items-center gap-2">
+                <button onClick={closePickupView} className="text-white text-xl p-1">←</button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs opacity-80">📥 RITIRO</span>
+                    <span className="font-semibold text-sm truncate">{currentDelivery.name}</span>
+                  </div>
+                  <div className="text-sm font-medium truncate">🏭 {currentDelivery.supplier || currentDelivery.customerName}</div>
                 </div>
-                <div className="w-8"></div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold">🏭 {currentDelivery.supplier || currentDelivery.customerName}</div>
                 {currentDelivery.purchase_order && (
-                  <div className="text-sm opacity-90">📋 {currentDelivery.purchase_order}</div>
+                  <div className="text-xs opacity-90 bg-purple-700 px-2 py-1 rounded">📋 {currentDelivery.purchase_order}</div>
                 )}
               </div>
             </div>
