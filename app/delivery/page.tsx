@@ -36,7 +36,7 @@ export default function DeliveryPage() {
   // Estados principales
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
-  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico' | 'vehicle-check'>('list');
+  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico' | 'vehicle-check' | 'pickup'>('list');
   const [loading, setLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +61,8 @@ export default function DeliveryPage() {
   const [pickupNote, setPickupNote] = useState('');
   const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
   const [isConfirmingPickup, setIsConfirmingPickup] = useState(false);
+  const [pickupProducts, setPickupProducts] = useState<Product[]>([]);
+  const [showPickupConfirmModal, setShowPickupConfirmModal] = useState(false);
   const pickupPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Estados scarico
@@ -342,18 +344,55 @@ export default function DeliveryPage() {
   }
 
   // ==================== PICKUP (RITIRO) LOGIC ====================
-  function openPickupModal(delivery: Delivery) {
+  function openPickupView(delivery: Delivery) {
     setCurrentDelivery(delivery);
+    // Inizializza i prodotti con picked = false
+    const productsToPickup = (delivery.products || []).map(p => ({
+      ...p,
+      picked: false
+    }));
+    setPickupProducts(productsToPickup);
     setPickupNote('');
     setPickupPhoto(null);
-    setShowPickupModal(true);
+    setView('pickup');
+    setShowDetailModal(false);
   }
 
-  function closePickupModal() {
-    setShowPickupModal(false);
+  function closePickupView() {
+    setView('list');
+    setPickupProducts([]);
     setCurrentDelivery(null);
     setPickupNote('');
     setPickupPhoto(null);
+    loadDeliveries();
+  }
+
+  function togglePickupProductPicked(productId: number) {
+    setPickupProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        return { ...p, picked: !p.picked };
+      }
+      return p;
+    }));
+  }
+
+  function openPickupConfirmModal() {
+    setShowPickupConfirmModal(true);
+  }
+
+  function closePickupConfirmModal() {
+    setShowPickupConfirmModal(false);
+    setPickupNote('');
+    setPickupPhoto(null);
+  }
+
+  // Legacy function per compatibilità - ora apre la view
+  function openPickupModal(delivery: Delivery) {
+    openPickupView(delivery);
+  }
+
+  function closePickupModal() {
+    closePickupView();
   }
 
   async function handlePickupPhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
@@ -393,10 +432,8 @@ export default function DeliveryPage() {
       }
 
       showToast('✅ Ritiro confermato!', 'success');
-      closePickupModal();
-
-      // Ricarica la lista
-      await loadDeliveries();
+      closePickupConfirmModal();
+      closePickupView();
 
     } catch (err: any) {
       console.error('Errore conferma ritiro:', err);
@@ -2512,6 +2549,147 @@ export default function DeliveryPage() {
           </div>
         )}
 
+        {/* VISTA PICKUP (RITIRO) */}
+        {view === 'pickup' && currentDelivery && (
+          <div className="min-h-screen bg-gray-50">
+            {/* Header Pickup */}
+            <div className="bg-purple-600 text-white p-4 sticky top-[60px] z-10">
+              <div className="flex items-center justify-between mb-2">
+                <button onClick={closePickupView} className="text-white text-2xl">←</button>
+                <div className="flex-1 text-center">
+                  <div className="text-xs opacity-80">📥 RITIRO MERCE</div>
+                  <div className="font-semibold">{currentDelivery.name}</div>
+                </div>
+                <div className="w-8"></div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">🏭 {currentDelivery.supplier || currentDelivery.customerName}</div>
+                {currentDelivery.purchase_order && (
+                  <div className="text-sm opacity-90">📋 {currentDelivery.purchase_order}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Info Fornitore */}
+            <div className="p-4">
+              <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">📍</span>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-800">
+                      {currentDelivery.partner_street}
+                      {currentDelivery.partner_city && `, ${currentDelivery.partner_city}`}
+                      {currentDelivery.partner_zip && ` ${currentDelivery.partner_zip}`}
+                    </div>
+                    {currentDelivery.partner_phone && (
+                      <a href={`tel:${currentDelivery.partner_phone}`} className="text-purple-600 text-sm">
+                        📞 {currentDelivery.partner_phone}
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigateTo(currentDelivery.latitude, currentDelivery.longitude)}
+                    className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-semibold"
+                  >
+                    🧭 Naviga
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Prodotti */}
+              <div className="bg-purple-50 rounded-lg p-3 mb-4 flex justify-around text-center">
+                <div>
+                  <div className="text-2xl font-bold text-purple-700">{pickupProducts.length}</div>
+                  <div className="text-xs text-purple-600">Totali</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{pickupProducts.filter(p => p.picked).length}</div>
+                  <div className="text-xs text-green-600">Presi</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-gray-500">{pickupProducts.filter(p => !p.picked).length}</div>
+                  <div className="text-xs text-gray-500">Mancanti</div>
+                </div>
+              </div>
+
+              {/* Lista Prodotti */}
+              <div className="space-y-2 pb-[140px]">
+                <div className="text-sm font-semibold text-gray-600 mb-2">
+                  📦 PRODOTTI DA RITIRARE ({pickupProducts.length})
+                </div>
+                {pickupProducts.map((product, idx) => (
+                  <motion.div
+                    key={product.id || idx}
+                    onClick={() => togglePickupProductPicked(product.id)}
+                    className={`bg-white rounded-lg p-4 shadow-sm cursor-pointer border-2 transition-all ${
+                      product.picked
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-transparent hover:border-purple-300'
+                    }`}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Checkbox visual */}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                        product.picked
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-400'
+                      }`}>
+                        {product.picked ? '✓' : idx + 1}
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex-1">
+                        <div className={`font-medium ${product.picked ? 'text-green-700' : 'text-gray-800'}`}>
+                          {product.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {product.category || 'Prodotto'}
+                        </div>
+                      </div>
+
+                      {/* Quantity */}
+                      <div className={`text-right ${product.picked ? 'text-green-600' : 'text-purple-700'}`}>
+                        <div className="text-xl font-bold">{product.qty}</div>
+                        <div className="text-xs">{product.unit || 'pz'}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {pickupProducts.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    Nessun prodotto da ritirare
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Azioni */}
+            <div className="fixed bottom-[70px] left-0 right-0 bg-white border-t p-4 space-y-2">
+              {/* Progress */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${pickupProducts.length > 0 ? (pickupProducts.filter(p => p.picked).length / pickupProducts.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">
+                  {pickupProducts.filter(p => p.picked).length}/{pickupProducts.length}
+                </span>
+              </div>
+
+              <button
+                onClick={openPickupConfirmModal}
+                className="w-full py-4 bg-purple-600 text-white rounded-lg font-bold text-lg hover:bg-purple-700 transition-colors"
+              >
+                ✅ CONFERMA RITIRO
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* VISTA VEHICLE CHECK */}
         {view === 'vehicle-check' && (
           <div className="p-4 space-y-4">
@@ -2937,15 +3115,15 @@ export default function DeliveryPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal Ritiro (Pickup) */}
+      {/* Modal Conferma Ritiro (solo nota e foto) */}
       <AnimatePresence>
-        {showPickupModal && currentDelivery && (
+        {showPickupConfirmModal && currentDelivery && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
-            onClick={closePickupModal}
+            onClick={closePickupConfirmModal}
           >
             <motion.div
               initial={{ y: '100%' }}
@@ -2957,64 +3135,21 @@ export default function DeliveryPage() {
               {/* Header */}
               <div className="bg-purple-600 text-white p-4 flex items-center justify-between rounded-t-2xl sticky top-0">
                 <div>
-                  <div className="text-xs font-medium opacity-80">📥 RITIRO MERCE</div>
+                  <div className="text-xs font-medium opacity-80">✅ CONFERMA RITIRO</div>
                   <h2 className="font-semibold text-lg">{currentDelivery.name}</h2>
                 </div>
-                <button onClick={closePickupModal} className="text-2xl p-2">✕</button>
+                <button onClick={closePickupConfirmModal} className="text-2xl p-2">✕</button>
               </div>
 
               <div className="p-4 space-y-4">
-                {/* Fornitore */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <div className="text-xs text-purple-600 font-medium mb-1">FORNITORE</div>
-                  <div className="font-semibold text-purple-800 text-lg">
+                {/* Riepilogo */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl mb-2">📦</div>
+                  <div className="text-green-800 font-semibold">
+                    {pickupProducts.filter(p => p.picked).length} / {pickupProducts.length} prodotti selezionati
+                  </div>
+                  <div className="text-sm text-green-600 mt-1">
                     🏭 {currentDelivery.supplier || currentDelivery.customerName}
-                  </div>
-                  {currentDelivery.purchase_order && (
-                    <div className="text-sm text-purple-600 mt-1">
-                      📋 Ordine: {currentDelivery.purchase_order}
-                    </div>
-                  )}
-                </div>
-
-                {/* Indirizzo */}
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-xs text-gray-500 font-medium mb-1">INDIRIZZO RITIRO</div>
-                  <div className="text-sm text-gray-700">
-                    📍 {currentDelivery.partner_street}
-                    {currentDelivery.partner_city && `, ${currentDelivery.partner_city}`}
-                    {currentDelivery.partner_zip && ` ${currentDelivery.partner_zip}`}
-                  </div>
-                  {currentDelivery.partner_phone && (
-                    <a href={`tel:${currentDelivery.partner_phone}`} className="text-sm text-blue-600 mt-1 block">
-                      📞 {currentDelivery.partner_phone}
-                    </a>
-                  )}
-                </div>
-
-                {/* Lista Prodotti */}
-                <div className="bg-white border border-gray-200 rounded-lg">
-                  <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 rounded-t-lg">
-                    <div className="text-xs text-gray-600 font-semibold">
-                      📦 PRODOTTI DA RITIRARE ({currentDelivery.products?.length || 0})
-                    </div>
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {currentDelivery.products?.map((product, idx) => (
-                      <div key={product.id || idx} className="px-3 py-2 border-b border-gray-100 last:border-b-0">
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm text-gray-800 flex-1 pr-2">{product.name}</div>
-                          <div className="text-sm font-semibold text-purple-700 whitespace-nowrap">
-                            {product.qty} {product.unit || 'pz'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {(!currentDelivery.products || currentDelivery.products.length === 0) && (
-                      <div className="px-3 py-4 text-center text-gray-500 text-sm">
-                        Nessun prodotto specificato
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -3027,7 +3162,7 @@ export default function DeliveryPage() {
                     value={pickupNote}
                     onChange={(e) => setPickupNote(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    rows={2}
+                    rows={3}
                     placeholder="Aggiungi una nota sul ritiro..."
                   />
                 </div>
@@ -3035,7 +3170,7 @@ export default function DeliveryPage() {
                 {/* Foto (opzionale) */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    📸 Foto (opzionale)
+                    📸 Foto merce ritirata (opzionale)
                   </label>
                   <input
                     type="file"
@@ -3050,11 +3185,11 @@ export default function DeliveryPage() {
                       <img
                         src={pickupPhoto}
                         alt="Foto ritiro"
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                        className="w-full h-40 object-cover rounded-lg border border-gray-200"
                       />
                       <button
                         onClick={() => setPickupPhoto(null)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg"
                       >
                         ✕
                       </button>
@@ -3062,7 +3197,7 @@ export default function DeliveryPage() {
                   ) : (
                     <button
                       onClick={() => pickupPhotoInputRef.current?.click()}
-                      className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors"
+                      className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors"
                     >
                       📷 Scatta foto
                     </button>
@@ -3071,14 +3206,6 @@ export default function DeliveryPage() {
 
                 {/* Azioni */}
                 <div className="space-y-2 pt-2">
-                  <button
-                    onClick={() => {
-                      navigateTo(currentDelivery.latitude, currentDelivery.longitude);
-                    }}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    🗺️ NAVIGA AL FORNITORE
-                  </button>
                   <button
                     onClick={confirmPickup}
                     disabled={isConfirmingPickup}
@@ -3099,6 +3226,12 @@ export default function DeliveryPage() {
                     ) : (
                       '✅ CONFERMA RITIRO'
                     )}
+                  </button>
+                  <button
+                    onClick={closePickupConfirmModal}
+                    className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    ← Torna alla lista prodotti
                   </button>
                 </div>
               </div>
