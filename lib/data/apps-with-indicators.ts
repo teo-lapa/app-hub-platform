@@ -146,6 +146,21 @@ export const mockApps: App[] = [
     createdAt: new Date('2025-11-28'),
     updatedAt: new Date('2025-11-28'),
   },
+  {
+    id: 'il-mio-hub',
+    name: 'Il Mio Hub [P]',
+    description: 'Centro notifiche unificato per dipendenti. Notifiche, calendario, ferie, attività e profilo personale. Comunicazione diretta con il team collegata a Odoo.',
+    icon: '🔔',
+    badge: 'FREE',
+    category: 'Productivity',
+    url: '/il-mio-hub',
+    requiredRole: 'dipendente',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2025-01-15'),
+    updatedAt: new Date('2025-01-15'),
+  },
 ];
 
 // Le app Standalone in /apps/
