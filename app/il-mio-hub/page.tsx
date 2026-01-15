@@ -16,9 +16,19 @@ import {
   Users,
   MessageSquare,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
+
+// URL Odoo per costruire link ai documenti
+const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+
+// Funzione per costruire il link al documento Odoo
+const buildOdooDocumentLink = (model: string | null, resId: number | null): string | null => {
+  if (!model || !resId) return null;
+  return `${ODOO_URL}/web#model=${model}&id=${resId}&view_type=form`;
+};
 
 // Tab types
 type TabType = 'notifiche' | 'calendario' | 'ferie' | 'attivita' | 'profilo';
@@ -32,6 +42,10 @@ interface Notification {
   author: string;
   isRead: boolean;
   type: 'notification' | 'message' | 'activity';
+  // Campi per link al documento sorgente in Odoo
+  model: string | null;
+  resId: number | null;
+  recordName: string | null;
 }
 
 interface CalendarEvent {
@@ -257,57 +271,82 @@ export default function IlMioHubPage() {
 
             {notifications.length > 0 ? (
               <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 rounded-lg border transition-all ${
-                      notification.isRead
-                        ? 'bg-slate-800/50 border-slate-700'
-                        : 'bg-blue-500/10 border-blue-500/30'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-full ${
-                        notification.type === 'activity'
-                          ? 'bg-orange-500/20 text-orange-400'
-                          : notification.type === 'message'
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {notification.type === 'activity' ? (
-                          <ClipboardList className="h-4 w-4" />
-                        ) : notification.type === 'message' ? (
-                          <MessageSquare className="h-4 w-4" />
-                        ) : (
-                          <Bell className="h-4 w-4" />
+                {notifications.map((notification) => {
+                  const documentLink = buildOdooDocumentLink(notification.model, notification.resId);
+
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-lg border transition-all ${
+                        notification.isRead
+                          ? 'bg-slate-800/50 border-slate-700'
+                          : 'bg-blue-500/10 border-blue-500/30'
+                      } ${documentLink ? 'cursor-pointer hover:border-blue-500/50 hover:bg-slate-800/70' : ''}`}
+                      onClick={() => {
+                        if (documentLink) {
+                          window.open(documentLink, '_blank');
+                        }
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-full ${
+                          notification.type === 'activity'
+                            ? 'bg-orange-500/20 text-orange-400'
+                            : notification.type === 'message'
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {notification.type === 'activity' ? (
+                            <ClipboardList className="h-4 w-4" />
+                          ) : notification.type === 'message' ? (
+                            <MessageSquare className="h-4 w-4" />
+                          ) : (
+                            <Bell className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className={`text-sm font-medium ${
+                              notification.isRead ? 'text-slate-300' : 'text-white'
+                            }`}>
+                              {notification.subject || 'Notifica'}
+                            </h3>
+                            {documentLink && (
+                              <ExternalLink className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          {notification.recordName && notification.recordName !== notification.subject && (
+                            <p className="text-xs text-blue-400 mt-0.5">
+                              {notification.recordName}
+                            </p>
+                          )}
+                          <p className="text-sm text-slate-400 mt-1 line-clamp-2"
+                             dangerouslySetInnerHTML={{ __html: notification.body }}
+                          />
+                          <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span>{notification.author}</span>
+                            <span>•</span>
+                            <span>{new Date(notification.date).toLocaleDateString('it-IT', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</span>
+                            {notification.model && (
+                              <>
+                                <span>•</span>
+                                <span className="text-blue-400/70">{notification.model.replace('.', ' ').replace(/_/g, ' ')}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`text-sm font-medium ${
-                          notification.isRead ? 'text-slate-300' : 'text-white'
-                        }`}>
-                          {notification.subject || 'Notifica'}
-                        </h3>
-                        <p className="text-sm text-slate-400 mt-1 line-clamp-2"
-                           dangerouslySetInnerHTML={{ __html: notification.body }}
-                        />
-                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                          <span>{notification.author}</span>
-                          <span>•</span>
-                          <span>{new Date(notification.date).toLocaleDateString('it-IT', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}</span>
-                        </div>
-                      </div>
-                      {!notification.isRead && (
-                        <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12 bg-slate-800/50 rounded-lg border border-slate-700">

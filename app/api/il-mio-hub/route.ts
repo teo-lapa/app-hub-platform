@@ -101,18 +101,22 @@ export async function GET(request: NextRequest) {
           ['partner_ids', 'in', [partnerId]],
           ['date', '>=', new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()], // Ultimi 30 giorni
         ],
-        ['id', 'subject', 'body', 'date', 'author_id', 'message_type', 'needaction']
+        ['id', 'subject', 'body', 'date', 'author_id', 'message_type', 'needaction', 'model', 'res_id', 'record_name']
       ], { limit: 50, order: 'date desc' });
 
       notifications = messages.map((msg: any) => ({
         id: msg.id,
-        subject: msg.subject || 'Notifica',
+        subject: msg.subject || msg.record_name || 'Notifica',
         body: msg.body || '',
         date: msg.date,
         author: msg.author_id?.[1] || 'Sistema',
         isRead: !msg.needaction,
         type: msg.message_type === 'notification' ? 'notification' :
-              msg.message_type === 'comment' ? 'message' : 'notification'
+              msg.message_type === 'comment' ? 'message' : 'notification',
+        // Info per il link al documento
+        model: msg.model || null,
+        resId: msg.res_id || null,
+        recordName: msg.record_name || null
       }));
     } catch (e) {
       console.error('Errore caricamento notifiche:', e);
