@@ -31,6 +31,11 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
   const [quantityInput, setQuantityInput] = useState<string>('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // State per alternative
+  const [alternativeProducts, setAlternativeProducts] = useState<Product[]>([]);
+  const [loadingAlternatives, setLoadingAlternatives] = useState(false);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -165,6 +170,103 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
     setSearchResults([]);
     setError(null);
     setIsDropdownOpen(false);
+    setAlternativeProducts([]);
+    setShowAlternatives(false);
+  };
+
+  // Carica prodotti alternativi
+  const handleLoadAlternatives = async () => {
+    if (!selectedProduct) return;
+
+    setLoadingAlternatives(true);
+    setError(null);
+
+    try {
+      // Chiama API per ottenere le alternative
+      const response = await fetch('/api/odoo/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          model: 'product.product',
+          method: 'search_read',
+          args: [[['id', '=', selectedProduct.id]]],
+          kwargs: { fields: ['product_tmpl_id'], limit: 1 }
+        }),
+      });
+
+      const productData = await response.json();
+      if (!productData.result || productData.result.length === 0) {
+        setError('Prodotto non trovato');
+        return;
+      }
+
+      const templateId = productData.result[0].product_tmpl_id[0];
+
+      // Ottieni alternative dal template
+      const templateResponse = await fetch('/api/odoo/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          model: 'product.template',
+          method: 'search_read',
+          args: [[['id', '=', templateId]]],
+          kwargs: { fields: ['alternative_product_ids'], limit: 1 }
+        }),
+      });
+
+      const templateData = await templateResponse.json();
+      if (!templateData.result || templateData.result.length === 0 ||
+          !templateData.result[0].alternative_product_ids ||
+          templateData.result[0].alternative_product_ids.length === 0) {
+        setError('Nessun prodotto alternativo configurato');
+        setAlternativeProducts([]);
+        setShowAlternatives(true);
+        return;
+      }
+
+      // Carica i prodotti alternativi con immagini e giacenza
+      const altResponse = await fetch('/api/odoo/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          model: 'product.product',
+          method: 'search_read',
+          args: [[['product_tmpl_id', 'in', templateData.result[0].alternative_product_ids]]],
+          kwargs: {
+            fields: ['id', 'name', 'default_code', 'image_128', 'qty_available', 'uom_id', 'list_price'],
+            limit: 50
+          }
+        }),
+      });
+
+      const altData = await altResponse.json();
+      if (altData.result && altData.result.length > 0) {
+        setAlternativeProducts(altData.result);
+        setShowAlternatives(true);
+      } else {
+        setError('Nessun prodotto alternativo trovato');
+        setAlternativeProducts([]);
+        setShowAlternatives(true);
+      }
+    } catch (err) {
+      console.error('Errore caricamento alternative:', err);
+      setError('Errore nel caricamento delle alternative');
+    } finally {
+      setLoadingAlternatives(false);
+    }
+  };
+
+  // Seleziona un prodotto alternativo
+  const handleSelectAlternative = (product: Product) => {
+    setSelectedProduct(product);
+    setSearchQuery(product.name);
+    setShowAlternatives(false);
+    setAlternativeProducts([]);
+    setQuantity(1);
+    setQuantityInput('1');
   };
 
   return (
@@ -291,7 +393,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
       {/* Selected Product + Quantity */}
       {selectedProduct && (
         <div className="bg-slate-800 rounded-lg p-4 border border-blue-500/30">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             {selectedProduct.image_128 ? (
               <img
                 src={`data:image/png;base64,${selectedProduct.image_128}`}
@@ -309,12 +411,23 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               <div className="font-semibold text-white" style={{ fontSize: '16px', lineHeight: '1.5' }}>
                 {selectedProduct.name}
               </div>
-              {/* Prezzo rimosso - gestito separatamente */}
+              {/* Giacenza */}
+              <div className="flex items-center gap-2 mt-1">
+                <span
+                  className="text-sm font-semibold"
+                  style={{
+                    color: selectedProduct.qty_available && selectedProduct.qty_available > 0 ? '#10b981' : '#f59e0b'
+                  }}
+                >
+                  📦 Giacenza: {selectedProduct.qty_available?.toFixed(2) || '0.00'}
+                  {selectedProduct.uom_id && Array.isArray(selectedProduct.uom_id) && ` ${selectedProduct.uom_id[1]}`}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Quantity Input */}
-          <div className="flex items-center gap-3">
+          {/* Quantity Input + Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
             <label className="text-sm text-slate-300 font-medium" style={{ fontSize: '14px', lineHeight: '1.5' }}>
               Quantità:
             </label>
@@ -326,7 +439,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               onChange={(e) => handleQuantityChange(e.target.value)}
               onFocus={(e) => e.target.select()}
               placeholder="1"
-              className="w-24 min-h-[48px] px-3 py-2 bg-slate-700 text-white text-center rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              className="w-20 min-h-[48px] px-3 py-2 bg-slate-700 text-white text-center rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               style={{
                 fontSize: '16px',
                 lineHeight: '1.5',
@@ -340,7 +453,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               style={{
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent',
-                fontSize: '16px',
+                fontSize: '14px',
                 lineHeight: '1.5',
               }}
             >
@@ -349,7 +462,83 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
               </svg>
               Aggiungi al Carrello
             </button>
+            <button
+              onClick={handleLoadAlternatives}
+              disabled={loadingAlternatives}
+              className="min-h-[48px] px-4 py-2 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                fontSize: '14px',
+                lineHeight: '1.5',
+              }}
+            >
+              {loadingAlternatives ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>🔀 Alternativa</>
+              )}
+            </button>
           </div>
+
+          {/* Alternative Products */}
+          {showAlternatives && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="text-sm font-semibold text-teal-400 mb-3">
+                🔀 Prodotti Alternativi {alternativeProducts.length > 0 && `(${alternativeProducts.length})`}
+              </div>
+              {alternativeProducts.length === 0 ? (
+                <div className="text-sm text-slate-400">Nessun prodotto alternativo configurato</div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {alternativeProducts.map((alt) => {
+                    const uom = alt.uom_id && Array.isArray(alt.uom_id) ? alt.uom_id[1] : '';
+                    const hasStock = alt.qty_available && alt.qty_available > 0;
+                    return (
+                      <button
+                        key={alt.id}
+                        onClick={() => handleSelectAlternative(alt)}
+                        className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-all text-left"
+                      >
+                        {alt.image_128 ? (
+                          <img
+                            src={`data:image/png;base64,${alt.image_128}`}
+                            alt=""
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-600"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-600 flex items-center justify-center text-lg">
+                            📦
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-white truncate">{alt.name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span
+                              className="text-xs font-semibold"
+                              style={{ color: hasStock ? '#10b981' : '#f59e0b' }}
+                            >
+                              📦 {alt.qty_available?.toFixed(2) || '0.00'} {uom}
+                            </span>
+                            {alt.default_code && (
+                              <span className="text-xs text-slate-400">Cod: {alt.default_code}</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-teal-400 text-sm">Seleziona →</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                onClick={() => { setShowAlternatives(false); setAlternativeProducts([]); }}
+                className="mt-3 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                ✕ Chiudi alternative
+              </button>
+            </div>
+          )}
         </div>
       )}
 
