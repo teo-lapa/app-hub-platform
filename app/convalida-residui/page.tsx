@@ -47,6 +47,12 @@ interface Product {
   uom_id: [number, string] | false;
   lst_price: number;
   product_tmpl_id?: [number, string];
+  // Campi aggiuntivi per la nuova ricerca con immagini
+  image_128?: string;
+  qty_available?: number;
+  incoming_qty?: number;
+  incoming_date?: string | null;
+  uom_name?: string;
 }
 
 interface SaleOrder {
@@ -1096,13 +1102,44 @@ export default function ConvalidaResiduiPage() {
 
     setSostituzioneLoading(true);
     try {
-      const results = await superSearch(term);
-      setSostituzioneSuggestions(results);
-      if (results.length > 0) {
-        setSelectedSostituto(results[0]);
+      // Usa la nuova API con immagini e giacenza
+      const response = await fetch('/api/catalogo-venditori/search-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: term.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nella ricerca prodotti');
       }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nella ricerca');
+      }
+
+      // Mappa i risultati al formato Product
+      const results: Product[] = (data.products || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        display_name: p.name,
+        default_code: p.default_code || false,
+        barcode: false,
+        uom_id: p.uom_id || false,
+        lst_price: p.list_price || 0,
+        image_128: p.image_128,
+        qty_available: p.qty_available,
+        incoming_qty: p.incoming_qty,
+        incoming_date: p.incoming_date,
+        uom_name: p.uom_id ? p.uom_id[1] : '',
+      }));
+
+      setSostituzioneSuggestions(results);
+      // Non selezionare automaticamente il primo
+      setSelectedSostituto(null);
     } catch (error) {
       console.error(error);
+      setSostituzioneSuggestions([]);
     } finally {
       setSostituzioneLoading(false);
     }
@@ -2684,83 +2721,169 @@ export default function ConvalidaResiduiPage() {
                   </div>
                 </div>
 
-                {/* Lista suggerimenti */}
-                <div className="qa-suggest" style={{ maxHeight: '250px' }}>
-                  {sostituzioneLoading && <div style={{ color: '#b6c2da' }}>Ricerca in corso...</div>}
+                {/* Lista suggerimenti - Stile Catalogo Venditori */}
+                <div style={{
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  overscrollBehavior: 'contain',
+                  marginTop: '12px'
+                }}>
+                  {sostituzioneLoading && (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        border: '2px solid #3b82f6',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        display: 'inline-block',
+                        marginRight: '8px',
+                        verticalAlign: 'middle'
+                      }} />
+                      Ricerca in corso...
+                    </div>
+                  )}
                   {!sostituzioneLoading && sostituzioneSuggestions.length === 0 && sostituzioneSearch.length >= 2 && (
-                    <div style={{ color: '#b6c2da' }}>Nessun risultato</div>
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>
+                      Nessun prodotto trovato
+                    </div>
                   )}
                   {sostituzioneSuggestions.map((prod) => {
                     const uom = prod.uom_id ? prod.uom_id[1] : '';
-                    const code = prod.default_code ? ` • Cod.: ${prod.default_code}` : '';
-                    const bar = prod.barcode ? ` • Barcode: ${prod.barcode}` : '';
-                    const stock = productStock[prod.id] || [];
+                    const hasStock = prod.qty_available && prod.qty_available > 0;
 
                     return (
                       <button
                         key={prod.id}
                         type="button"
-                        className={`qa-sugg ${selectedSostituto?.id === prod.id ? 'active' : ''}`}
                         onClick={() => setSelectedSostituto(prod)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px',
+                          minHeight: '56px',
+                          background: selectedSostituto?.id === prod.id ? '#eff6ff' : '#ffffff',
+                          border: selectedSostituto?.id === prod.id ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                          borderRadius: '10px',
+                          marginBottom: '8px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease'
+                        }}
                       >
-                        <div className="prod-info">
-                          <div className="name">{prod.display_name || prod.name}</div>
-                          <div className="meta">
-                            {uom}{code}{bar}
+                        {/* Immagine prodotto - piccola per performance */}
+                        {prod.image_128 ? (
+                          <img
+                            src={`data:image/png;base64,${prod.image_128}`}
+                            alt=""
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '6px',
+                              objectFit: 'cover',
+                              border: '1px solid #e2e8f0',
+                              flexShrink: 0
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '6px',
+                            background: '#f1f5f9',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            fontSize: '16px'
+                          }}>
+                            📦
                           </div>
-                        </div>
-                        {stock.length > 0 && (
-                          <div className="stock-info">
-                            <span className="stock-available">
-                              📍 {stock.reduce((sum, s) => sum + s.qty, 0).toFixed(1)} {uom}
+                        )}
+
+                        {/* Info prodotto */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontWeight: 600,
+                            fontSize: '14px',
+                            color: '#0f172a',
+                            marginBottom: '4px',
+                            lineHeight: '1.3'
+                          }}>
+                            {prod.name}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            {/* Giacenza */}
+                            <span style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: hasStock ? '#16a34a' : '#f59e0b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              📦 Giacenza: {prod.qty_available !== undefined ? prod.qty_available.toFixed(2) : '0.00'} {uom}
                             </span>
+                            {/* In arrivo */}
+                            {prod.incoming_qty && prod.incoming_qty > 0 && (
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#3b82f6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                🚚 In arrivo: {prod.incoming_qty.toFixed(2)}
+                                {prod.incoming_date && ` (${new Date(prod.incoming_date).toLocaleDateString('it-IT')})`}
+                              </span>
+                            )}
+                          </div>
+                          {/* Codice */}
+                          {prod.default_code && (
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                              Cod: {prod.default_code}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Quantità input inline - solo se selezionato */}
+                        {selectedSostituto?.id === prod.id && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexShrink: 0
+                          }}>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={sostituzioneQty}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setSostituzioneQty(parseFloat(e.target.value) || 0)}
+                              style={{
+                                width: '70px',
+                                padding: '8px',
+                                borderRadius: '8px',
+                                border: '2px solid #3b82f6',
+                                background: '#ffffff',
+                                color: '#0f172a',
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                textAlign: 'center'
+                              }}
+                            />
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>{uom}</span>
                           </div>
                         )}
                       </button>
                     );
                   })}
                 </div>
-
-                {/* Prodotto selezionato e quantità */}
-                {selectedSostituto && (
-                  <div style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    background: '#dcfce7',
-                    borderRadius: '10px',
-                    border: '1px solid #bbf7d0'
-                  }}>
-                    <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: '600' }}>
-                      Prodotto sostitutivo selezionato
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#14532d' }}>
-                      {selectedSostituto.display_name || selectedSostituto.name}
-                    </div>
-                    <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '14px', color: '#166534' }}>Quantità:</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={sostituzioneQty}
-                        onChange={(e) => setSostituzioneQty(parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: '120px',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #86efac',
-                          background: '#ffffff',
-                          color: '#14532d',
-                          fontSize: '16px',
-                          fontWeight: '600'
-                        }}
-                      />
-                      <span style={{ fontSize: '13px', color: '#166534' }}>
-                        {selectedSostituto.uom_id ? selectedSostituto.uom_id[1] : ''}
-                      </span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Avviso */}
                 <div style={{
