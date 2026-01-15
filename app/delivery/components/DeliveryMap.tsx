@@ -147,15 +147,24 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         return;
       }
 
-      // Determina colore e opacità in base allo stato
+      // Determina colore e opacità in base allo stato e tipo
       const isBackorder = (delivery as any).isBackorder || false;
       const isCompleted = delivery.completed || delivery.state === 'done';
+      const isPickup = delivery.type === 'pickup';
 
       let markerColor = '#3b82f6'; // Blu - da consegnare
       let borderColor = '#1e40af';
       let markerOpacity = 1.0;
+      let markerIcon = '📦';
 
-      if (isBackorder) {
+      if (isPickup) {
+        markerColor = '#9333ea'; // Viola - ritiro
+        borderColor = '#7c3aed';
+        markerIcon = '📥';
+        if (isCompleted) {
+          markerOpacity = 0.6;
+        }
+      } else if (isBackorder) {
         markerColor = '#f59e0b'; // Arancione - residuo
         borderColor = '#d97706';
         markerOpacity = 0.6;
@@ -165,7 +174,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         markerOpacity = 0.6;
       }
 
-      // Crea un marker SVG più piccolo e professionale (pin style)
+      // Crea un marker SVG - diverso per pickup vs delivery
       const pinIcon = {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="52" viewBox="0 0 28 40">
@@ -175,11 +184,11 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
               <!-- Pin body -->
               <path d="M14 1 C 8 1, 3 6, 3 12 C 3 20, 14 36, 14 36 C 14 36, 25 20, 25 12 C 25 6, 20 1, 14 1 Z"
                     fill="${markerColor}" stroke="${borderColor}" stroke-width="1.5"/>
-              <!-- Pin inner circle (white background for number) -->
+              <!-- Pin inner circle (white background for number/icon) -->
               <circle cx="14" cy="12" r="7" fill="white"/>
-              <!-- Number text -->
-              <text x="14" y="16" font-family="Arial, sans-serif" font-size="10" font-weight="bold"
-                    text-anchor="middle" fill="${borderColor}">${index + 1}</text>
+              <!-- Number/Icon text -->
+              <text x="14" y="16" font-family="Arial, sans-serif" font-size="${isPickup ? '12' : '10'}" font-weight="bold"
+                    text-anchor="middle" fill="${borderColor}">${isPickup ? '📥' : index + 1}</text>
             </g>
           </svg>
         `),
@@ -192,27 +201,59 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
         position: { lat: delivery.lat, lng: delivery.lng },
         map: googleMapRef.current,
         icon: pinIcon,
-        title: delivery.customerName,
-        optimized: false, // Disabilita per evitare tremolii su Android/zoom
-        zIndex: isCompleted ? 1 : 10
+        title: isPickup ? `📥 RITIRO: ${delivery.supplier || delivery.customerName}` : delivery.customerName,
+        optimized: false,
+        zIndex: isCompleted ? 1 : (isPickup ? 15 : 10)
       });
 
-      // Info window - Migliorato con più dettagli
-      const statusBadge = isBackorder ?
-        '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">RESIDUO</span>' :
-        isCompleted ?
-        '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">✓ COMPLETATO</span>' :
-        '<span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">DA CONSEGNARE</span>';
+      // Info window - diversa per pickup vs delivery
+      let statusBadge: string;
+      let actionButton: string;
+      let displayName: string;
+      let addressLabel: string;
+
+      if (isPickup) {
+        statusBadge = isCompleted ?
+          '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">✓ RITIRATO</span>' :
+          '<span style="background: #9333ea; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">📥 RITIRO</span>';
+        actionButton = `
+          <button
+            id="pickup-btn-${delivery.id}"
+            style="flex: 1; background: #9333ea; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;"
+          >
+            📥 Ritira
+          </button>
+        `;
+        displayName = `🏭 ${delivery.supplier || delivery.customerName}`;
+        addressLabel = 'Fornitore';
+      } else {
+        statusBadge = isBackorder ?
+          '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">RESIDUO</span>' :
+          isCompleted ?
+          '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">✓ COMPLETATO</span>' :
+          '<span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">DA CONSEGNARE</span>';
+        actionButton = `
+          <button
+            id="scarico-btn-${delivery.id}"
+            style="flex: 1; background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;"
+          >
+            📦 Scarico
+          </button>
+        `;
+        displayName = delivery.customerName;
+        addressLabel = 'Cliente';
+      }
 
       const infoWindow = new google.maps.InfoWindow({
         content: `
           <div style="padding: 8px; min-width: 200px; max-width: 280px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="font-size: 11px; font-weight: 600; color: #666;">#${index + 1}</span>
+              <span style="font-size: 11px; font-weight: 600; color: #666;">${isPickup ? 'RITIRO' : '#' + (index + 1)}</span>
               ${statusBadge}
             </div>
-            <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #1f2937;">${delivery.customerName}</div>
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; color: ${isPickup ? '#7c3aed' : '#1f2937'};">${displayName}</div>
             ${(delivery as any).address ? `<div style="font-size: 11px; color: #6b7280; margin-bottom: 6px;">📍 ${(delivery as any).address}</div>` : ''}
+            ${delivery.purchase_order ? `<div style="font-size: 11px; color: #9333ea; margin-bottom: 6px;">📋 ${delivery.purchase_order}</div>` : ''}
             ${(delivery as any).note ? `<div style="font-size: 11px; color: #f59e0b; background: #fffbeb; padding: 4px 6px; border-radius: 4px; margin-top: 4px; border-left: 2px solid #f59e0b;"><strong>Nota:</strong> ${(delivery as any).note}</div>` : ''}
 
             <div style="display: flex; gap: 6px; margin-top: 12px;">
@@ -222,12 +263,7 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
               >
                 🧭 Naviga
               </button>
-              <button
-                id="scarico-btn-${delivery.id}"
-                style="flex: 1; background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;"
-              >
-                📦 Scarico
-              </button>
+              ${actionButton}
             </div>
           </div>
         `
@@ -236,14 +272,24 @@ export default function DeliveryMap({ deliveries, currentPosition, onMarkerClick
       marker.addListener('click', () => {
         infoWindow.open(googleMapRef.current!, marker);
 
-        // Dopo che l'InfoWindow è aperta, aggiungi listener al pulsante scarico
+        // Dopo che l'InfoWindow è aperta, aggiungi listener al pulsante
         google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
-          const scaricoBtn = document.getElementById(`scarico-btn-${delivery.id}`);
-          if (scaricoBtn && onMarkerClick) {
-            scaricoBtn.addEventListener('click', () => {
-              onMarkerClick(delivery);
-              infoWindow.close();
-            });
+          if (isPickup) {
+            const pickupBtn = document.getElementById(`pickup-btn-${delivery.id}`);
+            if (pickupBtn && onMarkerClick) {
+              pickupBtn.addEventListener('click', () => {
+                onMarkerClick(delivery);
+                infoWindow.close();
+              });
+            }
+          } else {
+            const scaricoBtn = document.getElementById(`scarico-btn-${delivery.id}`);
+            if (scaricoBtn && onMarkerClick) {
+              scaricoBtn.addEventListener('click', () => {
+                onMarkerClick(delivery);
+                infoWindow.close();
+              });
+            }
           }
         });
       });

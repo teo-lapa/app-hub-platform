@@ -148,40 +148,73 @@ export async function GET(request: NextRequest) {
 
     console.log('📅 [DELIVERY] Range date:', { todayStart, todayEnd });
 
-    // Mostra consegne di oggi (TUTTI gli stati tranne cancel)
-    const domain: any[] = [
+    // ==================== CARICA CONSEGNE (OUTGOING) ====================
+    const deliveryDomain: any[] = [
       ['driver_id', '=', driverId],
       ['scheduled_date', '>=', todayStart],
       ['scheduled_date', '<=', todayEnd],
-      ['state', '!=', 'cancel'],  // Escludi solo quelle cancellate
+      ['state', '!=', 'cancel'],
       ['picking_type_id.code', '=', 'outgoing'],
       ['backorder_id', '=', false]
     ];
 
-    console.log('🔍 [DELIVERY] Domain filtro con driver_id=' + driverId + ':', JSON.stringify(domain));
+    console.log('🔍 [DELIVERY] Domain consegne:', JSON.stringify(deliveryDomain));
 
-    // Load pickings con move_ids (prodotti) + sale_id e amount_total per pagamenti
-    const pickings = await callOdoo(
+    const outgoingPickings = await callOdoo(
       cookies,
       'stock.picking',
       'search_read',
       [],
       {
-        domain: domain,
+        domain: deliveryDomain,
         fields: [
           'id', 'name', 'partner_id', 'scheduled_date',
           'state', 'note', 'origin', 'driver_id',
-          'backorder_id', 'move_ids', 'sale_id'
+          'backorder_id', 'move_ids', 'sale_id', 'picking_type_id'
         ],
         limit: 50,
         order: 'scheduled_date ASC'
       }
     );
 
-    console.log('📦 [DELIVERY] Pickings trovati per ' + driverName + ':', pickings.length);
+    console.log('📦 [DELIVERY] Consegne trovate:', outgoingPickings.length);
+
+    // ==================== CARICA RITIRI (INCOMING) ====================
+    const pickupDomain: any[] = [
+      ['driver_id', '=', driverId],
+      ['scheduled_date', '>=', todayStart],
+      ['scheduled_date', '<=', todayEnd],
+      ['state', '!=', 'cancel'],
+      ['picking_type_id.code', '=', 'incoming'],
+      ['backorder_id', '=', false]
+    ];
+
+    console.log('🔍 [DELIVERY] Domain ritiri:', JSON.stringify(pickupDomain));
+
+    const incomingPickings = await callOdoo(
+      cookies,
+      'stock.picking',
+      'search_read',
+      [],
+      {
+        domain: pickupDomain,
+        fields: [
+          'id', 'name', 'partner_id', 'scheduled_date',
+          'state', 'note', 'origin', 'driver_id',
+          'backorder_id', 'move_ids', 'purchase_id', 'picking_type_id'
+        ],
+        limit: 50,
+        order: 'scheduled_date ASC'
+      }
+    );
+
+    console.log('📥 [DELIVERY] Ritiri trovati:', incomingPickings.length);
+
+    // Combina tutti i pickings
+    const pickings = [...outgoingPickings, ...incomingPickings];
 
     if (pickings.length === 0) {
-      console.log('⚠️ [DELIVERY] Nessuna consegna assegnata a ' + driverName + ' (ID: ' + driverId + ') per oggi');
+      console.log('⚠️ [DELIVERY] Nessuna consegna/ritiro assegnato a ' + driverName + ' (ID: ' + driverId + ') per oggi');
 
       return NextResponse.json({
         deliveries: [],
@@ -292,6 +325,14 @@ export async function GET(request: NextRequest) {
       const partner: any = partnerMap.get(partnerId);
       if (!partner) continue;
 
+      // Determina il tipo (delivery o pickup)
+      const pickingTypeCode = picking.picking_type_id?.[1]?.toLowerCase() || '';
+      const isPickup = pickingTypeCode.includes('riceviment') ||
+                       pickingTypeCode.includes('incoming') ||
+                       pickingTypeCode.includes('in') ||
+                       picking.purchase_id;
+      const type = isPickup ? 'pickup' : 'delivery';
+
       // Build address
       let address = '';
       if (partner.street) address += partner.street;
@@ -329,16 +370,23 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      // Recupera il responsabile vendite dal sale order
+      // Recupera il responsabile vendite dal sale order (solo per delivery)
       const saleOrderId = picking.sale_id?.[0];
       const saleOrder: any = saleOrderId ? saleOrderMap.get(saleOrderId) : null;
       const salesperson = saleOrder?.user_id?.[1] || null;
 
+      // Per pickup, il partner è il fornitore
+      const supplier = isPickup ? partner.name : undefined;
+      const purchaseOrder = isPickup && picking.purchase_id ? picking.purchase_id[1] : undefined;
+
       deliveries.push({
         id: picking.id,
         name: picking.name,
+        type: type,
         customer: partner.name,
         customerName: partner.name,
+        supplier: supplier,
+        purchase_order: purchaseOrder,
         address: address.trim(),
         phone: partner.phone || partner.mobile || '',
         lat: partner.partner_latitude || null,
@@ -361,8 +409,8 @@ export async function GET(request: NextRequest) {
         completed: picking.state === 'done',
         sale_id: picking.sale_id || null,
         salesperson: salesperson,
-        amount_total: null, // Verrà calcolato dopo la validazione
-        payment_status: null // Verrà impostato dopo la validazione
+        amount_total: null,
+        payment_status: null
       });
     }
 

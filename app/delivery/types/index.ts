@@ -29,6 +29,10 @@ export interface Delivery {
   partner_zip?: string;
   partner_phone?: string;
   partner_id?: [number, string];
+  // Pickup fields
+  type: 'delivery' | 'pickup';
+  supplier?: string;
+  purchase_order?: string;
 }
 
 export interface Product {

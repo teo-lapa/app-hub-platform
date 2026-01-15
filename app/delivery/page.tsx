@@ -55,6 +55,13 @@ export default function DeliveryPage() {
   const [showCalculatorModal, setShowCalculatorModal] = useState(false);
   const [showRouteOrganizerModal, setShowRouteOrganizerModal] = useState(false);
   const [showCompletionOptionsModal, setShowCompletionOptionsModal] = useState(false);
+  const [showPickupModal, setShowPickupModal] = useState(false);
+
+  // Estados pickup (ritiro)
+  const [pickupNote, setPickupNote] = useState('');
+  const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
+  const [isConfirmingPickup, setIsConfirmingPickup] = useState(false);
+  const pickupPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Estados scarico
   const [scaricoProducts, setScaricoProducts] = useState<Product[]>([]);
@@ -332,6 +339,71 @@ export default function DeliveryPage() {
   function closeModal() {
     setShowDetailModal(false);
     setCurrentDelivery(null);
+  }
+
+  // ==================== PICKUP (RITIRO) LOGIC ====================
+  function openPickupModal(delivery: Delivery) {
+    setCurrentDelivery(delivery);
+    setPickupNote('');
+    setPickupPhoto(null);
+    setShowPickupModal(true);
+  }
+
+  function closePickupModal() {
+    setShowPickupModal(false);
+    setCurrentDelivery(null);
+    setPickupNote('');
+    setPickupPhoto(null);
+  }
+
+  async function handlePickupPhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(base64, 1280, 0.7);
+      setPickupPhoto(compressed);
+      showToast('Foto aggiunta', 'success');
+    } catch (err) {
+      showToast('Errore caricamento foto', 'error');
+    }
+  }
+
+  async function confirmPickup() {
+    if (!currentDelivery) return;
+
+    setIsConfirmingPickup(true);
+    try {
+      const response = await fetch('/api/delivery/confirm-pickup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          picking_id: currentDelivery.id,
+          note: pickupNote || null,
+          photo: pickupPhoto || null
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore conferma ritiro');
+      }
+
+      showToast('✅ Ritiro confermato!', 'success');
+      closePickupModal();
+
+      // Ricarica la lista
+      await loadDeliveries();
+
+    } catch (err: any) {
+      console.error('Errore conferma ritiro:', err);
+      showToast(err.message || 'Errore conferma ritiro', 'error');
+    } finally {
+      setIsConfirmingPickup(false);
+    }
   }
 
   async function loadAttachmentCounts(deliveryId: number) {
@@ -2006,7 +2078,12 @@ export default function DeliveryPage() {
     pending: deliveries.filter(d => d.state === 'assigned').length,
     completedPercent: deliveries.length > 0
       ? Math.round((deliveries.filter(d => d.state === 'done').length / deliveries.length) * 100)
-      : 0
+      : 0,
+    // Stats per pickup
+    pickupsPending: deliveries.filter(d => d.type === 'pickup' && d.state !== 'done').length,
+    pickupsTotal: deliveries.filter(d => d.type === 'pickup').length,
+    deliveriesPending: deliveries.filter(d => d.type !== 'pickup' && d.state !== 'done').length,
+    deliveriesTotal: deliveries.filter(d => d.type !== 'pickup').length
   };
 
   // ==================== RENDER ====================
@@ -2026,6 +2103,28 @@ export default function DeliveryPage() {
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-white">🚚 LAPA Delivery</h1>
         </div>
+
+        {/* Badge Ritiri Pendenti */}
+        {stats.pickupsPending > 0 && (
+          <motion.button
+            onClick={() => {
+              // Scorri alla prima card di ritiro
+              const pickupCard = document.querySelector('[data-pickup="true"]');
+              if (pickupCard) {
+                pickupCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="relative mr-2 px-3 py-1.5 bg-purple-500 hover:bg-purple-400 rounded-full flex items-center gap-1.5 transition-colors"
+          >
+            <span className="text-white text-sm font-semibold">📥 Ritiri</span>
+            <span className="bg-white text-purple-600 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {stats.pickupsPending}
+            </span>
+          </motion.button>
+        )}
+
         <div className="flex items-center gap-3 text-sm text-white">
           <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-yellow-400'}`} />
           <span className="font-medium">{session?.name || 'Driver'}</span>
@@ -2103,33 +2202,63 @@ export default function DeliveryPage() {
             {filteredDeliveries.map((delivery, index) => (
               <motion.div
                 key={delivery.id}
+                data-pickup={delivery.type === 'pickup' ? 'true' : 'false'}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => openDelivery(delivery)}
-                className={`bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform ${
-                  delivery.state === 'done' ? 'opacity-60 bg-blue-50' : ''
+                onClick={() => delivery.type === 'pickup' ? openPickupModal(delivery) : openDelivery(delivery)}
+                className={`rounded-xl p-4 shadow-sm border cursor-pointer active:scale-[0.98] transition-transform ${
+                  delivery.type === 'pickup'
+                    ? delivery.state === 'done'
+                      ? 'bg-purple-50 border-purple-200 opacity-60'
+                      : 'bg-purple-50 border-purple-300'
+                    : delivery.state === 'done'
+                      ? 'bg-blue-50 border-gray-100 opacity-60'
+                      : 'bg-white border-gray-100'
                 }`}
               >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                      {delivery.sequence || index + 1}
+                    <div className={`w-8 h-8 text-white rounded-full flex items-center justify-center font-bold text-sm ${
+                      delivery.type === 'pickup' ? 'bg-purple-600' : 'bg-indigo-600'
+                    }`}>
+                      {delivery.type === 'pickup' ? '📥' : (delivery.sequence || index + 1)}
                     </div>
                     {delivery.note && (
                       <div className="text-xl" title="Attenzione: Nota presente">⚠️</div>
                     )}
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    delivery.state === 'done' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
+                    delivery.type === 'pickup'
+                      ? delivery.state === 'done'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-purple-600 text-white'
+                      : delivery.state === 'done'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-orange-500 text-white'
                   }`}>
-                    {delivery.state === 'done' ? 'COMPLETATA' : 'IN CONSEGNA'}
+                    {delivery.type === 'pickup'
+                      ? delivery.state === 'done' ? 'RITIRATO' : 'RITIRO'
+                      : delivery.state === 'done' ? 'COMPLETATA' : 'IN CONSEGNA'}
                   </span>
                 </div>
 
-                {/* Customer */}
-                <div className="font-semibold text-gray-900 mb-2">{delivery.customerName}</div>
+                {/* Customer/Supplier */}
+                <div className="font-semibold text-gray-900 mb-2">
+                  {delivery.type === 'pickup' ? (
+                    <span className="text-purple-700">🏭 {delivery.supplier || delivery.customerName}</span>
+                  ) : (
+                    delivery.customerName
+                  )}
+                </div>
+
+                {/* Purchase order for pickups */}
+                {delivery.type === 'pickup' && delivery.purchase_order && (
+                  <div className="text-sm text-purple-600 mb-2 font-medium">
+                    📋 {delivery.purchase_order}
+                  </div>
+                )}
 
                 {/* Address */}
                 <div className="text-sm text-gray-600 mb-2 flex items-start gap-2">
@@ -2148,8 +2277,8 @@ export default function DeliveryPage() {
                   </a>
                 )}
 
-                {/* Salesperson */}
-                {delivery.salesperson && (
+                {/* Salesperson (only for deliveries) */}
+                {delivery.type !== 'pickup' && delivery.salesperson && (
                   <div className="text-sm text-gray-600 mb-2 bg-blue-50 p-2 rounded-lg border border-blue-200">
                     <span className="font-semibold text-blue-700">👤 Responsabile Vendite:</span> {delivery.salesperson}
                     <div className="text-xs text-gray-500 mt-1">Per problemi chiamare il responsabile di questo cliente</div>
@@ -2158,7 +2287,7 @@ export default function DeliveryPage() {
 
                 {/* Order info */}
                 <div className="text-sm text-gray-500 mb-2">
-                  Ordine: <span className="font-medium">{delivery.origin || delivery.name}</span>
+                  {delivery.type === 'pickup' ? 'Riferimento' : 'Ordine'}: <span className="font-medium">{delivery.origin || delivery.name}</span>
                 </div>
 
                 {/* ETA */}
@@ -2177,15 +2306,15 @@ export default function DeliveryPage() {
                   📦 {delivery.products?.length || 0} articoli
                 </div>
 
-                {/* Amount */}
-                {delivery.amount_total && (
+                {/* Amount (only for deliveries) */}
+                {delivery.type !== 'pickup' && delivery.amount_total && (
                   <div className="text-lg font-bold text-gray-900 mb-2">
                     € {delivery.amount_total.toFixed(2)}
                   </div>
                 )}
 
-                {/* Payment status */}
-                {delivery.payment_status && (
+                {/* Payment status (only for deliveries) */}
+                {delivery.type !== 'pickup' && delivery.payment_status && (
                   <div className={`inline-block px-2 py-1 rounded text-xs font-semibold mb-3 ${
                     delivery.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
                     delivery.payment_status === 'to_pay' ? 'bg-red-100 text-red-700' :
@@ -2209,20 +2338,37 @@ export default function DeliveryPage() {
                     >
                       🗺️ NAVIGA
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openScaricoView(delivery);
-                      }}
-                      className="flex-1 bg-green-600 text-white py-3 min-h-[48px] rounded-lg font-semibold text-sm hover:bg-green-700 transition-colors relative"
-                    >
-                      📦 SCARICO
-                      {(delivery.products?.length || 0) > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                          {delivery.products?.length || 0}
-                        </span>
-                      )}
-                    </button>
+                    {delivery.type === 'pickup' ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPickupModal(delivery);
+                        }}
+                        className="flex-1 bg-purple-600 text-white py-3 min-h-[48px] rounded-lg font-semibold text-sm hover:bg-purple-700 transition-colors relative"
+                      >
+                        📥 RITIRA
+                        {(delivery.products?.length || 0) > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                            {delivery.products?.length || 0}
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openScaricoView(delivery);
+                        }}
+                        className="flex-1 bg-green-600 text-white py-3 min-h-[48px] rounded-lg font-semibold text-sm hover:bg-green-700 transition-colors relative"
+                      >
+                        📦 SCARICO
+                        {(delivery.products?.length || 0) > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                            {delivery.products?.length || 0}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -2784,6 +2930,176 @@ export default function DeliveryPage() {
                       </button>
                     </>
                   )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Ritiro (Pickup) */}
+      <AnimatePresence>
+        {showPickupModal && currentDelivery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
+            onClick={closePickupModal}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="bg-purple-600 text-white p-4 flex items-center justify-between rounded-t-2xl sticky top-0">
+                <div>
+                  <div className="text-xs font-medium opacity-80">📥 RITIRO MERCE</div>
+                  <h2 className="font-semibold text-lg">{currentDelivery.name}</h2>
+                </div>
+                <button onClick={closePickupModal} className="text-2xl p-2">✕</button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* Fornitore */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="text-xs text-purple-600 font-medium mb-1">FORNITORE</div>
+                  <div className="font-semibold text-purple-800 text-lg">
+                    🏭 {currentDelivery.supplier || currentDelivery.customerName}
+                  </div>
+                  {currentDelivery.purchase_order && (
+                    <div className="text-sm text-purple-600 mt-1">
+                      📋 Ordine: {currentDelivery.purchase_order}
+                    </div>
+                  )}
+                </div>
+
+                {/* Indirizzo */}
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="text-xs text-gray-500 font-medium mb-1">INDIRIZZO RITIRO</div>
+                  <div className="text-sm text-gray-700">
+                    📍 {currentDelivery.partner_street}
+                    {currentDelivery.partner_city && `, ${currentDelivery.partner_city}`}
+                    {currentDelivery.partner_zip && ` ${currentDelivery.partner_zip}`}
+                  </div>
+                  {currentDelivery.partner_phone && (
+                    <a href={`tel:${currentDelivery.partner_phone}`} className="text-sm text-blue-600 mt-1 block">
+                      📞 {currentDelivery.partner_phone}
+                    </a>
+                  )}
+                </div>
+
+                {/* Lista Prodotti */}
+                <div className="bg-white border border-gray-200 rounded-lg">
+                  <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 rounded-t-lg">
+                    <div className="text-xs text-gray-600 font-semibold">
+                      📦 PRODOTTI DA RITIRARE ({currentDelivery.products?.length || 0})
+                    </div>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {currentDelivery.products?.map((product, idx) => (
+                      <div key={product.id || idx} className="px-3 py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-gray-800 flex-1 pr-2">{product.name}</div>
+                          <div className="text-sm font-semibold text-purple-700 whitespace-nowrap">
+                            {product.qty} {product.unit || 'pz'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(!currentDelivery.products || currentDelivery.products.length === 0) && (
+                      <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                        Nessun prodotto specificato
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nota (opzionale) */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    📝 Nota (opzionale)
+                  </label>
+                  <textarea
+                    value={pickupNote}
+                    onChange={(e) => setPickupNote(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    rows={2}
+                    placeholder="Aggiungi una nota sul ritiro..."
+                  />
+                </div>
+
+                {/* Foto (opzionale) */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    📸 Foto (opzionale)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={pickupPhotoInputRef}
+                    onChange={handlePickupPhotoCapture}
+                    className="hidden"
+                  />
+                  {pickupPhoto ? (
+                    <div className="relative">
+                      <img
+                        src={pickupPhoto}
+                        alt="Foto ritiro"
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        onClick={() => setPickupPhoto(null)}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => pickupPhotoInputRef.current?.click()}
+                      className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors"
+                    >
+                      📷 Scatta foto
+                    </button>
+                  )}
+                </div>
+
+                {/* Azioni */}
+                <div className="space-y-2 pt-2">
+                  <button
+                    onClick={() => {
+                      navigateTo(currentDelivery.latitude, currentDelivery.longitude);
+                    }}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    🗺️ NAVIGA AL FORNITORE
+                  </button>
+                  <button
+                    onClick={confirmPickup}
+                    disabled={isConfirmingPickup}
+                    className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+                      isConfirmingPickup
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                    }`}
+                  >
+                    {isConfirmingPickup ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Confermando...
+                      </span>
+                    ) : (
+                      '✅ CONFERMA RITIRO'
+                    )}
+                  </button>
                 </div>
               </div>
             </motion.div>
