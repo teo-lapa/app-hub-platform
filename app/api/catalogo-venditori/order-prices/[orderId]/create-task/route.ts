@@ -165,7 +165,9 @@ export async function POST(
       taskDescription += `🔖 Codice: ${productCode}\n`;
     }
     taskDescription += `📋 Ordine: ${order.name}\n`;
-    taskDescription += `👤 Cliente: ${order.partner_id[1]}\n\n`;
+    taskDescription += `👤 Cliente: ${order.partner_id[1]}\n`;
+    // Hidden metadata for API parsing (lineId for correct product identification)
+    taskDescription += `🔗 LineID: ${lineId}\n\n`;
     taskDescription += `💰 Dettagli Prezzo:\n`;
     taskDescription += `- Prezzo di Costo: CHF ${costPrice.toFixed(2)}\n`;
     if (avgSellingPrice > 0) {

@@ -25,6 +25,7 @@ interface BlockRequest {
 
   // From order line
   proposedPrice: number;
+  lineId: number; // ID della riga ordine specifica
 
   // From parsing note
   sellerNotes: string;
@@ -53,23 +54,37 @@ interface BlockRequestsResponse {
 }
 
 /**
- * Parse HTML note to extract seller notes only
+ * Parse HTML note to extract seller notes and lineId
  *
  * Expected format (from Odoo mail.activity note field):
  * ```
  * <p>...
+ * 🔗 LineID: 12345
+ * ...
  * 📝 Note del Venditore:
  * MI BLOCCHI PREZZO
  * ...
  * </p>
  * ```
  */
-function parseActivityNote(htmlNote: string): { sellerNotes: string } {
+function parseActivityNote(htmlNote: string): { sellerNotes: string; lineId: number | null } {
   console.log('📝 [BLOCK-REQUESTS] Parsing HTML note...');
 
   let sellerNotes = '';
+  let lineId: number | null = null;
 
   try {
+    // Extract LineID - pattern: "🔗 LineID: 12345" or "LineID: 12345"
+    const lineIdPattern = /LineID:\s*(\d+)/;
+    const lineIdMatch = htmlNote.match(lineIdPattern);
+
+    if (lineIdMatch) {
+      lineId = parseInt(lineIdMatch[1], 10);
+      console.log(`✅ [BLOCK-REQUESTS] Found lineId: ${lineId}`);
+    } else {
+      console.warn('⚠️ [BLOCK-REQUESTS] Could not extract lineId from note');
+    }
+
     // Extract "Note del Venditore" - everything after the label until next section
     // Pattern: "Note del Venditore:" followed by newline and text until:
     //   - Double newline (next section)
@@ -89,7 +104,7 @@ function parseActivityNote(htmlNote: string): { sellerNotes: string } {
     console.error('❌ [BLOCK-REQUESTS] Error parsing note:', error.message);
   }
 
-  return { sellerNotes };
+  return { sellerNotes, lineId };
 }
 
 /**
@@ -321,6 +336,9 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        // Parse activity note for seller notes AND lineId
+        const { sellerNotes, lineId: parsedLineId } = parseActivityNote(activityData.note || '');
+
         // Get order lines
         const lines = orderLinesMap.get(order.id);
         if (!lines || lines.length === 0) {
@@ -328,9 +346,21 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // For now, take the first line (you may want to refine this logic)
-        // In a real scenario, you might need to identify which line the request is about
-        const line = lines[0] as any;
+        // Find the correct line using lineId from note, or fallback to first line
+        let line: any;
+        if (parsedLineId) {
+          line = lines.find((l: any) => l.id === parsedLineId);
+          if (line) {
+            console.log(`✅ [BLOCK-REQUESTS-API] Found specific line ${parsedLineId} for activity ${activityData.id}`);
+          } else {
+            console.warn(`⚠️ [BLOCK-REQUESTS-API] LineId ${parsedLineId} not found in order lines, using first line`);
+            line = lines[0];
+          }
+        } else {
+          // Fallback for old activities without lineId
+          console.warn(`⚠️ [BLOCK-REQUESTS-API] No lineId in note, using first line (legacy activity)`);
+          line = lines[0];
+        }
 
         // Get product
         const product = productMap.get(line.product_id[0]) as any;
@@ -338,9 +368,6 @@ export async function GET(request: NextRequest) {
           console.warn(`⚠️ [BLOCK-REQUESTS-API] Product ${line.product_id[0]} not found`);
           continue;
         }
-
-        // Parse activity note for seller notes only
-        const { sellerNotes } = parseActivityNote(activityData.note || '');
 
         // Get proposed price from order line price_unit
         const proposedPrice = line.price_unit || 0;
@@ -366,6 +393,7 @@ export async function GET(request: NextRequest) {
           assignedTo: activityData.user_id ? activityData.user_id[1] : 'Unassigned',
 
           proposedPrice,
+          lineId: line.id, // ID della riga ordine specifica
           sellerNotes,
 
           productId: product.id,
