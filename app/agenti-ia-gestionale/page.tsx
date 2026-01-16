@@ -1620,6 +1620,17 @@ export default function LapaAiAgentsPage() {
                     <FileText className="h-4 w-4" />
                     Ordini bozza
                   </button>
+                  <button
+                    onClick={() => {
+                      setChatMessage('Analizza gli acquisti e dimmi cosa devo ordinare oggi. Usa il tool get_purchase_suggestions per calcolare i prodotti critici.');
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    disabled={isSending || activeTaskId !== null}
+                    className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Cosa ordinare?
+                  </button>
                 </>
               )}
               {selectedAgent === 'vendite' && (
