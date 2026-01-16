@@ -45,6 +45,7 @@ import {
   Square,
   TrendingUp
 } from 'lucide-react';
+import MarkdownMessage from './components/MarkdownMessage';
 
 // Types
 interface Agent {
@@ -1012,7 +1013,11 @@ export default function LapaAiAgentsPage() {
                     : 'bg-slate-800/80 text-slate-100 border border-slate-700/50'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                {msg.role === 'user' ? (
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                ) : (
+                  <MarkdownMessage content={msg.content} />
+                )}
               </div>
               {msg.role === 'user' && (
                 <p className="text-xs text-slate-500 text-right mt-1">{formatTime(msg.timestamp)}</p>
@@ -1370,13 +1375,17 @@ export default function LapaAiAgentsPage() {
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] p-4 rounded-2xl ${
+                className={`max-w-[85%] p-4 rounded-2xl ${
                   msg.role === 'user'
                     ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/20'
                     : 'bg-slate-800/80 text-slate-100 border border-slate-700/50'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                {msg.role === 'user' ? (
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                ) : (
+                  <MarkdownMessage content={msg.content} />
+                )}
               </div>
             </div>
           ))

@@ -17,8 +17,10 @@ import {
   MessageSquare,
   ChevronRight,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  PackageX
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuthStore } from '@/lib/store/authStore';
 
 // URL Odoo per costruire link ai documenti
@@ -218,6 +220,25 @@ export default function IlMioHubPage() {
               <RefreshCw className="h-5 w-5 text-slate-400" />
             </button>
           </div>
+
+          {/* Quick Actions - Prodotti Mancanti */}
+          <Link
+            href="/prodotti-mancanti"
+            className="flex items-center gap-3 p-3 mb-4 bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-lg hover:border-red-500/50 transition-all group"
+          >
+            <div className="p-2 bg-red-500/30 rounded-lg">
+              <PackageX className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-white group-hover:text-red-300 transition-colors">
+                Prodotti Mancanti
+              </h3>
+              <p className="text-xs text-slate-400">
+                Verifica i prodotti non disponibili per le consegne di oggi
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-red-400 transition-colors" />
+          </Link>
 
           {/* Tabs */}
           <div className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
