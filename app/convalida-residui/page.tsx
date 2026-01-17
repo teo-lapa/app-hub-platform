@@ -501,7 +501,6 @@ export default function ConvalidaResiduiPage() {
   const loadProductsInfo = async (movesData: StockMove[]) => {
     try {
       const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
-      console.log('🔍 Caricamento info per prodotti:', productIds);
 
       // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
       const quants = await searchReadConvalida<any>(
@@ -514,7 +513,6 @@ export default function ConvalidaResiduiPage() {
         ['product_id', 'location_id', 'quantity', 'reserved_quantity'],
         0
       );
-      console.log('📦 Quants trovati:', quants.length);
 
       const stockByProduct: Record<number, Array<{location: string, qty: number, reserved: number}>> = {};
       quants.forEach((q: any) => {
@@ -601,10 +599,6 @@ export default function ConvalidaResiduiPage() {
           picking: pickingInfo?.name || r.picking_id ? r.picking_id[1] : 'N/A'
         });
       });
-
-      console.log('✅ Stock by product:', stockByProduct);
-      console.log('✅ Incoming by product:', incomingByProduct);
-      console.log('✅ Reservations by product:', reservationsByProduct);
 
       setProductStock(stockByProduct);
       setProductIncoming(incomingByProduct);
@@ -990,11 +984,9 @@ export default function ConvalidaResiduiPage() {
   const handleOpenScadenza = async (move: StockMove, lotInfo: [number, string], pick: StockPicking) => {
     try {
       setScadenzaLoading(true);
-      console.log('[SCADENZA] Apertura modal per lotto:', lotInfo);
 
       // In Odoo 17 il modello si chiama 'stock.lot' (non 'stock.production.lot')
       const lots = await searchReadConvalida('stock.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date'], 1);
-      console.log('[SCADENZA] Dati lotto ricevuti:', lots);
 
       if (!lots || lots.length === 0) {
         showToastMessage(`Errore: Lotto ${lotInfo[1]} non trovato in Odoo`);
@@ -1218,7 +1210,7 @@ export default function ConvalidaResiduiPage() {
         try {
           await callKwConvalida('sale.order.line', 'product_uom_change', [[newLineId]]);
         } catch (e2) {
-          console.log('Fallback: price will be computed by Odoo on save');
+          // Fallback: price will be computed by Odoo on save
         }
       }
 
@@ -1385,11 +1377,6 @@ export default function ConvalidaResiduiPage() {
     const lineInfos = lineInfoByMove[move.id] || [];
     const lotInfo = lineInfos.length > 0 && lineInfos[0].lot ? lineInfos[0].lot : null;
 
-    // DEBUG: Log per verificare perche' lotInfo potrebbe essere null
-    if (!lotInfo && lineInfos.length > 0) {
-      console.log(`[SCADENZA DEBUG] Move ${move.id} - lineInfos trovate ma lot_id e' false:`, lineInfos);
-    }
-
     // Stato espansione
     const isExpanded = expandedMoves.has(move.id);
 
@@ -1531,9 +1518,7 @@ export default function ConvalidaResiduiPage() {
                     marginLeft: '8px'
                   }}
                   defaultValue=""
-                  onChange={(e) => {
-                    console.log('Ubicazione selezionata:', e.target.value);
-                  }}
+                  onChange={() => {}}
                 >
                   <option value="">-- Seleziona ubicazione --</option>
                   {stock.map((s, i) => {
