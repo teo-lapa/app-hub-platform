@@ -245,6 +245,9 @@ export default function ConvalidaResiduiPage() {
   // Convalida Picking
   const [convalidaLoading, setConvalidaLoading] = useState<number | null>(null);
 
+  // UI: righe espanse (per nascondere/mostrare dettagli)
+  const [expandedMoves, setExpandedMoves] = useState<Set<number>>(new Set());
+
   // Refs
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sostituzioneInputRef = useRef<HTMLInputElement>(null);
@@ -319,6 +322,19 @@ export default function ConvalidaResiduiPage() {
     }
     const m = metaByMove[moveId];
     return m && m.location_id ? m.location_id[1] : '-';
+  };
+
+  // Toggle espansione riga prodotto
+  const toggleMoveExpand = (moveId: number) => {
+    setExpandedMoves(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(moveId)) {
+        newSet.delete(moveId);
+      } else {
+        newSet.add(moveId);
+      }
+      return newSet;
+    });
   };
 
   // --------------------------------------------------------------------------
@@ -1350,10 +1366,20 @@ export default function ConvalidaResiduiPage() {
     const lineInfos = lineInfoByMove[move.id] || [];
     const lotInfo = lineInfos.length > 0 && lineInfos[0].lot ? lineInfos[0].lot : null;
 
+    // DEBUG: Log per verificare perche' lotInfo potrebbe essere null
+    if (!lotInfo && lineInfos.length > 0) {
+      console.log(`[SCADENZA DEBUG] Move ${move.id} - lineInfos trovate ma lot_id e' false:`, lineInfos);
+    }
+
+    // Stato espansione
+    const isExpanded = expandedMoves.has(move.id);
+
     return (
       <div key={move.id} className="row" data-move={move.id}>
-        <div className="prod">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* SEZIONE COMPATTA - sempre visibile */}
+        <div className="row-compact" style={{ gridColumn: '1 / -1' }}>
+          {/* Nome prodotto + UoM */}
+          <div className="prod-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span>{move.product_id[1]}</span>
             <span style={{
               display: 'inline-block',
@@ -1367,165 +1393,191 @@ export default function ConvalidaResiduiPage() {
               {uom}
             </span>
           </div>
-          <div className="sub">
-            Ubic.: <b>{ubic}</b>
+
+          {/* Quantità prevista */}
+          <div className="qty" style={{ whiteSpace: 'nowrap' }}>
+            Prev: <b>{plan}</b>
           </div>
 
-          {/* Disponibilità ubicazioni - formato compatto */}
-          {stock.length > 0 && (
-            <div className="sub" style={{ marginTop: '6px', color: 'var(--accent)', fontSize: '12px' }}>
-              {stock.map((s, i) => {
-                const available = s.qty - s.reserved;
-                const shortLocation = s.location.split('/').pop() || s.location;
-                // Trova il cliente che ha riservato (se presente)
-                const reservedCustomer = reservations.length > 0 ? reservations.map(r => r.customer).join(', ') : '';
-                return (
-                  <div key={i} style={{ marginBottom: i < stock.length - 1 ? '2px' : 0 }}>
-                    📍 <b>{shortLocation}</b>
-                    <span style={{ color: 'var(--muted)' }}> | </span>
-                    Giac: <b>{s.qty}</b> {uom}
-                    {available > 0 && (
-                      <>
-                        <span style={{ color: 'var(--muted)' }}> | </span>
-                        <span style={{ color: '#16a34a' }}>Libero: <b>{available.toFixed(1)}</b> {uom}</span>
-                      </>
-                    )}
-                    {s.reserved > 0 && (
-                      <>
-                        <span style={{ color: 'var(--muted)' }}> | </span>
-                        <span style={{ color: '#f59e0b' }}>Ris: <b>{s.reserved}</b> {uom}</span>
-                        {reservedCustomer && <span style={{ color: '#f59e0b' }}> ({reservedCustomer})</span>}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Arrivi in corso - formato compatto */}
-          {incoming.length > 0 && (() => {
-            const totalQty = incoming.reduce((sum, inc) => sum + inc.qty, 0);
-            const validDates = incoming.filter(inc => inc.date && inc.date.length > 0).map(inc => inc.date);
-            const uniqueDates = Array.from(new Set(validDates));
-            const formattedDates = uniqueDates.map(d => {
-              try {
-                return new Date(d).toLocaleDateString('it-IT');
-              } catch {
-                return d;
-              }
-            }).join(', ');
-            return (
-              <div className="sub" style={{ marginTop: '4px', color: '#f59e0b', fontSize: '12px' }}>
-                🚚 <b>{totalQty}</b> {uom}{formattedDates ? ` - ${formattedDates}` : ''}
-              </div>
-            );
-          })()}
-        </div>
-        <div className="qty">
-          Previsto: <b>{plan}</b>
-        </div>
-
-        {/* Selezione ubicazione */}
-        {stock.length > 1 && (
-          <div style={{ marginTop: '8px' }}>
-            <label style={{ fontSize: '12px', color: 'var(--muted)' }}>📍 Preleva da: </label>
-            <select
-              style={{
-                background: 'var(--card)',
-                color: 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: '6px',
-                padding: '6px 10px',
-                fontSize: '13px',
-                marginLeft: '8px'
+          {/* Input Fatto */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Fatto:</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={done}
+              id={`convalida_done_${move.id}`}
+              style={{ maxWidth: '80px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveOne(move.id);
               }}
-              defaultValue=""
-              onChange={(e) => {
-                // Salva la selezione in un ref o state se necessario
-                console.log('Ubicazione selezionata:', e.target.value);
-              }}
-            >
-              <option value="">-- Seleziona ubicazione --</option>
-              {stock.map((s, i) => {
-                const available = Math.max(0, s.qty - s.reserved);
-                return (
-                  <option key={i} value={s.location} disabled={available <= 0}>
-                    {s.location} (Libero: {available.toFixed(1)} {uom})
-                  </option>
-                );
-              })}
-            </select>
+            />
           </div>
-        )}
 
-        <div>
-          Fatto:
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={done}
-            id={`convalida_done_${move.id}`}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveOne(move.id);
-            }}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {/* Pulsante SALVA */}
           <button
             className="btn slim green"
             type="button"
             onClick={() => handleSaveOne(move.id)}
             id={`convalida_save_${move.id}`}
-            style={{ fontSize: '10px', padding: '4px 8px' }}
+            style={{ fontSize: '12px', padding: '8px 16px' }}
           >
             SALVA
           </button>
+
+          {/* Pulsante espandi/comprimi */}
           <button
-            className="btn slim orange"
+            className={`btn-expand ${isExpanded ? 'expanded' : ''}`}
             type="button"
-            onClick={() => handleOpenForzaInventario(move, pick)}
-            disabled={forzaLoading || hasStock}
-            title={hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
-            style={{ fontSize: '10px', padding: '4px 8px' }}
+            onClick={() => toggleMoveExpand(move.id)}
+            title={isExpanded ? 'Nascondi dettagli' : 'Mostra dettagli'}
           >
-            {forzaLoading ? '...' : '📦 FORZA'}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
-          <button
-            className="btn slim purple"
-            type="button"
-            onClick={() => handleOpenSostituzione(move, pick)}
-            disabled={sostituzioneLoading}
-            title="Sostituisci prodotto"
-            style={{ fontSize: '10px', padding: '4px 8px' }}
-          >
-            {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
-          </button>
-          <button
-            className="btn slim teal"
-            type="button"
-            onClick={() => handleOpenAlternativa(move, pick)}
-            disabled={sostituzioneLoading}
-            title="Mostra prodotti alternativi configurati"
-            style={{ fontSize: '10px', padding: '4px 8px', background: '#14b8a6', borderColor: '#0d9488' }}
-          >
-            {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
-          </button>
-          {lotInfo && (
-            <button
-              className="btn slim blue"
-              type="button"
-              onClick={() => handleOpenScadenza(move, lotInfo, pick)}
-              disabled={scadenzaLoading}
-              title="Correggi scadenza lotto"
-              style={{ fontSize: '10px', padding: '4px 8px' }}
-            >
-              {scadenzaLoading ? '...' : '📅 SCADENZA'}
-            </button>
-          )}
         </div>
-        <div className="status" id={`convalida_st_${move.id}`}></div>
+
+        {/* SEZIONE ESPANDIBILE - dettagli e pulsanti aggiuntivi */}
+        {isExpanded && (
+          <div className="row-details">
+            {/* Ubicazione */}
+            <div className="sub" style={{ marginBottom: '8px' }}>
+              Ubic.: <b>{ubic}</b>
+            </div>
+
+            {/* Disponibilità ubicazioni - formato compatto */}
+            {stock.length > 0 && (
+              <div className="sub" style={{ marginBottom: '8px', color: 'var(--accent)', fontSize: '12px' }}>
+                {stock.map((s, i) => {
+                  const available = s.qty - s.reserved;
+                  const shortLocation = s.location.split('/').pop() || s.location;
+                  const reservedCustomer = reservations.length > 0 ? reservations.map(r => r.customer).join(', ') : '';
+                  return (
+                    <div key={i} style={{ marginBottom: i < stock.length - 1 ? '2px' : 0 }}>
+                      📍 <b>{shortLocation}</b>
+                      <span style={{ color: 'var(--muted)' }}> | </span>
+                      Giac: <b>{s.qty}</b> {uom}
+                      {available > 0 && (
+                        <>
+                          <span style={{ color: 'var(--muted)' }}> | </span>
+                          <span style={{ color: '#16a34a' }}>Libero: <b>{available.toFixed(1)}</b> {uom}</span>
+                        </>
+                      )}
+                      {s.reserved > 0 && (
+                        <>
+                          <span style={{ color: 'var(--muted)' }}> | </span>
+                          <span style={{ color: '#f59e0b' }}>Ris: <b>{s.reserved}</b> {uom}</span>
+                          {reservedCustomer && <span style={{ color: '#f59e0b' }}> ({reservedCustomer})</span>}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Arrivi in corso - formato compatto */}
+            {incoming.length > 0 && (() => {
+              const totalQty = incoming.reduce((sum, inc) => sum + inc.qty, 0);
+              const validDates = incoming.filter(inc => inc.date && inc.date.length > 0).map(inc => inc.date);
+              const uniqueDates = Array.from(new Set(validDates));
+              const formattedDates = uniqueDates.map(d => {
+                try {
+                  return new Date(d).toLocaleDateString('it-IT');
+                } catch {
+                  return d;
+                }
+              }).join(', ');
+              return (
+                <div className="sub" style={{ marginBottom: '8px', color: '#f59e0b', fontSize: '12px' }}>
+                  🚚 <b>{totalQty}</b> {uom}{formattedDates ? ` - ${formattedDates}` : ''}
+                </div>
+              );
+            })()}
+
+            {/* Selezione ubicazione */}
+            {stock.length > 1 && (
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--muted)' }}>📍 Preleva da: </label>
+                <select
+                  style={{
+                    background: 'var(--card)',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '13px',
+                    marginLeft: '8px'
+                  }}
+                  defaultValue=""
+                  onChange={(e) => {
+                    console.log('Ubicazione selezionata:', e.target.value);
+                  }}
+                >
+                  <option value="">-- Seleziona ubicazione --</option>
+                  {stock.map((s, i) => {
+                    const available = Math.max(0, s.qty - s.reserved);
+                    return (
+                      <option key={i} value={s.location} disabled={available <= 0}>
+                        {s.location} (Libero: {available.toFixed(1)} {uom})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            {/* Pulsanti azione aggiuntivi */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <button
+                className="btn slim orange"
+                type="button"
+                onClick={() => handleOpenForzaInventario(move, pick)}
+                disabled={forzaLoading || hasStock}
+                title={hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
+                style={{ fontSize: '11px', padding: '6px 10px' }}
+              >
+                {forzaLoading ? '...' : '📦 FORZA'}
+              </button>
+              <button
+                className="btn slim purple"
+                type="button"
+                onClick={() => handleOpenSostituzione(move, pick)}
+                disabled={sostituzioneLoading}
+                title="Sostituisci prodotto"
+                style={{ fontSize: '11px', padding: '6px 10px' }}
+              >
+                {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
+              </button>
+              <button
+                className="btn slim teal"
+                type="button"
+                onClick={() => handleOpenAlternativa(move, pick)}
+                disabled={sostituzioneLoading}
+                title="Mostra prodotti alternativi configurati"
+                style={{ fontSize: '11px', padding: '6px 10px', background: '#14b8a6', borderColor: '#0d9488' }}
+              >
+                {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
+              </button>
+              {lotInfo && (
+                <button
+                  className="btn slim blue"
+                  type="button"
+                  onClick={() => handleOpenScadenza(move, lotInfo, pick)}
+                  disabled={scadenzaLoading}
+                  title="Correggi scadenza lotto"
+                  style={{ fontSize: '11px', padding: '6px 10px' }}
+                >
+                  {scadenzaLoading ? '...' : '📅 SCADENZA'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="status" id={`convalida_st_${move.id}`} style={{ gridColumn: '1 / -1' }}></div>
         <div className="bar" style={{ gridColumn: '1 / -1' }}>
           <span id={`convalida_bar_${move.id}`} style={{ width: `${perc}%` }}></span>
         </div>
@@ -1892,6 +1944,72 @@ export default function ConvalidaResiduiPage() {
           background: linear-gradient(90deg, var(--accent), #16a34a);
           width: 0%;
           transition: width 0.3s ease;
+        }
+
+        /* Sezione dettagli espandibile */
+        .row-details {
+          grid-column: 1 / -1;
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px dashed var(--border);
+          animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Pulsante espandi/comprimi */
+        .btn-expand {
+          background: transparent;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 6px 10px;
+          color: var(--muted);
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 36px;
+          min-height: 36px;
+        }
+
+        .btn-expand:hover {
+          background: var(--chip);
+          color: var(--text);
+          border-color: var(--accent);
+        }
+
+        .btn-expand svg {
+          transition: transform 0.2s ease;
+        }
+
+        .btn-expand.expanded svg {
+          transform: rotate(180deg);
+        }
+
+        /* Layout compatto per la riga */
+        .row-compact {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .row-compact .prod-name {
+          flex: 1;
+          min-width: 200px;
+          font-weight: 700;
+          font-size: 15px;
+          color: var(--text);
         }
 
         .toast {
