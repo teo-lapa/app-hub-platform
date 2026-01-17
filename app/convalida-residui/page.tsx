@@ -992,7 +992,19 @@ export default function ConvalidaResiduiPage() {
       setScadenzaLoading(true);
       console.log('[SCADENZA] Apertura modal per lotto:', lotInfo);
 
-      const lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date', 'use_date'], 1);
+      // Prima prova con i campi expiration_date (modulo product_expiry)
+      // Se fallisce, prova solo con id e name
+      let lots: any[] = [];
+      let hasExpirationField = true;
+
+      try {
+        lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date'], 1);
+      } catch (e) {
+        console.log('[SCADENZA] Campo expiration_date non disponibile, provo senza...');
+        hasExpirationField = false;
+        lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name'], 1);
+      }
+
       console.log('[SCADENZA] Dati lotto ricevuti:', lots);
 
       if (!lots || lots.length === 0) {
@@ -1002,15 +1014,17 @@ export default function ConvalidaResiduiPage() {
       }
 
       const lot = lots[0];
+      const currentExp = hasExpirationField ? lot.expiration_date : false;
+
       setScadenzaData({
         moveId: move.id,
         pickingId: pick.id,
         productName: move.product_id[1],
         lotId: lot.id,
         lotName: lot.name,
-        currentExpiration: lot.expiration_date
+        currentExpiration: currentExp
       });
-      setNewExpirationDate(lot.expiration_date ? lot.expiration_date.split(' ')[0] : '');
+      setNewExpirationDate(currentExp ? currentExp.split(' ')[0] : '');
       setShowScadenzaModal(true);
     } catch (error: any) {
       console.error('[SCADENZA] Errore:', error);
