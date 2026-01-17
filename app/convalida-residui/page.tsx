@@ -1298,8 +1298,28 @@ export default function ConvalidaResiduiPage() {
     // Verifica se è un residuo (backorder)
     const isBackorder = pick.backorder_id !== false;
 
+    // Verifica se ha un autista assegnato
+    const hasDriver = pick.driver_id !== false;
+
     return (
       <div key={pick.id} className="card">
+        {/* Avviso se manca autista */}
+        {!hasDriver && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px 8px 0 0',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#dc2626',
+            fontSize: '13px',
+            fontWeight: '600'
+          }}>
+            ⚠️ Autista non assegnato - Operazioni bloccate
+          </div>
+        )}
         <div className="pick-head">
           <span className="pill">
             📦 <b>{pick.name}</b>
@@ -1321,24 +1341,36 @@ export default function ConvalidaResiduiPage() {
           <span className="pill">
             🧾 Ordine: <b>{saleName || '-'}</b>
           </span>
-          <button
-            onClick={() => handleConvalidaPicking(pick)}
-            disabled={convalidaLoading === pick.id}
-            style={{
-              background: 'var(--ok)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '12px 24px',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: convalidaLoading === pick.id ? 'wait' : 'pointer',
+          {hasDriver ? (
+            <button
+              onClick={() => handleConvalidaPicking(pick)}
+              disabled={convalidaLoading === pick.id}
+              style={{
+                background: 'var(--ok)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '12px 24px',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: convalidaLoading === pick.id ? 'wait' : 'pointer',
+                marginLeft: 'auto',
+                minHeight: 44
+              }}
+            >
+              {convalidaLoading === pick.id ? 'Convalida...' : 'CONVALIDA'}
+            </button>
+          ) : (
+            <span style={{
               marginLeft: 'auto',
-              minHeight: 44
-            }}
-          >
-            {convalidaLoading === pick.id ? 'Convalida...' : 'CONVALIDA'}
-          </button>
+              padding: '12px 24px',
+              fontSize: 13,
+              color: '#9ca3af',
+              fontStyle: 'italic'
+            }}>
+              Assegna autista in Odoo
+            </span>
+          )}
         </div>
         <div className="list">
           {righe.length === 0 ? (
@@ -1346,14 +1378,14 @@ export default function ConvalidaResiduiPage() {
               <span style={{ color: 'var(--muted)' }}>Nessuna riga</span>
             </div>
           ) : (
-            righe.map((move) => renderMove(move, pick))
+            righe.map((move) => renderMove(move, pick, hasDriver))
           )}
         </div>
       </div>
     );
   };
 
-  const renderMove = (move: StockMove, pick: StockPicking) => {
+  const renderMove = (move: StockMove, pick: StockPicking, hasDriver: boolean = true) => {
     const done = Number(doneByMove[move.id] || 0);
     const plan = Number(move.product_uom_qty || 0);
     const perc = ratio(done, plan).toFixed(0);
@@ -1381,7 +1413,7 @@ export default function ConvalidaResiduiPage() {
     const isExpanded = expandedMoves.has(move.id);
 
     return (
-      <div key={move.id} className="row" data-move={move.id}>
+      <div key={move.id} className="row" data-move={move.id} style={{ opacity: hasDriver ? 1 : 0.6 }}>
         {/* SEZIONE COMPATTA - sempre visibile */}
         <div className="row-compact" style={{ gridColumn: '1 / -1' }}>
           {/* Nome prodotto + UoM */}
@@ -1415,8 +1447,9 @@ export default function ConvalidaResiduiPage() {
               defaultValue={done}
               id={`convalida_done_${move.id}`}
               style={{ maxWidth: '80px' }}
+              disabled={!hasDriver}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveOne(move.id);
+                if (e.key === 'Enter' && hasDriver) handleSaveOne(move.id);
               }}
             />
           </div>
@@ -1428,6 +1461,7 @@ export default function ConvalidaResiduiPage() {
             onClick={() => handleSaveOne(move.id)}
             id={`convalida_save_${move.id}`}
             style={{ fontSize: '12px', padding: '8px 16px' }}
+            disabled={!hasDriver}
           >
             SALVA
           </button>
@@ -1539,8 +1573,8 @@ export default function ConvalidaResiduiPage() {
                 className="btn slim orange"
                 type="button"
                 onClick={() => handleOpenForzaInventario(move, pick)}
-                disabled={forzaLoading || hasStock}
-                title={hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
+                disabled={!hasDriver || forzaLoading || hasStock}
+                title={!hasDriver ? 'Assegna autista prima' : hasStock ? 'Stock disponibile - non serve forzare' : 'Forza quantita inventario'}
                 style={{ fontSize: '11px', padding: '6px 10px' }}
               >
                 {forzaLoading ? '...' : '📦 FORZA'}
@@ -1549,8 +1583,8 @@ export default function ConvalidaResiduiPage() {
                 className="btn slim purple"
                 type="button"
                 onClick={() => handleOpenSostituzione(move, pick)}
-                disabled={sostituzioneLoading}
-                title="Sostituisci prodotto"
+                disabled={!hasDriver || sostituzioneLoading}
+                title={!hasDriver ? 'Assegna autista prima' : 'Sostituisci prodotto'}
                 style={{ fontSize: '11px', padding: '6px 10px' }}
               >
                 {sostituzioneLoading ? '...' : '🔄 SOSTITUISCI'}
@@ -1559,8 +1593,8 @@ export default function ConvalidaResiduiPage() {
                 className="btn slim teal"
                 type="button"
                 onClick={() => handleOpenAlternativa(move, pick)}
-                disabled={sostituzioneLoading}
-                title="Mostra prodotti alternativi configurati"
+                disabled={!hasDriver || sostituzioneLoading}
+                title={!hasDriver ? 'Assegna autista prima' : 'Mostra prodotti alternativi configurati'}
                 style={{ fontSize: '11px', padding: '6px 10px', background: '#14b8a6', borderColor: '#0d9488' }}
               >
                 {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
@@ -1570,8 +1604,8 @@ export default function ConvalidaResiduiPage() {
                   className="btn slim blue"
                   type="button"
                   onClick={() => handleOpenScadenza(move, lotInfo, pick)}
-                  disabled={scadenzaLoading}
-                  title="Correggi scadenza lotto"
+                  disabled={!hasDriver || scadenzaLoading}
+                  title={!hasDriver ? 'Assegna autista prima' : 'Correggi scadenza lotto'}
                   style={{ fontSize: '11px', padding: '6px 10px' }}
                 >
                   {scadenzaLoading ? '...' : '📅 SCADENZA'}
