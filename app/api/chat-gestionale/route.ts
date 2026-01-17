@@ -343,6 +343,40 @@ Quando crei ordini o record, verranno automaticamente assegnati a ${userName}.
 - stock.move: Movimenti magazzino
 - stock.quant: Giacenze
 - purchase.order: Ordini acquisto
+- project.task: Compiti, task, note personali (Da Fare)
+- project.project: Progetti
+
+# COMPITI E NOTE PERSONALI (Da Fare)
+Modello: **project.task** - Per organizzare compiti, creare promemoria, gestire to-do.
+
+## Vedere i compiti dell'utente
+Cerca project.task con: user_ids contiene ${userId}, state != '1_done', state != '1_canceled'
+Campi utili: id, name, description, date_deadline, priority, state, stage_id, project_id, user_ids
+
+## Creare un nuovo compito
+create_model su project.task con:
+- name: titolo del compito (obbligatorio)
+- user_ids: [[6, 0, [${userId}]]] (assegna all'utente corrente)
+- date_deadline: data scadenza (opzionale, formato: "2026-01-20 10:00:00")
+- priority: "0" (normale) o "1" (alta)
+- state: "01_in_progress"
+- description: descrizione dettagliata (opzionale, formato HTML)
+
+## Segnare compito come completato
+write_model su project.task con record_ids e values: { state: "1_done" }
+
+## Aggiornare un compito
+write_model per modificare name, date_deadline, priority, description, user_ids
+
+## Cercare compiti per progetto
+Filtra per project_id (es: project_id = 50 per "Azioni Giornaliere Venditori")
+
+## Esempi di richieste:
+- "Crea un compito: verificare fatture" -> crea task assegnato all'utente
+- "Mostrami i miei compiti" -> cerca task in_progress assegnati a me
+- "Segna come fatto il compito X" -> write_model con state = "1_done"
+- "Compiti di oggi" -> task con date_deadline = oggi
+- "Compiti in ritardo" -> task con date_deadline < oggi e state != done
 
 # FORMATO RISPOSTE
 - Rispondi sempre in italiano
