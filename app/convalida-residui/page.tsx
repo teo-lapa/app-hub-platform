@@ -947,6 +947,9 @@ export default function ConvalidaResiduiPage() {
         await callKwConvalida('stock.quant', 'action_apply_inventory', [[quantId]], {});
       }
 
+      // Esegui "Controlla Disponibilita'" sul picking per creare le righe nelle operazioni dettagliate
+      await callKwConvalida('stock.picking', 'action_assign', [[pickingId]], {});
+
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
       const locationName = selectedQuant ? selectedQuant.location_id[1] : 'Ubicazione';
