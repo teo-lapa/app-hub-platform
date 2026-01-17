@@ -70,6 +70,7 @@ interface GroupData {
 }
 
 interface LineInfo {
+  id: number;
   qty_done: number;
   location: [number, string] | false;
   lot: [number, string] | false;
@@ -216,7 +217,7 @@ export default function ConvalidaResiduiPage() {
   const [groups, setGroups] = useState<Map<string, GroupData>>(new Map());
 
   // Info prodotti: disponibilità e arrivi
-  const [productStock, setProductStock] = useState<Record<number, Array<{location: string, qty: number, reserved: number}>>>({});
+  const [productStock, setProductStock] = useState<Record<number, Array<{locationId: number, location: string, qty: number, reserved: number}>>>({});
   const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
   const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
 
@@ -455,6 +456,7 @@ export default function ConvalidaResiduiPage() {
           newLinesByMove[mid].push(l.id);
           if (!newLineInfoByMove[mid]) newLineInfoByMove[mid] = [];
           newLineInfoByMove[mid].push({
+            id: l.id,
             qty_done: Number(l.qty_done || 0),
             location: l.location_id,
             lot: l.lot_id,
@@ -514,11 +516,12 @@ export default function ConvalidaResiduiPage() {
         0
       );
 
-      const stockByProduct: Record<number, Array<{location: string, qty: number, reserved: number}>> = {};
+      const stockByProduct: Record<number, Array<{locationId: number, location: string, qty: number, reserved: number}>> = {};
       quants.forEach((q: any) => {
         const productId = q.product_id[0];
         if (!stockByProduct[productId]) stockByProduct[productId] = [];
         stockByProduct[productId].push({
+          locationId: q.location_id[0],
           location: q.location_id[1],
           qty: q.quantity,
           reserved: q.reserved_quantity || 0
@@ -974,6 +977,34 @@ export default function ConvalidaResiduiPage() {
       showToastMessage(`Errore: ${error.message}`);
     } finally {
       setForzaLoading(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // CAMBIO UBICAZIONE FUNCTIONS
+  // --------------------------------------------------------------------------
+
+  const handleChangeLocation = async (moveId: number, lineId: number, newLocationId: number, newLocationName: string) => {
+    try {
+      // Aggiorna la location_id sulla stock.move.line
+      await callKwConvalida('stock.move.line', 'write', [[lineId], { location_id: newLocationId }]);
+
+      // Aggiorna lo stato locale
+      setLineInfoByMove(prev => {
+        const updated = { ...prev };
+        if (updated[moveId]) {
+          updated[moveId] = updated[moveId].map(line =>
+            line.id === lineId
+              ? { ...line, location: [newLocationId, newLocationName] as [number, string] }
+              : line
+          );
+        }
+        return updated;
+      });
+
+      showToastMessage(`✅ Ubicazione cambiata: ${newLocationName}`);
+    } catch (error: any) {
+      showToastMessage(`❌ Errore cambio ubicazione: ${error.message}`);
     }
   };
 
@@ -1538,7 +1569,7 @@ export default function ConvalidaResiduiPage() {
             })()}
 
             {/* Selezione ubicazione */}
-            {stock.length > 1 && (
+            {stock.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ fontSize: '12px', color: 'var(--muted)' }}>📍 Preleva da: </label>
                 <select
@@ -1551,14 +1582,22 @@ export default function ConvalidaResiduiPage() {
                     fontSize: '13px',
                     marginLeft: '8px'
                   }}
-                  defaultValue=""
-                  onChange={() => {}}
+                  value={lineInfos.length > 0 && lineInfos[0].location ? lineInfos[0].location[0].toString() : ''}
+                  onChange={(e) => {
+                    if (!hasDriver) return;
+                    const newLocId = parseInt(e.target.value);
+                    const selectedStock = stock.find(s => s.locationId === newLocId);
+                    if (selectedStock && lineInfos.length > 0) {
+                      handleChangeLocation(move.id, lineInfos[0].id, newLocId, selectedStock.location);
+                    }
+                  }}
+                  disabled={!hasDriver}
                 >
                   <option value="">-- Seleziona ubicazione --</option>
                   {stock.map((s, i) => {
                     const available = Math.max(0, s.qty - s.reserved);
                     return (
-                      <option key={i} value={s.location} disabled={available <= 0}>
+                      <option key={i} value={s.locationId.toString()} disabled={available <= 0}>
                         {s.location} (Libero: {available.toFixed(1)} {uom})
                       </option>
                     );
