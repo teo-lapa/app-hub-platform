@@ -988,18 +988,36 @@ export default function ConvalidaResiduiPage() {
   // --------------------------------------------------------------------------
 
   const handleOpenScadenza = async (move: StockMove, lotInfo: [number, string], pick: StockPicking) => {
-    const lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date', 'use_date'], 1);
-    const lot = lots[0];
-    setScadenzaData({
-      moveId: move.id,
-      pickingId: pick.id,
-      productName: move.product_id[1],
-      lotId: lot.id,
-      lotName: lot.name,
-      currentExpiration: lot.expiration_date
-    });
-    setNewExpirationDate(lot.expiration_date ? lot.expiration_date.split(' ')[0] : '');
-    setShowScadenzaModal(true);
+    try {
+      setScadenzaLoading(true);
+      console.log('[SCADENZA] Apertura modal per lotto:', lotInfo);
+
+      const lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date', 'use_date'], 1);
+      console.log('[SCADENZA] Dati lotto ricevuti:', lots);
+
+      if (!lots || lots.length === 0) {
+        showToastMessage(`Errore: Lotto ${lotInfo[1]} non trovato in Odoo`);
+        setScadenzaLoading(false);
+        return;
+      }
+
+      const lot = lots[0];
+      setScadenzaData({
+        moveId: move.id,
+        pickingId: pick.id,
+        productName: move.product_id[1],
+        lotId: lot.id,
+        lotName: lot.name,
+        currentExpiration: lot.expiration_date
+      });
+      setNewExpirationDate(lot.expiration_date ? lot.expiration_date.split(' ')[0] : '');
+      setShowScadenzaModal(true);
+    } catch (error: any) {
+      console.error('[SCADENZA] Errore:', error);
+      showToastMessage(`Errore apertura scadenza: ${error.message}`);
+    } finally {
+      setScadenzaLoading(false);
+    }
   };
 
   const handleConfirmScadenza = async () => {
