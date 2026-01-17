@@ -30,7 +30,7 @@ import { searchReadOdoo } from '@/lib/odoo/odoo-helper';
 const CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 4096;
 const MAX_TOOL_ITERATIONS = 10;
-const CONVERSATION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
+const CONVERSATION_TTL = 60 * 60 * 24 * 365; // 1 year in seconds
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Rate limiting
@@ -468,8 +468,8 @@ async function saveConversation(
   try {
     const key = getConversationKey(conversationId);
 
-    // Keep only last 30 messages to prevent context overflow
-    const trimmedMessages = messages.slice(-30);
+    // Keep only last 500 messages for training data retention
+    const trimmedMessages = messages.slice(-500);
 
     const data: StoredConversation = {
       messages: trimmedMessages,
