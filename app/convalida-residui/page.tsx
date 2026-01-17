@@ -987,8 +987,15 @@ export default function ConvalidaResiduiPage() {
   // CAMBIO UBICAZIONE FUNCTIONS
   // --------------------------------------------------------------------------
 
-  const handleChangeLocation = async (moveId: number, lineId: number, newLocationId: number, newLocationName: string) => {
+  const handleChangeLocation = async (moveId: number, lineId: number, newLocationId: number, newLocationName: string, pickingId?: number) => {
     try {
+      // Ottieni l'ubicazione precedente prima di modificare
+      const move = metaByMove[moveId];
+      const lineInfos = lineInfoByMove[moveId] || [];
+      const oldLocation = lineInfos.length > 0 && lineInfos[0].location ? lineInfos[0].location[1] : 'N/A';
+      const productName = move ? move.product_id[1] : 'Prodotto';
+      const pickId = pickingId || (move ? move.picking_id[0] : null);
+
       // Aggiorna la location_id sulla stock.move.line
       await callKwConvalida('stock.move.line', 'write', [[lineId], { location_id: newLocationId }]);
 
@@ -1004,6 +1011,25 @@ export default function ConvalidaResiduiPage() {
         }
         return updated;
       });
+
+      // Traccia nel chatter del picking
+      if (pickId) {
+        const timestamp = new Date().toLocaleString('it-IT');
+        const message = `
+          <p><strong>📍 Cambio Ubicazione Prelievo</strong></p>
+          <ul>
+            <li><strong>Prodotto:</strong> ${productName}</li>
+            <li><strong>Da:</strong> ${oldLocation}</li>
+            <li><strong>A:</strong> ${newLocationName}</li>
+            <li><strong>Data:</strong> ${timestamp}</li>
+          </ul>
+        `;
+        await callKwConvalida('stock.picking', 'message_post', [[pickId]], {
+          body: message,
+          message_type: 'comment',
+          subtype_xmlid: 'mail.mt_note'
+        });
+      }
 
       showToastMessage(`✅ Ubicazione cambiata: ${newLocationName}`);
     } catch (error: any) {
@@ -1591,7 +1617,7 @@ export default function ConvalidaResiduiPage() {
                     const newLocId = parseInt(e.target.value);
                     const selectedStock = stock.find(s => s.locationId === newLocId);
                     if (selectedStock && lineInfos.length > 0) {
-                      handleChangeLocation(move.id, lineInfos[0].id, newLocId, selectedStock.location);
+                      handleChangeLocation(move.id, lineInfos[0].id, newLocId, selectedStock.location, pick.id);
                     }
                   }}
                   disabled={!hasDriver}
