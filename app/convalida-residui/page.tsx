@@ -992,19 +992,8 @@ export default function ConvalidaResiduiPage() {
       setScadenzaLoading(true);
       console.log('[SCADENZA] Apertura modal per lotto:', lotInfo);
 
-      // Prima prova con i campi expiration_date (modulo product_expiry)
-      // Se fallisce, prova solo con id e name
-      let lots: any[] = [];
-      let hasExpirationField = true;
-
-      try {
-        lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date'], 1);
-      } catch (e) {
-        console.log('[SCADENZA] Campo expiration_date non disponibile, provo senza...');
-        hasExpirationField = false;
-        lots = await searchReadConvalida('stock.production.lot', [['id', '=', lotInfo[0]]], ['id', 'name'], 1);
-      }
-
+      // In Odoo 17 il modello si chiama 'stock.lot' (non 'stock.production.lot')
+      const lots = await searchReadConvalida('stock.lot', [['id', '=', lotInfo[0]]], ['id', 'name', 'expiration_date'], 1);
       console.log('[SCADENZA] Dati lotto ricevuti:', lots);
 
       if (!lots || lots.length === 0) {
@@ -1014,17 +1003,15 @@ export default function ConvalidaResiduiPage() {
       }
 
       const lot = lots[0];
-      const currentExp = hasExpirationField ? lot.expiration_date : false;
-
       setScadenzaData({
         moveId: move.id,
         pickingId: pick.id,
         productName: move.product_id[1],
         lotId: lot.id,
         lotName: lot.name,
-        currentExpiration: currentExp
+        currentExpiration: lot.expiration_date
       });
-      setNewExpirationDate(currentExp ? currentExp.split(' ')[0] : '');
+      setNewExpirationDate(lot.expiration_date ? lot.expiration_date.split(' ')[0] : '');
       setShowScadenzaModal(true);
     } catch (error: any) {
       console.error('[SCADENZA] Errore:', error);
@@ -1038,7 +1025,7 @@ export default function ConvalidaResiduiPage() {
     if (!scadenzaData || !newExpirationDate) return;
     setScadenzaLoading(true);
     try {
-      await callKwConvalida('stock.production.lot', 'write', [[scadenzaData.lotId], { expiration_date: newExpirationDate }], {});
+      await callKwConvalida('stock.lot', 'write', [[scadenzaData.lotId], { expiration_date: newExpirationDate }], {});
       await callKwConvalida('stock.picking', 'message_post', [[scadenzaData.pickingId]], {
         body: `<p>📅 <strong>Scadenza corretta</strong></p><p>Prodotto: ${scadenzaData.productName}<br/>Lotto: ${scadenzaData.lotName}<br/>Vecchia scadenza: ${scadenzaData.currentExpiration || 'N/A'}<br/>Nuova scadenza: ${newExpirationDate}</p>`,
         message_type: 'comment', subtype_xmlid: 'mail.mt_note'
