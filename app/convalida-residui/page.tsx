@@ -3058,84 +3058,90 @@ export default function ConvalidaResiduiPage() {
         </div>
       </div>
 
-      {/* Modal Correggi Scadenza */}
+      {/* Modal Correggi Scadenza - Semplificato */}
       <div className={`qa-modal-convalida ${showScadenzaModal ? 'show' : ''}`}>
-        <div className="qa-dialog" style={{ width: '480px' }}>
-          <div className="qa-head">
-            <h3>📅 Correggi Scadenza</h3>
-            <button className="qa-close" onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }}>
+        <div className="qa-dialog" style={{ width: '400px' }}>
+          <div className="qa-head" style={{ background: 'linear-gradient(135deg, #f97316 0%, #f59e0b 100%)' }}>
+            <h3 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📅 {scadenzaData?.productName || 'Scadenza'}
+            </h3>
+            <button className="qa-close" onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }} style={{ color: 'white' }}>
               ✕
             </button>
           </div>
-          <div className="qa-body">
+          <div className="qa-body" style={{ padding: '20px' }}>
             {scadenzaData && (
               <>
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Prodotto</div>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
-                    {scadenzaData.productName}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Lotto</div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
-                    {scadenzaData.lotName}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '4px' }}>Scadenza attuale</div>
-                  <div style={{ fontSize: '14px', color: scadenzaData.currentExpiration ? '#0f172a' : '#94a3b8' }}>
-                    {scadenzaData.currentExpiration || 'Non impostata'}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-                    Nuova scadenza
-                  </div>
+                {/* Campo SCADENZA */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    📅 SCADENZA
+                  </label>
                   <input
                     type="date"
                     value={newExpirationDate}
                     onChange={(e) => setNewExpirationDate(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '12px',
-                      borderRadius: '10px',
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      border: '2px solid #e5e7eb',
+                      background: '#f9fafb',
                       color: '#0f172a',
                       fontSize: '16px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#f97316'}
+                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
                 </div>
 
+                {/* Lotto (precompilato, alla fine) */}
                 <div style={{
-                  padding: '12px',
-                  background: '#dbeafe',
+                  padding: '12px 16px',
+                  background: '#f3f4f6',
                   borderRadius: '10px',
-                  border: '1px solid #93c5fd',
-                  color: '#1e40af',
-                  fontSize: '13px'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}>
-                  <strong>Nota:</strong> Questa operazione aggiornera' la data di scadenza del lotto
-                  e verra' tracciata nel chatter del picking.
+                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Lotto:</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+                    {scadenzaData.lotName}
+                  </span>
                 </div>
               </>
             )}
           </div>
-          <div className="qa-foot">
-            <button className="btn light" onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }}>
+          <div className="qa-foot" style={{ padding: '16px 20px', gap: '12px' }}>
+            <button
+              className="btn light"
+              onClick={() => { setShowScadenzaModal(false); setScadenzaData(null); }}
+              style={{ flex: 1 }}
+            >
               Annulla
             </button>
             <button
               className="btn blue"
               onClick={handleConfirmScadenza}
               disabled={!scadenzaData || !newExpirationDate || scadenzaLoading}
+              style={{
+                flex: 1,
+                background: 'linear-gradient(135deg, #f97316 0%, #f59e0b 100%)',
+                border: 'none'
+              }}
             >
-              {scadenzaLoading ? 'Salvataggio...' : 'Conferma'}
+              {scadenzaLoading ? 'Salvataggio...' : '✓ Conferma'}
             </button>
           </div>
         </div>
