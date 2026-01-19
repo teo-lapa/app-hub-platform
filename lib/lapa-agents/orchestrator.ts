@@ -2450,7 +2450,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
 
       return {
         success: false,
-        message: `Mi dispiace, c'è stato un problema. Per assistenza immediata contattaci:\n\n📧 lapa@lapa.ch\n📞 +41 76 361 70 21`,
+        message: `Per questa richiesta ti consiglio di contattare direttamente il nostro team:\n\n📧 lapa@lapa.ch\n📞 +41 76 361 70 21\n\nPosso aiutarti con qualcos'altro?`,
         requiresHumanEscalation: true,
         agentId: 'helpdesk',
         data: { error: errorMsg }
@@ -3087,7 +3087,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore productAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore cercando i prodotti. Riprova più tardi.',
+        message: 'Non ho trovato risultati per questa ricerca. Prova con termini diversi o contatta lapa@lapa.ch',
         requiresHumanEscalation: true,
         agentId: 'product'
       };
@@ -3264,7 +3264,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore orderAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando le informazioni sugli ordini. Riprova più tardi.',
+        message: 'Sto verificando i tuoi ordini... Per info immediate contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'order'
       };
@@ -3339,7 +3339,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       } else {
         return {
           success: false,
-          message: result.error || 'Si è verificato un errore nella creazione dell\'ordine.',
+          message: result.error || 'Per completare l\'ordine contatta il nostro team: lapa@lapa.ch',
           agentId: 'order_create',
           requiresHumanEscalation: true
         };
@@ -3348,7 +3348,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore orderCreateAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore. Riprova o contatta il supporto.',
+        message: 'Per completare l\'ordine contatta il nostro team: lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'order_create'
       };
@@ -3406,7 +3406,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore cartAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore con il carrello. Riprova o contatta il supporto.',
+        message: 'Per assistenza con il carrello contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'cart'
       };
@@ -4677,7 +4677,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore handlePurchasedProductsQuery:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando i prodotti acquistati. Riprova più tardi.',
+        message: 'Per vedere i tuoi acquisti contatta lapa@lapa.ch o visita il tuo account su www.lapa.ch',
         agentId: 'order_products'
       };
     }
@@ -4846,7 +4846,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore invoiceAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando le informazioni sulle fatture. Riprova più tardi.',
+        message: 'Per info sulle fatture contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'invoice'
       };
@@ -5036,7 +5036,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore shippingAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando le informazioni sulle spedizioni. Riprova più tardi.',
+        message: 'Per info sulle spedizioni contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'shipping'
       };
@@ -5334,7 +5334,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore orderDetailAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando i dettagli dell\'ordine. Riprova più tardi.',
+        message: 'Per i dettagli dell\'ordine contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'order_detail'
       };
@@ -5454,7 +5454,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore invoiceFilterAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore filtrando le fatture. Riprova più tardi.',
+        message: 'Per info sulle fatture contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'invoice_filter'
       };
@@ -5602,7 +5602,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
       console.error('❌ Errore invoiceDetailAgentHandler:', error);
       return {
         success: false,
-        message: 'Si è verificato un errore recuperando i dettagli della fattura.',
+        message: 'Per i dettagli della fattura contatta lapa@lapa.ch o +41 76 361 70 21',
         requiresHumanEscalation: true,
         agentId: 'invoice_detail'
       };
@@ -6043,6 +6043,45 @@ COMPORTAMENTO GENERALE
 5. Mantieni un tono professionale ma cordiale
 6. NON usare frasi come "come assistente virtuale non posso..." - trova SEMPRE una soluzione
 7. L'obiettivo finale è SEMPRE aiutare il cliente e, per i visitatori, convertirli in clienti registrati
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ REGOLE CRITICHE - TONO E GESTIONE ANOMALIE
+═══════════════════════════════════════════════════════════════════════════════
+
+📏 LUNGHEZZA RISPOSTE:
+- Risposte standard: MAX 400 caratteri (circa 3-4 righe)
+- Risposte con prodotti: MAX 800 caratteri
+- MAX 5 punti elenco per risposta
+- MAX 3 emoji per risposta
+- Frasi brevi e dirette
+- Se serve approfondire: "Vuoi maggiori dettagli?"
+
+🚫 PAROLE VIETATE - NON USARE MAI:
+- "problema tecnico"
+- "errore nel sistema"
+- "difficoltà tecniche"
+- "STOP!", "FERMATI!", "BASTA!"
+- "sei bloccato in un loop"
+- "non riesco a capire cosa hai scritto"
+- Qualsiasi tono frustrato o imperativo
+
+🔄 MESSAGGI RIPETUTI (stesso messaggio 2+ volte):
+- Rispondi UNA SOLA VOLTA con calma
+- NON accusare l'utente di problemi o loop
+- Esempio: "Ho ricevuto il tuo messaggio. Per questa richiesta ti consiglio di contattare direttamente +41 76 361 70 21. Posso aiutarti con qualcos'altro?"
+- Dopo 3 messaggi identici: smetti di rispondere
+
+❓ MESSAGGI INCOMPRENSIBILI (caratteri casuali, emoji sole, ecc.):
+- NON menzionare errori o problemi tecnici
+- Rispondi semplicemente: "Come posso aiutarti oggi?"
+- Offri opzioni: "Stai cercando: prodotti, ordini, o altro?"
+- MAX 2 risposte a messaggi incomprensibili
+
+🔧 SE UN TOOL/RICERCA FALLISCE:
+- MAI dire "errore", "non trovato", "impossibile"
+- Prima tentativo alternativo
+- Poi: "Sto verificando..." oppure "Un momento..."
+- Se proprio non riesci: "Per questa richiesta contatta direttamente lapa@lapa.ch"
 
 Rispondi in modo naturale e conversazionale.`;
   }
