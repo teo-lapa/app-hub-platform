@@ -929,7 +929,7 @@ export default function ConvalidaResiduiPage() {
       const oldQuantity = selectedQuant ? selectedQuant.quantity : 0;
 
       if (selectedQuantId && selectedQuantId > 0) {
-        // Aggiorna il quant esistente
+        // Aggiorna il quant esistente - imposta inventory_quantity
         await callKwConvalida('stock.quant', 'write', [[selectedQuantId], {
           inventory_quantity: newQuantity,
           inventory_date: new Date().toISOString().slice(0, 10)
@@ -937,6 +937,14 @@ export default function ConvalidaResiduiPage() {
 
         // Applica l'inventario
         await callKwConvalida('stock.quant', 'action_apply_inventory', [[selectedQuantId]], {});
+
+        // Verifica se e' stato applicato, altrimenti forza direttamente
+        const checkQuant = await searchReadConvalida<any>('stock.quant', [['id', '=', selectedQuantId]], ['quantity'], 1);
+        if (checkQuant.length > 0 && checkQuant[0].quantity !== newQuantity) {
+          console.warn('[FORZA] action_apply_inventory non ha funzionato, forzo quantity direttamente');
+          // Forza direttamente la quantity (bypass inventario)
+          await callKwConvalida('stock.quant', 'write', [[selectedQuantId], { quantity: newQuantity }], {});
+        }
       } else {
         // Se non esiste un quant, dobbiamo crearlo tramite un aggiustamento inventario
         // Prima cerchiamo o creiamo un quant
@@ -971,6 +979,13 @@ export default function ConvalidaResiduiPage() {
 
         // Applica
         await callKwConvalida('stock.quant', 'action_apply_inventory', [[quantId]], {});
+
+        // Verifica se e' stato applicato, altrimenti forza direttamente
+        const checkNewQuant = await searchReadConvalida<any>('stock.quant', [['id', '=', quantId]], ['quantity'], 1);
+        if (checkNewQuant.length > 0 && checkNewQuant[0].quantity !== newQuantity) {
+          console.warn('[FORZA] action_apply_inventory non ha funzionato per nuovo quant, forzo quantity');
+          await callKwConvalida('stock.quant', 'write', [[quantId], { quantity: newQuantity }], {});
+        }
       }
 
       // Esegui "Controlla Disponibilita'" sul picking per creare le righe nelle operazioni dettagliate
@@ -2972,11 +2987,15 @@ export default function ConvalidaResiduiPage() {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={forzaData.newQuantity}
-                    onChange={(e) => setForzaData({
-                      ...forzaData,
-                      newQuantity: parseFloat(e.target.value) || 0
-                    })}
+                    value={forzaData.newQuantity || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForzaData({
+                        ...forzaData,
+                        newQuantity: val === '' ? 0 : parseFloat(val)
+                      });
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px',
