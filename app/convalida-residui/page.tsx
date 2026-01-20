@@ -96,6 +96,12 @@ interface ForzaInventarioData {
   selectedQuantId: number | null;
   selectedLocationId: number | null;
   newQuantity: number;
+  // Campi per lotto
+  availableLots: Array<{ id: number; name: string; expiry: string | null }>;
+  selectedLotId: number | null;
+  newLotName: string;
+  newLotExpiry: string;
+  createNewLot: boolean;
 }
 
 interface SostituzioneData {
@@ -885,6 +891,19 @@ export default function ConvalidaResiduiPage() {
         0
       );
 
+      // Carica lotti esistenti per questo prodotto
+      const lots = await searchReadConvalida<any>(
+        'stock.lot',
+        [['product_id', '=', productId]],
+        ['id', 'name', 'expiration_date', 'use_date'],
+        0
+      );
+      const availableLots = lots.map((l: any) => ({
+        id: l.id,
+        name: l.name,
+        expiry: l.expiration_date || l.use_date || null
+      }));
+
       // Se non ci sono quant, cerca tutte le ubicazioni interne disponibili
       let availableQuants = quants;
       if (quants.length === 0) {
@@ -900,6 +919,10 @@ export default function ConvalidaResiduiPage() {
         }];
       }
 
+      // Trova lotto gia' assegnato al quant selezionato
+      const firstQuant = availableQuants[0];
+      const existingLotId = firstQuant.lot_id ? firstQuant.lot_id[0] : null;
+
       setForzaData({
         productId,
         productName,
@@ -909,7 +932,13 @@ export default function ConvalidaResiduiPage() {
         quants: availableQuants,
         selectedQuantId: availableQuants.length > 0 ? availableQuants[0].id : null,
         selectedLocationId: availableQuants.length > 0 ? availableQuants[0].location_id[0] : locationId,
-        newQuantity: availableQuants.length > 0 ? availableQuants[0].quantity : 0
+        newQuantity: availableQuants.length > 0 ? availableQuants[0].quantity : 0,
+        // Campi lotto
+        availableLots,
+        selectedLotId: existingLotId,
+        newLotName: '',
+        newLotExpiry: '',
+        createNewLot: availableLots.length === 0 // Se non ci sono lotti, crea nuovo
       });
       setShowForzaModal(true);
     } catch (error: any) {
@@ -924,16 +953,66 @@ export default function ConvalidaResiduiPage() {
 
     setForzaLoading(true);
     try {
-      const { productId, productName, pickingId, pickingName, selectedQuantId, selectedLocationId, newQuantity, quants } = forzaData;
+      const {
+        productId,
+        productName,
+        pickingId,
+        pickingName,
+        moveId,
+        selectedQuantId,
+        selectedLocationId,
+        newQuantity,
+        quants,
+        availableLots,
+        selectedLotId,
+        newLotName,
+        newLotExpiry,
+        createNewLot
+      } = forzaData;
       const selectedQuant = quants.find(q => q.id === selectedQuantId);
       const oldQuantity = selectedQuant ? selectedQuant.quantity : 0;
 
+      // === GESTIONE LOTTO ===
+      let lotId: number | null = null;
+      let lotName: string = '';
+
+      // Determina se bisogna creare un nuovo lotto
+      const shouldCreateNewLot = createNewLot || (availableLots.length === 0 && newLotName.trim() !== '');
+
+      if (shouldCreateNewLot && newLotName.trim() !== '') {
+        // Crea nuovo lotto
+        const lotVals: any = {
+          name: newLotName.trim(),
+          product_id: productId
+        };
+        if (newLotExpiry) {
+          // Usa expiration_date per Odoo 17
+          lotVals.expiration_date = newLotExpiry;
+        }
+        lotId = await callKwConvalida<number>('stock.lot', 'create', [lotVals], {});
+        lotName = newLotName.trim();
+        console.log('[FORZA] Creato nuovo lotto:', lotId, lotName);
+      } else if (selectedLotId) {
+        // Usa lotto esistente selezionato
+        lotId = selectedLotId;
+        const foundLot = availableLots.find(l => l.id === selectedLotId);
+        lotName = foundLot ? foundLot.name : '';
+        console.log('[FORZA] Usando lotto esistente:', lotId, lotName);
+      }
+
+      // === GESTIONE QUANT ===
+      let finalQuantId: number;
+
       if (selectedQuantId && selectedQuantId > 0) {
-        // Aggiorna il quant esistente - imposta inventory_quantity
-        await callKwConvalida('stock.quant', 'write', [[selectedQuantId], {
+        // Aggiorna il quant esistente - imposta inventory_quantity e lot_id
+        const quantWriteVals: any = {
           inventory_quantity: newQuantity,
           inventory_date: new Date().toISOString().slice(0, 10)
-        }], {});
+        };
+        if (lotId) {
+          quantWriteVals.lot_id = lotId;
+        }
+        await callKwConvalida('stock.quant', 'write', [[selectedQuantId], quantWriteVals], {});
 
         // Applica l'inventario
         await callKwConvalida('stock.quant', 'action_apply_inventory', [[selectedQuantId]], {});
@@ -943,17 +1022,26 @@ export default function ConvalidaResiduiPage() {
         if (checkQuant.length > 0 && checkQuant[0].quantity !== newQuantity) {
           console.warn('[FORZA] action_apply_inventory non ha funzionato, forzo quantity direttamente');
           // Forza direttamente la quantity (bypass inventario)
-          await callKwConvalida('stock.quant', 'write', [[selectedQuantId], { quantity: newQuantity }], {});
+          const forceVals: any = { quantity: newQuantity };
+          if (lotId) {
+            forceVals.lot_id = lotId;
+          }
+          await callKwConvalida('stock.quant', 'write', [[selectedQuantId], forceVals], {});
         }
+        finalQuantId = selectedQuantId;
       } else {
-        // Se non esiste un quant, dobbiamo crearlo tramite un aggiustamento inventario
-        // Prima cerchiamo o creiamo un quant
+        // Se non esiste un quant, dobbiamo crearlo
+        // Cerchiamo se esiste gia' un quant per questo prodotto/location/lot
+        const quantDomain: any[] = [
+          ['product_id', '=', productId],
+          ['location_id', '=', selectedLocationId]
+        ];
+        if (lotId) {
+          quantDomain.push(['lot_id', '=', lotId]);
+        }
         const newQuants = await searchReadConvalida<StockQuant>(
           'stock.quant',
-          [
-            ['product_id', '=', productId],
-            ['location_id', '=', selectedLocationId]
-          ],
+          quantDomain,
           ['id'],
           1
         );
@@ -962,20 +1050,28 @@ export default function ConvalidaResiduiPage() {
         if (newQuants.length > 0) {
           quantId = newQuants[0].id;
         } else {
-          // Crea un nuovo quant
-          quantId = await callKwConvalida<number>('stock.quant', 'create', [{
+          // Crea un nuovo quant con lot_id
+          const createVals: any = {
             product_id: productId,
             location_id: selectedLocationId,
             quantity: 0,
             inventory_quantity: newQuantity
-          }], {});
+          };
+          if (lotId) {
+            createVals.lot_id = lotId;
+          }
+          quantId = await callKwConvalida<number>('stock.quant', 'create', [createVals], {});
         }
 
         // Imposta la quantita' inventario
-        await callKwConvalida('stock.quant', 'write', [[quantId], {
+        const writeVals: any = {
           inventory_quantity: newQuantity,
           inventory_date: new Date().toISOString().slice(0, 10)
-        }], {});
+        };
+        if (lotId) {
+          writeVals.lot_id = lotId;
+        }
+        await callKwConvalida('stock.quant', 'write', [[quantId], writeVals], {});
 
         // Applica
         await callKwConvalida('stock.quant', 'action_apply_inventory', [[quantId]], {});
@@ -984,21 +1080,46 @@ export default function ConvalidaResiduiPage() {
         const checkNewQuant = await searchReadConvalida<any>('stock.quant', [['id', '=', quantId]], ['quantity'], 1);
         if (checkNewQuant.length > 0 && checkNewQuant[0].quantity !== newQuantity) {
           console.warn('[FORZA] action_apply_inventory non ha funzionato per nuovo quant, forzo quantity');
-          await callKwConvalida('stock.quant', 'write', [[quantId], { quantity: newQuantity }], {});
+          const forceVals: any = { quantity: newQuantity };
+          if (lotId) {
+            forceVals.lot_id = lotId;
+          }
+          await callKwConvalida('stock.quant', 'write', [[quantId], forceVals], {});
         }
+        finalQuantId = quantId;
       }
 
       // Esegui "Controlla Disponibilita'" sul picking per creare le righe nelle operazioni dettagliate
       await callKwConvalida('stock.picking', 'action_assign', [[pickingId]], {});
 
+      // === ASSEGNA LOTTO ALLA MOVE.LINE ===
+      if (lotId && moveId) {
+        // Trova le move.line create per questo move
+        const moveLines = await searchReadConvalida<any>(
+          'stock.move.line',
+          [['move_id', '=', moveId]],
+          ['id', 'lot_id'],
+          0
+        );
+
+        if (moveLines.length > 0) {
+          // Aggiorna tutte le move.line con il lotto
+          const lineIds = moveLines.map((ml: any) => ml.id);
+          await callKwConvalida('stock.move.line', 'write', [lineIds, { lot_id: lotId }], {});
+          console.log('[FORZA] Assegnato lotto', lotId, 'alle move.line:', lineIds);
+        }
+      }
+
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
       const locationName = selectedQuant ? selectedQuant.location_id[1] : 'Ubicazione';
+      const lotInfo = lotId ? `<li><strong>Lotto:</strong> ${lotName}</li>` : '';
       const message = `
         <p><strong>📦 Forza Inventario eseguito</strong></p>
         <ul>
           <li><strong>Prodotto:</strong> ${productName}</li>
           <li><strong>Ubicazione:</strong> ${locationName}</li>
+          ${lotInfo}
           <li><strong>Quantita' precedente:</strong> ${oldQuantity}</li>
           <li><strong>Nuova quantita':</strong> ${newQuantity}</li>
           <li><strong>Data:</strong> ${timestamp}</li>
@@ -1011,7 +1132,7 @@ export default function ConvalidaResiduiPage() {
         subtype_xmlid: 'mail.mt_note'
       });
 
-      showToastMessage(`Inventario forzato: ${productName} = ${newQuantity}`);
+      showToastMessage(`Inventario forzato: ${productName} = ${newQuantity}${lotName ? ` (Lotto: ${lotName})` : ''}`);
       setShowForzaModal(false);
       setForzaData(null);
 
@@ -3007,6 +3128,91 @@ export default function ConvalidaResiduiPage() {
                       fontWeight: '600'
                     }}
                   />
+                </div>
+
+                {/* Sezione Lotto */}
+                <div style={{ marginBottom: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
+                  <div style={{ fontSize: '14px', color: '#0369a1', marginBottom: '8px', fontWeight: '600' }}>
+                    🏷️ Lotto e Scadenza
+                  </div>
+
+                  {/* Toggle: Seleziona esistente o Crea nuovo */}
+                  {forzaData.availableLots.length > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={forzaData.createNewLot}
+                          onChange={(e) => setForzaData({ ...forzaData, createNewLot: e.target.checked, selectedLotId: e.target.checked ? null : forzaData.availableLots[0]?.id })}
+                          style={{ marginRight: '8px' }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#0f172a' }}>Crea nuovo lotto</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Selezione lotto esistente */}
+                  {!forzaData.createNewLot && forzaData.availableLots.length > 0 && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <select
+                        value={forzaData.selectedLotId || ''}
+                        onChange={(e) => setForzaData({ ...forzaData, selectedLotId: parseInt(e.target.value) || null })}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          fontSize: '14px'
+                        }}
+                      >
+                        <option value="">-- Seleziona lotto --</option>
+                        {forzaData.availableLots.map((lot) => (
+                          <option key={lot.id} value={lot.id}>
+                            {lot.name} {lot.expiry ? `(Scad: ${new Date(lot.expiry).toLocaleDateString('it-IT')})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Creazione nuovo lotto */}
+                  {(forzaData.createNewLot || forzaData.availableLots.length === 0) && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          placeholder="Nome lotto (es: LOT001)"
+                          value={forzaData.newLotName}
+                          onChange={(e) => setForzaData({ ...forzaData, newLotName: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            fontSize: '14px'
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="date"
+                          placeholder="Scadenza"
+                          value={forzaData.newLotExpiry}
+                          onChange={(e) => setForzaData({ ...forzaData, newLotExpiry: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            fontSize: '14px'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{
