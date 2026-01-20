@@ -169,6 +169,11 @@ export async function createModel(
       return fail('values is required and must be an object', 'ValidationError');
     }
 
+    // REQUIRED: chatter_message is mandatory for sale.order (audit trail)
+    if (input.model_name === 'sale.order' && !input.chatter_message) {
+      return fail('chatter_message is REQUIRED when creating sale.order - must include the original request for audit trail', 'ValidationError');
+    }
+
     const cookies = await getOdooCookies();
 
     // Add user_id if available and not already set (for audit trail)
@@ -188,9 +193,109 @@ export async function createModel(
       {}
     );
 
+    const createdId = Array.isArray(recordId) ? recordId[0] : recordId;
+
+    // Fetch the record name after creation (important for sale.order, purchase.order, etc.)
+    let recordName: string | undefined;
+    try {
+      const createdRecord = await callOdoo(
+        cookies,
+        input.model_name,
+        'search_read',
+        [[['id', '=', createdId]]],
+        { fields: ['name'], limit: 1 }
+      );
+      if (Array.isArray(createdRecord) && createdRecord.length > 0 && createdRecord[0].name) {
+        recordName = createdRecord[0].name;
+      }
+    } catch {
+      // Ignore errors fetching name - record_id is still valid
+    }
+
+    // For sale.order.line: trigger price recalculation from customer pricelist
+    if (input.model_name === 'sale.order.line') {
+      try {
+        // Call product_uom_change to recalculate price from pricelist
+        // This mimics what Odoo UI does when you select a product
+        await callOdoo(
+          cookies,
+          'sale.order.line',
+          'product_uom_change',
+          [[createdId]],
+          {}
+        );
+        console.log(`[MCP-TOOLS] Triggered price recalculation for sale.order.line ${createdId}`);
+      } catch (priceError) {
+        // Try alternative method if product_uom_change doesn't work
+        try {
+          // Get the order and recalculate all prices
+          const line = await callOdoo(
+            cookies,
+            'sale.order.line',
+            'search_read',
+            [[['id', '=', createdId]]],
+            { fields: ['order_id'], limit: 1 }
+          );
+          if (Array.isArray(line) && line.length > 0 && line[0].order_id) {
+            const orderId = Array.isArray(line[0].order_id) ? line[0].order_id[0] : line[0].order_id;
+            // Force recompute on the order
+            await callOdoo(
+              cookies,
+              'sale.order',
+              'write',
+              [[orderId], {}],
+              {}
+            );
+          }
+        } catch {
+          console.error('[MCP-TOOLS] Failed to recalculate price for order line:', priceError);
+        }
+      }
+    }
+
+    // Post chatter message for audit trail (especially for sale.order)
+    if (input.chatter_message && ['sale.order', 'purchase.order', 'crm.lead', 'helpdesk.ticket', 'res.partner'].includes(input.model_name)) {
+      try {
+        const userName = currentSessionContext?.userName || 'Sistema';
+        const timestamp = new Date().toLocaleString('it-IT', {
+          timeZone: 'Europe/Zurich',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        // Format message with context
+        const formattedMessage = `<p><strong>📝 Richiesta originale (${userName} - ${timestamp}):</strong></p>
+<blockquote style="border-left: 3px solid #875A7B; padding-left: 10px; margin: 10px 0; color: #555;">
+${input.chatter_message.replace(/\n/g, '<br/>')}
+</blockquote>
+<p><em>Creato tramite Chat AI Venditori</em></p>`;
+
+        await callOdoo(
+          cookies,
+          'mail.message',
+          'create',
+          [{
+            model: input.model_name,
+            res_id: createdId,
+            body: formattedMessage,
+            message_type: 'comment',
+            subtype_id: 2, // Note interna
+          }],
+          {}
+        );
+      } catch (chatterError) {
+        // Don't fail the creation if chatter fails - just log
+        console.error('[MCP-TOOLS] Failed to post chatter message:', chatterError);
+      }
+    }
+
     return ok({
       model: input.model_name,
-      record_id: Array.isArray(recordId) ? recordId[0] : recordId,
+      record_id: createdId,
+      record_name: recordName, // e.g., "S37250" for sale.order
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

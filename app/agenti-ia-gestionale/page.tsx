@@ -233,6 +233,8 @@ export default function LapaAiAgentsPage() {
   const clearCurrentChat = useCallback(() => {
     if (!selectedAgent) return;
     updateChatHistory(selectedAgent, []);
+    // Also clear processed tasks to allow re-running same tasks
+    processedTasksRef.current.clear();
   }, [selectedAgent, updateChatHistory]);
 
   // UI state
@@ -261,6 +263,7 @@ export default function LapaAiAgentsPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const processedTasksRef = useRef<Set<number>>(new Set()); // Track processed tasks to prevent duplicate messages
 
   // Auto-scroll to bottom (only for agent chat, not unified chat)
   const scrollToBottom = () => {
@@ -465,6 +468,14 @@ export default function LapaAiAgentsPage() {
 
         if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
           console.log(`[POLL] Task ${taskId} finished with status: ${data.status}`);
+
+          // CHECK: Skip if this task was already processed (prevents duplicate messages)
+          if (processedTasksRef.current.has(taskId)) {
+            console.log(`[POLL] Task ${taskId} already processed, skipping duplicate`);
+            return;
+          }
+          // Mark task as processed IMMEDIATELY to prevent race conditions
+          processedTasksRef.current.add(taskId);
 
           if (pollingRef.current) {
             clearInterval(pollingRef.current);

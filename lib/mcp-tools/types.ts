@@ -87,6 +87,8 @@ export interface SearchReadModelInput {
 export interface CreateModelInput {
   model_name: string;
   values: Record<string, any>;
+  /** Optional message to post in chatter after creation (for audit trail) */
+  chatter_message?: string;
 }
 
 export interface WriteModelInput {
@@ -142,6 +144,7 @@ export interface SearchReadResult {
 export interface CreateResult {
   model: string;
   record_id: number;
+  record_name?: string; // e.g., "S37250" for sale.order - the document number
 }
 
 export interface WriteResult {

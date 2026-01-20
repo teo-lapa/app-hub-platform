@@ -52,7 +52,7 @@ export const searchReadModelTool: ClaudeToolDefinition = {
  */
 export const createModelTool: ClaudeToolDefinition = {
   name: OdooToolName.CREATE_MODEL,
-  description: 'Create a new record in any Odoo model. Returns the ID of the created record.',
+  description: 'Create a new record in any Odoo model. Returns the ID and name of the created record. For sale.order, also use chatter_message to save the original request as audit trail.',
   input_schema: {
     type: 'object',
     properties: {
@@ -63,6 +63,10 @@ export const createModelTool: ClaudeToolDefinition = {
       values: {
         type: 'object',
         description: "Dictionary of field values for the new record (e.g., {'name': 'John Doe', 'email': 'john@example.com'})",
+      },
+      chatter_message: {
+        type: 'string',
+        description: "IMPORTANT for sale.order: The original customer/vendor request to save in chatter as audit trail. Include the full original message.",
       },
     },
     required: ['model_name', 'values'],
