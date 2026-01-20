@@ -217,7 +217,7 @@ export default function ConvalidaResiduiPage() {
   const [groups, setGroups] = useState<Map<string, GroupData>>(new Map());
 
   // Info prodotti: disponibilità e arrivi
-  const [productStock, setProductStock] = useState<Record<number, Array<{locationId: number, location: string, qty: number, reserved: number}>>>({});
+  const [productStock, setProductStock] = useState<Record<number, Array<{locationId: number, location: string, qty: number, reserved: number, lotId?: number, lotName?: string, lotExpiry?: string | null}>>>({});
   const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
   const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
 
@@ -504,7 +504,7 @@ export default function ConvalidaResiduiPage() {
     try {
       const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
 
-      // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity
+      // 1. Carica stock per ubicazione (solo ubicazioni interne) CON reserved_quantity e lot_id
       const quants = await searchReadConvalida<any>(
         'stock.quant',
         [
@@ -512,19 +512,45 @@ export default function ConvalidaResiduiPage() {
           ['quantity', '>', 0],
           ['location_id.usage', '=', 'internal']
         ],
-        ['product_id', 'location_id', 'quantity', 'reserved_quantity'],
+        ['product_id', 'location_id', 'quantity', 'reserved_quantity', 'lot_id'],
         0
       );
 
-      const stockByProduct: Record<number, Array<{locationId: number, location: string, qty: number, reserved: number}>> = {};
+      // Carica info lotti (scadenza) se ci sono lotti
+      const lotIds = Array.from(new Set(
+        quants.filter((q: any) => q.lot_id).map((q: any) => q.lot_id[0])
+      ));
+      const lotsInfo = lotIds.length > 0
+        ? await searchReadConvalida<any>(
+            'stock.lot',
+            [['id', 'in', lotIds]],
+            ['id', 'name', 'expiration_date', 'use_date'],
+            0
+          )
+        : [];
+      const lotMap = new Map<number, { name: string; expiry: string | null }>(
+        lotsInfo.map((l: any) => [
+          l.id,
+          {
+            name: l.name,
+            expiry: l.expiration_date || l.use_date || null
+          }
+        ])
+      );
+
+      const stockByProduct: Record<number, Array<{locationId: number, location: string, qty: number, reserved: number, lotId?: number, lotName?: string, lotExpiry?: string | null}>> = {};
       quants.forEach((q: any) => {
         const productId = q.product_id[0];
         if (!stockByProduct[productId]) stockByProduct[productId] = [];
+        const lotInfo = q.lot_id ? lotMap.get(q.lot_id[0]) : null;
         stockByProduct[productId].push({
           locationId: q.location_id[0],
           location: q.location_id[1],
           qty: q.quantity,
-          reserved: q.reserved_quantity || 0
+          reserved: q.reserved_quantity || 0,
+          lotId: q.lot_id ? q.lot_id[0] : undefined,
+          lotName: lotInfo?.name,
+          lotExpiry: lotInfo?.expiry
         });
       });
 
@@ -987,7 +1013,16 @@ export default function ConvalidaResiduiPage() {
   // CAMBIO UBICAZIONE FUNCTIONS
   // --------------------------------------------------------------------------
 
-  const handleChangeLocation = async (moveId: number, lineId: number, newLocationId: number, newLocationName: string, pickingId?: number) => {
+  const handleChangeLocation = async (
+    moveId: number,
+    lineId: number,
+    newLocationId: number,
+    newLocationName: string,
+    pickingId?: number,
+    lotId?: number,
+    lotName?: string,
+    lotExpiry?: string | null
+  ) => {
     try {
       // Ottieni l'ubicazione precedente prima di modificare
       const move = metaByMove[moveId];
@@ -996,16 +1031,26 @@ export default function ConvalidaResiduiPage() {
       const productName = move ? move.product_id[1] : 'Prodotto';
       const pickId = pickingId || (move ? move.picking_id[0] : null);
 
-      // Aggiorna la location_id sulla stock.move.line
-      await callKwConvalida('stock.move.line', 'write', [[lineId], { location_id: newLocationId }]);
+      // Prepara i valori da aggiornare: location_id e lot_id (se presente)
+      const updateVals: any = { location_id: newLocationId };
+      if (lotId) {
+        updateVals.lot_id = lotId;
+      }
 
-      // Aggiorna lo stato locale
+      // Aggiorna la location_id E lot_id sulla stock.move.line
+      await callKwConvalida('stock.move.line', 'write', [[lineId], updateVals]);
+
+      // Aggiorna lo stato locale (incluso il lotto!)
       setLineInfoByMove(prev => {
         const updated = { ...prev };
         if (updated[moveId]) {
           updated[moveId] = updated[moveId].map(line =>
             line.id === lineId
-              ? { ...line, location: [newLocationId, newLocationName] as [number, string] }
+              ? {
+                  ...line,
+                  location: [newLocationId, newLocationName] as [number, string],
+                  lot: lotId && lotName ? [lotId, lotName] as [number, string] : line.lot
+                }
               : line
           );
         }
@@ -1015,12 +1060,16 @@ export default function ConvalidaResiduiPage() {
       // Traccia nel chatter del picking
       if (pickId) {
         const timestamp = new Date().toLocaleString('it-IT');
+        const lotPart = lotName ? `<li><strong>Lotto:</strong> ${lotName}</li>` : '';
+        const expiryPart = lotExpiry ? `<li><strong>Scadenza:</strong> ${new Date(lotExpiry).toLocaleDateString('it-IT')}</li>` : '';
         const message = `
           <p><strong>📍 Cambio Ubicazione Prelievo</strong></p>
           <ul>
             <li><strong>Prodotto:</strong> ${productName}</li>
             <li><strong>Da:</strong> ${oldLocation}</li>
             <li><strong>A:</strong> ${newLocationName}</li>
+            ${lotPart}
+            ${expiryPart}
             <li><strong>Data:</strong> ${timestamp}</li>
           </ul>
         `;
@@ -1031,7 +1080,8 @@ export default function ConvalidaResiduiPage() {
         });
       }
 
-      showToastMessage(`✅ Ubicazione cambiata: ${newLocationName}`);
+      const lotMsg = lotName ? ` | Lotto: ${lotName}` : '';
+      showToastMessage(`✅ Ubicazione cambiata: ${newLocationName}${lotMsg}`);
     } catch (error: any) {
       showToastMessage(`❌ Errore cambio ubicazione: ${error.message}`);
     }
@@ -1547,18 +1597,38 @@ export default function ConvalidaResiduiPage() {
               Ubic.: <b>{ubic}</b>
             </div>
 
-            {/* Disponibilità ubicazioni - formato compatto */}
+            {/* Disponibilità ubicazioni - formato compatto con lotto e scadenza */}
             {stock.length > 0 && (
               <div className="sub" style={{ marginBottom: '8px', color: 'var(--accent)', fontSize: '12px' }}>
                 {stock.map((s, i) => {
                   const available = s.qty - s.reserved;
                   const shortLocation = s.location.split('/').pop() || s.location;
                   const reservedCustomer = reservations.length > 0 ? reservations.map(r => r.customer).join(', ') : '';
+                  // Formatta la scadenza se presente
+                  const expiryFormatted = s.lotExpiry
+                    ? new Date(s.lotExpiry).toLocaleDateString('it-IT')
+                    : null;
+                  // Calcola se scadenza e' vicina (entro 30 giorni)
+                  const isExpiryClose = s.lotExpiry
+                    ? (new Date(s.lotExpiry).getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000
+                    : false;
                   return (
                     <div key={i} style={{ marginBottom: i < stock.length - 1 ? '2px' : 0 }}>
                       📍 <b>{shortLocation}</b>
                       <span style={{ color: 'var(--muted)' }}> | </span>
                       Giac: <b>{s.qty}</b> {uom}
+                      {s.lotName && (
+                        <>
+                          <span style={{ color: 'var(--muted)' }}> | </span>
+                          <span style={{ color: '#8b5cf6' }}>🏷️ {s.lotName}</span>
+                        </>
+                      )}
+                      {expiryFormatted && (
+                        <>
+                          <span style={{ color: 'var(--muted)' }}> | </span>
+                          <span style={{ color: isExpiryClose ? '#ef4444' : '#f59e0b' }}>📅 {expiryFormatted}</span>
+                        </>
+                      )}
                       {available > 0 && (
                         <>
                           <span style={{ color: 'var(--muted)' }}> | </span>
@@ -1612,12 +1682,75 @@ export default function ConvalidaResiduiPage() {
                     marginLeft: '8px'
                   }}
                   value={lineInfos.length > 0 && lineInfos[0].location ? lineInfos[0].location[0].toString() : ''}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     if (!hasDriver) return;
                     const newLocId = parseInt(e.target.value);
+                    if (!newLocId) return;
                     const selectedStock = stock.find(s => s.locationId === newLocId);
-                    if (selectedStock && lineInfos.length > 0) {
-                      handleChangeLocation(move.id, lineInfos[0].id, newLocId, selectedStock.location, pick.id);
+                    if (!selectedStock) return;
+
+                    if (lineInfos.length > 0) {
+                      // Esiste gia una move.line, aggiorna l'ubicazione E il lotto
+                      handleChangeLocation(
+                        move.id,
+                        lineInfos[0].id,
+                        newLocId,
+                        selectedStock.location,
+                        pick.id,
+                        selectedStock.lotId,
+                        selectedStock.lotName,
+                        selectedStock.lotExpiry
+                      );
+                    } else {
+                      // NON esiste move.line - creane una nuova
+                      try {
+                        // Prepara i valori, includendo lot_id se presente
+                        const createVals: any = {
+                          move_id: move.id,
+                          picking_id: pick.id,
+                          product_id: move.product_id[0],
+                          product_uom_id: move.product_uom[0],
+                          location_id: newLocId,
+                          location_dest_id: move.location_dest_id[0],
+                          qty_done: 0,
+                        };
+                        // Se lo stock selezionato ha un lotto, assegnalo
+                        if (selectedStock.lotId) {
+                          createVals.lot_id = selectedStock.lotId;
+                        }
+
+                        const newLineId = await callKwConvalida<number>('stock.move.line', 'create', [createVals], {});
+
+                        // Aggiorna lo stato locale con la nuova line
+                        setLineInfoByMove(prev => ({
+                          ...prev,
+                          [move.id]: [{
+                            id: newLineId,
+                            qty_done: 0,
+                            location: [newLocId, selectedStock.location] as [number, string],
+                            lot: selectedStock.lotId && selectedStock.lotName
+                              ? [selectedStock.lotId, selectedStock.lotName] as [number, string]
+                              : false,
+                          }]
+                        }));
+
+                        // Traccia nel chatter
+                        const timestamp = new Date().toLocaleString('it-IT');
+                        const lotPart = selectedStock.lotName ? `<li><strong>Lotto:</strong> ${selectedStock.lotName}</li>` : '';
+                        const expiryPart = selectedStock.lotExpiry
+                          ? `<li><strong>Scadenza:</strong> ${new Date(selectedStock.lotExpiry).toLocaleDateString('it-IT')}</li>`
+                          : '';
+                        await callKwConvalida('stock.picking', 'message_post', [[pick.id]], {
+                          body: `<p><strong>📍 Ubicazione Assegnata</strong></p><ul><li><strong>Prodotto:</strong> ${move.product_id[1]}</li><li><strong>Ubicazione:</strong> ${selectedStock.location}</li>${lotPart}${expiryPart}<li><strong>Data:</strong> ${timestamp}</li></ul>`,
+                          message_type: 'comment',
+                          subtype_xmlid: 'mail.mt_note'
+                        });
+
+                        const lotMsg = selectedStock.lotName ? ` - Lotto: ${selectedStock.lotName}` : '';
+                        showToastMessage(`Ubicazione assegnata: ${selectedStock.location}${lotMsg}`);
+                      } catch (error: any) {
+                        showToastMessage(`Errore creazione linea: ${error.message}`);
+                      }
                     }
                   }}
                   disabled={!hasDriver}
@@ -1625,9 +1758,15 @@ export default function ConvalidaResiduiPage() {
                   <option value="">-- Seleziona ubicazione --</option>
                   {stock.map((s, i) => {
                     const available = Math.max(0, s.qty - s.reserved);
+                    // Formatta scadenza per dropdown
+                    const expiryStr = s.lotExpiry
+                      ? new Date(s.lotExpiry).toLocaleDateString('it-IT')
+                      : '';
+                    const lotStr = s.lotName ? ` [${s.lotName}]` : '';
+                    const expiryPart = expiryStr ? ` Scad: ${expiryStr}` : '';
                     return (
                       <option key={i} value={s.locationId.toString()} disabled={available <= 0}>
-                        {s.location} (Libero: {available.toFixed(1)} {uom})
+                        {s.location}{lotStr} (Libero: {available.toFixed(1)} {uom}){expiryPart}
                       </option>
                     );
                   })}
