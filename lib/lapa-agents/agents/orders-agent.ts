@@ -1877,7 +1877,7 @@ Esempio:
 "⚠️ Non posso modificare l'ordine SO12345 perché è già stato spedito.
 Opzioni:
 1. Creare un nuovo ordine per aggiunte
-2. Contattare assistenza per resi: +41 91 XXX XXXX
+2. Contattare assistenza per resi: +41 76 361 70 21 (LAPA principale) o venditori: Mihai +41 76 394 53 47, Alessandro +41 76 803 98 86
 3. Annullare e ricreare (se possibile)
 
 Come preferisci procedere?"
