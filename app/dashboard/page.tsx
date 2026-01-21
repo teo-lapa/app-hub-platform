@@ -126,7 +126,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content with Pull-to-Refresh */}
-      <PullToRefresh onRefresh={handleRefresh} className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={handleRefresh} className="flex-1 overflow-y-auto min-h-0">
         <main className="container-mobile md:max-w-7xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-4 md:py-8 pb-20 md:pb-8 min-h-full">
           {/* Joke Banner with Food News */}
           <motion.div

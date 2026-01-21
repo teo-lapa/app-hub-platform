@@ -54,10 +54,10 @@ export function PullToRefresh({
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y',
-        overscrollBehaviorY: 'contain'
+        // RIMOSSO overscrollBehaviorY: 'contain' - causa problemi di scroll su Android
       }}
     >
-      <div className="relative">
+      <div className="relative min-h-full">
         {children}
       </div>
     </div>

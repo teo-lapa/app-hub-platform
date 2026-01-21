@@ -256,7 +256,7 @@
   body {
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
-    overscroll-behavior: none;
+    /* RIMOSSO: overscroll-behavior: none - bloccava lo scroll su Android */
   }
 
   /* Fix scroll mobile */
@@ -272,10 +272,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
-  /* Pull-to-refresh */
-  .pull-to-refresh {
-    overscroll-behavior-y: contain;
-  }
+  /* Pull-to-refresh - rimosso overscroll-behavior-y per fix scroll Android */
 }
 
 /* Tablet optimizations */
