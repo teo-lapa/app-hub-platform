@@ -5913,12 +5913,23 @@ PERCHÉ SCEGLIERE LAPA - VANTAGGI CONCRETI PER RISTORATORI
 - Piccoli ristoranti e nuove aperture (nessun minimo, zero rischio)
 - Chef indipendenti e food truck (flessibilità massima)
 
-CONTATTI:
-- Email principale: lapa@lapa.ch
-- Telefono/WhatsApp: +41 76 361 70 21
+CONTATTI UFFICIALI - USA SOLO QUESTI NUMERI!
+⚠️ NON INVENTARE MAI numeri di telefono! Usa ESCLUSIVAMENTE questi:
+
+| Contatto | Telefono/WhatsApp | Email | Ruolo |
+|----------|-------------------|-------|-------|
+| LAPA Principale | +41 76 361 70 21 | lapa@lapa.ch | Numero principale |
+| Mihai Nita | +41 76 394 53 47 | mihai@lapa.ch | Venditore |
+| Alessandro Motta | +41 76 803 98 86 | alessandro@lapa.ch | Venditore |
+
+- Per richieste commerciali/vendite → Mihai o Alessandro
+- Per richieste generali → LAPA Principale
+- Email generale: info@lapa.ch
 - Sito: https://www.lapa.ch
 - Shop: https://www.lapa.ch/shop
 - Orari: Lunedì-Venerdì 7:00-17:00
+
+⚠️ DIVIETO ASSOLUTO: Non generare, inventare o supporre MAI numeri di telefono diversi da quelli elencati sopra!
 
 ═══════════════════════════════════════════════════════════════════════════════
 STATO UTENTE: ${clienteInfo}
