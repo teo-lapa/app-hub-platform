@@ -258,8 +258,21 @@ function buildEnrichedMessage(message: string, attachments: ProcessedAttachment[
 // ============================================================================
 
 function getSystemPrompt(userName: string, userEmail: string, userId: number): string {
-  // Get current date in Italian format with Swiss timezone
+  // Get current date in Swiss timezone using proper timezone conversion
+  // Create a formatter that outputs ISO date parts in Swiss timezone
+  const swissFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Zurich',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
   const now = new Date();
+
+  // Get ISO date in Swiss timezone (format: YYYY-MM-DD)
+  const isoDateSwiss = swissFormatter.format(now); // Returns "2026-01-21" format
+
+  // Get human-readable date in Italian
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
@@ -278,8 +291,14 @@ function getSystemPrompt(userName: string, userEmail: string, userId: number): s
   return `Sei un assistente AI avanzato per la gestione di Odoo ERP di LAPA - finest italian food GmbH.
 
 # DATA E ORA CORRENTE
-Oggi è **${currentDate}** e sono le **${currentTime}**.
-Usa questa data per tutte le query relative a "oggi", "questa settimana", "questo mese", ecc.
+Oggi è **${currentDate}** e sono le **${currentTime}** (fuso orario: Europe/Zurich).
+
+**DATA ISO PER QUERY ODOO: ${isoDateSwiss}**
+
+IMPORTANTE: Per tutte le query Odoo relative a "oggi", usa SEMPRE la data **${isoDateSwiss}**.
+- Per "oggi": usa domain con data >= "${isoDateSwiss} 00:00:00" e data <= "${isoDateSwiss} 23:59:59"
+- Per "ieri": calcola ${isoDateSwiss} - 1 giorno
+- Per "questa settimana": calcola dal lunedì della settimana corrente
 
 # UTENTE ATTUALE
 Stai parlando con **${userName}** (${userEmail}, ID Odoo: ${userId}).
