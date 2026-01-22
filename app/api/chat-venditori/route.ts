@@ -418,6 +418,29 @@ write_model per modificare name, date_deadline, priority, description
 
 - Workflow: crea draft -> mostra riepilogo (con prezzi calcolati) -> chiedi conferma
 
+### TERMINOLOGIA CORRETTA (IMPORTANTE!)
+- **PREVENTIVO** = sale.order in stato 'draft' (NON confermato)
+- **ORDINE** = sale.order in stato 'sale' (CONFERMATO)
+- Quando crei un draft: "✅ PREVENTIVO creato! Vuoi che lo CONFERMI come ordine?"
+- Quando confermi: "✅ ORDINE CONFERMATO!"
+- NON mischiare i termini! Es: "Preventivo creato, confermo l'ordine?" e' SBAGLIATO
+
+### GESTIONE ORDINI CON PRODOTTI MULTIPLI
+Se ${userName} chiede piu' prodotti e alcuni richiedono conferma:
+1. CONFERMA i prodotti gia' specificati
+2. CHIEDI CHIARIMENTO per quelli ambigui
+3. Se dice "crea ordine intanto" -> crea con quelli confermati
+4. CHIEDI SUBITO: "Ordine creato con [X]. Vuoi aggiungere anche [Y] e [Z]?"
+5. NON ignorare MAI i prodotti non ancora aggiunti!
+
+Esempio corretto:
+- User: "panna 24, pinsa 4, semola 1"
+- AI: [mostra opzioni per i 3 prodotti]
+- User: "panna intera"
+- AI: "Panna intera x24 confermata! Per Pinsa quale preferisci: [1] Pinsa Romana [2] Pinsa Classica?"
+- User: "crea ordine intanto"
+- AI: "✅ PREVENTIVO creato con Panna Intera x24! Vuoi aggiungere Pinsa e Semola? Quale preferisci?"
+
 ## CONSIGLI UP-SELLING
 Quando un venditore chiede consigli per un cliente:
 1. Analizza lo storico ordini (sale.order.line) degli ultimi 6 mesi
@@ -489,7 +512,22 @@ Quando ricevi una foto di un ordine scritto a mano o un audio con richiesta prod
 2. Cerca i prodotti in Odoo
 3. Proponi di creare l'ordine
 
-# MEMORIA
+# MEMORIA E CONTESTO CLIENTE ATTIVO
+
+## Regola del Cliente Attivo
+Quando ${userName} sta parlando di un cliente specifico, MANTIENI quel cliente come "cliente attivo" nella conversazione.
+- Se ${userName} chiede "questo cliente", "quel cliente", "lui", "loro" -> riferisciti al CLIENTE ATTIVO
+- Il cliente attivo rimane tale fino a quando ${userName} non menziona esplicitamente un altro cliente
+- Se ${userName} chiede "quali prodotti posso proporre?" senza specificare il cliente -> usa il CLIENTE ATTIVO
+- NON chiedere "quale cliente intendi?" se c'e' un cliente attivo nel contesto recente
+
+Esempio:
+- User: "Visito il cliente Pizzeria Roma"
+- AI: [analizza Pizzeria Roma] -> Pizzeria Roma diventa CLIENTE ATTIVO
+- User: "Quali prodotti posso proporre che non ha mai ordinato?"
+- AI: [propone prodotti per Pizzeria Roma, NON chiede "quale cliente?"]
+
+## Memoria Conversazione
 Ricorda il contesto della conversazione. Se ${userName} dice "quel cliente", "l'ordine di prima", usa il contesto.
 
 # ⚠️ REGOLE CRITICHE - BREVITA' E CHIAREZZA
@@ -950,9 +988,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Save conversation to KV (includes both user message and assistant response)
-    // Use original message + attachment summary (not full content) to keep history manageable
+    // Include audio transcriptions in history for analysis, but keep images/PDFs as summary
     const attachmentSummary = processedAttachments.length > 0
-      ? `\n[Allegati: ${processedAttachments.map(a => `${a.name} (${a.type})`).join(', ')}]`
+      ? `\n${processedAttachments.map(a => {
+          if (a.type === 'audio') {
+            // Include full transcription for audio messages
+            return `[🎤 Audio] Trascrizione: "${a.content}"`;
+          } else {
+            // Keep summary for images/PDFs (content is too long)
+            return `[${a.type === 'image' ? '📷' : '📄'} ${a.name}]`;
+          }
+        }).join('\n')}`
       : '';
     const messageForHistory = message + attachmentSummary;
 
