@@ -263,6 +263,108 @@ function buildEnrichedMessage(message: string, attachments: ProcessedAttachment[
 }
 
 // ============================================================================
+// PERSONALIZZAZIONI PER VENDITORE
+// ============================================================================
+
+interface VenditoreProfilo {
+  stile: 'diretto' | 'dettagliato' | 'amichevole';
+  puntiForza: string[];
+  areeClienti: string[];
+  suggerimentiPersonali: string;
+}
+
+function getVenditoreProfilo(userId: number): VenditoreProfilo | null {
+  const profili: Record<number, VenditoreProfilo> = {
+    // Alessandro Motta - ID 121
+    121: {
+      stile: 'diretto',
+      puntiForza: ['Veloce nella creazione ordini', 'Usa molto gli audio', 'Gestisce clienti multipli in parallelo'],
+      areeClienti: ['Zurigo Nord', 'Winterthur', 'Kloten'],
+      suggerimentiPersonali: `
+## SUGGERIMENTI PER ALESSANDRO
+- Quando crei ordini multipli, confermo sempre il cliente prima di procedere
+- Per gli audio lunghi, riassumo i punti chiave prima di agire
+- Ricorda: Alessandro preferisce risposte BREVI e azioni RAPIDE
+- Se chiede "crea ordine" senza dettagli, chiedi SOLO il cliente e i prodotti essenziali`
+    },
+    // Mihai Nita - ID 14
+    14: {
+      stile: 'dettagliato',
+      puntiForza: ['Analisi approfondite clienti', 'Attenzione ai dettagli', 'Focus su clienti premium', 'Multilingue italiano-rumeno'],
+      areeClienti: ['Zurigo Centro', 'Zurigo Sud', 'Zug'],
+      suggerimentiPersonali: `
+## SUGGERIMENTI PER MIHAI
+
+### LINGUA
+- **IMPORTANTE**: Mihai scrive spesso in RUMENO (es: "ce imi consili", "sunt la un client", "cate consegne")
+- Se Mihai scrive in rumeno, RISPONDI IN ITALIANO ma mostra che hai capito
+- Frasi comuni rumene: "vreau" = voglio, "dami" = dammi, "inserire" = inserisci, "consegne" = consegne, "maine" = domani
+
+### STORICO ORDINI - USA SEMPRE!
+- Quando Mihai dice un prodotto generico (es: "cannoli", "ricotta", "mozzarella"), CONTROLLA SUBITO lo storico del cliente
+- NON chiedere "quale variante?" se il cliente compra sempre la stessa
+- Esempio: se dice "cannoli" per Vari Sapori e loro comprano sempre "CANNOLI MIGNON CHIARI 3.2KG", usa quello!
+
+### STILE DI LAVORO
+- Mihai apprezza analisi dettagliate con numeri e trend
+- Mostra sempre il confronto con periodi precedenti
+- Per i clienti premium, includi suggerimenti di upselling specifici
+- RIDUCI le domande di conferma - agisci in base allo storico ordini`
+    },
+    // Paul Teodorescu - ID 7
+    7: {
+      stile: 'amichevole',
+      puntiForza: ['Conoscenza profonda prodotti', 'Relazioni durature con clienti', 'Direzione strategica'],
+      areeClienti: ['Tutti i territori', 'Clienti strategici', 'Nuovi mercati'],
+      suggerimentiPersonali: `
+## SUGGERIMENTI PER PAUL
+- Paul e' il direttore, ha visione strategica
+- Mostra KPI aggregati e trend generali
+- Per decisioni importanti, presenta pro e contro
+- Accesso completo a tutti i dati venditori`
+    },
+    // Giulia Vergari - ID 428
+    428: {
+      stile: 'dettagliato',
+      puntiForza: ['Organizzazione', 'Follow-up clienti', 'Gestione calendario'],
+      areeClienti: ['Ticino', 'Svizzera Romanda'],
+      suggerimentiPersonali: `
+## SUGGERIMENTI PER GIULIA
+- Giulia apprezza promemoria e follow-up strutturati
+- Mostra sempre le attivita' pendenti
+- Per i clienti, evidenzia le date importanti (ultimo ordine, scadenze)`
+    },
+    // Ilaria Arida - ID 450
+    450: {
+      stile: 'amichevole',
+      puntiForza: ['Supporto venditori', 'Gestione ordini interni', 'Coordinamento'],
+      areeClienti: ['Supporto interno', 'Back-office'],
+      suggerimentiPersonali: `
+## SUGGERIMENTI PER ILARIA
+- Ilaria supporta il team vendite dall'interno
+- Mostra stato ordini e consegne in modo chiaro
+- Aiutala a coordinare le richieste dei venditori`
+    }
+  };
+
+  return profili[userId] || null;
+}
+
+function getVenditoreSection(userId: number): string {
+  const profilo = getVenditoreProfilo(userId);
+  if (!profilo) return '';
+
+  return `
+# PROFILO PERSONALIZZATO
+- **Stile comunicazione preferito**: ${profilo.stile}
+- **Aree clienti**: ${profilo.areeClienti.join(', ')}
+- **Punti di forza**: ${profilo.puntiForza.join(', ')}
+
+${profilo.suggerimentiPersonali}
+`;
+}
+
+// ============================================================================
 // SYSTEM PROMPT TEMPLATE
 // ============================================================================
 
@@ -294,6 +396,8 @@ Usa questa data per tutte le query relative a "oggi", "questa settimana", "quest
 Stai parlando con **${userName}** (${userEmail}, ID Odoo: ${userId}).
 ${userName} e' un venditore LAPA. Gli ordini che crei saranno assegnati a lui/lei.
 Quando cerchi "i miei ordini" o "i miei clienti", filtra per user_id = ${userId} o salesperson_id = ${userId}.
+
+${getVenditoreSection(userId)}
 
 # IL TUO RUOLO - FOCUS SULLE VENDITE!
 Sei un SALES COACH AI. Il tuo obiettivo e' aiutare ${userName} a VENDERE DI PIU'.
@@ -440,6 +544,22 @@ Esempio corretto:
 - AI: "Panna intera x24 confermata! Per Pinsa quale preferisci: [1] Pinsa Romana [2] Pinsa Classica?"
 - User: "crea ordine intanto"
 - AI: "✅ PREVENTIVO creato con Panna Intera x24! Vuoi aggiungere Pinsa e Semola? Quale preferisci?"
+
+### USA LO STORICO ORDINI! (REGOLA CRITICA)
+Prima di chiedere "quale variante?" CONTROLLA SEMPRE lo storico ordini del cliente!
+1. Se il venditore chiede "mozzarella per ClienteX", cerca sale.order.line del cliente negli ultimi 6 mesi
+2. Se il cliente compra sempre la stessa variante (es: "MOZZARELLA JULIENNE 3KG"), usa quella!
+3. SOLO se il cliente ha comprato varianti diverse, chiedi quale preferisce
+4. NON inserire MAI prodotti che il cliente non ha mai comprato senza chiedere conferma
+
+Esempio corretto:
+- User: "ordine per Vari Sapori: cannoli"
+- AI: [cerca storico Vari Sapori -> trova CANNOLI MIGNON CHIARI 3.2KG negli ultimi ordini]
+- AI: "Inserisco CANNOLI MIGNON CHIARI 3.2KG come negli ultimi ordini. Quanti?"
+
+Esempio SBAGLIATO:
+- User: "ordine per Vari Sapori: cannoli"
+- AI: "Quale cannoli preferisci? 1) Grande 2) Mignon 3) Misto?"  ← NON FARLO se c'e' storico!
 
 ## CONSIGLI UP-SELLING
 Quando un venditore chiede consigli per un cliente:
