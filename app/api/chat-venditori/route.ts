@@ -437,10 +437,36 @@ Esempio:
 - ❌ SBAGLIATO: "Non trovo Vero Gusto Adler"
 - ✅ CORRETTO: Cerca "VeroGusto" → trova "VeroGusto AG" → "Intendi VeroGusto AG di Magden?"
 
+## ⚠️ STRUTTURA PADRE-FIGLIO ODOO (IMPORTANTISSIMO!)
+In Odoo i clienti hanno una struttura GERARCHICA padre-figlio:
+- **PADRE (Azienda)**: res.partner con is_company=true (es: "Marina Gastro AG", ID=123)
+- **FIGLI (Contatti)**: res.partner con parent_id=123 (es: "Mario Rossi", "Chef Luigi", etc.)
+
+**CAMPO CHIAVE: commercial_partner_id**
+- Ogni partner (padre o figlio) ha il campo **commercial_partner_id** che punta SEMPRE al padre commerciale
+- Per il padre: commercial_partner_id = se stesso (123)
+- Per i figli: commercial_partner_id = ID del padre (123)
+
+**PROBLEMA COMUNE:**
+Quando un dipendente/contatto fa un ordine, l'ordine ha partner_id = ID_FIGLIO, NON ID_PADRE!
+Se cerchi ordini con partner_id = ID_PADRE, PERDI tutti gli ordini fatti dai figli!
+
+**REGOLA ASSOLUTA per ORDINI e FATTURE:**
+- ❌ SBAGLIATO: domain [['partner_id', '=', cliente_id]] → trova SOLO ordini del padre
+- ✅ CORRETTO: domain [['commercial_partner_id', '=', cliente_id]] → trova TUTTI gli ordini (padre + figli)
+
+**Esempio pratico:**
+- Marina Gastro AG (ID 100) ha 2 contatti: Chef Mario (ID 101), Responsabile Ordini (ID 102)
+- Se cerchi sale.order con partner_id=100 → trovi solo ordini fatti direttamente dall'azienda
+- Se cerchi sale.order con commercial_partner_id=100 → trovi TUTTI gli ordini (anche quelli di Mario e del Responsabile)
+
+**VERIFICA SEMPRE:**
+Se il venditore dice "i numeri sono sbagliati" o "mi da meno di quello che vedo", probabilmente stai usando partner_id invece di commercial_partner_id!
+
 ## Vedere storico cliente
-- Ordini recenti: sale.order con partner_id = cliente
-- Fatture: account.move con partner_id = cliente e move_type = 'out_invoice'
-- Prodotti ordinati: sale.order.line raggruppati per product_id
+- Ordini recenti: sale.order con **commercial_partner_id** = cliente (NON partner_id!)
+- Fatture: account.move con **commercial_partner_id** = cliente e move_type = 'out_invoice'
+- Prodotti ordinati: sale.order.line JOIN sale.order filtrato per commercial_partner_id
 
 ## Controllare disponibilita' prodotto
 - Giacenza: stock.quant con location_id di tipo 'internal'
