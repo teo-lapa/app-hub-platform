@@ -51,6 +51,26 @@ interface OdooAttachment {
   public: boolean;
 }
 
+/**
+ * Sanitizza il nome del file per renderlo sicuro per le API social (Instagram, Twitter, etc.)
+ * Rimuove caratteri speciali che causano errori di upload
+ */
+function sanitizeFileName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[ñ]/g, 'n')
+    .replace(/[ç]/g, 'c')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 50);
+}
+
 // ==========================================
 // TRADUZIONE MULTILINGUA
 // ==========================================
@@ -713,10 +733,13 @@ export async function POST(request: NextRequest) {
 
     console.log('[2/7] Uploading images to Odoo...');
 
+    const safeProductName = sanitizeFileName(productName);
+    const safeTitleName = sanitizeFileName(recipeData.title);
+
     const productImageId = await uploadImageToOdoo(
       odooCookies,
       productImage,
-      `${productName}-product.jpg`,
+      `${safeProductName}-product.jpg`,
       false // per blog
     );
     console.log(`✅ Product image uploaded: ${productImageId}`);
@@ -724,7 +747,7 @@ export async function POST(request: NextRequest) {
     const recipeImageId = await uploadImageToOdoo(
       odooCookies,
       recipeImage,
-      `${recipeData.title}-dish.jpg`,
+      `${safeTitleName}-dish.jpg`,
       false // per blog
     );
     console.log(`✅ Recipe image uploaded: ${recipeImageId}`);
@@ -733,7 +756,7 @@ export async function POST(request: NextRequest) {
     const socialImageId = await uploadImageToOdoo(
       odooCookies,
       recipeImage,
-      `${recipeData.title}-social.jpg`,
+      `${safeTitleName}-social.jpg`,
       true // per social
     );
     console.log(`✅ Social image uploaded: ${socialImageId}`);

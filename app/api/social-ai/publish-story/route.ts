@@ -58,6 +58,26 @@ interface PublishStoryRequest {
 // Helper per delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Sanitizza il nome del file per renderlo sicuro per le API social (Instagram, Twitter, etc.)
+ * Rimuove caratteri speciali che causano errori di upload
+ */
+function sanitizeFileName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[ñ]/g, 'n')
+    .replace(/[ç]/g, 'c')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 50);
+}
+
 // ==========================================
 // TRADUZIONE MULTILINGUA
 // ==========================================
@@ -648,17 +668,20 @@ export async function POST(request: NextRequest) {
     // UPLOAD IMMAGINI
     console.log('[2/6] Uploading images to Odoo...');
 
+    const safeProductName = sanitizeFileName(productName);
+    const safeTitleName = sanitizeFileName(storyData.title);
+
     const productImageId = await uploadImageToOdoo(
       odooCookies,
       productImage,
-      `${productName}-product.jpg`,
+      `${safeProductName}-product.jpg`,
       false // per blog
     );
 
     const storyImageId = await uploadImageToOdoo(
       odooCookies,
       storyImage,
-      `${storyData.title}-story.jpg`,
+      `${safeTitleName}-story.jpg`,
       false // per blog
     );
 
@@ -666,7 +689,7 @@ export async function POST(request: NextRequest) {
     const socialImageId = await uploadImageToOdoo(
       odooCookies,
       storyImage,
-      `${storyData.title}-social.jpg`,
+      `${safeTitleName}-social.jpg`,
       true // per social
     );
 
