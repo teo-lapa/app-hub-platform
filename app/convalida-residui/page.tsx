@@ -1691,6 +1691,7 @@ export default function ConvalidaResiduiPage() {
               step="0.01"
               min="0"
               defaultValue={done}
+              key={`input_${move.id}_${done}`}
               id={`convalida_done_${move.id}`}
               style={{ maxWidth: '80px' }}
               disabled={!hasDriver}
