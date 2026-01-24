@@ -189,22 +189,66 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishYo
     // Account YouTube LAPA (ID: 7)
     const youtubeAccountId = 7;
 
+    // Prima forziamo Odoo a refreshare il token se necessario chiamando _refresh_youtube_token
+    try {
+      await callOdoo(
+        odooCookies,
+        'social.account',
+        '_refresh_youtube_token',
+        [[youtubeAccountId]]
+      );
+      console.log('[Publish YouTube] Token refresh requested');
+    } catch (refreshError: any) {
+      console.log('[Publish YouTube] Token refresh skipped (method may not be accessible):', refreshError.message);
+    }
+
     const accounts = await callOdoo(
       odooCookies,
       'social.account',
       'search_read',
-      [[['id', '=', youtubeAccountId]], ['youtube_access_token', 'name']]
+      [[['id', '=', youtubeAccountId]], ['youtube_access_token', 'youtube_token_expiration_date', 'name', 'is_media_disconnected']]
     );
 
-    if (!accounts || accounts.length === 0 || !accounts[0].youtube_access_token) {
+    if (!accounts || accounts.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Account YouTube non configurato o token mancante. Verifica la connessione YouTube in Odoo.'
+        error: 'Account YouTube non trovato. Verifica la configurazione in Odoo.'
       }, { status: 500 });
     }
 
-    const youtubeAccessToken = accounts[0].youtube_access_token;
-    console.log(`[Publish YouTube] YouTube access token obtained from account: ${accounts[0].name}`);
+    const account = accounts[0];
+
+    // Controlla se l'account è disconnesso
+    if (account.is_media_disconnected) {
+      return NextResponse.json({
+        success: false,
+        error: 'Account YouTube disconnesso. Vai in Odoo > Marketing Social > Account e riconnetti YouTube.'
+      }, { status: 500 });
+    }
+
+    // Controlla se il token è scaduto
+    if (account.youtube_token_expiration_date) {
+      const expirationDate = new Date(account.youtube_token_expiration_date);
+      const now = new Date();
+      if (expirationDate < now) {
+        console.error('[Publish YouTube] Token expired:', account.youtube_token_expiration_date);
+        return NextResponse.json({
+          success: false,
+          error: 'Token YouTube scaduto. Vai in Odoo > Marketing Social > Account > YouTube e clicca "Riconnetti" per rinnovare il token.'
+        }, { status: 500 });
+      }
+      console.log(`[Publish YouTube] Token valid until: ${account.youtube_token_expiration_date}`);
+    }
+
+    if (!account.youtube_access_token) {
+      return NextResponse.json({
+        success: false,
+        error: 'Token YouTube mancante. Vai in Odoo > Marketing Social > Account e riconnetti YouTube.'
+      }, { status: 500 });
+    }
+
+    const youtubeAccessToken = account.youtube_access_token;
+    console.log(`[Publish YouTube] YouTube access token obtained from account: ${account.name}`);
 
     const ai = new GoogleGenAI({ apiKey });
 
@@ -372,16 +416,38 @@ Rispondi SOLO con la descrizione (no markdown, no code blocks):`;
     console.log(`[Publish YouTube] Video size: ${videoBuffer.length} bytes (${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
 
     // UPLOAD DIRETTO SU YOUTUBE!
-    const youtubeVideoId = await uploadToYouTube(
-      youtubeAccessToken,
-      videoBuffer,
-      youtubeTitle,
-      youtubeDescription,
-      '22',  // People & Blogs category
-      'public'
-    );
+    let youtubeVideoId: string;
+    try {
+      youtubeVideoId = await uploadToYouTube(
+        youtubeAccessToken,
+        videoBuffer,
+        youtubeTitle,
+        youtubeDescription,
+        '22',  // People & Blogs category
+        'public'
+      );
+      console.log(`[Publish YouTube] Video uploaded to YouTube! ID: ${youtubeVideoId}`);
+    } catch (uploadError: any) {
+      console.error('[Publish YouTube] Upload failed:', uploadError.message);
 
-    console.log(`[Publish YouTube] Video uploaded to YouTube! ID: ${youtubeVideoId}`);
+      // Se l'errore contiene 401 o "unauthorized", il token è scaduto
+      if (uploadError.message?.includes('401') || uploadError.message?.toLowerCase().includes('unauthorized')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Token YouTube scaduto durante upload. Vai in Odoo > Marketing Social > Account > YouTube e clicca "Riconnetti", poi riprova.'
+        }, { status: 401 });
+      }
+
+      // Se l'errore contiene "quota", la quota API è esaurita
+      if (uploadError.message?.toLowerCase().includes('quota')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Quota API YouTube esaurita per oggi. Riprova domani o verifica la quota nel Google Cloud Console.'
+        }, { status: 429 });
+      }
+
+      throw uploadError;
+    }
 
     // ==========================================
     // FASE 5: CREA POST ODOO CON VIDEO ID
