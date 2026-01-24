@@ -109,15 +109,16 @@ function generateId(): string {
 }
 
 // Quick action suggestions for sales team - FOCUS ON SELLING!
+// IMPORTANTE: I prompt devono essere precisi per forzare Claude a usare i tool correttamente
 const QUICK_ACTIONS = [
-  { icon: FileText, label: 'Crea preventivo', prompt: 'Aiutami a creare un preventivo per un cliente. Dimmi per quale cliente.' },
-  { icon: TrendingUp, label: 'Consigli vendita', prompt: 'Dammi consigli per aumentare le vendite con questo cliente. Analizza cosa compra e suggeriscimi prodotti da proporre in up-selling e cross-selling.' },
-  { icon: Users, label: 'Nuovo cliente', prompt: 'Voglio acquisire un nuovo cliente. Aiutami a creare il contatto e preparare una proposta commerciale.' },
-  { icon: Package, label: 'Cross-selling', prompt: 'Quali prodotti posso proporre a questo cliente che non ha mai ordinato ma che comprano clienti simili a lui?' },
-  { icon: BarChart3, label: 'Performance', prompt: 'Mostrami la mia performance di vendita di questa settimana: ordini creati, valore totale, confronto con settimana scorsa' },
-  { icon: CheckSquare, label: 'Attivita', prompt: 'Mostrami le mie attivita in scadenza oggi e domani' },
-  { icon: Calendar, label: 'Calendario', prompt: 'Mostrami i miei appuntamenti di oggi e domani' },
-  { icon: StickyNote, label: 'Nota', prompt: 'Aggiungi una nota a un cliente o ordine' },
+  { icon: FileText, label: 'Crea preventivo', prompt: 'Aiutami a creare un preventivo per un cliente. Per quale cliente devo crearlo?' },
+  { icon: TrendingUp, label: 'Consigli vendita', prompt: 'Dammi consigli di up-selling e cross-selling. Prima dimmi per quale cliente, poi cerca il suo storico ordini e suggeriscimi prodotti da proporre.' },
+  { icon: Users, label: 'Nuovo cliente', prompt: 'Voglio acquisire un nuovo cliente. Aiutami a creare il contatto in Odoo e preparare una proposta commerciale.' },
+  { icon: Package, label: 'Cross-selling', prompt: 'Quali prodotti posso proporre a questo cliente che non ha mai ordinato? Prima dimmi il nome del cliente, poi cerca il suo storico e confrontalo con clienti simili.' },
+  { icon: BarChart3, label: 'Performance', prompt: 'Mostrami la mia performance di vendita: fai la query su Odoo per gli ordini CONFERMATI (state=sale) di questa settimana con il mio user_id, calcola il totale, e confronta con la settimana scorsa. Mostrami i numeri REALI dalla query.' },
+  { icon: CheckSquare, label: 'Attivita', prompt: 'Cerca le mie attivita (mail.activity) con date_deadline di oggi e domani. Mostrami titolo, scadenza e a cosa sono collegate.' },
+  { icon: Calendar, label: 'Calendario', prompt: 'Cerca i miei appuntamenti (calendar.event) di oggi e domani. Mostrami nome, orario inizio/fine e partecipanti.' },
+  { icon: StickyNote, label: 'Nota', prompt: 'Voglio aggiungere una nota. Dimmi su quale cliente o ordine e cosa vuoi che scriva.' },
 ];
 
 // Markdown renderer component
