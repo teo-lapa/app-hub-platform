@@ -263,21 +263,23 @@ export async function POST(req: NextRequest) {
       const isInstagram = platformLabel.toLowerCase().includes('instagram');
 
       if (isInstagram && jpegImageBase64 && jpegImageName) {
-        // Instagram: usa JPEG
+        // Instagram: usa JPEG e DEVE essere pubblico per permettere a Meta di scaricarlo
         postValues.image_ids = [[0, 0, {
           name: jpegImageName,
           datas: jpegImageBase64,
           mimetype: 'image/jpeg',
+          public: true,  // CRITICO: Instagram richiede accesso pubblico all'immagine
         }]];
-        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: JPEG allegato - ${jpegImageName}`);
+        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: JPEG allegato (public) - ${jpegImageName}`);
       } else if (originalImageBase64 && originalImageName && originalImageMimetype) {
-        // Altri: usa formato originale
+        // Altri: usa formato originale, pubblico per sicurezza
         postValues.image_ids = [[0, 0, {
           name: originalImageName,
           datas: originalImageBase64,
           mimetype: originalImageMimetype,
+          public: true,  // Anche per altri social, meglio essere pubblico
         }]];
-        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: ${originalImageMimetype} allegato - ${originalImageName}`);
+        console.log(`📎 [PUBLISH-ODOO] ${platformLabel}: ${originalImageMimetype} allegato (public) - ${originalImageName}`);
       }
 
       try {
