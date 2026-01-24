@@ -115,7 +115,7 @@ const QUICK_ACTIONS = [
   { icon: TrendingUp, label: 'Consigli vendita', prompt: 'Dammi consigli di up-selling e cross-selling. Prima dimmi per quale cliente, poi cerca il suo storico ordini e suggeriscimi prodotti da proporre.' },
   { icon: Users, label: 'Nuovo cliente', prompt: 'Voglio acquisire un nuovo cliente. Aiutami a creare il contatto in Odoo e preparare una proposta commerciale.' },
   { icon: Package, label: 'Cross-selling', prompt: 'Quali prodotti posso proporre a questo cliente che non ha mai ordinato? Prima dimmi il nome del cliente, poi cerca il suo storico e confrontalo con clienti simili.' },
-  { icon: BarChart3, label: 'Performance', prompt: 'Mostrami la mia performance di vendita: fai la query su Odoo per gli ordini CONFERMATI (state=sale) di questa settimana con il mio user_id, calcola il totale, e confronta con la settimana scorsa. Mostrami i numeri REALI dalla query.' },
+  { icon: BarChart3, label: 'Performance', prompt: 'Mostrami la mia performance di vendita: fai la query su Odoo per gli ordini CONFERMATI (state=sale) con data CONSEGNA (commitment_date) di questa settimana, usando il mio user_id. Calcola il totale e confronta con la settimana scorsa. Mostrami i numeri REALI dalla query.' },
   { icon: CheckSquare, label: 'Attivita', prompt: 'Cerca le mie attivita (mail.activity) con date_deadline di oggi e domani. Mostrami titolo, scadenza e a cosa sono collegate.' },
   { icon: Calendar, label: 'Calendario', prompt: 'Cerca i miei appuntamenti (calendar.event) di oggi e domani. Mostrami nome, orario inizio/fine e partecipanti.' },
   { icon: StickyNote, label: 'Nota', prompt: 'Voglio aggiungere una nota. Dimmi su quale cliente o ordine e cosa vuoi che scriva.' },
