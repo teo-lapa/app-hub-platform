@@ -127,14 +127,11 @@ export default function AIOrderInput({ customerId, onProductsMatched }: AIOrderI
         });
       }
 
-      if (!response.ok) {
-        throw new Error('Errore nel processamento AI');
-      }
-
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || 'Errore nel processamento AI');
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || `Errore server (${response.status})`;
+        throw new Error(errorMsg);
       }
 
       if (data.matches && data.matches.length > 0) {
