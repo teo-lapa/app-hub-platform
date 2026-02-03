@@ -82,6 +82,8 @@ export default function GestioneBustePagaPage() {
   const [showNewPayslipForm, setShowNewPayslipForm] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
+  const [extractedAuszahlung, setExtractedAuszahlung] = useState<string>('');
+  const [extractedPauschalspesen, setExtractedPauschalspesen] = useState<string>('');
   const [extractedNet, setExtractedNet] = useState<string>('');
   const [bonusAmount, setBonusAmount] = useState<string>('');
   const [bonusAvailable, setBonusAvailable] = useState<number>(0);
@@ -289,10 +291,28 @@ export default function GestioneBustePagaPage() {
 
       const data = await response.json();
 
-      if (response.ok && data.netAmount) {
-        setExtractedNet(data.netAmount.toString());
-        setSuccess(`Netto estratto: CHF ${data.netAmount.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
-        setTimeout(() => setSuccess(null), 3000);
+      if (response.ok && data.success) {
+        const auszahlung = data.auszahlung || 0;
+        const pauschalspesen = data.pauschalspesen || 0;
+        const netAmount = data.netAmount || auszahlung;
+
+        setExtractedAuszahlung(auszahlung.toString());
+        setExtractedPauschalspesen(pauschalspesen.toString());
+        setExtractedNet(netAmount.toString());
+
+        // Se c'è Pauschalspesen, usalo come bonus (sovrascrive il bonus calcolato dal sistema)
+        if (pauschalspesen > 0) {
+          setBonusAmount(pauschalspesen.toString());
+        }
+
+        const parts = [];
+        parts.push(`Auszahlung: CHF ${auszahlung.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
+        if (pauschalspesen > 0) {
+          parts.push(`Pauschalspesen: CHF ${pauschalspesen.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
+        }
+        parts.push(`Netto: CHF ${netAmount.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
+        setSuccess(parts.join(' | '));
+        setTimeout(() => setSuccess(null), 5000);
       }
 
     } catch (err: any) {
@@ -348,6 +368,8 @@ export default function GestioneBustePagaPage() {
       setShowNewPayslipForm(false);
       setPdfFile(null);
       setPdfPreview(null);
+      setExtractedAuszahlung('');
+      setExtractedPauschalspesen('');
       setExtractedNet('');
       setBonusAmount('');
       setPaidDate('');
@@ -576,6 +598,8 @@ export default function GestioneBustePagaPage() {
                   setShowNewPayslipForm(false);
                   setPdfFile(null);
                   setPdfPreview(null);
+                  setExtractedAuszahlung('');
+                  setExtractedPauschalspesen('');
                   setExtractedNet('');
                   setBonusAmount('');
                 }}
@@ -632,7 +656,10 @@ export default function GestioneBustePagaPage() {
                       onClick={() => {
                         setPdfFile(null);
                         setPdfPreview(null);
+                        setExtractedAuszahlung('');
+                        setExtractedPauschalspesen('');
                         setExtractedNet('');
+                        setBonusAmount('');
                       }}
                       className="p-2 hover:bg-gray-600 rounded-lg transition-colors"
                     >
@@ -649,7 +676,36 @@ export default function GestioneBustePagaPage() {
                 </div>
               )}
 
-              {/* Netto */}
+              {/* Auszahlung (900) e Pauschalspesen (715) */}
+              {extractedAuszahlung && (
+                <div className="bg-gray-700/30 border border-gray-600 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-400 uppercase">Dati estratti dal PDF</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500">900 - Auszahlung → Netto</label>
+                      <p className="text-green-400 font-bold">
+                        CHF {parseFloat(extractedAuszahlung).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">715 - Pauschalspesen → Bonus</label>
+                      <p className="text-yellow-400 font-medium">
+                        CHF {parseFloat(extractedPauschalspesen || '0').toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-600 pt-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs text-gray-500">Totale busta paga (Netto + Bonus)</label>
+                      <p className="text-white font-bold">
+                        CHF {(parseFloat(extractedNet || '0') + parseFloat(extractedPauschalspesen || '0')).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Netto (editabile) */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Netto (CHF) *
@@ -665,6 +721,11 @@ export default function GestioneBustePagaPage() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-500 text-lg"
                   />
                 </div>
+                {extractedAuszahlung && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Dalla riga 900 (Auszahlung) del PDF
+                  </p>
+                )}
               </div>
 
               {/* Bonus */}
@@ -741,9 +802,14 @@ export default function GestioneBustePagaPage() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500"
                   />
                 </div>
-                {bonusAvailable > 0 && bonusAmount !== bonusAvailable.toString() && (
+                {extractedPauschalspesen && parseFloat(extractedPauschalspesen) > 0 && (
                   <p className="text-xs text-yellow-400/70 mt-1">
-                    Bonus pre-compilato da mese precedente. Modifica se necessario.
+                    Bonus pre-compilato da Pauschalspesen (riga 715 del PDF). Modifica se necessario.
+                  </p>
+                )}
+                {!extractedPauschalspesen && bonusAvailable > 0 && bonusAmount !== bonusAvailable.toString() && (
+                  <p className="text-xs text-yellow-400/70 mt-1">
+                    Bonus pre-compilato da calcolo cumulativo. Modifica se necessario.
                   </p>
                 )}
               </div>

@@ -1,15 +1,24 @@
 /**
- * API per estrarre il netto da un PDF di busta paga usando AI
+ * API per estrarre dati da un PDF di busta paga usando AI
  *
  * POST /api/hr-payslip/extract-pdf
  * Body: FormData con file PDF
- * Returns: { netAmount: number, rawText?: string }
+ * Returns: { netAmount: number, auszahlung: number, pauschalspesen: number, rawResponse?: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
+
+function cleanAmount(value: string): number {
+  const cleaned = value
+    .replace(/[^\d.,'"-]/g, '')
+    .replace(/'/g, '')
+    .replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,22 +39,28 @@ export async function POST(request: NextRequest) {
     const buffer = await file.arrayBuffer();
     const base64 = Buffer.from(buffer).toString('base64');
 
-    // Usa Gemini per estrarre il netto
+    // Usa Gemini per estrarre AUSZAHLUNG (900) e Pauschalspesen (715)
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `Analizza questa busta paga PDF e trova l'importo NETTO da pagare al dipendente.
+    const prompt = `Analizza questa busta paga svizzera (PDF) e trova ESATTAMENTE questi due importi:
 
-ISTRUZIONI:
-1. Cerca voci come "Netto", "Netto da pagare", "Totale netto", "Net Salary", "Salario netto", "A pagare"
-2. L'importo netto è solitamente l'ultimo importo grande, quello che il dipendente riceve effettivamente
-3. Ignora il lordo, le deduzioni, i contributi
-4. L'importo è in CHF (Franchi Svizzeri)
+1. **AUSZAHLUNG** (riga 900): L'importo finale pagato al dipendente. Può anche essere chiamato "Auszahlung", "A pagare", "Totale da pagare", "Net Pay", "Versamento". È l'ultimo importo grande in fondo alla busta paga.
 
-RISPONDI SOLO con il numero (senza CHF, senza virgolette, senza testo):
-Esempio corretto: 5234.50
-Esempio sbagliato: CHF 5'234.50 o "5234.50"
+2. **PAUSCHALSPESEN** (riga 715): Le spese forfettarie / indennità. Può anche essere chiamato "Pauschalspesen", "Spese forfettarie", "Pauschale", "Spesen". Se non presente, rispondi 0.
 
-Se non riesci a trovare il netto, rispondi: ERROR`;
+RISPONDI in questo formato ESATTO (solo numeri, un valore per riga):
+AUSZAHLUNG: [numero]
+PAUSCHALSPESEN: [numero]
+
+Esempio corretto:
+AUSZAHLUNG: 6116.13
+PAUSCHALSPESEN: 101.03
+
+Esempio se non c'è Pauschalspesen:
+AUSZAHLUNG: 5234.50
+PAUSCHALSPESEN: 0
+
+IMPORTANTE: Gli importi sono in CHF. Non includere "CHF", apostrofi o altri caratteri. Usa il punto come separatore decimale.`;
 
     const result = await ai.models.generateContent({
       model: 'gemini-2.0-flash-exp',
@@ -68,30 +83,35 @@ Se non riesci a trovare il netto, rispondi: ERROR`;
     const responseText = result.text?.trim() || '';
     console.log('[Extract PDF] AI response:', responseText);
 
-    if (responseText === 'ERROR' || !responseText) {
+    if (!responseText) {
       return NextResponse.json({
         success: false,
-        error: 'Non riesco a estrarre il netto dal PDF'
+        error: 'Non riesco a leggere il PDF'
       }, { status: 400 });
     }
 
-    // Pulisci il numero
-    const cleanNumber = responseText
-      .replace(/[^\d.,]/g, '') // Rimuovi tutto tranne numeri, punto e virgola
-      .replace(/'/g, '')       // Rimuovi apostrofi svizzeri (5'234)
-      .replace(',', '.');      // Converti virgola in punto
+    // Parse della risposta strutturata
+    const auszahlungMatch = responseText.match(/AUSZAHLUNG:\s*([\d.,'-]+)/i);
+    const pauschalspesenMatch = responseText.match(/PAUSCHALSPESEN:\s*([\d.,'-]+)/i);
 
-    const netAmount = parseFloat(cleanNumber);
+    const auszahlung = auszahlungMatch ? cleanAmount(auszahlungMatch[1]) : 0;
+    const pauschalspesen = pauschalspesenMatch ? cleanAmount(pauschalspesenMatch[1]) : 0;
 
-    if (isNaN(netAmount)) {
+    if (auszahlung === 0) {
       return NextResponse.json({
         success: false,
-        error: `Valore non valido: ${responseText}`
+        error: `Non riesco a trovare l'importo AUSZAHLUNG nel PDF. Risposta AI: ${responseText}`
       }, { status: 400 });
     }
+
+    // NET = AUSZAHLUNG (il totale pagato, la riga 900 intera)
+    // PAUSCHALSPESEN va come riga BONUS separata
+    const netAmount = auszahlung;
 
     return NextResponse.json({
       success: true,
+      auszahlung: auszahlung,
+      pauschalspesen: pauschalspesen,
       netAmount: netAmount,
       rawResponse: responseText
     });
