@@ -354,6 +354,124 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (action === 'team-bonus-cumulative') {
+      // Calcola il bonus cumulativo per un team di vendita (da Nov 2024 ad oggi)
+      // Combina bonus_real di ogni mese + bonus ritirato per calcolare il disponibile
+      const teamId = searchParams.get('teamId');
+
+      if (!teamId) {
+        return NextResponse.json({ error: 'teamId richiesto' }, { status: 400 });
+      }
+
+      const today = new Date();
+      const startMonth = new Date(2024, 10, 1); // Novembre 2024
+      // Calcola fino al mese precedente (il mese corrente è ancora in corso)
+      const endMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+      let totalBonusReal = 0;
+      const monthsDetail: Array<{ month: string; bonus_theoretical: number; bonus_real: number; payment_percentage: number }> = [];
+
+      let currentMonth = new Date(startMonth);
+      while (currentMonth <= endMonth) {
+        const monthsBack = (today.getFullYear() - currentMonth.getFullYear()) * 12 + (today.getMonth() - currentMonth.getMonth());
+        const monthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+
+        try {
+          const compensiUrl = new URL(request.url);
+          compensiUrl.pathname = '/api/compensi-venditori';
+          compensiUrl.searchParams.set('teamId', teamId);
+          compensiUrl.searchParams.set('monthsBack', monthsBack.toString());
+
+          const compensiResponse = await fetch(compensiUrl.toString(), {
+            headers: { 'cookie': request.headers.get('cookie') || '' },
+          });
+
+          if (compensiResponse.ok) {
+            const compensiData = await compensiResponse.json();
+            // compensi-venditori returns { salespeople: [...] } format
+            const teamData = compensiData.salespeople?.find((s: any) => s.id === parseInt(teamId));
+
+            if (teamData && teamData.bonus_real > 0) {
+              totalBonusReal += teamData.bonus_real;
+              monthsDetail.push({
+                month: monthStr,
+                bonus_theoretical: teamData.bonus_theoretical || 0,
+                bonus_real: teamData.bonus_real || 0,
+                payment_percentage: teamData.payment_percentage || 0,
+              });
+            }
+          }
+        } catch (e) {
+          console.error(`Errore calcolo bonus cumulativo per ${monthStr}:`, e);
+        }
+
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
+
+      // Calcola bonus ritirato tramite buste paga (riusa la stessa logica di team-bonus-withdrawn)
+      // Trova membri del team
+      const teamMembersCum = await callOdoo(cookies, 'crm.team.member', 'search_read', [], {
+        domain: [['crm_team_id', '=', parseInt(teamId)]],
+        fields: ['id', 'user_id'],
+      });
+
+      const userIdsCum = teamMembersCum
+        .filter((m: any) => m.user_id)
+        .map((m: any) => m.user_id[0]);
+
+      let totalBonusWithdrawn = 0;
+
+      if (userIdsCum.length > 0) {
+        const employeesCum = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+          domain: [['user_id', 'in', userIdsCum]],
+          fields: ['id'],
+        });
+
+        const employeeIdsCum = employeesCum.map((e: any) => e.id);
+
+        if (employeeIdsCum.length > 0) {
+          const payslipsCum = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+            domain: [
+              ['employee_id', 'in', employeeIdsCum],
+              ['date_from', '>=', '2024-11-01'],
+            ],
+            fields: ['id'],
+          });
+
+          for (const payslip of payslipsCum) {
+            const lines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
+              domain: [
+                ['slip_id', '=', payslip.id],
+                ['code', '=', 'BONUS_VENDITE'],
+              ],
+              fields: ['amount'],
+            });
+
+            for (const line of lines) {
+              if (line.amount > 0) {
+                totalBonusWithdrawn += line.amount;
+              }
+            }
+          }
+        }
+      }
+
+      const bonusAvailable = Math.max(0, totalBonusReal - totalBonusWithdrawn);
+
+      return NextResponse.json({
+        success: true,
+        team_id: parseInt(teamId),
+        period: {
+          from: '2024-11',
+          to: `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, '0')}`,
+        },
+        bonus_total_real: totalBonusReal,
+        bonus_withdrawn: totalBonusWithdrawn,
+        bonus_available: bonusAvailable,
+        months_detail: monthsDetail,
+      });
+    }
+
     if (action === 'team-bonus-withdrawn') {
       // Ottiene il totale bonus ritirati per un team di vendita
       // Usato nella Dashboard Compensi per mostrare "Bonus Ritirato"

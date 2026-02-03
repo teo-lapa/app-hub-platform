@@ -97,19 +97,35 @@ export default function DashboardCompensi() {
   const [selectedSalesperson, setSelectedSalesperson] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [showAllClients, setShowAllClients] = useState<Record<string, boolean>>({}); // Traccia quali sezioni mostrano tutti i clienti
-  const [monthsBack, setMonthsBack] = useState(0); // 0 = mese corrente, 1 = -1 mese, 2 = -2 mesi
+  // Month picker: YYYY-MM format, default to current month
+  const getCurrentMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [bonusWithdrawn, setBonusWithdrawn] = useState<Record<number, BonusWithdrawnData>>({}); // Bonus ritirati per team
   const [loadingBonus, setLoadingBonus] = useState<Record<number, boolean>>({});
+  const [cumulativeBonus, setCumulativeBonus] = useState<Record<number, { total_real: number; withdrawn: number; available: number; months_detail: any[] }>>({});
+  const [loadingCumulative, setLoadingCumulative] = useState<Record<number, boolean>>({});
+
+  // Calculate monthsBack from selectedMonth
+  const getMonthsBack = () => {
+    const now = new Date();
+    const [year, month] = selectedMonth.split('-').map(Number);
+    return (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month);
+  };
+  const monthsBack = getMonthsBack();
 
   useEffect(() => {
     loadData();
-  }, [monthsBack]); // Ricarica quando cambia monthsBack
+  }, [selectedMonth]); // Ricarica quando cambia il mese selezionato
 
-  // Carica bonus ritirati per ogni team
+  // Carica bonus ritirati e cumulativi per ogni team
   useEffect(() => {
     if (data?.salespeople) {
       data.salespeople.forEach((team) => {
         loadBonusWithdrawn(team.id);
+        loadCumulativeBonus(team.id);
       });
     }
   }, [data?.salespeople]);
@@ -132,6 +148,29 @@ export default function DashboardCompensi() {
       console.error(`Errore caricamento bonus ritirato team ${teamId}:`, err);
     } finally {
       setLoadingBonus((prev) => ({ ...prev, [teamId]: false }));
+    }
+  };
+
+  const loadCumulativeBonus = async (teamId: number) => {
+    setLoadingCumulative((prev) => ({ ...prev, [teamId]: true }));
+    try {
+      const response = await fetch(`/api/hr-payslip?action=team-bonus-cumulative&teamId=${teamId}`);
+      if (response.ok) {
+        const result = await response.json();
+        setCumulativeBonus((prev) => ({
+          ...prev,
+          [teamId]: {
+            total_real: result.bonus_total_real || 0,
+            withdrawn: result.bonus_withdrawn || 0,
+            available: result.bonus_available || 0,
+            months_detail: result.months_detail || [],
+          },
+        }));
+      }
+    } catch (err) {
+      console.error(`Errore caricamento bonus cumulativo team ${teamId}:`, err);
+    } finally {
+      setLoadingCumulative((prev) => ({ ...prev, [teamId]: false }));
     }
   };
 
@@ -240,25 +279,25 @@ export default function DashboardCompensi() {
                 </svg>
               </button>
             </div>
-            {/* Navigazione mesi mobile */}
-            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+            {/* Navigazione mesi mobile - Month picker */}
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                max={getCurrentMonth()}
+                min="2024-11"
+                className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
               <button
-                onClick={() => setMonthsBack(0)}
-                className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition ${monthsBack === 0 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
+                onClick={() => setSelectedMonth(getCurrentMonth())}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                  selectedMonth === getCurrentMonth()
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
               >
-                Corrente
-              </button>
-              <button
-                onClick={() => setMonthsBack(1)}
-                className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition ${monthsBack === 1 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
-              >
-                -1 Mese
-              </button>
-              <button
-                onClick={() => setMonthsBack(2)}
-                className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition ${monthsBack === 2 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
-              >
-                -2 Mesi
+                Oggi
               </button>
             </div>
           </div>
@@ -287,37 +326,25 @@ export default function DashboardCompensi() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Pulsanti navigazione mese */}
-              <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+              {/* Month picker desktop */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  max={getCurrentMonth()}
+                  min="2024-11"
+                  className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
                 <button
-                  onClick={() => setMonthsBack(0)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                    monthsBack === 0
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => setSelectedMonth(getCurrentMonth())}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    selectedMonth === getCurrentMonth()
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   Mese Corrente
-                </button>
-                <button
-                  onClick={() => setMonthsBack(1)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                    monthsBack === 1
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  -1 Mese
-                </button>
-                <button
-                  onClick={() => setMonthsBack(2)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                    monthsBack === 2
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  -2 Mesi
                 </button>
               </div>
               <button
@@ -420,25 +447,56 @@ export default function DashboardCompensi() {
                 </div>
               </div>
 
-              {/* Bonus Section - Ottimizzato Mobile */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+              {/* Bonus Section - Mese corrente */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div className="bg-slate-50 rounded-lg p-3 md:p-4 border-2 border-slate-200">
-                  <p className="text-xs uppercase text-slate-500 mb-1">Bonus Teorico (100% pagato)</p>
+                  <p className="text-xs uppercase text-slate-500 mb-1">Bonus Teorico Mese (100% pagato)</p>
                   <p className="text-xl md:text-2xl font-bold text-slate-600">
                     {formatCurrency(person.bonus_theoretical)}
                   </p>
                 </div>
                 <div className="bg-blue-50 rounded-lg p-3 md:p-4 border-2 border-blue-300">
-                  <p className="text-xs uppercase text-blue-700 mb-1">💰 Bonus Reale ({person.payment_percentage.toFixed(0)}% pagato)</p>
+                  <p className="text-xs uppercase text-blue-700 mb-1">Bonus Reale Mese ({person.payment_percentage.toFixed(0)}% pagato)</p>
                   <p className="text-xl md:text-2xl font-bold text-blue-600">
                     {formatCurrency(person.bonus_real)}
                   </p>
-                  <span className={`inline-block mt-2 px-2 md:px-3 py-1 rounded-full text-xs font-medium ${person.bonus_real > 0 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-600'}`}>
-                    {person.bonus_real > 0 ? '🎉 Bonus Attivo' : '⏸️ Nessun Bonus'}
-                  </span>
+                </div>
+              </div>
+
+              {/* Bonus Cumulativo - Da Nov 2024 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mt-3">
+                <div className="bg-purple-50 rounded-lg p-3 md:p-4 border-2 border-purple-300">
+                  <p className="text-xs uppercase text-purple-700 mb-1">Bonus Cumulativo (da Nov 2024)</p>
+                  {loadingCumulative[person.id] ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                      <span className="text-sm text-purple-600">Caricamento...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xl md:text-2xl font-bold text-purple-600">
+                        {formatCurrency(cumulativeBonus[person.id]?.total_real || 0)}
+                      </p>
+                      {cumulativeBonus[person.id]?.months_detail && cumulativeBonus[person.id].months_detail.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-purple-600 cursor-pointer hover:text-purple-800">
+                            {cumulativeBonus[person.id].months_detail.length} mesi con bonus
+                          </summary>
+                          <div className="mt-2 space-y-1 max-h-32 overflow-y-auto text-xs">
+                            {cumulativeBonus[person.id].months_detail.map((d: any, i: number) => (
+                              <div key={i} className="flex justify-between text-purple-700">
+                                <span>{d.month}</span>
+                                <span>{formatCurrency(d.bonus_real)} ({d.payment_percentage.toFixed(0)}%)</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  )}
                 </div>
                 <div className="bg-green-50 rounded-lg p-3 md:p-4 border-2 border-green-300">
-                  <p className="text-xs uppercase text-green-700 mb-1">✅ Bonus Ritirato (Buste Paga)</p>
+                  <p className="text-xs uppercase text-green-700 mb-1">Bonus Ritirato (Buste Paga)</p>
                   {loadingBonus[person.id] ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
@@ -464,6 +522,30 @@ export default function DashboardCompensi() {
                           </div>
                         </details>
                       )}
+                    </>
+                  )}
+                </div>
+                <div className="bg-orange-50 rounded-lg p-3 md:p-4 border-2 border-orange-400">
+                  <p className="text-xs uppercase text-orange-700 mb-1">Bonus Disponibile</p>
+                  {loadingCumulative[person.id] || loadingBonus[person.id] ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
+                      <span className="text-sm text-orange-600">Caricamento...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xl md:text-2xl font-bold text-orange-600">
+                        {formatCurrency(cumulativeBonus[person.id]?.available || 0)}
+                      </p>
+                      <span className={`inline-block mt-2 px-2 md:px-3 py-1 rounded-full text-xs font-medium ${
+                        (cumulativeBonus[person.id]?.available || 0) > 0
+                          ? 'bg-orange-200 text-orange-800'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {(cumulativeBonus[person.id]?.available || 0) > 0
+                          ? 'Da ritirare'
+                          : 'Nessun bonus disponibile'}
+                      </span>
                     </>
                   )}
                 </div>
