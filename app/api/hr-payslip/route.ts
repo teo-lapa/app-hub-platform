@@ -789,6 +789,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Errore creazione busta paga' }, { status: 500 });
       }
 
+      // Odoo auto-imposta struct_id dal contratto del dipendente.
+      // Lo rimuoviamo per evitare che "Foglio di calcolo" sovrascriva le righe manuali.
+      await callOdoo(cookies, 'hr.payslip', 'write', [[payslipId], { struct_id: false }]);
+
       // Trova la regola NET per aggiungere il netto
       const netRule = await callOdoo(cookies, 'hr.salary.rule', 'search_read', [], {
         domain: [['code', '=', 'NET']],
@@ -797,8 +801,8 @@ export async function POST(request: NextRequest) {
       });
 
       if (netRule && netRule.length > 0) {
-        // Aggiungi linea netto
-        await callOdoo(cookies, 'hr.payslip.line', 'create', [{
+        // Aggiungi linea netto con total esplicito (Odoo non lo calcola via API)
+        const netLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [{
           slip_id: payslipId,
           name: 'Retribuzione netta',
           code: 'NET',
@@ -807,8 +811,13 @@ export async function POST(request: NextRequest) {
           amount: netAmount,
           quantity: 1,
           rate: 100,
+          total: netAmount,
           sequence: 99,
         }]);
+        // Forza il total se non calcolato automaticamente
+        if (netLineId) {
+          await callOdoo(cookies, 'hr.payslip.line', 'write', [[netLineId], { total: netAmount }]);
+        }
       }
 
       // Se c'è bonus, aggiungilo
@@ -819,7 +828,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (bonusRule && bonusRule.length > 0) {
-          await callOdoo(cookies, 'hr.payslip.line', 'create', [{
+          const bonusLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [{
             slip_id: payslipId,
             name: 'Bonus Vendite',
             code: 'BONUS_VENDITE',
@@ -828,8 +837,12 @@ export async function POST(request: NextRequest) {
             amount: bonusAmount,
             quantity: 1,
             rate: 100,
+            total: bonusAmount,
             sequence: 100,
           }]);
+          if (bonusLineId) {
+            await callOdoo(cookies, 'hr.payslip.line', 'write', [[bonusLineId], { total: bonusAmount }]);
+          }
         }
       }
 
