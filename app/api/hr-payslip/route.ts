@@ -760,18 +760,9 @@ export async function POST(request: NextRequest) {
                          'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
       const payslipName = `Busta Paga ${monthNames[monthNum - 1]} ${year} - ${employeeName}`;
 
-      // Trova la struttura stipendio default
-      let structId = null;
-      try {
-        const structures = await callOdoo(cookies, 'hr.payroll.structure', 'search_read', [], {
-          domain: [],
-          fields: ['id'],
-          limit: 1,
-        });
-        structId = structures[0]?.id;
-      } catch (e) {
-        console.log('Strutture payroll non disponibili, continuo senza');
-      }
+      // NON impostiamo struct_id per evitare che Odoo auto-calcoli le linee
+      // dalla struttura stipendio (che sovrascriverebbero i valori estratti dal PDF).
+      // Aggiungiamo solo le linee manuali: NET e opzionalmente BONUS_VENDITE.
 
       // Crea la busta paga
       const payslipData: any = {
@@ -790,10 +781,6 @@ export async function POST(request: NextRequest) {
       }
       if (paidDate) {
         payslipData.date = paidDate;
-      }
-
-      if (structId) {
-        payslipData.struct_id = structId;
       }
 
       const payslipId = await callOdoo(cookies, 'hr.payslip', 'create', [payslipData]);
