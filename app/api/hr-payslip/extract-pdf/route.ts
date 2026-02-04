@@ -104,9 +104,10 @@ IMPORTANTE: Gli importi sono in CHF. Non includere "CHF", apostrofi o altri cara
       }, { status: 400 });
     }
 
-    // NET = AUSZAHLUNG (il totale pagato, la riga 900 intera)
-    // PAUSCHALSPESEN va come riga BONUS separata
-    const netAmount = auszahlung;
+    // Il totale busta paga deve essere = AUSZAHLUNG (900)
+    // PAUSCHALSPESEN è già incluso nella 900, va estratto come riga BONUS separata
+    // NET = AUSZAHLUNG - PAUSCHALSPESEN (così NET + BONUS = AUSZAHLUNG)
+    const netAmount = auszahlung - pauschalspesen;
 
     return NextResponse.json({
       success: true,

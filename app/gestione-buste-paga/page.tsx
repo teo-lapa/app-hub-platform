@@ -683,28 +683,45 @@ export default function GestioneBustePagaPage() {
               {extractedAuszahlung && (
                 <div className="bg-gray-700/30 border border-gray-600 rounded-lg p-3 space-y-2">
                   <p className="text-xs font-medium text-gray-400 uppercase">Dati estratti dal PDF</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  {parseFloat(extractedPauschalspesen || '0') > 0 ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-500">900 - Auszahlung</label>
+                          <p className="text-white font-bold">
+                            CHF {parseFloat(extractedAuszahlung).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Netto (900 - 715)</label>
+                          <p className="text-green-400 font-bold">
+                            CHF {parseFloat(extractedNet || '0').toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">715 - Pauschalspesen</label>
+                          <p className="text-yellow-400 font-medium">
+                            CHF {parseFloat(extractedPauschalspesen).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-600 pt-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs text-gray-500">Totale busta paga = Auszahlung</label>
+                          <p className="text-white font-bold">
+                            CHF {parseFloat(extractedAuszahlung).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
                     <div>
                       <label className="text-xs text-gray-500">900 - Auszahlung → Netto</label>
                       <p className="text-green-400 font-bold">
                         CHF {parseFloat(extractedAuszahlung).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500">715 - Pauschalspesen → Bonus</label>
-                      <p className="text-yellow-400 font-medium">
-                        CHF {parseFloat(extractedPauschalspesen || '0').toLocaleString('it-CH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-600 pt-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-xs text-gray-500">Totale busta paga (Netto + Bonus)</label>
-                      <p className="text-white font-bold">
-                        CHF {(parseFloat(extractedNet || '0') + parseFloat(extractedPauschalspesen || '0')).toLocaleString('it-CH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -726,7 +743,9 @@ export default function GestioneBustePagaPage() {
                 </div>
                 {extractedAuszahlung && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Dalla riga 900 (Auszahlung) del PDF
+                    {parseFloat(extractedPauschalspesen || '0') > 0
+                      ? 'Auszahlung - Pauschalspesen (bonus separato)'
+                      : 'Dalla riga 900 (Auszahlung) del PDF'}
                   </p>
                 )}
               </div>
