@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ClientInfo {
@@ -103,10 +103,49 @@ export default function DashboardCompensi() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   };
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(() => parseInt(selectedMonth.split('-')[0]));
   const [bonusWithdrawn, setBonusWithdrawn] = useState<Record<number, BonusWithdrawnData>>({}); // Bonus ritirati per team
   const [loadingBonus, setLoadingBonus] = useState<Record<number, boolean>>({});
   const [cumulativeBonus, setCumulativeBonus] = useState<Record<number, { total_real: number; withdrawn: number; available: number; months_detail: any[] }>>({});
   const [loadingCumulative, setLoadingCumulative] = useState<Record<number, boolean>>({});
+
+  // Month picker helper
+  const monthNames = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const monthNamesFull = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+  const minMonth = '2025-11'; // Partenza sistema bonus
+  const currentMonth = getCurrentMonth();
+
+  const isMonthDisabled = (year: number, monthIdx: number) => {
+    const m = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+    return m < minMonth || m > currentMonth;
+  };
+
+  const selectMonth = (monthIdx: number) => {
+    const m = `${pickerYear}-${String(monthIdx + 1).padStart(2, '0')}`;
+    if (m < minMonth || m > currentMonth) return;
+    setSelectedMonth(m);
+    setShowMonthPicker(false);
+  };
+
+  const getSelectedMonthLabel = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    return `${monthNamesFull[m - 1]} ${y}`;
+  };
+
+  // Chiudi month picker al click fuori
+  const monthPickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target as Node)) {
+        setShowMonthPicker(false);
+      }
+    };
+    if (showMonthPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMonthPicker]);
 
   // Calculate monthsBack from selectedMonth
   const getMonthsBack = () => {
@@ -244,7 +283,7 @@ export default function DashboardCompensi() {
   return (
     <div className="min-h-screen-dynamic bg-slate-50 pb-24 md:pb-8">
       {/* Header - Ottimizzato Mobile */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <div ref={monthPickerRef} className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           {/* Mobile: Stack verticale */}
           <div className="md:hidden">
@@ -279,26 +318,61 @@ export default function DashboardCompensi() {
                 </svg>
               </button>
             </div>
-            {/* Navigazione mesi mobile - Month picker */}
-            <div className="flex items-center gap-2">
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                max={getCurrentMonth()}
-                min="2025-11"
-                className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            {/* Navigazione mesi mobile - Month picker visuale */}
+            <div className="relative">
               <button
-                onClick={() => setSelectedMonth(getCurrentMonth())}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                  selectedMonth === getCurrentMonth()
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                onClick={() => { setPickerYear(parseInt(selectedMonth.split('-')[0])); setShowMonthPicker(!showMonthPicker); }}
+                className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700"
               >
-                Oggi
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {getSelectedMonthLabel()}
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${showMonthPicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
+              {showMonthPicker && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <button onClick={() => setPickerYear(y => Math.max(2025, y - 1))} className="p-1 hover:bg-slate-100 rounded" disabled={pickerYear <= 2025}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <span className="font-bold text-slate-800">{pickerYear}</span>
+                    <button onClick={() => setPickerYear(y => Math.min(parseInt(currentMonth.split('-')[0]), y + 1))} className="p-1 hover:bg-slate-100 rounded" disabled={pickerYear >= parseInt(currentMonth.split('-')[0])}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {monthNames.map((name, idx) => {
+                      const isSelected = selectedMonth === `${pickerYear}-${String(idx + 1).padStart(2, '0')}`;
+                      const disabled = isMonthDisabled(pickerYear, idx);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => selectMonth(idx)}
+                          disabled={disabled}
+                          className={`py-2 rounded-lg text-sm font-medium transition ${
+                            isSelected
+                              ? 'bg-blue-600 text-white'
+                              : disabled
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-slate-700 hover:bg-blue-50 hover:text-blue-600'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-3 pt-2 border-t border-slate-100">
+                    <button onClick={() => setShowMonthPicker(false)} className="text-sm text-slate-500 hover:text-slate-700">Chiudi</button>
+                    <button onClick={() => { setSelectedMonth(currentMonth); setShowMonthPicker(false); }} className="text-sm text-blue-600 font-medium hover:text-blue-700">Questo mese</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -326,26 +400,59 @@ export default function DashboardCompensi() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Month picker desktop */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  max={getCurrentMonth()}
-                  min="2025-11"
-                  className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              {/* Month picker desktop - visuale */}
+              <div className="relative">
                 <button
-                  onClick={() => setSelectedMonth(getCurrentMonth())}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    selectedMonth === getCurrentMonth()
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                  }`}
+                  onClick={() => { setPickerYear(parseInt(selectedMonth.split('-')[0])); setShowMonthPicker(!showMonthPicker); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-200 transition"
                 >
-                  Mese Corrente
+                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {getSelectedMonthLabel()}
+                  <svg className={`w-4 h-4 transition-transform ${showMonthPicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+                {showMonthPicker && (
+                  <div className="absolute top-full right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4 w-72">
+                    <div className="flex items-center justify-between mb-3">
+                      <button onClick={() => setPickerYear(y => Math.max(2025, y - 1))} className="p-1 hover:bg-slate-100 rounded" disabled={pickerYear <= 2025}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                      <span className="font-bold text-slate-800 text-lg">{pickerYear}</span>
+                      <button onClick={() => setPickerYear(y => Math.min(parseInt(currentMonth.split('-')[0]), y + 1))} className="p-1 hover:bg-slate-100 rounded" disabled={pickerYear >= parseInt(currentMonth.split('-')[0])}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {monthNames.map((name, idx) => {
+                        const isSelected = selectedMonth === `${pickerYear}-${String(idx + 1).padStart(2, '0')}`;
+                        const disabled = isMonthDisabled(pickerYear, idx);
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => selectMonth(idx)}
+                            disabled={disabled}
+                            className={`py-2 px-1 rounded-lg text-sm font-medium transition ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : disabled
+                                  ? 'text-slate-300 cursor-not-allowed'
+                                  : 'text-slate-700 hover:bg-blue-50 hover:text-blue-600'
+                            }`}
+                          >
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between mt-3 pt-3 border-t border-slate-100">
+                      <button onClick={() => setShowMonthPicker(false)} className="text-sm text-slate-500 hover:text-slate-700">Chiudi</button>
+                      <button onClick={() => { setSelectedMonth(currentMonth); setShowMonthPicker(false); }} className="text-sm text-blue-600 font-medium hover:text-blue-700">Questo mese</button>
+                    </div>
+                  </div>
+                )}
               </div>
               <button
                 onClick={loadData}
