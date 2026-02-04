@@ -37,8 +37,10 @@ export async function POST(request: NextRequest) {
       domain = [['active', '=', true]];
     }
 
-    // STEP 3: Cerca prodotti
-    const productsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    // STEP 3: Cerca prodotti in entrambe le lingue (italiano e inglese)
+    const searchFields = ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'];
+
+    const makeRequest = (lang: string) => fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,19 +54,36 @@ export async function POST(request: NextRequest) {
           method: 'search_read',
           args: [domain],
           kwargs: {
-            fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'],
-            limit: 20
+            fields: searchFields,
+            limit: 20,
+            context: { lang }
           }
         },
         id: Math.random()
       })
-    });
+    }).then(r => r.json());
 
-    const productsData = await productsResponse.json();
+    const [dataIt, dataEn] = await Promise.all([
+      makeRequest('it_IT'),
+      makeRequest('en_US'),
+    ]);
 
-    if (productsData.error) {
-      throw new Error(productsData.error.message || 'Errore ricerca prodotti');
+    if (dataIt.error && dataEn.error) {
+      throw new Error(dataIt.error.message || 'Errore ricerca prodotti');
     }
+
+    // Merge and deduplicate by product ID (Italian results take priority)
+    const seenIds = new Set<number>();
+    const mergedProducts: any[] = [];
+    for (const p of [...(dataIt.result || []), ...(dataEn.result || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        mergedProducts.push(p);
+      }
+    }
+
+    // Override productsData format for compatibility
+    const productsData = { result: mergedProducts };
 
     console.log(`📦 Trovati ${productsData.result.length} prodotti per inventario`);
 

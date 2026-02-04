@@ -65,33 +65,45 @@ export async function POST(request: NextRequest) {
     const searchQuery = query.trim();
 
     // Search products in Odoo by name or default_code
-    const products = await callOdoo(
-      cookies,
-      'product.product',
-      'search_read',
-      [],
-      {
-        domain: [
-          '|',
-          ['name', 'ilike', searchQuery],
-          ['default_code', 'ilike', searchQuery],
-          ['sale_ok', '=', true], // Only products that can be sold
-          ['active', '=', true], // Only active products (not archived)
-        ],
-        fields: [
-          'id',
-          'name',
-          'default_code',
-          'list_price',
-          'image_128',
-          'qty_available',
-          'uom_id',
-          'incoming_qty',
-        ],
-        limit: 50,
-        order: 'name ASC',
+    // Search in BOTH Italian and English to find translated product names
+    const searchKwargs = (lang: string) => ({
+      domain: [
+        '|',
+        ['name', 'ilike', searchQuery],
+        ['default_code', 'ilike', searchQuery],
+        ['sale_ok', '=', true], // Only products that can be sold
+        ['active', '=', true], // Only active products (not archived)
+      ],
+      fields: [
+        'id',
+        'name',
+        'default_code',
+        'list_price',
+        'image_128',
+        'qty_available',
+        'uom_id',
+        'incoming_qty',
+      ],
+      limit: 50,
+      order: 'name ASC',
+      context: { lang },
+    });
+
+    // Search in both languages in parallel and merge results
+    const [productsIt, productsEn] = await Promise.all([
+      callOdoo(cookies, 'product.product', 'search_read', [], searchKwargs('it_IT')),
+      callOdoo(cookies, 'product.product', 'search_read', [], searchKwargs('en_US')),
+    ]);
+
+    // Merge and deduplicate by product ID (Italian results take priority for name)
+    const seenIds = new Set<number>();
+    const products: any[] = [];
+    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        products.push(p);
       }
-    );
+    }
 
     console.log(`✅ [SEARCH-PRODUCTS] Found ${products?.length || 0} products`);
 

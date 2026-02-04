@@ -90,31 +90,35 @@ export async function GET(request: NextRequest) {
 
     // 4. Search products in Odoo
     // Search by name, default_code (internal reference), or barcode
-    const products = await callOdoo(
-      cookies,
-      'product.product',
-      'search_read',
-      [[
-        '&',
-        ['sale_ok', '=', true],  // Only products available for sale
-        '|', '|',
-        ['name', 'ilike', query],
-        ['default_code', 'ilike', query],
-        ['barcode', 'ilike', query]
-      ]],
-      {
-        fields: [
-          'id',
-          'name',
-          'default_code',
-          'barcode',
-          'image_128',
-          'uom_id'
-        ],
-        limit: limit,
-        order: 'name asc'
+    // Search in BOTH Italian and English to find translated product names
+    const searchDomain = [
+      '&',
+      ['sale_ok', '=', true],  // Only products available for sale
+      '|', '|',
+      ['name', 'ilike', query],
+      ['default_code', 'ilike', query],
+      ['barcode', 'ilike', query]
+    ];
+    const searchFields = ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'];
+
+    const [productsIt, productsEn] = await Promise.all([
+      callOdoo(cookies, 'product.product', 'search_read', [searchDomain], {
+        fields: searchFields, limit, order: 'name asc', context: { lang: 'it_IT' }
+      }),
+      callOdoo(cookies, 'product.product', 'search_read', [searchDomain], {
+        fields: searchFields, limit, order: 'name asc', context: { lang: 'en_US' }
+      }),
+    ]);
+
+    // Merge and deduplicate by product ID (Italian results take priority for name)
+    const seenIds = new Set<number>();
+    const products: any[] = [];
+    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        products.push(p);
       }
-    );
+    }
 
     console.log(`✅ [API] Found ${products.length} products`);
 

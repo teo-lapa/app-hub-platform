@@ -38,26 +38,30 @@ export async function POST(request: NextRequest) {
       productDomain.push(['barcode', 'ilike', term]);
     }
 
-    const products = await callOdoo(
-      cookies,
-      'product.product',
-      'search_read',
-      [productDomain],
-      {
-        fields: [
-          'id',
-          'name',
-          'default_code',
-          'barcode',
-          'list_price',
-          'standard_price',
-          'uom_id',
-          'seller_ids'
-        ],
-        limit: 50,
-        order: 'name asc'
+    // Search in both languages to find translated product names
+    const fattureFields = [
+      'id', 'name', 'default_code', 'barcode',
+      'list_price', 'standard_price', 'uom_id', 'seller_ids'
+    ];
+
+    const [productsIt, productsEn] = await Promise.all([
+      callOdoo(cookies, 'product.product', 'search_read', [productDomain], {
+        fields: fattureFields, limit: 50, order: 'name asc', context: { lang: 'it_IT' }
+      }),
+      callOdoo(cookies, 'product.product', 'search_read', [productDomain], {
+        fields: fattureFields, limit: 50, order: 'name asc', context: { lang: 'en_US' }
+      }),
+    ]);
+
+    // Merge and deduplicate by product ID (Italian results take priority)
+    const seenIds = new Set<number>();
+    const products: any[] = [];
+    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        products.push(p);
       }
-    );
+    }
 
     console.log(`✅ [SEARCH-PRODUCTS] Found ${products.length} matching products`);
 

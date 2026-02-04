@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Ricerca prodotti in Odoo
     // Cerca in: nome, codice, EAN, descrizione
+    // Cerca in ENTRAMBE le lingue (italiano e inglese) per trovare nomi tradotti
     const searchDomain = [
       '|', '|', '|',
       ['name', 'ilike', query],
@@ -45,29 +46,39 @@ export async function POST(request: NextRequest) {
       ['description', 'ilike', query]
     ];
 
-    const products = await callOdoo(
-      cookies,
-      'product.product',
-      'search_read',
-      [searchDomain],
-      {
-        fields: [
-          'id',
-          'name',
-          'display_name',
-          'default_code',
-          'barcode',
-          'description',
-          'list_price',
-          'standard_price',
-          'uom_id',
-          'categ_id',
-          'image_128'
-        ],
-        limit: limit,
-        order: 'name asc'
+    const searchFields = [
+      'id',
+      'name',
+      'display_name',
+      'default_code',
+      'barcode',
+      'description',
+      'list_price',
+      'standard_price',
+      'uom_id',
+      'categ_id',
+      'image_128'
+    ];
+
+    // Search in both languages in parallel
+    const [productsIt, productsEn] = await Promise.all([
+      callOdoo(cookies, 'product.product', 'search_read', [searchDomain], {
+        fields: searchFields, limit, order: 'name asc', context: { lang: 'it_IT' }
+      }),
+      callOdoo(cookies, 'product.product', 'search_read', [searchDomain], {
+        fields: searchFields, limit, order: 'name asc', context: { lang: 'en_US' }
+      }),
+    ]);
+
+    // Merge and deduplicate by product ID (Italian results take priority)
+    const seenIds = new Set<number>();
+    const products: any[] = [];
+    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        products.push(p);
       }
-    );
+    }
 
     console.log(`✅ [SEARCH-PRODUCTS] Trovati ${products.length} prodotti`);
 

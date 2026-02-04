@@ -31,22 +31,32 @@ export async function POST(request: NextRequest) {
     const BUFFER_LOCATION_ID = 8;
 
     // 1. Cerca prodotti per nome, codice o barcode
-    const products = await odooClient.callKw(
-      'product.product',
-      'search_read',
-      [
-        [
-          '|', '|', '|',
-          ['name', 'ilike', searchQuery],
-          ['default_code', 'ilike', searchQuery],
-          ['barcode', '=', searchQuery],
-          ['x_studio_codice_articolo_cliente', 'ilike', searchQuery]
-        ],
-        ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
-      ],
-      { limit: 20 },
-      session
-    );
+    // Cerca in entrambe le lingue (italiano e inglese) per trovare nomi tradotti
+    const bufferDomain = [
+      '|', '|', '|',
+      ['name', 'ilike', searchQuery],
+      ['default_code', 'ilike', searchQuery],
+      ['barcode', '=', searchQuery],
+      ['x_studio_codice_articolo_cliente', 'ilike', searchQuery]
+    ];
+    const bufferFields = ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'];
+
+    const [productsIt, productsEn] = await Promise.all([
+      odooClient.callKw('product.product', 'search_read', [bufferDomain, bufferFields],
+        { limit: 20, context: { lang: 'it_IT' } }, session),
+      odooClient.callKw('product.product', 'search_read', [bufferDomain, bufferFields],
+        { limit: 20, context: { lang: 'en_US' } }, session),
+    ]);
+
+    // Merge and deduplicate by product ID (Italian results take priority)
+    const seenIds = new Set<number>();
+    const products: any[] = [];
+    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        products.push(p);
+      }
+    }
 
     console.log(`📦 Trovati ${products.length} prodotti`);
 
