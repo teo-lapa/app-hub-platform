@@ -286,7 +286,7 @@ export default function DashboardCompensi() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 max={getCurrentMonth()}
-                min="2024-11"
+                min="2025-11"
                 className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button
@@ -333,7 +333,7 @@ export default function DashboardCompensi() {
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   max={getCurrentMonth()}
-                  min="2024-11"
+                  min="2025-11"
                   className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <button
@@ -466,7 +466,7 @@ export default function DashboardCompensi() {
               {/* Bonus Cumulativo - Da Nov 2024 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mt-3">
                 <div className="bg-purple-50 rounded-lg p-3 md:p-4 border-2 border-purple-300">
-                  <p className="text-xs uppercase text-purple-700 mb-1">Bonus Cumulativo (da Nov 2024)</p>
+                  <p className="text-xs uppercase text-purple-700 mb-1">Bonus Cumulativo (da Nov 2025)</p>
                   {loadingCumulative[person.id] ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>

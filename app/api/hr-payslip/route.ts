@@ -248,9 +248,9 @@ export async function GET(request: NextRequest) {
       const teamId = teamMembers[0].crm_team_id[0];
       const teamName = teamMembers[0].crm_team_id[1];
 
-      // 3. Determina il range di mesi da calcolare (da Novembre 2024 al mese precedente alla busta)
-      // Il sistema parte da Novembre 2024
-      const startMonth = new Date(2024, 10, 1); // Novembre 2024 (mese 10 = novembre in JS)
+      // 3. Determina il range di mesi da calcolare (da Novembre 2025 al mese precedente alla busta)
+      // Il sistema parte da Novembre 2025
+      const startMonth = new Date(2025, 10, 1); // Novembre 2025 (mese 10 = novembre in JS)
 
       let endMonth: Date;
       if (month) {
@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
       const payslips = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
         domain: [
           ['employee_id', '=', parseInt(employeeId)],
-          ['date_from', '>=', '2024-11-01'], // Dal mese di partenza del sistema
+          ['date_from', '>=', '2025-11-01'], // Dal mese di partenza del sistema
         ],
         fields: ['id', 'name', 'date_from'],
       });
@@ -344,7 +344,7 @@ export async function GET(request: NextRequest) {
           name: teamName,
         },
         period: {
-          from: '2024-11',
+          from: '2025-11',
           to: `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, '0')}`,
         },
         bonus_total_real: totalBonusReal,     // Totale bonus maturati
@@ -364,7 +364,7 @@ export async function GET(request: NextRequest) {
       }
 
       const today = new Date();
-      const startMonth = new Date(2024, 10, 1); // Novembre 2024
+      const startMonth = new Date(2025, 10, 1); // Novembre 2025
       // Calcola fino al mese precedente (il mese corrente è ancora in corso)
       const endMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
 
@@ -433,7 +433,7 @@ export async function GET(request: NextRequest) {
           const payslipsCum = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
             domain: [
               ['employee_id', 'in', employeeIdsCum],
-              ['date_from', '>=', '2024-11-01'],
+              ['date_from', '>=', '2025-11-01'],
             ],
             fields: ['id'],
           });
@@ -462,7 +462,7 @@ export async function GET(request: NextRequest) {
         success: true,
         team_id: parseInt(teamId),
         period: {
-          from: '2024-11',
+          from: '2025-11',
           to: `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, '0')}`,
         },
         bonus_total_real: totalBonusReal,
@@ -533,7 +533,7 @@ export async function GET(request: NextRequest) {
       const payslips = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
         domain: [
           ['employee_id', 'in', employeeIds],
-          ['date_from', '>=', '2024-11-01'],
+          ['date_from', '>=', '2025-11-01'],
         ],
         fields: ['id', 'name', 'employee_id', 'date_from'],
       });
