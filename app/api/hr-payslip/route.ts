@@ -853,7 +853,12 @@ export async function POST(request: NextRequest) {
       // Segna la busta paga come "edited" (modificata manualmente)
       await callOdoo(cookies, 'hr.payslip', 'write', [[payslipId], { edited: true }]);
 
-      // STEP 5: Se c'è PDF, allegalo alla busta paga
+      // STEP 5: Conferma la busta paga (da "In attesa" a "Completato")
+      // Questo crea la voce contabile (move_id) come nelle buste paga fatte manualmente
+      await callOdoo(cookies, 'hr.payslip', 'action_payslip_done', [[payslipId]]);
+      console.log('[create-payslip] Busta paga confermata (Completato)');
+
+      // STEP 6: Se c'è PDF, allegalo alla busta paga
       let attachmentId = null;
       if (pdfBase64) {
         attachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
