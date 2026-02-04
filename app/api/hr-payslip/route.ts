@@ -751,11 +751,23 @@ export async function POST(request: NextRequest) {
       const dateFrom = new Date(year, monthNum - 1, 1).toISOString().split('T')[0];
       const dateTo = new Date(year, monthNum, 0).toISOString().split('T')[0];
 
+      // Trova il nome del dipendente
+      const employee = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['id', '=', employeeId]],
+        fields: ['id', 'name'],
+        limit: 1,
+      });
+      const employeeName = employee[0]?.name || `Dipendente ${employeeId}`;
+      const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                         'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+      const payslipName = `Busta Paga ${monthNames[monthNum - 1]} ${year} - ${employeeName}`;
+
       // STEP 1: Crea la busta paga - Odoo compila automaticamente:
       // - contract_id (dal contratto attivo del dipendente)
       // - struct_id (dalla struttura del contratto)
       // - journal_id (dal tipo di struttura)
       const payslipData: any = {
+        name: payslipName,
         employee_id: employeeId,
         date_from: dateFrom,
         date_to: dateTo,
