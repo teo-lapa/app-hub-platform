@@ -800,12 +800,15 @@ export async function POST(request: NextRequest) {
       });
 
       if (netLines && netLines.length > 0) {
-        // Aggiorna la riga NET esistente (creata da compute_sheet) con il valore reale
+        // La riga NET deve contenere il TOTALE della busta paga (AUSZAHLUNG completo).
+        // Il bonus (Pauschalspesen) è già incluso nel totale, la riga BONUS è solo per tracking.
+        // NET = netAmount + bonusAmount = AUSZAHLUNG originale
+        const netTotal = netAmount + (bonusAmount || 0);
         await callOdoo(cookies, 'hr.payslip.line', 'write', [
           [netLines[0].id],
-          { amount: netAmount, total: netAmount }
+          { amount: netTotal, total: netTotal }
         ]);
-        console.log('[create-payslip] NET aggiornato:', netLines[0].id, '→', netAmount);
+        console.log('[create-payslip] NET aggiornato:', netLines[0].id, '→', netTotal, '(netto', netAmount, '+ bonus', bonusAmount || 0, ')');
       } else {
         console.warn('[create-payslip] Riga NET non trovata dopo compute_sheet');
       }
