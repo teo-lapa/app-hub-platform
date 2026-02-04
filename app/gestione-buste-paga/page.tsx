@@ -313,11 +313,14 @@ export default function GestioneBustePagaPage() {
         parts.push(`Netto: CHF ${netAmount.toLocaleString('it-CH', { minimumFractionDigits: 2 })}`);
         setSuccess(parts.join(' | '));
         setTimeout(() => setSuccess(null), 5000);
+      } else {
+        // Mostra errore estrazione
+        setError(data.error || 'Errore estrazione PDF. Inserisci i valori manualmente.');
       }
 
     } catch (err: any) {
       console.error('Errore estrazione PDF:', err);
-      // Non bloccare - l'utente può inserire manualmente
+      setError(`Errore estrazione: ${err.message}. Inserisci i valori manualmente.`);
     } finally {
       setIsExtracting(false);
     }

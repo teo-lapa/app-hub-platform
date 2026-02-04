@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Prepare the file part for Gemini
     const filePart = {
@@ -164,7 +164,7 @@ IMPORTANTE:
       metrics: {
         duration_ms,
         estimated_cost_usd,
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.0-flash',
         file_size_bytes: file.size,
         file_name: file.name,
       },

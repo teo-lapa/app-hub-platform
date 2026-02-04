@@ -221,7 +221,7 @@ async function agent1ExtractFromVideo(
 ): Promise<{ products: InventoryProduct[], videoDuration: number, confidence: number, warnings: string[], rawResponse: string }> {
   console.log(`[Agent 1 - Gemini Extraction] Starting extraction for location: ${locationName}`);
 
-  const model = getGenAI().getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
 
   // Fetch video
   console.log(`[Agent 1] Fetching video from: ${videoUrl}`);
