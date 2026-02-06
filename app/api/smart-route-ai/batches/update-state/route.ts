@@ -290,30 +290,31 @@ async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<
     );
 
     // 3. Find pickings that have at least one move NOT in 'assigned' state
-    const problematicPickingIds = new Set<number>();
+    const problematicIdSet: Record<number, boolean> = {};
     for (const move of moves) {
       if (move.state !== 'assigned') {
         const pickingId = Array.isArray(move.picking_id) ? move.picking_id[0] : move.picking_id;
-        problematicPickingIds.add(pickingId);
+        problematicIdSet[pickingId] = true;
       }
     }
+    const problematicPickingIdList = Object.keys(problematicIdSet).map(Number);
 
-    if (problematicPickingIds.size === 0) {
+    if (problematicPickingIdList.length === 0) {
       return { success: false, error: 'No pickings with mixed move states found - error has a different cause' };
     }
 
-    const cleanPickingCount = pickingIds.length - problematicPickingIds.size;
+    const cleanPickingCount = pickingIds.length - problematicPickingIdList.length;
     const problematicPickingNames = pickings
-      .filter((p: any) => problematicPickingIds.has(p.id))
+      .filter((p: any) => problematicIdSet[p.id])
       .map((p: any) => p.name);
 
-    console.log(`[Smart Route AI] Mixed states: ${problematicPickingIds.size} problematic (${problematicPickingNames.join(', ')}), ${cleanPickingCount} clean`);
+    console.log(`[Smart Route AI] Mixed states: ${problematicPickingIdList.length} problematic (${problematicPickingNames.join(', ')}), ${cleanPickingCount} clean`);
 
     // 4. Remove problematic pickings from batch
-    for (const pickingId of problematicPickingIds) {
-      await rpcClient.callKw('stock.picking', 'write', [[pickingId], { batch_id: false }]);
+    for (let i = 0; i < problematicPickingIdList.length; i++) {
+      await rpcClient.callKw('stock.picking', 'write', [[problematicPickingIdList[i]], { batch_id: false }]);
     }
-    console.log(`[Smart Route AI] Removed ${problematicPickingIds.size} pickings from batch`);
+    console.log(`[Smart Route AI] Removed ${problematicPickingIdList.length} pickings from batch`);
 
     // 5. Validate the batch with remaining clean pickings
     if (cleanPickingCount > 0) {
@@ -323,9 +324,9 @@ async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<
       } catch (batchError: any) {
         // Batch validation still failed - restore pickings and bail
         console.error(`[Smart Route AI] Batch still failed after extraction:`, batchError.message);
-        for (const pickingId of problematicPickingIds) {
+        for (let i = 0; i < problematicPickingIdList.length; i++) {
           try {
-            await rpcClient.callKw('stock.picking', 'write', [[pickingId], { batch_id: batchId }]);
+            await rpcClient.callKw('stock.picking', 'write', [[problematicPickingIdList[i]], { batch_id: batchId }]);
           } catch { /* best effort restore */ }
         }
         return { success: false, error: `Batch validation failed even after extracting problematic pickings: ${batchError.message}` };
@@ -336,7 +337,8 @@ async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<
     const validatedPickings: string[] = [];
     const failedPickings: { name: string; error: string }[] = [];
 
-    for (const pickingId of problematicPickingIds) {
+    for (let i = 0; i < problematicPickingIdList.length; i++) {
+      const pickingId = problematicPickingIdList[i];
       const pickingName = pickings.find((p: any) => p.id === pickingId)?.name || `ID ${pickingId}`;
       try {
         const result = await rpcClient.callKw('stock.picking', 'button_validate', [[pickingId]]);
@@ -361,7 +363,7 @@ async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<
       }
     }
 
-    const message = `Batch chiuso con successo. ${problematicPickingIds.size} picking con stock mancante estratti e validati singolarmente (backorder automatici per prodotti non disponibili).`;
+    const message = `Batch chiuso con successo. ${problematicPickingIdList.length} picking con stock mancante estratti e validati singolarmente (backorder automatici per prodotti non disponibili).`;
 
     return {
       success: true,
