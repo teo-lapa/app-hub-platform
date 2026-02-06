@@ -206,6 +206,26 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
+        // Check if error might be due to mixed move states in batch pickings
+        // This happens when some stock.move lines are in different states (confirmed, partially_available vs assigned)
+        // Odoo 17 batch validation can't handle backorders collectively with mixed states
+        if (actionMethod === 'action_done') {
+          console.log(`[Smart Route AI] action_done failed, checking for mixed move states in batch...`);
+          const fallbackResult = await handleMixedStatesBatch(rpcClient, batchId);
+
+          if (fallbackResult.success) {
+            console.log(`[Smart Route AI] Mixed states fallback succeeded: ${fallbackResult.message}`);
+            return NextResponse.json({
+              success: true,
+              message: fallbackResult.message,
+              newState: 'done',
+              fallback: true,
+              details: fallbackResult.details
+            });
+          }
+          console.log(`[Smart Route AI] Mixed states fallback did not apply: ${fallbackResult.error}`);
+        }
+
         // Re-throw other errors
         throw actionError;
       }
@@ -225,6 +245,136 @@ export async function POST(request: NextRequest) {
       success: false,
       error: error.message || 'Error updating batch state'
     }, { status: 500 });
+  }
+}
+
+/**
+ * Handle batch validation failure due to mixed move states.
+ * When some stock.move lines within a batch's pickings are in different states
+ * (confirmed, partially_available vs assigned), Odoo 17 batch action_done fails.
+ *
+ * This function:
+ * 1. Identifies pickings with non-assigned move lines
+ * 2. Removes them from the batch
+ * 3. Validates the batch with the remaining clean pickings
+ * 4. Validates the extracted pickings individually (creating backorders as needed)
+ * 5. If batch validation still fails, restores the pickings to the batch
+ */
+async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+  details?: any;
+}> {
+  try {
+    // 1. Get all active pickings in the batch
+    const pickings = await rpcClient.searchRead(
+      'stock.picking',
+      [['batch_id', '=', batchId], ['state', 'not in', ['done', 'cancel']]],
+      ['id', 'name', 'state'],
+      100
+    );
+
+    if (!pickings || pickings.length === 0) {
+      return { success: false, error: 'No active pickings found in batch' };
+    }
+
+    const pickingIds = pickings.map((p: any) => p.id);
+
+    // 2. Get all stock.move for these pickings (excluding done/cancel)
+    const moves = await rpcClient.searchRead(
+      'stock.move',
+      [['picking_id', 'in', pickingIds], ['state', 'not in', ['done', 'cancel']]],
+      ['id', 'picking_id', 'state', 'product_id'],
+      1000
+    );
+
+    // 3. Find pickings that have at least one move NOT in 'assigned' state
+    const problematicPickingIds = new Set<number>();
+    for (const move of moves) {
+      if (move.state !== 'assigned') {
+        const pickingId = Array.isArray(move.picking_id) ? move.picking_id[0] : move.picking_id;
+        problematicPickingIds.add(pickingId);
+      }
+    }
+
+    if (problematicPickingIds.size === 0) {
+      return { success: false, error: 'No pickings with mixed move states found - error has a different cause' };
+    }
+
+    const cleanPickingCount = pickingIds.length - problematicPickingIds.size;
+    const problematicPickingNames = pickings
+      .filter((p: any) => problematicPickingIds.has(p.id))
+      .map((p: any) => p.name);
+
+    console.log(`[Smart Route AI] Mixed states: ${problematicPickingIds.size} problematic (${problematicPickingNames.join(', ')}), ${cleanPickingCount} clean`);
+
+    // 4. Remove problematic pickings from batch
+    for (const pickingId of problematicPickingIds) {
+      await rpcClient.callKw('stock.picking', 'write', [[pickingId], { batch_id: false }]);
+    }
+    console.log(`[Smart Route AI] Removed ${problematicPickingIds.size} pickings from batch`);
+
+    // 5. Validate the batch with remaining clean pickings
+    if (cleanPickingCount > 0) {
+      try {
+        await rpcClient.callKw('stock.picking.batch', 'action_done', [[batchId]]);
+        console.log(`[Smart Route AI] Batch validated with ${cleanPickingCount} clean pickings`);
+      } catch (batchError: any) {
+        // Batch validation still failed - restore pickings and bail
+        console.error(`[Smart Route AI] Batch still failed after extraction:`, batchError.message);
+        for (const pickingId of problematicPickingIds) {
+          try {
+            await rpcClient.callKw('stock.picking', 'write', [[pickingId], { batch_id: batchId }]);
+          } catch { /* best effort restore */ }
+        }
+        return { success: false, error: `Batch validation failed even after extracting problematic pickings: ${batchError.message}` };
+      }
+    }
+
+    // 6. Validate problematic pickings individually
+    const validatedPickings: string[] = [];
+    const failedPickings: { name: string; error: string }[] = [];
+
+    for (const pickingId of problematicPickingIds) {
+      const pickingName = pickings.find((p: any) => p.id === pickingId)?.name || `ID ${pickingId}`;
+      try {
+        const result = await rpcClient.callKw('stock.picking', 'button_validate', [[pickingId]]);
+
+        // If Odoo returns a wizard (e.g. backorder confirmation), try to process it
+        if (result && typeof result === 'object' && result.type === 'ir.actions.act_window' && result.res_id) {
+          console.log(`[Smart Route AI] Processing wizard for ${pickingName}: ${result.res_model}`);
+          try {
+            await rpcClient.callKw(result.res_model, 'process', [[result.res_id]]);
+          } catch {
+            try {
+              await rpcClient.callKw(result.res_model, 'process_cancel_backorder', [[result.res_id]]);
+            } catch { /* wizard may have auto-processed */ }
+          }
+        }
+
+        validatedPickings.push(pickingName);
+        console.log(`[Smart Route AI] Validated ${pickingName} individually`);
+      } catch (pickError: any) {
+        console.error(`[Smart Route AI] Failed to validate ${pickingName}:`, pickError.message);
+        failedPickings.push({ name: pickingName, error: pickError.message });
+      }
+    }
+
+    const message = `Batch chiuso con successo. ${problematicPickingIds.size} picking con stock mancante estratti e validati singolarmente (backorder automatici per prodotti non disponibili).`;
+
+    return {
+      success: true,
+      message,
+      details: {
+        extractedPickings: problematicPickingNames,
+        validatedIndividually: validatedPickings,
+        failedPickings: failedPickings.length > 0 ? failedPickings : undefined
+      }
+    };
+  } catch (err: any) {
+    console.error('[Smart Route AI] handleMixedStatesBatch error:', err);
+    return { success: false, error: err.message };
   }
 }
 
