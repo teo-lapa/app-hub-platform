@@ -30,6 +30,8 @@ export default function SmartCart({
   loading = false,
 }: SmartCartProps) {
   const [swipedIndex, setSwipedIndex] = useState<number | null>(null);
+  // Local string state for each input to allow intermediate typing (e.g. "1," or "1.")
+  const [inputValues, setInputValues] = useState<Map<number, string>>(new Map());
   const touchStartX = useRef<number>(0);
   const touchCurrentX = useRef<number>(0);
 
@@ -37,7 +39,21 @@ export default function SmartCart({
   const totalPrice = products.reduce((sum, p) => sum + (p.price || 0) * p.quantity, 0);
   const hasPrice = products.some(p => p.price !== undefined && p.price > 0);
 
+  // Get display value: use local string if user is actively typing, otherwise show the number
+  const getDisplayValue = (index: number, quantity: number): string => {
+    const localValue = inputValues.get(index);
+    if (localValue !== undefined) return localValue;
+    return quantity === 0 ? '' : String(quantity);
+  };
+
   const handleQuantityChange = (index: number, newQty: string) => {
+    // Always store the raw input string locally for display
+    setInputValues(prev => {
+      const next = new Map(prev);
+      next.set(index, newQty);
+      return next;
+    });
+
     // Allow empty string (when user deletes all)
     if (newQty === '') {
       onQuantityChange(index, 0);
@@ -63,13 +79,26 @@ export default function SmartCart({
     }
   };
 
+  // On blur, clear local string state so the input shows the final numeric value
+  const handleQuantityBlur = (index: number) => {
+    setInputValues(prev => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
   const incrementQuantity = (index: number) => {
+    // Clear local input state so it shows the new numeric value
+    setInputValues(prev => { const next = new Map(prev); next.delete(index); return next; });
     onQuantityChange(index, products[index].quantity + 1);
   };
 
   const decrementQuantity = (index: number) => {
     const newQty = products[index].quantity - 1;
     if (newQty > 0) {
+      // Clear local input state so it shows the new numeric value
+      setInputValues(prev => { const next = new Map(prev); next.delete(index); return next; });
       onQuantityChange(index, newQty);
     }
   };
@@ -197,8 +226,9 @@ export default function SmartCart({
                         type="text"
                         inputMode="decimal"
                         pattern="[0-9]*[.,]?[0-9]*"
-                        value={product.quantity === 0 ? '' : product.quantity}
+                        value={getDisplayValue(index, product.quantity)}
                         onChange={(e) => handleQuantityChange(index, e.target.value)}
+                        onBlur={() => handleQuantityBlur(index)}
                         onFocus={(e) => e.target.select()}
                         placeholder="0"
                         className="w-16 min-h-[48px] text-center bg-transparent text-white font-semibold outline-none"
