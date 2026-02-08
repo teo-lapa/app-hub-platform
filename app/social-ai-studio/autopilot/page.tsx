@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   Zap, Loader2, Sparkles, CheckCircle2, XCircle,
   RotateCcw, Play, Package, TrendingUp,
@@ -29,6 +29,60 @@ export default function AutopilotPage() {
 
   // Video edit state
   const [editingPost, setEditingPost] = useState<AutopilotPost | null>(null);
+
+  // Track active video polls to prevent duplicates
+  const activeVideoPolls = useRef<Set<string>>(new Set());
+
+  // ==========================================
+  // Video polling - checks Veo 3.1 video status
+  // ==========================================
+  const pollVideoStatus = useCallback((postId: string, operationId: string) => {
+    if (activeVideoPolls.current.has(postId)) return;
+    activeVideoPolls.current.add(postId);
+
+    let attempts = 0;
+    const maxAttempts = 120; // 10 minutes max
+
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/social-ai/check-video-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operationId }),
+        });
+        const data = await res.json();
+
+        if (data.done && data.video) {
+          // Video ready - update the post
+          setQueue(prev => prev.map(p => {
+            if (p.id !== postId || !p.result?.video) return p;
+            return {
+              ...p,
+              result: {
+                ...p.result,
+                video: { ...p.result.video, status: 'completed' as const, dataUrl: data.video.dataUrl },
+              },
+            };
+          }));
+          activeVideoPolls.current.delete(postId);
+          toast.success('Video pronto!');
+          return;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000);
+        } else {
+          activeVideoPolls.current.delete(postId);
+          toast.error('Timeout generazione video');
+        }
+      } catch {
+        activeVideoPolls.current.delete(postId);
+      }
+    };
+
+    poll();
+  }, []);
 
   // ==========================================
   // STEP 1: Generate Queue (AI decides what to post)
@@ -123,9 +177,16 @@ export default function AutopilotPage() {
 
       if (!response.ok) throw new Error(data.error);
 
+      const result = data.data.result;
+
       setQueue(prev => prev.map(p =>
-        p.id === post.id ? { ...p, status: 'ready', result: data.data.result } : p
+        p.id === post.id ? { ...p, status: 'ready', result } : p
       ));
+
+      // Start video polling if video is still generating
+      if (result?.video?.operationId && result.video.status !== 'completed') {
+        pollVideoStatus(post.id, result.video.operationId);
+      }
 
       toast.success(`${post.product.name}: contenuto generato!`);
     } catch (error: any) {
