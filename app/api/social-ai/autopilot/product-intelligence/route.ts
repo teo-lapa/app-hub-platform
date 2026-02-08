@@ -70,11 +70,17 @@ export async function GET(request: NextRequest) {
       if (productImage) score += 10; // has image
       if (product.list_price > 10 || product.price > 10) score += 10; // higher value products
 
+      // Extract category name from various formats (object {id,name}, array [id,name], or string)
+      const rawCategory = product.categ_id?.[1] || product.categ_name || product.category;
+      const categoryName = typeof rawCategory === 'object' && rawCategory !== null
+        ? (rawCategory.name || rawCategory[1] || 'Food')
+        : (rawCategory || 'Food');
+
       return {
         id: product.id,
         name,
         code: product.default_code || product.code || '',
-        category: product.categ_id?.[1] || product.categ_name || product.category || 'Food',
+        category: String(categoryName),
         price: product.list_price || product.price || 0,
         image: productImage,
         hasImage: !!productImage,

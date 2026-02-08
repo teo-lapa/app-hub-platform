@@ -37,9 +37,16 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // Build product list for AI analysis
+    // Build product list for AI analysis (category may be string or object)
+    const getCategoryName = (cat: any): string => {
+      if (!cat) return 'Food';
+      if (typeof cat === 'string') return cat;
+      if (typeof cat === 'object') return cat.name || cat[1] || 'Food';
+      return String(cat);
+    };
+
     const productList = products.slice(0, 20).map((p: any, i: number) =>
-      `${i + 1}. "${p.name}" (${p.category}, CHF ${p.price || '?'}) - ${p.wasRecentlyPosted ? 'POSTATO DI RECENTE' : 'MAI POSTATO'} - ${p.hasImage ? 'Ha immagine' : 'Senza immagine'}`
+      `${i + 1}. "${p.name}" (${getCategoryName(p.category)}, CHF ${p.price || '?'}) - ${p.wasRecentlyPosted ? 'POSTATO DI RECENTE' : 'MAI POSTATO'} - ${p.hasImage ? 'Ha immagine' : 'Senza immagine'}`
     ).join('\n');
 
     const now = new Date();
@@ -125,12 +132,13 @@ Rispondi SOLO con il JSON array, senza markdown o altro testo.`;
 
       return {
         id: `autopilot-${Date.now()}-${index}`,
+        productIndex: productIdx,
         product: {
           id: product.id,
           name: product.name,
           code: product.code || '',
-          image: product.image && product.image.startsWith('data:') ? product.image : product.image ? `data:image/jpeg;base64,${product.image}` : '',
-          category: product.category || 'Food',
+          image: '', // Images mapped client-side to avoid huge payloads
+          category: getCategoryName(product.category),
           price: product.price || 0,
         },
         platform: PLATFORMS.includes(s.platform) ? s.platform : 'instagram',

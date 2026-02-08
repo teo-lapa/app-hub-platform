@@ -85,9 +85,9 @@ export default function PostPreviewCard({
           )}
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate">{post.product.name}</h3>
-            <p className="text-purple-300/70 text-xs">{post.product.category}</p>
+            <p className="text-purple-300/70 text-xs">{typeof post.product.category === 'object' ? (post.product.category as any)?.name || 'Food' : post.product.category}</p>
             {post.product.price ? (
-              <p className="text-emerald-400 text-xs font-medium">CHF {post.product.price.toFixed(2)}</p>
+              <p className="text-emerald-400 text-xs font-medium">CHF {Number(post.product.price).toFixed(2)}</p>
             ) : null}
           </div>
         </div>

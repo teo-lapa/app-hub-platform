@@ -59,19 +59,38 @@ export default function AutopilotPage() {
       setIsLoadingProducts(false);
       setIsGeneratingQueue(true);
 
+      // Strip images before sending to generate-queue (saves ~2MB in request)
+      const productsWithoutImages = products.map((p: any) => ({
+        ...p,
+        image: undefined,
+      }));
+
       // Ask AI to generate the queue
       const queueRes = await fetch('/api/social-ai/autopilot/generate-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products, count: 6 }),
+        body: JSON.stringify({ products: productsWithoutImages, count: 6 }),
       });
 
       const queueData = await queueRes.json();
 
       if (!queueRes.ok) throw new Error(queueData.error);
 
-      setQueue(queueData.data.queue || []);
-      toast.success(`${queueData.data.queue.length} post suggeriti dall'AI!`, { id: loadingToast });
+      // Map product images back from the original products data
+      const queueWithImages = (queueData.data.queue || []).map((post: any) => {
+        const productIdx = post.productIndex ?? products.findIndex((p: any) => p.id === post.product?.id);
+        const originalProduct = productIdx >= 0 ? products[productIdx] : null;
+        return {
+          ...post,
+          product: {
+            ...post.product,
+            image: originalProduct?.image || post.product?.image || '',
+          },
+        };
+      });
+
+      setQueue(queueWithImages);
+      toast.success(`${queueWithImages.length} post suggeriti dall'AI!`, { id: loadingToast });
 
     } catch (error: any) {
       toast.error(error.message || 'Errore durante generazione coda', { id: loadingToast });
