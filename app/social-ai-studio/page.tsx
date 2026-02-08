@@ -13,6 +13,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import ProductSelector from '@/components/social-ai/ProductSelector';
 import ShareMenu from '@/components/social-ai/ShareMenu';
+import VideoEditor from '@/components/social-ai/video/VideoEditor';
 import {
   getSentimentEmoji,
   getRecommendationColor,
@@ -1624,48 +1625,7 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
   const PlatformIcon = platformIcons[socialPlatform];
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <div className="bg-slate-900/80 backdrop-blur-sm border-b border-purple-500/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/dashboard"
-                  className="flex items-center space-x-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg border border-purple-500/30 transition-colors group"
-                >
-                  <ArrowLeft className="h-5 w-5 text-purple-300 group-hover:text-white" />
-                  <Home className="h-5 w-5 text-purple-300 group-hover:text-white" />
-                  <span className="text-purple-300 group-hover:text-white font-medium">Home</span>
-                </Link>
-
-                <div className="flex items-center space-x-3">
-                  <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 p-3 rounded-xl">
-                    <Sparkles className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">Social Marketing AI Studio</h1>
-                    <p className="text-xs sm:text-sm text-purple-300">
-                      Powered by Gemini 2.5 Flash (Nano Banana 🍌) & Veo 3.1
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Analytics Button */}
-              <Link
-                href="/social-ai-studio/analytics"
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg transition-all group shadow-lg"
-              >
-                <BarChart3 className="h-5 w-5 text-white" />
-                <span className="text-white font-medium hidden sm:inline">Analytics</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
@@ -2763,6 +2723,23 @@ ${articleData.article.socialSuggestions?.hashtags?.slice(0, 5).join(' ') || '#LA
                       </>
                     )}
                   </div>
+                )}
+
+                {/* Video Editor - Modifica video con prompt */}
+                {result?.video?.status === 'completed' && result?.video?.dataUrl && productImage && (
+                  <VideoEditor
+                    originalVideoUrl={result.video.dataUrl}
+                    productImage={productImage}
+                    videoStyle={videoStyle}
+                    videoDuration={videoDuration}
+                    aspectRatio={socialPlatform === 'tiktok' ? '9:16' : '16:9'}
+                    onVideoRefined={(newUrl) => {
+                      setResult(prev => prev ? {
+                        ...prev,
+                        video: { ...prev.video!, dataUrl: newUrl, status: 'completed' }
+                      } : null);
+                    }}
+                  />
                 )}
               </>
             )}
