@@ -206,11 +206,13 @@ export default function AutopilotPage() {
         return String(cat);
       };
 
-      // Create posts for all 4 platforms from the same product
+      // Create posts for all 6 platforms from the same product
       const platforms = [
         { platform: 'instagram' as const, tone: 'casual' as const, contentType: 'image' as const, time: '12:00' },
         { platform: 'facebook' as const, tone: 'casual' as const, contentType: 'image' as const, time: '12:30' },
         { platform: 'linkedin' as const, tone: 'professional' as const, contentType: 'image' as const, time: '11:00' },
+        { platform: 'twitter' as const, tone: 'casual' as const, contentType: 'image' as const, time: '13:00' },
+        { platform: 'youtube' as const, tone: 'professional' as const, contentType: 'video' as const, time: '17:00' },
         { platform: 'tiktok' as const, tone: 'fun' as const, contentType: 'video' as const, time: '18:00' },
       ];
 
@@ -239,7 +241,7 @@ export default function AutopilotPage() {
       }));
 
       setQueue(newQueue);
-      toast.success(`4 post creati per "${product.name}" - uno per ogni piattaforma`, { id: loadingToast });
+      toast.success(`6 post creati per "${product.name}" - uno per ogni piattaforma`, { id: loadingToast });
 
     } catch (error: any) {
       toast.error(error.message || 'Errore', { id: loadingToast });

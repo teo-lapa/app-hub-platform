@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  Instagram, Facebook, Linkedin, Video,
+  Instagram, Facebook, Linkedin, Video, Twitter, Youtube,
   CheckCircle2, XCircle, Edit3, Clock,
   TrendingUp, Sparkles, ChevronDown, ChevronUp,
   Save, X, RotateCcw, Image as ImageIcon
@@ -19,6 +19,8 @@ const platformConfig: Record<SocialPlatform, { icon: any; color: string; bg: str
   facebook: { icon: Facebook, color: 'text-blue-400', bg: 'from-blue-500 to-blue-600', label: 'Facebook' },
   linkedin: { icon: Linkedin, color: 'text-sky-400', bg: 'from-sky-500 to-sky-600', label: 'LinkedIn' },
   tiktok: { icon: Video, color: 'text-emerald-400', bg: 'from-emerald-500 to-teal-500', label: 'TikTok' },
+  twitter: { icon: Twitter, color: 'text-slate-300', bg: 'from-slate-700 to-slate-800', label: 'X' },
+  youtube: { icon: Youtube, color: 'text-red-400', bg: 'from-red-600 to-red-700', label: 'YouTube' },
 };
 
 const toneLabels: Record<string, { emoji: string; label: string }> = {

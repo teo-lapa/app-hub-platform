@@ -4,7 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const PLATFORMS = ['instagram', 'facebook', 'linkedin', 'tiktok'] as const;
+const PLATFORMS = ['instagram', 'facebook', 'linkedin', 'tiktok', 'twitter', 'youtube'] as const;
 const TONES = ['professional', 'casual', 'fun', 'luxury'] as const;
 const CONTENT_TYPES = ['image', 'video', 'both'] as const;
 const VIDEO_STYLES = ['cinematic', 'zoom', 'dynamic', 'orbital', 'rotate'] as const;
@@ -67,10 +67,12 @@ REGOLE STRATEGICHE:
 - Facebook: buono per community (4:3), usa tone casual/professional
 - LinkedIn: B2B, ristorazione professionale, usa tone professional/luxury
 - TikTok: video brevi, Gen-Z, usa tone fun/casual
+- Twitter/X: breve e d'impatto (max 280 char), usa tone casual
+- YouTube: video di qualita' per canale YouTube, usa tone professional
 - Distribuisci tra le piattaforme (non tutti su Instagram)
 - Orari migliori: 11:00-13:00 (pranzo), 17:00-19:00 (aperitivo), 20:00-21:00 (cena)
-- REGOLA FONDAMENTALE: contentType "video" SOLO per TikTok. Instagram, Facebook, LinkedIn = SEMPRE "image"
-- TikTok: scegli prodotti visivamente interessanti per video (pasta fresca, formaggi, salumi)
+- REGOLA FONDAMENTALE: contentType "video" SOLO per TikTok e YouTube. Instagram, Facebook, LinkedIn, Twitter = SEMPRE "image"
+- TikTok/YouTube: scegli prodotti visivamente interessanti per video (pasta fresca, formaggi, salumi)
 
 Genera ESATTAMENTE ${Math.min(count, 8)} post suggeriti come JSON array.
 
@@ -130,9 +132,9 @@ Rispondi SOLO con il JSON array, senza markdown o altro testo.`;
       const productIdx = (s.productIndex || index + 1) - 1;
       const product = products[Math.min(productIdx, products.length - 1)];
 
-      // ENFORCE: video SOLO su TikTok, tutto il resto = image
+      // ENFORCE: video SOLO su TikTok e YouTube, tutto il resto = image
       const platform = PLATFORMS.includes(s.platform) ? s.platform : 'instagram';
-      const contentType = platform === 'tiktok' ? (s.contentType || 'video') : 'image';
+      const contentType = (platform === 'tiktok' || platform === 'youtube') ? (s.contentType || 'video') : 'image';
 
       return {
         id: `autopilot-${Date.now()}-${index}`,

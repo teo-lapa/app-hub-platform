@@ -2,7 +2,7 @@
 // Social AI Studio - Shared Types
 // ==========================================
 
-export type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
+export type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'youtube';
 export type ContentType = 'image' | 'video' | 'both';
 export type Tone = 'random' | 'professional' | 'casual' | 'fun' | 'luxury';
 export type VideoStyle = 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
