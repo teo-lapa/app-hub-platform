@@ -64,8 +64,10 @@ interface PublishToOdooRequest {
   caption: string;
   hashtags: string[];
   cta: string;
-  imageUrl?: string;
+  imageUrl?: string;         // URL HTTP (dallo studio manuale)
+  imageDataUrl?: string;     // Data URL base64 (dall'autopilot)
   videoUrl?: string;
+  videoDataUrl?: string;
   platform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
   accountIds?: number[];
   scheduledDate?: string;
@@ -148,7 +150,7 @@ export async function POST(req: NextRequest) {
     console.log(`📝 [PUBLISH-ODOO] Utente UID: ${uid} sta pubblicando un post`);
 
     const body: PublishToOdooRequest = await req.json();
-    const { caption, hashtags, cta, imageUrl, scheduledDate } = body;
+    const { caption, hashtags, cta, imageUrl, imageDataUrl, scheduledDate } = body;
 
     // Validazione
     if (!caption) {
@@ -190,18 +192,28 @@ export async function POST(req: NextRequest) {
     let jpegImageBase64: string | null = null;
     let jpegImageName: string | null = null;
 
-    if (imageUrl) {
+    // Supporta sia imageUrl (HTTP, dallo studio manuale) che imageDataUrl (base64, dall'autopilot)
+    const hasImage = imageUrl || imageDataUrl;
+
+    if (hasImage) {
       try {
-        console.log(`🖼️ [PUBLISH-ODOO] Scaricamento immagine...`);
+        let buffer: Buffer;
 
-        // Scarica l'immagine
-        const imageResponse = await fetch(imageUrl);
-        if (!imageResponse.ok) {
-          throw new Error(`HTTP ${imageResponse.status}`);
+        if (imageDataUrl) {
+          // Data URL base64 dall'autopilot (formato: "data:image/png;base64,iVBOR...")
+          console.log(`🖼️ [PUBLISH-ODOO] Decodifica immagine da data URL...`);
+          const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
+          buffer = Buffer.from(base64Data, 'base64');
+        } else {
+          // URL HTTP dallo studio manuale
+          console.log(`🖼️ [PUBLISH-ODOO] Scaricamento immagine da URL...`);
+          const imageResponse = await fetch(imageUrl!);
+          if (!imageResponse.ok) {
+            throw new Error(`HTTP ${imageResponse.status}`);
+          }
+          const imageBuffer = await imageResponse.arrayBuffer();
+          buffer = Buffer.from(imageBuffer);
         }
-
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const buffer = Buffer.from(imageBuffer);
 
         // Determina formato originale
         let origMimetype = 'image/png';
