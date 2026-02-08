@@ -69,8 +69,8 @@ REGOLE STRATEGICHE:
 - TikTok: video brevi, Gen-Z, usa tone fun/casual
 - Distribuisci tra le piattaforme (non tutti su Instagram)
 - Orari migliori: 11:00-13:00 (pranzo), 17:00-19:00 (aperitivo), 20:00-21:00 (cena)
-- Video per prodotti visivamente interessanti (pasta fresca, formaggi, salumi)
-- Immagini per prodotti gia' belli in foto
+- REGOLA FONDAMENTALE: contentType "video" SOLO per TikTok. Instagram, Facebook, LinkedIn = SEMPRE "image"
+- TikTok: scegli prodotti visivamente interessanti per video (pasta fresca, formaggi, salumi)
 
 Genera ESATTAMENTE ${Math.min(count, 8)} post suggeriti come JSON array.
 
@@ -130,6 +130,10 @@ Rispondi SOLO con il JSON array, senza markdown o altro testo.`;
       const productIdx = (s.productIndex || index + 1) - 1;
       const product = products[Math.min(productIdx, products.length - 1)];
 
+      // ENFORCE: video SOLO su TikTok, tutto il resto = image
+      const platform = PLATFORMS.includes(s.platform) ? s.platform : 'instagram';
+      const contentType = platform === 'tiktok' ? (s.contentType || 'video') : 'image';
+
       return {
         id: `autopilot-${Date.now()}-${index}`,
         productIndex: productIdx,
@@ -141,9 +145,9 @@ Rispondi SOLO con il JSON array, senza markdown o altro testo.`;
           category: getCategoryName(product.category),
           price: product.price || 0,
         },
-        platform: PLATFORMS.includes(s.platform) ? s.platform : 'instagram',
+        platform,
         tone: TONES.includes(s.tone) ? s.tone : 'casual',
-        contentType: CONTENT_TYPES.includes(s.contentType) ? s.contentType : 'image',
+        contentType,
         videoStyle: s.videoStyle || 'cinematic',
         videoDuration: [4, 6, 8].includes(s.videoDuration) ? s.videoDuration : 6,
         scheduledFor: `${today}T${s.scheduledTime || '12:00'}:00`,
