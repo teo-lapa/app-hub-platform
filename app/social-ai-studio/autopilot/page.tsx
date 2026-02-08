@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import {
   Zap, Loader2, Sparkles, CheckCircle2, XCircle,
   RotateCcw, Play, Package, TrendingUp,
-  ChevronDown, ListChecks, Eye
+  ChevronDown, ListChecks, Eye, Target, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PostPreviewCard from '@/components/social-ai/autopilot/PostPreviewCard';
@@ -12,11 +12,13 @@ import VideoEditor from '@/components/social-ai/video/VideoEditor';
 import type { AutopilotPost } from '@/types/social-ai';
 
 type ViewMode = 'queue' | 'review' | 'video-edit';
+type AutopilotMode = 'auto' | 'single-product';
 
 export default function AutopilotPage() {
   // Core state
   const [queue, setQueue] = useState<AutopilotPost[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('queue');
+  const [autopilotMode, setAutopilotMode] = useState<AutopilotMode>('auto');
 
   // Loading states
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
@@ -29,6 +31,12 @@ export default function AutopilotPage() {
 
   // Video edit state
   const [editingPost, setEditingPost] = useState<AutopilotPost | null>(null);
+
+  // Single product mode state
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductPicker, setShowProductPicker] = useState(false);
 
   // Track active video polls to prevent duplicates
   const activeVideoPolls = useRef<Set<string>>(new Set());
@@ -85,16 +93,13 @@ export default function AutopilotPage() {
   }, []);
 
   // ==========================================
-  // STEP 1: Generate Queue (AI decides what to post)
+  // Load products (shared between modes)
   // ==========================================
-  const handleGenerateQueue = async () => {
+  const loadProducts = async () => {
     setIsLoadingProducts(true);
-    setQueue([]);
-
     const loadingToast = toast.loading('Analisi catalogo prodotti...');
 
     try {
-      // Fetch products with intelligence
       const productsRes = await fetch('/api/social-ai/autopilot/product-intelligence');
       const productsData = await productsRes.json();
 
@@ -102,17 +107,37 @@ export default function AutopilotPage() {
 
       const products = productsData.data.products || [];
       setProductsCount(products.length);
+      setAllProducts(products);
 
       if (products.length === 0) {
         toast.error('Nessun prodotto trovato nel catalogo', { id: loadingToast });
         setIsLoadingProducts(false);
-        return;
+        return null;
       }
 
-      toast.loading(`${products.length} prodotti trovati, AI sta decidendo...`, { id: loadingToast });
+      toast.dismiss(loadingToast);
+      return products;
+    } catch (error: any) {
+      toast.error(error.message || 'Errore caricamento prodotti', { id: loadingToast });
+      return null;
+    } finally {
       setIsLoadingProducts(false);
-      setIsGeneratingQueue(true);
+    }
+  };
 
+  // ==========================================
+  // STEP 1A: Auto mode - AI decides what to post
+  // ==========================================
+  const handleGenerateQueue = async () => {
+    setQueue([]);
+
+    const products = await loadProducts();
+    if (!products) return;
+
+    setIsGeneratingQueue(true);
+    const loadingToast = toast.loading(`${products.length} prodotti trovati, AI sta decidendo...`);
+
+    try {
       // Strip images before sending to generate-queue (saves ~2MB in request)
       const productsWithoutImages = products.map((p: any) => ({
         ...p,
@@ -149,7 +174,76 @@ export default function AutopilotPage() {
     } catch (error: any) {
       toast.error(error.message || 'Errore durante generazione coda', { id: loadingToast });
     } finally {
-      setIsLoadingProducts(false);
+      setIsGeneratingQueue(false);
+    }
+  };
+
+  // ==========================================
+  // STEP 1B: Single product mode - user picks, generates for all platforms
+  // ==========================================
+  const handleShowProductPicker = async () => {
+    setAutopilotMode('single-product');
+    if (allProducts.length === 0) {
+      const products = await loadProducts();
+      if (!products) return;
+    }
+    setShowProductPicker(true);
+  };
+
+  const handleSelectProduct = async (product: any) => {
+    setSelectedProduct(product);
+    setShowProductPicker(false);
+    setQueue([]);
+    setIsGeneratingQueue(true);
+
+    const loadingToast = toast.loading(`Generazione post per "${product.name}" su tutti i social...`);
+
+    try {
+      const getCategoryName = (cat: any): string => {
+        if (!cat) return 'Food';
+        if (typeof cat === 'string') return cat;
+        if (typeof cat === 'object') return cat.name || cat[1] || 'Food';
+        return String(cat);
+      };
+
+      // Create posts for all 4 platforms from the same product
+      const platforms = [
+        { platform: 'instagram' as const, tone: 'casual' as const, contentType: 'image' as const, time: '12:00' },
+        { platform: 'facebook' as const, tone: 'casual' as const, contentType: 'image' as const, time: '12:30' },
+        { platform: 'linkedin' as const, tone: 'professional' as const, contentType: 'image' as const, time: '11:00' },
+        { platform: 'tiktok' as const, tone: 'fun' as const, contentType: 'video' as const, time: '18:00' },
+      ];
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const newQueue: AutopilotPost[] = platforms.map((p, index) => ({
+        id: `autopilot-${Date.now()}-${index}`,
+        productIndex: 0,
+        product: {
+          id: product.id,
+          name: product.name,
+          code: product.code || '',
+          image: product.image || '',
+          category: getCategoryName(product.category),
+          price: product.price || 0,
+        },
+        platform: p.platform,
+        tone: p.tone,
+        contentType: p.contentType,
+        videoStyle: 'cinematic' as const,
+        videoDuration: 6,
+        scheduledFor: `${today}T${p.time}:00`,
+        reasoning: `${product.name} - post ottimizzato per ${p.platform}`,
+        status: 'queued' as const,
+        createdAt: new Date().toISOString(),
+      }));
+
+      setQueue(newQueue);
+      toast.success(`4 post creati per "${product.name}" - uno per ogni piattaforma`, { id: loadingToast });
+
+    } catch (error: any) {
+      toast.error(error.message || 'Errore', { id: loadingToast });
+    } finally {
       setIsGeneratingQueue(false);
     }
   };
@@ -227,7 +321,7 @@ export default function AutopilotPage() {
   };
 
   // ==========================================
-  // Approve / Reject / Edit
+  // Approve / Reject / Edit / Update
   // ==========================================
   const handleApprove = async (postId: string) => {
     const post = queue.find(p => p.id === postId);
@@ -250,7 +344,7 @@ export default function AutopilotPage() {
         p.id === postId ? { ...p, status: 'published', publishedAt: new Date().toISOString() } : p
       ));
 
-      toast.success(`${post.product.name}: pubblicato!`);
+      toast.success(`${post.product.name}: pubblicato su ${post.platform}!`);
     } catch (error: any) {
       toast.error(`Errore pubblicazione: ${error.message}`);
     } finally {
@@ -275,6 +369,13 @@ export default function AutopilotPage() {
       setEditingPost(post);
       setViewMode('video-edit');
     }
+  };
+
+  const handleUpdatePost = (postId: string, updates: Partial<AutopilotPost>) => {
+    setQueue(prev => prev.map(p =>
+      p.id === postId ? { ...p, ...updates } : p
+    ));
+    toast.success('Post aggiornato!');
   };
 
   const handleApproveAll = async () => {
@@ -305,6 +406,11 @@ export default function AutopilotPage() {
   const readyPosts = queue.filter(p => p.status === 'ready');
   const allPosts = queue.filter(p => p.status !== 'rejected');
 
+  // Filter products for picker
+  const filteredProducts = allProducts.filter(p =>
+    p.hasImage && p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
@@ -317,16 +423,17 @@ export default function AutopilotPage() {
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">AI Autopilot</h2>
         <p className="text-purple-300/80 text-sm max-w-lg mx-auto">
-          L'AI analizza il tuo catalogo, sceglie i migliori prodotti e genera contenuti pronti da pubblicare.
+          L&apos;AI analizza il tuo catalogo, sceglie i migliori prodotti e genera contenuti pronti da pubblicare.
           Tu verifichi e approvi con un click.
         </p>
       </div>
 
-      {/* Main action button */}
-      {queue.length === 0 && (
-        <div className="max-w-md mx-auto mb-8">
+      {/* Main action buttons - TWO MODES */}
+      {queue.length === 0 && !showProductPicker && (
+        <div className="max-w-lg mx-auto mb-8 space-y-3">
+          {/* Mode 1: AI Autopilot */}
           <button
-            onClick={handleGenerateQueue}
+            onClick={() => { setAutopilotMode('auto'); handleGenerateQueue(); }}
             disabled={isLoadingProducts || isGeneratingQueue}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:from-orange-600 hover:via-pink-600 hover:to-purple-700 rounded-2xl text-white font-bold text-lg shadow-2xl shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
           >
@@ -343,13 +450,112 @@ export default function AutopilotPage() {
             ) : (
               <>
                 <Zap className="h-6 w-6" />
-                <span>Avvia Autopilot</span>
+                <span>AI Autopilot</span>
               </>
             )}
           </button>
-          <p className="text-center text-purple-400/50 text-xs mt-3">
-            L'AI analizzerà prodotti, performance passate e tendenze per creare il piano editoriale perfetto
+          <p className="text-center text-purple-400/50 text-xs">
+            L&apos;AI sceglie prodotti e piattaforme automaticamente
           </p>
+
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex-1 h-px bg-purple-500/20" />
+            <span className="text-purple-400/40 text-xs">oppure</span>
+            <div className="flex-1 h-px bg-purple-500/20" />
+          </div>
+
+          {/* Mode 2: Single Product → All Socials */}
+          <button
+            onClick={handleShowProductPicker}
+            disabled={isLoadingProducts}
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-800/60 hover:bg-slate-700/60 border-2 border-purple-500/30 hover:border-purple-500/50 rounded-2xl text-white font-semibold text-lg transition-all disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]"
+          >
+            {isLoadingProducts ? (
+              <>
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span>Caricamento prodotti...</span>
+              </>
+            ) : (
+              <>
+                <Target className="h-6 w-6 text-purple-400" />
+                <span>1 Prodotto → Tutti i Social</span>
+              </>
+            )}
+          </button>
+          <p className="text-center text-purple-400/50 text-xs">
+            Scegli tu il prodotto, l&apos;AI genera copy per ogni piattaforma
+          </p>
+        </div>
+      )}
+
+      {/* Product Picker */}
+      {showProductPicker && (
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="bg-slate-800/60 rounded-2xl border border-purple-500/30 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">Scegli un prodotto</h3>
+              <button
+                onClick={() => { setShowProductPicker(false); setAutopilotMode('auto'); }}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                Annulla
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400/50" />
+              <input
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                placeholder="Cerca prodotto..."
+                className="w-full bg-slate-900/70 border border-purple-500/30 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
+                autoFocus
+              />
+            </div>
+
+            {/* Product list */}
+            <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+              {filteredProducts.slice(0, 30).map((product: any) => {
+                const catName = typeof product.category === 'object'
+                  ? product.category?.name || product.category?.[1] || 'Food'
+                  : product.category || 'Food';
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => handleSelectProduct(product)}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all text-left"
+                  >
+                    {product.image && (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded-lg border border-purple-500/20"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-purple-300/60 text-xs truncate">{catName}</p>
+                    </div>
+                    <span className="text-emerald-400 text-xs font-medium whitespace-nowrap">
+                      CHF {Number(product.price || 0).toFixed(2)}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {filteredProducts.length === 0 && (
+                <p className="text-center text-purple-400/50 text-sm py-8">
+                  Nessun prodotto trovato con immagine
+                </p>
+              )}
+            </div>
+
+            <p className="text-purple-400/40 text-xs mt-3 text-center">
+              {filteredProducts.length} prodotti con immagine disponibili
+            </p>
+          </div>
         </div>
       )}
 
@@ -361,6 +567,12 @@ export default function AutopilotPage() {
               <Package className="h-4 w-4 text-purple-400" />
               <span className="text-white text-sm font-medium">{stats.total} post</span>
             </div>
+            {selectedProduct && (
+              <span className="text-purple-300 text-xs bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 truncate max-w-48">
+                <Target className="h-3 w-3 inline mr-1" />
+                {selectedProduct.name}
+              </span>
+            )}
             {stats.queued > 0 && (
               <span className="text-amber-400 text-xs bg-amber-500/10 px-2 py-0.5 rounded-full">
                 {stats.queued} in coda
@@ -429,12 +641,11 @@ export default function AutopilotPage() {
             )}
 
             <button
-              onClick={handleGenerateQueue}
-              disabled={isGeneratingQueue}
+              onClick={() => { setQueue([]); setSelectedProduct(null); setShowProductPicker(false); }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 border border-purple-500/20 rounded-lg text-slate-300 text-xs transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Rigenera
+              Ricomincia
             </button>
           </div>
         </div>
@@ -478,6 +689,7 @@ export default function AutopilotPage() {
               onApprove={handleApprove}
               onReject={handleReject}
               onEdit={handleEdit}
+              onUpdatePost={handleUpdatePost}
               isGenerating={generatingPostIds.has(post.id)}
               isPublishing={publishingPostIds.has(post.id)}
             />
@@ -518,7 +730,7 @@ export default function AutopilotPage() {
             {stats.published} post pubblicati con successo
           </p>
           <button
-            onClick={handleGenerateQueue}
+            onClick={() => { setQueue([]); setSelectedProduct(null); }}
             className="mt-4 px-6 py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-purple-500/20 rounded-xl text-purple-300 text-sm transition-all"
           >
             Genera nuova coda

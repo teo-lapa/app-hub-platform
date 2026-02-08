@@ -4,7 +4,8 @@ import { useState } from 'react';
 import {
   Instagram, Facebook, Linkedin, Video,
   CheckCircle2, XCircle, Edit3, Clock,
-  TrendingUp, Sparkles, ChevronDown, ChevronUp
+  TrendingUp, Sparkles, ChevronDown, ChevronUp,
+  Save, X, RotateCcw, Image as ImageIcon
 } from 'lucide-react';
 import type { AutopilotPost, SocialPlatform } from '@/types/social-ai';
 import {
@@ -32,6 +33,7 @@ interface PostPreviewCardProps {
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onEdit: (id: string) => void;
+  onUpdatePost?: (id: string, updates: Partial<AutopilotPost>) => void;
   isGenerating?: boolean;
   isPublishing?: boolean;
 }
@@ -41,10 +43,15 @@ export default function PostPreviewCard({
   onApprove,
   onReject,
   onEdit,
+  onUpdatePost,
   isGenerating = false,
   isPublishing = false,
 }: PostPreviewCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCaption, setEditCaption] = useState('');
+  const [editHashtags, setEditHashtags] = useState('');
+  const [editCta, setEditCta] = useState('');
 
   const platform = platformConfig[post.platform];
   const tone = toneLabels[post.tone] || { emoji: '🎯', label: post.tone };
@@ -54,6 +61,42 @@ export default function PostPreviewCard({
   const hasResult = !!post.result;
   const isReady = post.status === 'ready';
   const isQueued = post.status === 'queued';
+  const hasVideo = post.contentType === 'video' || post.contentType === 'both';
+
+  const handleStartEdit = () => {
+    if (hasVideo && post.result?.video) {
+      // Video posts: open the VideoEditor (existing behavior)
+      onEdit(post.id);
+    } else {
+      // Image posts: inline edit of caption/hashtags
+      setEditCaption(post.result?.copywriting?.caption || '');
+      setEditHashtags(post.result?.copywriting?.hashtags?.map(h => h.replace('#', '')).join(', ') || '');
+      setEditCta(post.result?.copywriting?.cta || '');
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (onUpdatePost && post.result) {
+      const newHashtags = editHashtags.split(',').map(h => h.trim()).filter(Boolean);
+      onUpdatePost(post.id, {
+        result: {
+          ...post.result,
+          copywriting: {
+            ...post.result.copywriting!,
+            caption: editCaption,
+            hashtags: newHashtags,
+            cta: editCta,
+          },
+        },
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
 
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/30 overflow-hidden transition-all hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
@@ -102,7 +145,7 @@ export default function PostPreviewCard({
         </div>
 
         {/* Generated Content Preview */}
-        {hasResult && (
+        {hasResult && !isEditing && (
           <>
             {/* Image preview */}
             {post.result?.image?.dataUrl && (
@@ -174,18 +217,81 @@ export default function PostPreviewCard({
                   <span className="text-xs text-purple-300">
                     {post.result.video.status === 'completed' ? 'Video pronto' : 'Video in generazione...'}
                   </span>
-                  {post.result.video.status === 'completed' && post.result.video.dataUrl && (
-                    <video
-                      src={post.result.video.dataUrl}
-                      className="w-full h-32 object-cover rounded mt-2"
-                      controls
-                      muted
-                    />
-                  )}
                 </div>
+                {post.result.video.status === 'completed' && post.result.video.dataUrl && (
+                  <video
+                    src={post.result.video.dataUrl}
+                    className="w-full h-32 object-cover rounded mt-2"
+                    controls
+                    muted
+                  />
+                )}
               </div>
             )}
           </>
+        )}
+
+        {/* Inline Edit Mode */}
+        {isEditing && (
+          <div className="space-y-3 mb-3">
+            {/* Image preview (non-editable, shown for context) */}
+            {post.result?.image?.dataUrl && (
+              <div className="rounded-lg overflow-hidden border border-amber-500/30">
+                <img
+                  src={post.result.image.dataUrl}
+                  alt="Generated"
+                  className="w-full h-32 object-cover opacity-80"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-purple-300 text-[10px] uppercase tracking-wider font-medium mb-1 block">Caption</label>
+              <textarea
+                value={editCaption}
+                onChange={e => setEditCaption(e.target.value)}
+                rows={4}
+                className="w-full bg-slate-900/70 border border-purple-500/30 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-purple-300 text-[10px] uppercase tracking-wider font-medium mb-1 block">Hashtags (separati da virgola)</label>
+              <input
+                value={editHashtags}
+                onChange={e => setEditHashtags(e.target.value)}
+                className="w-full bg-slate-900/70 border border-purple-500/30 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                placeholder="LAPA, ItalianFood, FoodPorn"
+              />
+            </div>
+
+            <div>
+              <label className="text-purple-300 text-[10px] uppercase tracking-wider font-medium mb-1 block">Call to Action</label>
+              <input
+                value={editCta}
+                onChange={e => setEditCta(e.target.value)}
+                className="w-full bg-slate-900/70 border border-purple-500/30 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                placeholder="Ordina su www.lapa.ch"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/30 rounded-lg text-slate-300 text-xs transition-all"
+              >
+                <X className="h-3.5 w-3.5" />
+                Annulla
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs font-medium transition-all"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Salva
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Loading state */}
@@ -222,7 +328,7 @@ export default function PostPreviewCard({
       </div>
 
       {/* Action buttons */}
-      {isReady && !isPublishing && (
+      {isReady && !isPublishing && !isEditing && (
         <div className="border-t border-purple-500/20 px-4 py-3 flex gap-2">
           <button
             onClick={() => onReject(post.id)}
@@ -232,7 +338,7 @@ export default function PostPreviewCard({
             <span>Rifiuta</span>
           </button>
           <button
-            onClick={() => onEdit(post.id)}
+            onClick={handleStartEdit}
             className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400 text-sm font-medium transition-all"
           >
             <Edit3 className="h-4 w-4" />
