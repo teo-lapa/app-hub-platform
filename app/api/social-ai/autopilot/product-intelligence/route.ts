@@ -62,19 +62,22 @@ export async function GET(request: NextRequest) {
         posted => name.toLowerCase().includes(posted) || posted.includes(name.toLowerCase())
       );
 
+      // The products API returns image as "data:image/jpeg;base64,..." already
+      const productImage = product.image || product.image_1920 || product.image_512 || null;
+
       let score = 50; // base score
       if (!wasRecentlyPosted) score += 30; // bonus for never posted
-      if (product.image_1920 || product.image_512 || product.image) score += 10; // has image
-      if (product.list_price > 10) score += 10; // higher value products
+      if (productImage) score += 10; // has image
+      if (product.list_price > 10 || product.price > 10) score += 10; // higher value products
 
       return {
         id: product.id,
         name,
-        code: product.default_code || '',
-        category: product.categ_id?.[1] || product.categ_name || 'Food',
-        price: product.list_price || 0,
-        image: product.image_1920 || product.image_512 || product.image || null,
-        hasImage: !!(product.image_1920 || product.image_512 || product.image),
+        code: product.default_code || product.code || '',
+        category: product.categ_id?.[1] || product.categ_name || product.category || 'Food',
+        price: product.list_price || product.price || 0,
+        image: productImage,
+        hasImage: !!productImage,
         wasRecentlyPosted,
         score,
       };

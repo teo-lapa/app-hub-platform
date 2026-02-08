@@ -129,7 +129,7 @@ Rispondi SOLO con il JSON array, senza markdown o altro testo.`;
           id: product.id,
           name: product.name,
           code: product.code || '',
-          image: product.image ? `data:image/jpeg;base64,${product.image}` : '',
+          image: product.image && product.image.startsWith('data:') ? product.image : product.image ? `data:image/jpeg;base64,${product.image}` : '',
           category: product.category || 'Food',
           price: product.price || 0,
         },
