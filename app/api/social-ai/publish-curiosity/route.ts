@@ -110,8 +110,7 @@ async function createSocialPost(
   message: string,
   accountIds: number[],
   imageId?: number,
-  scheduledDate?: string,
-  retryCount: number = 0
+  scheduledDate?: string
 ): Promise<number> {
   const postValues: Record<string, any> = {
     message: message,
@@ -147,92 +146,24 @@ async function createSocialPost(
     return postId;
   }
 
-  // INSTAGRAM FIX: Instagram richiede più tempo per processare i media container
-  // Il problema: Odoo chiama action_post che crea il container e prova a pubblicare subito
-  // Ma Instagram API ha bisogno di ~3-10 secondi per avere il container in stato "FINISHED"
-  // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
-  const INSTAGRAM_ACCOUNT_ID = 4;
-  const hasInstagram = accountIds.includes(INSTAGRAM_ACCOUNT_ID);
-  const initialWait = hasInstagram ? 12000 : 5000;
+  // Wait before calling action_post to allow media processing
+  const initialWait = 3000;
 
   console.log(`  ⏳ Waiting ${initialWait / 1000}s for media processing...`);
   await delay(initialWait);
 
-  // Pubblica con retry logic per Instagram
-  let published = false;
-  const maxRetries = hasInstagram ? 3 : 1;
-
-  for (let attempt = 1; attempt <= maxRetries && !published; attempt++) {
-    try {
-      console.log(`  🔄 Tentativo ${attempt}/${maxRetries} per post ${postId}...`);
-
-      // INSTAGRAM FIX: Prima di ogni retry, resetta lo stato del live_post Instagram a "ready"
-      // Questo è necessario perché quando action_post fallisce, Odoo segna il live_post come "failed"
-      // e non riprova automaticamente.
-      if (hasInstagram && attempt > 1) {
-        try {
-          const livePosts = await callOdoo(
-            odooCookies,
-            'social.live.post',
-            'search_read',
-            [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
-            { fields: ['id', 'state'] }
-          );
-
-          if (livePosts && livePosts.length > 0 && livePosts[0].state === 'failed') {
-            console.log(`  🔧 Resetto live_post Instagram ${livePosts[0].id} da "failed" a "ready"...`);
-            await callOdoo(
-              odooCookies,
-              'social.live.post',
-              'write',
-              [[livePosts[0].id], { state: 'ready', failure_reason: false }]
-            );
-          }
-        } catch (resetError: any) {
-          console.warn(`  ⚠️ Errore reset live_post:`, resetError.message);
-        }
-      }
-
-      await callOdoo(
-        odooCookies,
-        'social.post',
-        'action_post',
-        [[postId]]
-      );
-
-      // Verifica stato Instagram se presente
-      if (hasInstagram) {
-        await delay(3000);
-        const livePostsAfter = await callOdoo(
-          odooCookies,
-          'social.live.post',
-          'search_read',
-          [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
-          { fields: ['id', 'state', 'instagram_post_id'] }
-        );
-
-        if (livePostsAfter && livePostsAfter.length > 0) {
-          if (livePostsAfter[0].state === 'posted') {
-            console.log(`  ✅ Social post ${postId} pubblicato (IG ID: ${livePostsAfter[0].instagram_post_id})`);
-            published = true;
-          } else if (livePostsAfter[0].state === 'failed') {
-            throw new Error('Instagram live_post in stato failed');
-          }
-        }
-      } else {
-        console.log(`  ✅ Social post ${postId} pubblicato`);
-        published = true;
-      }
-    } catch (publishError: any) {
-      const errorMsg = publishError.message || '';
-      console.warn(`  ⚠️ Tentativo ${attempt} fallito:`, errorMsg);
-
-      if (attempt < maxRetries) {
-        const waitTime = (attempt + 1) * 4000;
-        console.log(`  ⏳ Waiting ${waitTime / 1000}s before retry...`);
-        await delay(waitTime);
-      }
-    }
+  // Pubblica il post
+  try {
+    await callOdoo(
+      odooCookies,
+      'social.post',
+      'action_post',
+      [[postId]]
+    );
+    console.log(`  ✅ Social post ${postId} pubblicato`);
+  } catch (publishError: any) {
+    const errorMsg = publishError.message || '';
+    console.warn(`  ⚠️ Errore pubblicazione post ${postId}:`, errorMsg);
   }
 
   return postId;

@@ -82,8 +82,8 @@ const ODOO_SOCIAL_ACCOUNTS = {
   twitter: { id: 13, name: 'FoodLapa' }
 };
 
-// Account da pubblicare di default (Facebook, Instagram, LinkedIn, Twitter)
-const DEFAULT_ACCOUNT_IDS = [2, 4, 6, 13];
+// Account da pubblicare di default (Facebook, Instagram, LinkedIn, YouTube, Twitter)
+const DEFAULT_ACCOUNT_IDS = [2, 4, 6, 7, 13];
 
 // Twitter ha limite di 280 caratteri - ID account Twitter
 const TWITTER_ACCOUNT_ID = 13;
@@ -157,13 +157,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Caption è richiesto' }, { status: 400 });
     }
 
-    // Costruisci il testo completo del post (per Facebook, Instagram, LinkedIn)
+    // Costruisci il testo completo del post (per Facebook, LinkedIn)
     const fullPostText = `${caption}\n\n${hashtags.join(' ')}\n\n${cta}`;
+
+    // Instagram: rimuovi QUALSIASI URL lapa.ch da tutto il testo (caption, hashtags, cta)
+    // Instagram blocca/penalizza post con link esterni nel caption
+    const stripLapaUrl = (text: string) => text
+      .replace(/https?:\/\/(www\.)?lapa\.ch\S*/gi, '')
+      .replace(/www\.lapa\.ch\S*/gi, '')
+      .replace(/lapa\.ch\S*/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    const igCaption = stripLapaUrl(caption);
+    const igHashtags = hashtags.join(' ');
+    const igCta = stripLapaUrl(cta);
+    const instagramPostText = `${igCaption}\n\n${igHashtags}${igCta ? `\n\n${igCta}` : ''}`;
 
     // Costruisci il messaggio abbreviato per Twitter (max 280 caratteri)
     const twitterPostText = createTwitterMessage(caption, hashtags, cta);
 
     console.log(`📝 [PUBLISH-ODOO] Messaggio completo: ${fullPostText.length} caratteri`);
+    console.log(`📸 [PUBLISH-ODOO] Messaggio Instagram (no URL): ${instagramPostText.length} caratteri`);
     console.log(`🐦 [PUBLISH-ODOO] Messaggio Twitter: ${twitterPostText.length} caratteri`);
 
     // Usa gli account specificati oppure quelli di default
@@ -312,88 +327,16 @@ export async function POST(req: NextRequest) {
 
         // Pubblica immediatamente se non programmato
         if (!scheduledDate) {
-          // INSTAGRAM FIX: Instagram richiede più tempo per processare i media container
-          // Il problema: Odoo chiama action_post che crea il container e prova a pubblicare subito
-          // Ma Instagram API ha bisogno di ~3-10 secondi per avere il container in stato "FINISHED"
-          // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
-          const isInstagram = platformLabel.toLowerCase().includes('instagram');
+          // Breve pausa per dare tempo a Odoo di processare l'attachment
+          await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // Per Instagram: aspetta 12s prima del primo tentativo (aumentato da 8s)
-          // Per altri: 3s è sufficiente
-          const initialDelay = isInstagram ? 12000 : 3000;
-
-          console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${initialDelay/1000}s for media processing...`);
-          await new Promise(resolve => setTimeout(resolve, initialDelay));
-
-          // Riprova fino a 3 volte con pausa crescente tra i tentativi
-          let published = false;
-          for (let attempt = 1; attempt <= 3 && !published; attempt++) {
-            try {
-              console.log(`🔄 [PUBLISH-ODOO] ${platformLabel}: Tentativo ${attempt}/3 per post ${postId}...`);
-
-              // INSTAGRAM FIX: Prima di ogni retry, resetta lo stato del live_post a "ready"
-              // Questo è necessario perché quando action_post fallisce, Odoo segna il live_post come "failed"
-              // e non riprova automaticamente. Dobbiamo resettare lo stato manualmente.
-              if (isInstagram && attempt > 1) {
-                try {
-                  // Trova il live_post per questo social.post e account Instagram
-                  const livePosts = await callOdoo(
-                    odooCookies,
-                    'social.live.post',
-                    'search_read',
-                    [[['post_id', '=', postId], ['account_id', '=', accountId]]],
-                    { fields: ['id', 'state'] }
-                  );
-
-                  if (livePosts && livePosts.length > 0 && livePosts[0].state === 'failed') {
-                    console.log(`🔧 [PUBLISH-ODOO] ${platformLabel}: Resetto live_post ${livePosts[0].id} da "failed" a "ready"...`);
-                    await callOdoo(
-                      odooCookies,
-                      'social.live.post',
-                      'write',
-                      [[livePosts[0].id], { state: 'ready', failure_reason: false }]
-                    );
-                  }
-                } catch (resetError: any) {
-                  console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel}: Errore reset live_post:`, resetError.message);
-                }
-              }
-
-              await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
-
-              // Verifica se la pubblicazione è riuscita controllando lo stato del live_post
-              if (isInstagram) {
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Attendi che Odoo aggiorni lo stato
-                const livePostsAfter = await callOdoo(
-                  odooCookies,
-                  'social.live.post',
-                  'search_read',
-                  [[['post_id', '=', postId], ['account_id', '=', accountId]]],
-                  { fields: ['id', 'state', 'instagram_post_id'] }
-                );
-
-                if (livePostsAfter && livePostsAfter.length > 0) {
-                  if (livePostsAfter[0].state === 'posted' && livePostsAfter[0].instagram_post_id) {
-                    console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel} (IG ID: ${livePostsAfter[0].instagram_post_id})`);
-                    published = true;
-                  } else if (livePostsAfter[0].state === 'failed') {
-                    throw new Error(`Live post in stato failed`);
-                  }
-                }
-              } else {
-                console.log(`✅ [PUBLISH-ODOO] Post ${postId} pubblicato su ${platformLabel}`);
-                published = true;
-              }
-            } catch (e: any) {
-              console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel} tentativo ${attempt} fallito:`, e.message);
-              if (attempt < 3) {
-                // Per Instagram: aspetta 8s, 12s tra i retry (aumentato per dare tempo al container)
-                // Per altri: 2s è sufficiente
-                const retryDelay = isInstagram ? (attempt + 1) * 4000 : 2000;
-                console.log(`⏳ [PUBLISH-ODOO] ${platformLabel}: Waiting ${retryDelay/1000}s before retry...`);
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-              }
-            }
+          try {
+            console.log(`🔄 [PUBLISH-ODOO] ${platformLabel}: Pubblicazione post ${postId}...`);
+            await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
+            console.log(`✅ [PUBLISH-ODOO] Post ${postId} action_post chiamato su ${platformLabel}`);
+          } catch (e: any) {
+            // Non bloccare: il post resta in Odoo e può essere ripubblicato manualmente
+            console.warn(`⚠️ [PUBLISH-ODOO] ${platformLabel} action_post fallito:`, e.message);
           }
         }
 
@@ -405,8 +348,11 @@ export async function POST(req: NextRequest) {
     };
 
     // ========================================
-    // 1. FACEBOOK (messaggio completo)
+    // ORDINE: Prima i social veloci (FB, LI, TW), poi Instagram per ultimo
+    // Instagram è lento e può fallire - non deve bloccare gli altri
     // ========================================
+
+    // 1. FACEBOOK (messaggio completo)
     if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.facebook.id)) {
       await publishSingleAccount(
         ODOO_SOCIAL_ACCOUNTS.facebook.id,
@@ -414,27 +360,10 @@ export async function POST(req: NextRequest) {
         fullPostText,
         'Facebook'
       );
-      // Piccola pausa tra le piattaforme
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // ========================================
-    // 2. INSTAGRAM (messaggio completo) - Attraverso Odoo come gli altri
-    // ========================================
-    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.instagram.id)) {
-      await publishSingleAccount(
-        ODOO_SOCIAL_ACCOUNTS.instagram.id,
-        ODOO_SOCIAL_ACCOUNTS.instagram.name,
-        fullPostText,
-        'Instagram'
-      );
-      // Piccola pausa tra le piattaforme
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    // ========================================
-    // 3. LINKEDIN (messaggio completo)
-    // ========================================
+    // 2. LINKEDIN (messaggio completo)
     if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.linkedin.id)) {
       await publishSingleAccount(
         ODOO_SOCIAL_ACCOUNTS.linkedin.id,
@@ -442,19 +371,40 @@ export async function POST(req: NextRequest) {
         fullPostText,
         'LinkedIn'
       );
-      // Piccola pausa tra le piattaforme
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // ========================================
+    // 3. YOUTUBE (messaggio completo)
+    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.youtube.id)) {
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.youtube.id,
+        ODOO_SOCIAL_ACCOUNTS.youtube.name,
+        fullPostText,
+        'YouTube'
+      );
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
     // 4. TWITTER (messaggio abbreviato max 280 char)
-    // ========================================
     if (hasTwitter) {
       await publishSingleAccount(
         TWITTER_ACCOUNT_ID,
         ODOO_SOCIAL_ACCOUNTS.twitter.name,
         twitterPostText,
         'Twitter'
+      );
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // 5. INSTAGRAM (per ultimo, senza URL, un solo tentativo)
+    // Instagram è inaffidabile: a volte non riesce a scaricare l'immagine da Odoo
+    // Non facciamo retry bloccanti - se fallisce, il post resta in Odoo per retry manuale
+    if (otherAccountIds.includes(ODOO_SOCIAL_ACCOUNTS.instagram.id)) {
+      await publishSingleAccount(
+        ODOO_SOCIAL_ACCOUNTS.instagram.id,
+        ODOO_SOCIAL_ACCOUNTS.instagram.name,
+        instagramPostText,
+        'Instagram'
       );
     }
 
