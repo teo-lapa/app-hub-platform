@@ -520,8 +520,7 @@ async function createSocialPost(
   message: string,
   accountIds: number[],
   imageId?: number,
-  scheduledDate?: string,
-  retryCount: number = 0
+  scheduledDate?: string
 ): Promise<number> {
   // Prepara valori del post
   const postValues: Record<string, any> = {
@@ -561,51 +560,64 @@ async function createSocialPost(
   }
 
   // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
-  // Instagram API richiede ~8 secondi per processare il media prima di poter pubblicare
-  // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
-  console.log(`  ⏳ Waiting 8s for Instagram to process image attachment...`);
-  await delay(8000);
+  const INSTAGRAM_ACCOUNT_ID = 4;
+  const isInstagram = accountIds.includes(INSTAGRAM_ACCOUNT_ID);
+  const initialDelay = isInstagram ? 12000 : 3000;
+  console.log(`  ⏳ Waiting ${initialDelay/1000}s for media processing...`);
+  await delay(initialDelay);
 
-  // Pubblica immediatamente con action_post (con retry per Instagram)
-  try {
-    await callOdoo(
-      odooCookies,
-      'social.post',
-      'action_post',
-      [[postId]]
-    );
-
-    console.log(`  ✅ Social post ${postId} pubblicato`);
-  } catch (publishError: any) {
-    const errorMsg = publishError.message || '';
-
-    // Se è errore Instagram "Media ID not available", riprova dopo delay
-    if (errorMsg.includes('Media ID') || errorMsg.includes('media') || errorMsg.includes('Instagram')) {
-      if (retryCount < 3) {
-        const waitTime = (retryCount + 1) * 5000; // 5s, 10s, 15s
-        console.warn(`  ⚠️ Instagram error, waiting ${waitTime/1000}s before retry ${retryCount + 1}/3...`);
-        await delay(waitTime);
-
-        // Riprova action_post
+  // Pubblica con retry e reset stato per Instagram
+  let published = false;
+  for (let attempt = 1; attempt <= 3 && !published; attempt++) {
+    try {
+      // Reset social.live.post state before retry (Instagram gets stuck in "failed")
+      if (isInstagram && attempt > 1) {
         try {
-          await callOdoo(
-            odooCookies,
-            'social.post',
-            'action_post',
-            [[postId]]
+          const livePosts = await callOdoo(
+            odooCookies, 'social.live.post', 'search_read',
+            [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
+            { fields: ['id', 'state'] }
           );
-          console.log(`  ✅ Social post ${postId} pubblicato dopo retry`);
-        } catch (retryError: any) {
-          console.warn(`  ⚠️ Retry ${retryCount + 1} fallito:`, retryError.message);
-          // Continua comunque, il post è creato
+          if (livePosts?.[0]?.state === 'failed') {
+            console.log(`  🔧 Resetting live_post ${livePosts[0].id} from "failed" to "ready"...`);
+            await callOdoo(odooCookies, 'social.live.post', 'write',
+              [[livePosts[0].id], { state: 'ready', failure_reason: false }]);
+          }
+        } catch (resetErr: any) {
+          console.warn(`  ⚠️ Reset live_post error:`, resetErr.message);
+        }
+      }
+
+      await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
+
+      // Verify Instagram actually published
+      if (isInstagram) {
+        await delay(3000);
+        const livePostsAfter = await callOdoo(
+          odooCookies, 'social.live.post', 'search_read',
+          [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
+          { fields: ['id', 'state', 'instagram_post_id'] }
+        );
+        if (livePostsAfter?.[0]?.state === 'posted' && livePostsAfter[0].instagram_post_id) {
+          console.log(`  ✅ Social post ${postId} pubblicato (IG ID: ${livePostsAfter[0].instagram_post_id})`);
+          published = true;
+        } else if (livePostsAfter?.[0]?.state === 'failed') {
+          throw new Error('Live post in stato failed');
+        } else {
+          published = true;
         }
       } else {
-        console.warn(`  ⚠️ action_post fallito per ${postId} dopo 3 retry:`, errorMsg);
+        console.log(`  ✅ Social post ${postId} pubblicato`);
+        published = true;
       }
-    } else {
-      console.warn(`  ⚠️ action_post fallito per ${postId}:`, errorMsg);
+    } catch (publishError: any) {
+      console.warn(`  ⚠️ action_post attempt ${attempt}/3 failed:`, publishError.message);
+      if (attempt < 3) {
+        const retryDelay = isInstagram ? (attempt + 1) * 4000 : 2000;
+        console.log(`  ⏳ Waiting ${retryDelay/1000}s before retry...`);
+        await delay(retryDelay);
+      }
     }
-    // Il post è comunque creato, solo non pubblicato automaticamente
   }
 
   return postId;

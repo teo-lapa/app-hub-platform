@@ -597,22 +597,65 @@ async function createSocialPost(
   }
 
   // INSTAGRAM FIX: Aspetta che Instagram processi l'immagine allegata
-  // Instagram API richiede ~8 secondi per processare il media prima di poter pubblicare
-  // Errori comuni: "Media ID is not available", "Only photo or video can be accepted"
-  console.log(`  ⏳ Waiting 8s for Instagram to process image attachment...`);
-  await delay(8000);
+  // Instagram API richiede ~12 secondi per processare il media prima di poter pubblicare
+  const INSTAGRAM_ACCOUNT_ID = 4;
+  const isInstagram = accountIds.includes(INSTAGRAM_ACCOUNT_ID);
+  const initialDelay = isInstagram ? 12000 : 3000;
+  console.log(`  ⏳ Waiting ${initialDelay/1000}s for media processing...`);
+  await delay(initialDelay);
 
-  // Pubblica subito se non è programmato
-  try {
-    await callOdoo(
-      odooCookies,
-      'social.post',
-      'action_post',
-      [[postId]]
-    );
-    console.log(`  ✅ Social post ${postId} pubblicato`);
-  } catch (publishError: any) {
-    console.warn(`  ⚠️ action_post fallito per ${postId}:`, publishError.message);
+  // Pubblica con retry e reset stato per Instagram
+  let published = false;
+  for (let attempt = 1; attempt <= 3 && !published; attempt++) {
+    try {
+      // Reset social.live.post state before retry (Instagram gets stuck in "failed")
+      if (isInstagram && attempt > 1) {
+        try {
+          const livePosts = await callOdoo(
+            odooCookies, 'social.live.post', 'search_read',
+            [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
+            { fields: ['id', 'state'] }
+          );
+          if (livePosts?.[0]?.state === 'failed') {
+            console.log(`  🔧 Resetting live_post ${livePosts[0].id} from "failed" to "ready"...`);
+            await callOdoo(odooCookies, 'social.live.post', 'write',
+              [[livePosts[0].id], { state: 'ready', failure_reason: false }]);
+          }
+        } catch (resetErr: any) {
+          console.warn(`  ⚠️ Reset live_post error:`, resetErr.message);
+        }
+      }
+
+      await callOdoo(odooCookies, 'social.post', 'action_post', [[postId]]);
+
+      // Verify Instagram actually published
+      if (isInstagram) {
+        await delay(3000);
+        const livePostsAfter = await callOdoo(
+          odooCookies, 'social.live.post', 'search_read',
+          [[['post_id', '=', postId], ['account_id', '=', INSTAGRAM_ACCOUNT_ID]]],
+          { fields: ['id', 'state', 'instagram_post_id'] }
+        );
+        if (livePostsAfter?.[0]?.state === 'posted' && livePostsAfter[0].instagram_post_id) {
+          console.log(`  ✅ Social post ${postId} pubblicato (IG ID: ${livePostsAfter[0].instagram_post_id})`);
+          published = true;
+        } else if (livePostsAfter?.[0]?.state === 'failed') {
+          throw new Error('Live post in stato failed');
+        } else {
+          published = true; // Assume success if not explicitly failed
+        }
+      } else {
+        console.log(`  ✅ Social post ${postId} pubblicato`);
+        published = true;
+      }
+    } catch (publishError: any) {
+      console.warn(`  ⚠️ action_post attempt ${attempt}/3 failed:`, publishError.message);
+      if (attempt < 3) {
+        const retryDelay = isInstagram ? (attempt + 1) * 4000 : 2000;
+        console.log(`  ⏳ Waiting ${retryDelay/1000}s before retry...`);
+        await delay(retryDelay);
+      }
+    }
   }
 
   return postId;

@@ -2,13 +2,14 @@
 
 import { useState, useCallback, useRef } from 'react';
 import {
-  Zap, Loader2, Sparkles, CheckCircle2, XCircle,
-  RotateCcw, Play, Package, TrendingUp,
-  ChevronDown, ListChecks, Eye, Target, Search
+  Zap, Loader2, Sparkles, CheckCircle2,
+  RotateCcw, Play, Package,
+  ListChecks, Eye, Target
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PostPreviewCard from '@/components/social-ai/autopilot/PostPreviewCard';
 import VideoEditor from '@/components/social-ai/video/VideoEditor';
+import ProductSelector from '@/components/social-ai/ProductSelector';
 import type { AutopilotPost } from '@/types/social-ai';
 
 type ViewMode = 'queue' | 'review' | 'video-edit';
@@ -26,16 +27,11 @@ export default function AutopilotPage() {
   const [generatingPostIds, setGeneratingPostIds] = useState<Set<string>>(new Set());
   const [publishingPostIds, setPublishingPostIds] = useState<Set<string>>(new Set());
 
-  // Stats
-  const [productsCount, setProductsCount] = useState(0);
-
   // Video edit state
   const [editingPost, setEditingPost] = useState<AutopilotPost | null>(null);
 
   // Single product mode state
-  const [allProducts, setAllProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [productSearch, setProductSearch] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
 
   // Track active video polls to prevent duplicates
@@ -95,22 +91,17 @@ export default function AutopilotPage() {
   // ==========================================
   // Load products (shared between modes)
   // ==========================================
-  const loadProducts = async (all = false) => {
+  const loadProducts = async () => {
     setIsLoadingProducts(true);
     const loadingToast = toast.loading('Caricamento catalogo prodotti...');
 
     try {
-      const url = all
-        ? '/api/social-ai/autopilot/product-intelligence?all=true'
-        : '/api/social-ai/autopilot/product-intelligence';
-      const productsRes = await fetch(url);
+      const productsRes = await fetch('/api/social-ai/autopilot/product-intelligence');
       const productsData = await productsRes.json();
 
       if (!productsRes.ok) throw new Error(productsData.error);
 
       const products = productsData.data.products || [];
-      setProductsCount(products.length);
-      setAllProducts(products);
 
       if (products.length === 0) {
         toast.error('Nessun prodotto trovato nel catalogo', { id: loadingToast });
@@ -184,11 +175,8 @@ export default function AutopilotPage() {
   // ==========================================
   // STEP 1B: Single product mode - user picks, generates for all platforms
   // ==========================================
-  const handleShowProductPicker = async () => {
+  const handleShowProductPicker = () => {
     setAutopilotMode('single-product');
-    // Always load ALL products for the picker (not just top 50)
-    const products = await loadProducts(true);
-    if (!products) return;
     setShowProductPicker(true);
   };
 
@@ -201,12 +189,6 @@ export default function AutopilotPage() {
     const loadingToast = toast.loading(`Generazione post per "${product.name}" su tutti i social...`);
 
     try {
-      const getCategoryName = (cat: any): string => {
-        if (!cat) return 'Food';
-        if (typeof cat === 'string') return cat;
-        if (typeof cat === 'object') return cat.name || cat[1] || 'Food';
-        return String(cat);
-      };
 
       // Create posts for all 6 platforms from the same product
       const platforms = [
@@ -228,7 +210,7 @@ export default function AutopilotPage() {
           name: product.name,
           code: product.code || '',
           image: product.image || '',
-          category: getCategoryName(product.category),
+          category: 'Food',
           price: product.price || 0,
         },
         platform: p.platform,
@@ -410,14 +392,6 @@ export default function AutopilotPage() {
   const readyPosts = queue.filter(p => p.status === 'ready');
   const allPosts = queue.filter(p => p.status !== 'rejected');
 
-  // Filter products for picker (search in name and category)
-  const searchLower = productSearch.toLowerCase();
-  const filteredProducts = allProducts.filter(p => {
-    if (!p.hasImage) return false;
-    if (!searchLower) return true;
-    const catName = typeof p.category === 'string' ? p.category : '';
-    return p.name.toLowerCase().includes(searchLower) || catName.toLowerCase().includes(searchLower);
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -445,12 +419,12 @@ export default function AutopilotPage() {
             disabled={isLoadingProducts || isGeneratingQueue}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:from-orange-600 hover:via-pink-600 hover:to-purple-700 rounded-2xl text-white font-bold text-lg shadow-2xl shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            {isLoadingProducts ? (
+            {isLoadingProducts && autopilotMode === 'auto' ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span>Analisi catalogo...</span>
               </>
-            ) : isGeneratingQueue ? (
+            ) : isGeneratingQueue && autopilotMode === 'auto' ? (
               <>
                 <Sparkles className="h-6 w-6 animate-pulse" />
                 <span>AI sta decidendo...</span>
@@ -475,10 +449,10 @@ export default function AutopilotPage() {
           {/* Mode 2: Single Product → All Socials */}
           <button
             onClick={handleShowProductPicker}
-            disabled={isLoadingProducts}
+            disabled={isLoadingProducts || isGeneratingQueue}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-800/60 hover:bg-slate-700/60 border-2 border-purple-500/30 hover:border-purple-500/50 rounded-2xl text-white font-semibold text-lg transition-all disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]"
           >
-            {isLoadingProducts ? (
+            {isLoadingProducts && autopilotMode === 'single-product' ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span>Caricamento prodotti...</span>
@@ -496,76 +470,12 @@ export default function AutopilotPage() {
         </div>
       )}
 
-      {/* Product Picker */}
-      {showProductPicker && (
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="bg-slate-800/60 rounded-2xl border border-purple-500/30 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">Scegli un prodotto</h3>
-              <button
-                onClick={() => { setShowProductPicker(false); setAutopilotMode('auto'); }}
-                className="text-slate-400 hover:text-white text-sm"
-              >
-                Annulla
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400/50" />
-              <input
-                value={productSearch}
-                onChange={e => setProductSearch(e.target.value)}
-                placeholder="Cerca prodotto..."
-                className="w-full bg-slate-900/70 border border-purple-500/30 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
-                autoFocus
-              />
-            </div>
-
-            {/* Product list */}
-            <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
-              {filteredProducts.slice(0, 30).map((product: any) => {
-                const catName = typeof product.category === 'object'
-                  ? product.category?.name || product.category?.[1] || 'Food'
-                  : product.category || 'Food';
-
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => handleSelectProduct(product)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all text-left"
-                  >
-                    {product.image && (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded-lg border border-purple-500/20"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                      <p className="text-purple-300/60 text-xs truncate">{catName}</p>
-                    </div>
-                    <span className="text-emerald-400 text-xs font-medium whitespace-nowrap">
-                      CHF {Number(product.price || 0).toFixed(2)}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {filteredProducts.length === 0 && (
-                <p className="text-center text-purple-400/50 text-sm py-8">
-                  Nessun prodotto trovato con immagine
-                </p>
-              )}
-            </div>
-
-            <p className="text-purple-400/40 text-xs mt-3 text-center">
-              {filteredProducts.length} prodotti con immagine disponibili
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Product Picker - uses same component as manual studio (real Odoo search) */}
+      <ProductSelector
+        isOpen={showProductPicker}
+        onSelect={handleSelectProduct}
+        onClose={() => { setShowProductPicker(false); setAutopilotMode('auto'); }}
+      />
 
       {/* Stats bar */}
       {queue.length > 0 && (
