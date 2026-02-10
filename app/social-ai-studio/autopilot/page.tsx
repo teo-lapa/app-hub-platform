@@ -95,12 +95,15 @@ export default function AutopilotPage() {
   // ==========================================
   // Load products (shared between modes)
   // ==========================================
-  const loadProducts = async () => {
+  const loadProducts = async (all = false) => {
     setIsLoadingProducts(true);
-    const loadingToast = toast.loading('Analisi catalogo prodotti...');
+    const loadingToast = toast.loading('Caricamento catalogo prodotti...');
 
     try {
-      const productsRes = await fetch('/api/social-ai/autopilot/product-intelligence');
+      const url = all
+        ? '/api/social-ai/autopilot/product-intelligence?all=true'
+        : '/api/social-ai/autopilot/product-intelligence';
+      const productsRes = await fetch(url);
       const productsData = await productsRes.json();
 
       if (!productsRes.ok) throw new Error(productsData.error);
@@ -183,10 +186,9 @@ export default function AutopilotPage() {
   // ==========================================
   const handleShowProductPicker = async () => {
     setAutopilotMode('single-product');
-    if (allProducts.length === 0) {
-      const products = await loadProducts();
-      if (!products) return;
-    }
+    // Always load ALL products for the picker (not just top 50)
+    const products = await loadProducts(true);
+    if (!products) return;
     setShowProductPicker(true);
   };
 
@@ -408,10 +410,14 @@ export default function AutopilotPage() {
   const readyPosts = queue.filter(p => p.status === 'ready');
   const allPosts = queue.filter(p => p.status !== 'rejected');
 
-  // Filter products for picker
-  const filteredProducts = allProducts.filter(p =>
-    p.hasImage && p.name.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  // Filter products for picker (search in name and category)
+  const searchLower = productSearch.toLowerCase();
+  const filteredProducts = allProducts.filter(p => {
+    if (!p.hasImage) return false;
+    if (!searchLower) return true;
+    const catName = typeof p.category === 'string' ? p.category : '';
+    return p.name.toLowerCase().includes(searchLower) || catName.toLowerCase().includes(searchLower);
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

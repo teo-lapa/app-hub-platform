@@ -14,9 +14,13 @@ export const maxDuration = 60;
  */
 export async function GET(request: NextRequest) {
   try {
+    // Check if caller wants all products (for product picker) or just top picks (for autopilot)
+    const returnAll = request.nextUrl.searchParams.get('all') === 'true';
+    const limit = returnAll ? 500 : 100;
+
     // Fetch products from the internal API
     const productsResponse = await fetch(
-      `${request.nextUrl.origin}/api/portale-clienti/products?limit=100`,
+      `${request.nextUrl.origin}/api/portale-clienti/products?limit=${limit}`,
       { headers: { cookie: request.headers.get('cookie') || '' } }
     );
 
@@ -99,9 +103,12 @@ export async function GET(request: NextRequest) {
       withImage: scoredProducts.filter((p: any) => p.hasImage).length,
     };
 
+    // For product picker: return all products; for autopilot: top 50
+    const outputProducts = returnAll ? scoredProducts : scoredProducts.slice(0, 50);
+
     return NextResponse.json({
       success: true,
-      data: { products: scoredProducts.slice(0, 50), stats }
+      data: { products: outputProducts, stats }
     });
 
   } catch (error: any) {
