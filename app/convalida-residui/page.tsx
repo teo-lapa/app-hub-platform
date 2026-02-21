@@ -195,6 +195,39 @@ function orDomainConvalida(leaves: any[][]): any[] {
 }
 
 // ============================================================================
+// ZONE MAGAZZINO - Colori e rilevamento
+// ============================================================================
+
+type ZoneType = 'FRIGO' | 'PINGU' | 'SECCO1' | 'SECCO2' | 'ALTRO';
+
+interface ZoneInfo {
+  type: ZoneType;
+  label: string;
+  color: string;
+  bgColor: string;
+  barGradient: string;
+  borderColor: string;
+  order: number;
+}
+
+const ZONE_MAP: Record<ZoneType, ZoneInfo> = {
+  FRIGO:  { type: 'FRIGO',  label: 'FRIGO',   color: '#fff', bgColor: '#2563eb', barGradient: 'linear-gradient(90deg, #3b82f6, #2563eb)', borderColor: '#3b82f6', order: 1 },
+  PINGU:  { type: 'PINGU',  label: 'PINGU',   color: '#fff', bgColor: '#7c3aed', barGradient: 'linear-gradient(90deg, #8b5cf6, #7c3aed)', borderColor: '#8b5cf6', order: 2 },
+  SECCO1: { type: 'SECCO1', label: 'SECCO 1', color: '#fff', bgColor: '#ea580c', barGradient: 'linear-gradient(90deg, #f97316, #ea580c)', borderColor: '#f97316', order: 3 },
+  SECCO2: { type: 'SECCO2', label: 'SECCO 2', color: '#fff', bgColor: '#b45309', barGradient: 'linear-gradient(90deg, #d97706, #b45309)', borderColor: '#d97706', order: 4 },
+  ALTRO:  { type: 'ALTRO',  label: 'ALTRO',   color: '#fff', bgColor: '#6b7280', barGradient: 'linear-gradient(90deg, #9ca3b8, #6b7280)', borderColor: '#6b7280', order: 5 },
+};
+
+function detectZoneFromLocationName(locationName: string): ZoneInfo {
+  const lower = locationName.toLowerCase();
+  if (lower.includes('frigo')) return ZONE_MAP.FRIGO;
+  if (lower.includes('pingu')) return ZONE_MAP.PINGU;
+  if (lower.includes('secco sopra') || lower.includes('secco-02')) return ZONE_MAP.SECCO2;
+  if (lower.includes('secco')) return ZONE_MAP.SECCO1;
+  return ZONE_MAP.ALTRO;
+}
+
+// ============================================================================
 // COMPONENTE PRINCIPALE
 // ============================================================================
 
@@ -342,6 +375,29 @@ export default function ConvalidaResiduiPage() {
       }
       return newSet;
     });
+  };
+
+  // Rileva la zona magazzino per un move
+  const getZoneForMove = (moveId: number): ZoneInfo => {
+    // 1. Da stock.move.line location (più specifica)
+    const lineInfos = lineInfoByMove[moveId] || [];
+    if (lineInfos.length > 0 && lineInfos[0].location) {
+      return detectZoneFromLocationName(lineInfos[0].location[1]);
+    }
+    // 2. Da productStock (dove c'è più giacenza)
+    const m = metaByMove[moveId];
+    if (m) {
+      const stocks = productStock[m.product_id[0]] || [];
+      if (stocks.length > 0) {
+        const best = stocks.reduce((a, b) => (b.qty - b.reserved) > (a.qty - a.reserved) ? b : a, stocks[0]);
+        return detectZoneFromLocationName(best.location);
+      }
+    }
+    // 3. Da stock.move location_id (generico)
+    if (m && m.location_id) {
+      return detectZoneFromLocationName(m.location_id[1]);
+    }
+    return ZONE_MAP.ALTRO;
   };
 
   // --------------------------------------------------------------------------
@@ -1522,7 +1578,9 @@ export default function ConvalidaResiduiPage() {
 
   const renderPicking = (pick: StockPicking) => {
     const saleName = pick.sale_id ? pick.sale_id[1] : pick.origin || '-';
-    const righe = moves.filter((m) => m.picking_id && m.picking_id[0] === pick.id);
+    const righe = moves
+      .filter((m) => m.picking_id && m.picking_id[0] === pick.id)
+      .sort((a, b) => getZoneForMove(a.id).order - getZoneForMove(b.id).order);
 
     // Formatta data di consegna
     const deliveryDate = pick.scheduled_date
@@ -1638,6 +1696,9 @@ export default function ConvalidaResiduiPage() {
     const uom = move.product_uom ? move.product_uom[1] : '-';
     const ubic = bestLocationForMove(move.id);
 
+    // Zona magazzino
+    const zone = getZoneForMove(move.id);
+
     // Info prodotto: stock, arrivi e prenotazioni
     const productId = move.product_id[0];
     const stock = productStock[productId] || [];
@@ -1659,11 +1720,17 @@ export default function ConvalidaResiduiPage() {
     const isExpanded = expandedMoves.has(move.id);
 
     return (
-      <div key={move.id} className="row" data-move={move.id} style={{ opacity: hasDriver ? 1 : 0.6 }}>
+      <div key={move.id} className="row" data-move={move.id} style={{ opacity: hasDriver ? 1 : 0.6, borderLeftColor: zone.borderColor }}>
         {/* SEZIONE COMPATTA - sempre visibile */}
         <div className="row-compact" style={{ gridColumn: '1 / -1' }}>
-          {/* Nome prodotto + UoM */}
+          {/* Badge zona + Nome prodotto + UoM */}
           <div className="prod-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span className="zone-badge" style={{
+              background: zone.bgColor,
+              color: zone.color,
+            }}>
+              {zone.label}
+            </span>
             <span>{move.product_id[1]}</span>
             <span style={{
               display: 'inline-block',
@@ -1961,7 +2028,7 @@ export default function ConvalidaResiduiPage() {
 
         <div className="status" id={`convalida_st_${move.id}`} style={{ gridColumn: '1 / -1' }}></div>
         <div className="bar" style={{ gridColumn: '1 / -1' }}>
-          <span id={`convalida_bar_${move.id}`} style={{ width: `${perc}%` }}></span>
+          <span id={`convalida_bar_${move.id}`} style={{ width: `${perc}%`, background: zone.barGradient }}></span>
         </div>
       </div>
     );
@@ -2392,6 +2459,22 @@ export default function ConvalidaResiduiPage() {
           font-weight: 700;
           font-size: 15px;
           color: var(--text);
+        }
+
+        .zone-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 10px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          white-space: nowrap;
+          min-width: 58px;
+          text-align: center;
+          flex-shrink: 0;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
 
         .toast {
