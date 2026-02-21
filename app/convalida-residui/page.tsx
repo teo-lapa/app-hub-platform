@@ -224,7 +224,8 @@ function detectZoneFromCategory(categoryCompleteName: string): ZoneInfo {
   if (root === 'pingu') return ZONE_MAP.PINGU;
   if (root === 'secco 2') return ZONE_MAP.SECCO2;
   if (root === 'secco') return ZONE_MAP.SECCO1;
-  return ZONE_MAP.ALTRO;
+  if (root === 'non food') return ZONE_MAP.SECCO2;
+  return ZONE_MAP.SECCO2;
 }
 
 // ============================================================================
