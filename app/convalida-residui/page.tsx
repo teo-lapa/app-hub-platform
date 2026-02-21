@@ -1654,28 +1654,20 @@ export default function ConvalidaResiduiPage() {
           </span>
           {hasDriver ? (
             <button
+              className="btn-convalida"
               onClick={() => handleConvalidaPicking(pick)}
               disabled={convalidaLoading === pick.id}
               style={{
-                background: 'var(--ok)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '12px 24px',
-                fontSize: 15,
-                fontWeight: 700,
                 cursor: convalidaLoading === pick.id ? 'wait' : 'pointer',
-                marginLeft: 'auto',
-                minHeight: 44
               }}
             >
-              {convalidaLoading === pick.id ? 'Convalida...' : 'CONVALIDA'}
+              {convalidaLoading === pick.id ? '...' : 'CONVALIDA'}
             </button>
           ) : (
             <span style={{
               marginLeft: 'auto',
-              padding: '12px 24px',
-              fontSize: 13,
+              padding: '4px 8px',
+              fontSize: 10,
               color: '#9ca3af',
               fontStyle: 'italic'
             }}>
@@ -2323,6 +2315,19 @@ export default function ConvalidaResiduiPage() {
           border-bottom: 1px solid var(--border);
         }
 
+        .btn-convalida {
+          background: var(--ok);
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 20px;
+          font-size: 14px;
+          font-weight: 700;
+          margin-left: auto;
+          min-height: 38px;
+          white-space: nowrap;
+        }
+
         .list .row {
           display: grid;
           grid-template-columns: minmax(280px, 1fr) 120px 160px auto auto;
@@ -2854,9 +2859,41 @@ export default function ConvalidaResiduiPage() {
             padding: 3px 6px;
             font-size: 10px;
           }
+          /* Dettagli espansi compatti */
           .row-details {
-            margin-top: 4px;
-            padding-top: 4px;
+            margin-top: 3px;
+            padding-top: 3px;
+          }
+          .row-details .sub {
+            margin-bottom: 3px !important;
+            font-size: 9px !important;
+            line-height: 1.3;
+          }
+          .row-details select {
+            margin-left: 4px;
+            font-size: 9px;
+            padding: 2px 4px;
+            min-height: 22px;
+          }
+          .row-details label {
+            font-size: 9px !important;
+          }
+          .row-details .btn.slim {
+            font-size: 8px !important;
+            padding: 2px 5px !important;
+            min-height: 20px !important;
+          }
+          /* Bottone CONVALIDA compatto */
+          .btn-convalida {
+            padding: 4px 10px !important;
+            font-size: 10px !important;
+            min-height: 24px !important;
+            border-radius: 6px !important;
+          }
+          /* Pick header compatto */
+          .pick-head .pill {
+            font-size: 8px;
+            padding: 1px 4px;
           }
           .qa-dialog {
             width: 95vw;
