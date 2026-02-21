@@ -749,15 +749,7 @@ export default function ConvalidaResiduiPage() {
       const userName = 'Operatore'; // Potresti passare il nome utente vero se disponibile
       const timestamp = new Date().toLocaleString('it-IT');
 
-      const message = `
-        <p><strong>✏️ Modifica quantità residui</strong></p>
-        <ul>
-          <li><strong>Prodotto:</strong> ${productName}</li>
-          <li><strong>Da:</strong> ${oldQty} → <strong>A:</strong> ${newQty}</li>
-          <li><strong>Modificato da:</strong> ${userName}</li>
-          <li><strong>Data:</strong> ${timestamp}</li>
-        </ul>
-      `;
+      const message = `✏️ Modifica quantità residui\nProdotto: ${productName}\nDa: ${oldQty} → A: ${newQty}\nModificato da: ${userName}\nData: ${timestamp}`;
 
       await callKwConvalida('stock.picking', 'message_post', [[pickingId]], {
         body: message,
@@ -876,7 +868,7 @@ export default function ConvalidaResiduiPage() {
       }
       
       await callKwConvalida('stock.picking', 'message_post', [[pick.id]], {
-        body: '<p><strong>Picking convalidato</strong> tramite App Convalida Residui</p>',
+        body: '✅ Picking convalidato tramite App Convalida Residui',
         message_type: 'comment',
         subtype_xmlid: 'mail.mt_note'
       });
@@ -1176,18 +1168,8 @@ export default function ConvalidaResiduiPage() {
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
       const locationName = selectedQuant ? selectedQuant.location_id[1] : 'Ubicazione';
-      const lotInfo = lotId ? `<li><strong>Lotto:</strong> ${lotName}</li>` : '';
-      const message = `
-        <p><strong>📦 Forza Inventario eseguito</strong></p>
-        <ul>
-          <li><strong>Prodotto:</strong> ${productName}</li>
-          <li><strong>Ubicazione:</strong> ${locationName}</li>
-          ${lotInfo}
-          <li><strong>Quantita' precedente:</strong> ${oldQuantity}</li>
-          <li><strong>Nuova quantita':</strong> ${newQuantity}</li>
-          <li><strong>Data:</strong> ${timestamp}</li>
-        </ul>
-      `;
+      const lotInfo = lotId ? `\nLotto: ${lotName}` : '';
+      const message = `📦 Forza Inventario eseguito\nProdotto: ${productName}\nUbicazione: ${locationName}${lotInfo}\nQuantita' precedente: ${oldQuantity}\nNuova quantita': ${newQuantity}\nData: ${timestamp}`;
 
       await callKwConvalida('stock.picking', 'message_post', [[pickingId]], {
         body: message,
@@ -1259,19 +1241,9 @@ export default function ConvalidaResiduiPage() {
       // Traccia nel chatter del picking
       if (pickId) {
         const timestamp = new Date().toLocaleString('it-IT');
-        const lotPart = lotName ? `<li><strong>Lotto:</strong> ${lotName}</li>` : '';
-        const expiryPart = lotExpiry ? `<li><strong>Scadenza:</strong> ${new Date(lotExpiry).toLocaleDateString('it-IT')}</li>` : '';
-        const message = `
-          <p><strong>📍 Cambio Ubicazione Prelievo</strong></p>
-          <ul>
-            <li><strong>Prodotto:</strong> ${productName}</li>
-            <li><strong>Da:</strong> ${oldLocation}</li>
-            <li><strong>A:</strong> ${newLocationName}</li>
-            ${lotPart}
-            ${expiryPart}
-            <li><strong>Data:</strong> ${timestamp}</li>
-          </ul>
-        `;
+        const lotPart = lotName ? `\nLotto: ${lotName}` : '';
+        const expiryPart = lotExpiry ? `\nScadenza: ${new Date(lotExpiry).toLocaleDateString('it-IT')}` : '';
+        const message = `📍 Cambio Ubicazione Prelievo\nProdotto: ${productName}\nDa: ${oldLocation}\nA: ${newLocationName}${lotPart}${expiryPart}\nData: ${timestamp}`;
         await callKwConvalida('stock.picking', 'message_post', [[pickId]], {
           body: message,
           message_type: 'comment',
@@ -1328,7 +1300,7 @@ export default function ConvalidaResiduiPage() {
     try {
       await callKwConvalida('stock.lot', 'write', [[scadenzaData.lotId], { expiration_date: newExpirationDate }], {});
       await callKwConvalida('stock.picking', 'message_post', [[scadenzaData.pickingId]], {
-        body: `<p>📅 <strong>Scadenza corretta</strong></p><p>Prodotto: ${scadenzaData.productName}<br/>Lotto: ${scadenzaData.lotName}<br/>Vecchia scadenza: ${scadenzaData.currentExpiration || 'N/A'}<br/>Nuova scadenza: ${newExpirationDate}</p>`,
+        body: `📅 Scadenza corretta\nProdotto: ${scadenzaData.productName}\nLotto: ${scadenzaData.lotName}\nVecchia scadenza: ${scadenzaData.currentExpiration || 'N/A'}\nNuova scadenza: ${newExpirationDate}`,
         message_type: 'comment', subtype_xmlid: 'mail.mt_note'
       });
       setToastMessage(`Scadenza aggiornata per lotto ${scadenzaData.lotName}`);
@@ -1525,17 +1497,7 @@ export default function ConvalidaResiduiPage() {
 
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
-      const message = `
-        <p><strong>🔄 Sostituzione Prodotto</strong></p>
-        <ul>
-          <li><strong>Prodotto originale (mancante):</strong> ${sostituzioneData.originalProductName}</li>
-          <li><strong>Quantità richiesta:</strong> ${sostituzioneData.originalQty}</li>
-          <li><strong>Prodotto sostitutivo:</strong> ${selectedSostituto.name}</li>
-          <li><strong>Quantità sostitutiva:</strong> ${sostituzioneQty}</li>
-          <li><strong>Data:</strong> ${timestamp}</li>
-        </ul>
-        <p><em>Aggiunto all'ordine ${sostituzioneData.saleOrderName}</em></p>
-      `;
+      const message = `🔄 Sostituzione Prodotto\nProdotto originale (mancante): ${sostituzioneData.originalProductName}\nQuantità richiesta: ${sostituzioneData.originalQty}\nProdotto sostitutivo: ${selectedSostituto.name}\nQuantità sostitutiva: ${sostituzioneQty}\nData: ${timestamp}\nAggiunto all'ordine ${sostituzioneData.saleOrderName}`;
 
       await callKwConvalida('stock.picking', 'message_post', [[sostituzioneData.pickingId]], {
         body: message,
@@ -1939,12 +1901,12 @@ export default function ConvalidaResiduiPage() {
 
                         // Traccia nel chatter
                         const timestamp = new Date().toLocaleString('it-IT');
-                        const lotPart = selectedStock.lotName ? `<li><strong>Lotto:</strong> ${selectedStock.lotName}</li>` : '';
+                        const lotPart = selectedStock.lotName ? `\nLotto: ${selectedStock.lotName}` : '';
                         const expiryPart = selectedStock.lotExpiry
-                          ? `<li><strong>Scadenza:</strong> ${new Date(selectedStock.lotExpiry).toLocaleDateString('it-IT')}</li>`
+                          ? `\nScadenza: ${new Date(selectedStock.lotExpiry).toLocaleDateString('it-IT')}`
                           : '';
                         await callKwConvalida('stock.picking', 'message_post', [[pick.id]], {
-                          body: `<p><strong>📍 Ubicazione Assegnata</strong></p><ul><li><strong>Prodotto:</strong> ${move.product_id[1]}</li><li><strong>Ubicazione:</strong> ${selectedStock.location}</li>${lotPart}${expiryPart}<li><strong>Data:</strong> ${timestamp}</li></ul>`,
+                          body: `📍 Ubicazione Assegnata\nProdotto: ${move.product_id[1]}\nUbicazione: ${selectedStock.location}${lotPart}${expiryPart}\nData: ${timestamp}`,
                           message_type: 'comment',
                           subtype_xmlid: 'mail.mt_note'
                         });
