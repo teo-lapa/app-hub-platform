@@ -218,12 +218,12 @@ const ZONE_MAP: Record<ZoneType, ZoneInfo> = {
   ALTRO:  { type: 'ALTRO',  label: 'ALTRO',   color: '#fff', bgColor: '#6b7280', barGradient: 'linear-gradient(90deg, #9ca3b8, #6b7280)', borderColor: '#6b7280', order: 5 },
 };
 
-function detectZoneFromLocationName(locationName: string): ZoneInfo {
-  const lower = locationName.toLowerCase();
-  if (lower.includes('frigo')) return ZONE_MAP.FRIGO;
-  if (lower.includes('pingu')) return ZONE_MAP.PINGU;
-  if (lower.includes('secco sopra') || lower.includes('secco-02')) return ZONE_MAP.SECCO2;
-  if (lower.includes('secco')) return ZONE_MAP.SECCO1;
+function detectZoneFromCategory(categoryCompleteName: string): ZoneInfo {
+  const root = categoryCompleteName.split(' / ')[0].toLowerCase().trim();
+  if (root === 'frigo') return ZONE_MAP.FRIGO;
+  if (root === 'pingu') return ZONE_MAP.PINGU;
+  if (root === 'secco 2') return ZONE_MAP.SECCO2;
+  if (root === 'secco') return ZONE_MAP.SECCO1;
   return ZONE_MAP.ALTRO;
 }
 
@@ -259,6 +259,9 @@ export default function ConvalidaResiduiPage() {
   const [productStock, setProductStock] = useState<Record<number, Array<{locationId: number, location: string, qty: number, reserved: number, lotId?: number, lotName?: string, lotExpiry?: string | null}>>>({});
   const [productIncoming, setProductIncoming] = useState<Record<number, Array<{name: string, qty: number, date: string}>>>({});
   const [productReservations, setProductReservations] = useState<Record<number, Array<{customer: string, qty: number, picking: string}>>>({});
+
+  // Zona magazzino per prodotto (da categ_id)
+  const [productZones, setProductZones] = useState<Record<number, ZoneInfo>>({});
 
   const [productCache, setProductCache] = useState<Record<string, Product[]>>({});
 
@@ -377,25 +380,12 @@ export default function ConvalidaResiduiPage() {
     });
   };
 
-  // Rileva la zona magazzino per un move
+  // Rileva la zona magazzino per un move (basata su categoria prodotto)
   const getZoneForMove = (moveId: number): ZoneInfo => {
-    // 1. Da stock.move.line location (più specifica)
-    const lineInfos = lineInfoByMove[moveId] || [];
-    if (lineInfos.length > 0 && lineInfos[0].location) {
-      return detectZoneFromLocationName(lineInfos[0].location[1]);
-    }
-    // 2. Da productStock (dove c'è più giacenza)
     const m = metaByMove[moveId];
     if (m) {
-      const stocks = productStock[m.product_id[0]] || [];
-      if (stocks.length > 0) {
-        const best = stocks.reduce((a, b) => (b.qty - b.reserved) > (a.qty - a.reserved) ? b : a, stocks[0]);
-        return detectZoneFromLocationName(best.location);
-      }
-    }
-    // 3. Da stock.move location_id (generico)
-    if (m && m.location_id) {
-      return detectZoneFromLocationName(m.location_id[1]);
+      const zone = productZones[m.product_id[0]];
+      if (zone) return zone;
     }
     return ZONE_MAP.ALTRO;
   };
@@ -530,6 +520,22 @@ export default function ConvalidaResiduiPage() {
       movesData.forEach((m) => {
         newMetaByMove[m.id] = m;
       });
+
+      // Carica categorie prodotti per determinare la zona magazzino
+      const productIds = Array.from(new Set(movesData.map(m => m.product_id[0])));
+      if (productIds.length > 0) {
+        const productsWithCateg = await searchReadConvalida<{ id: number; categ_id: [number, string] | false }>(
+          'product.product',
+          [['id', 'in', productIds]],
+          ['id', 'categ_id'],
+          0
+        );
+        const zones: Record<number, ZoneInfo> = {};
+        productsWithCateg.forEach((p) => {
+          zones[p.id] = p.categ_id ? detectZoneFromCategory(p.categ_id[1]) : ZONE_MAP.ALTRO;
+        });
+        setProductZones(zones);
+      }
 
       const newGroups = new Map<string, GroupData>();
       for (const p of picksData) {
