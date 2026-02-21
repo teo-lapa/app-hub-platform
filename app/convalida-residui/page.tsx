@@ -2693,105 +2693,155 @@ export default function ConvalidaResiduiPage() {
           color: #0f172a;
         }
 
-        /* TABLET OPTIMIZATION (768px - 1024px) */
+        /* TABLET OPTIMIZATION (768px - 1024px) — ultra compatto */
         @media (min-width: 768px) and (max-width: 1024px) {
           .wrap {
-            padding: 0 12px 24px;
+            padding: 0 8px 12px;
           }
           .title {
-            font-size: 16px;
+            font-size: 15px;
           }
           .topbar {
-            gap: 8px;
-            padding: 10px 12px;
+            gap: 6px;
+            padding: 6px 8px;
           }
           .btn {
-            min-height: 38px;
-            padding: 8px 12px;
-            font-size: 12px;
+            min-height: 30px;
+            padding: 5px 10px;
+            font-size: 11px;
           }
           .btn.slim {
-            min-height: 32px;
-            padding: 6px 10px;
-            font-size: 11px;
+            min-height: 26px;
+            padding: 4px 8px;
+            font-size: 10px;
           }
           .btn.filter-btn {
-            padding: 4px 8px;
+            padding: 3px 7px;
             font-size: 10px;
-            min-height: 28px;
+            min-height: 24px;
           }
           .filters-bar {
-            gap: 8px;
-            padding: 8px 0;
+            gap: 6px;
+            padding: 4px 0;
           }
           .filter-group {
-            gap: 3px;
+            gap: 2px;
           }
           .filter-label {
-            font-size: 10px;
+            font-size: 9px;
           }
           .pill {
-            font-size: 10px;
-            padding: 4px 8px;
+            font-size: 9px;
+            padding: 2px 6px;
+            min-height: 24px;
+            gap: 4px;
           }
           .card {
-            padding: 10px;
+            padding: 8px;
+            margin: 6px 0;
+            border-radius: 10px;
           }
           .pick-head {
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
           }
           .pick-head button {
-            min-height: 36px;
-            padding: 8px 14px;
-            font-size: 12px;
-          }
-          .ghead {
-            gap: 6px;
-          }
-          .ghead .pill {
+            min-height: 30px;
+            padding: 5px 12px;
             font-size: 11px;
           }
+          .ghead {
+            gap: 4px;
+            margin-bottom: 4px;
+          }
+          .ghead .pill {
+            font-size: 10px;
+          }
           .list .row {
-            grid-template-columns: 1fr auto auto;
-            gap: 8px;
-            padding: 10px;
+            gap: 6px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            border-radius: 8px;
+            border-left-width: 3px;
+          }
+          .row-compact {
+            gap: 6px !important;
+          }
+          .row-compact .prod-name {
+            font-size: 12px !important;
+            min-width: 150px !important;
+            gap: 4px !important;
+          }
+          .zone-badge {
+            font-size: 8px !important;
+            padding: 1px 5px !important;
+            min-width: 42px !important;
+            letter-spacing: 0.3px !important;
+          }
+          .row-compact .qty {
+            font-size: 11px;
           }
           .row .prod {
             grid-column: 1 / -1;
-            font-size: 12px;
+            font-size: 11px;
           }
           .row .bar {
             grid-column: 1 / -1;
-            height: 8px;
+            height: 4px;
+          }
+          .bar {
+            height: 4px;
           }
           .row .sub {
-            font-size: 11px;
+            font-size: 10px;
           }
           .row .info {
-            font-size: 10px;
+            font-size: 9px;
           }
           .row .actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 3px;
             justify-content: flex-end;
           }
           .row .actions .btn.slim {
-            min-height: 30px;
-            padding: 5px 8px;
-            font-size: 10px;
+            min-height: 24px;
+            padding: 3px 6px;
+            font-size: 9px;
           }
           input[type='number'] {
-            width: 70px;
-            min-height: 36px;
-            padding: 8px 10px;
+            width: 58px;
+            max-width: 58px;
+            min-height: 30px;
+            padding: 4px 6px;
             font-size: 14px;
+            border-radius: 8px;
+            border-width: 1px;
+          }
+          .btn-expand {
+            min-width: 28px;
+            min-height: 28px;
+            padding: 3px 6px;
+          }
+          .btn-expand svg {
+            width: 14px;
+            height: 14px;
+          }
+          .btn.green {
+            padding: 4px 10px !important;
+            font-size: 10px !important;
+            min-height: 28px;
           }
           select {
-            min-height: 36px;
-            padding: 6px 10px;
-            font-size: 11px;
+            min-height: 28px;
+            padding: 4px 8px;
+            font-size: 10px;
+          }
+          .row-details {
+            margin-top: 6px;
+            padding-top: 6px;
           }
           .qa-dialog {
             width: 95vw;
@@ -2814,10 +2864,10 @@ export default function ConvalidaResiduiPage() {
 
         @media (max-width: 1024px) {
           .wrap {
-            padding: 0 10px 24px;
+            padding: 0 8px 12px;
           }
           .title {
-            font-size: 18px;
+            font-size: 16px;
           }
           .list .row {
             grid-template-columns: 1fr 1fr;
