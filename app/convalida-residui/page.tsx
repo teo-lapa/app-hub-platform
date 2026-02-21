@@ -2693,36 +2693,36 @@ export default function ConvalidaResiduiPage() {
           color: #0f172a;
         }
 
-        /* TABLET OPTIMIZATION (768px - 1024px) — ultra compatto */
-        @media (min-width: 768px) and (max-width: 1024px) {
+        /* TABLET/MOBILE — ultra compatto, righe sottili */
+        @media (max-width: 1024px) {
           .wrap {
-            padding: 0 8px 12px;
+            padding: 0 6px 8px;
           }
           .title {
-            font-size: 15px;
+            font-size: 14px;
           }
           .topbar {
-            gap: 6px;
-            padding: 6px 8px;
+            gap: 4px;
+            padding: 4px 6px;
           }
           .btn {
-            min-height: 30px;
-            padding: 5px 10px;
+            min-height: 28px;
+            padding: 4px 8px;
             font-size: 11px;
           }
           .btn.slim {
-            min-height: 26px;
-            padding: 4px 8px;
+            min-height: 24px;
+            padding: 3px 6px;
             font-size: 10px;
           }
           .btn.filter-btn {
-            padding: 3px 7px;
-            font-size: 10px;
-            min-height: 24px;
+            padding: 2px 6px;
+            font-size: 9px;
+            min-height: 22px;
           }
           .filters-bar {
-            gap: 6px;
-            padding: 4px 0;
+            gap: 4px;
+            padding: 2px 0;
           }
           .filter-group {
             gap: 2px;
@@ -2732,116 +2732,131 @@ export default function ConvalidaResiduiPage() {
           }
           .pill {
             font-size: 9px;
-            padding: 2px 6px;
-            min-height: 24px;
-            gap: 4px;
+            padding: 1px 5px;
+            min-height: 20px;
+            gap: 3px;
           }
           .card {
-            padding: 8px;
-            margin: 6px 0;
-            border-radius: 10px;
-          }
-          .pick-head {
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-            padding-bottom: 6px;
-          }
-          .pick-head button {
-            min-height: 30px;
-            padding: 5px 12px;
-            font-size: 11px;
-          }
-          .ghead {
-            gap: 4px;
-            margin-bottom: 4px;
-          }
-          .ghead .pill {
-            font-size: 10px;
-          }
-          .list .row {
-            gap: 6px;
-            padding: 6px 8px;
+            padding: 6px;
             margin: 4px 0;
             border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          }
+          .pick-head {
+            gap: 3px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+          }
+          .pick-head button {
+            min-height: 26px;
+            padding: 4px 10px;
+            font-size: 10px;
+          }
+          .ghead {
+            gap: 3px;
+            margin-bottom: 2px;
+          }
+          .ghead .pill {
+            font-size: 9px;
+          }
+          /* Riga prodotto: sottilissima */
+          .list .row {
+            gap: 2px;
+            padding: 4px 6px;
+            margin: 3px 0;
+            border-radius: 6px;
             border-left-width: 3px;
+            grid-template-columns: 1fr 1fr;
           }
+          .row .prod, .row .bar {
+            grid-column: 1 / -1;
+          }
+          /* Layout compatto: 2 righe strette */
           .row-compact {
-            gap: 6px !important;
+            display: grid !important;
+            grid-template-columns: 1fr auto auto auto auto;
+            grid-template-rows: auto auto;
+            gap: 2px 6px !important;
+            align-items: center;
           }
+          /* Riga 1: badge + nome (tutta la larghezza) */
           .row-compact .prod-name {
-            font-size: 12px !important;
-            min-width: 150px !important;
+            grid-column: 1 / -1;
+            grid-row: 1;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            min-width: 0 !important;
             gap: 4px !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden;
+          }
+          .row-compact .prod-name > span:nth-child(2) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          /* Nascondi UoM pill nel compatto (visibile nei dettagli) */
+          .row-compact .prod-name > span:nth-child(3) {
+            display: none;
+          }
+          /* Riga 2: Prev + Fatto + input + SALVA + expand */
+          .row-compact .qty {
+            grid-row: 2;
+            font-size: 11px;
+            white-space: nowrap;
           }
           .zone-badge {
-            font-size: 8px !important;
-            padding: 1px 5px !important;
-            min-width: 42px !important;
-            letter-spacing: 0.3px !important;
-          }
-          .row-compact .qty {
-            font-size: 11px;
-          }
-          .row .prod {
-            grid-column: 1 / -1;
-            font-size: 11px;
-          }
-          .row .bar {
-            grid-column: 1 / -1;
-            height: 4px;
-          }
-          .bar {
-            height: 4px;
+            font-size: 7px !important;
+            padding: 1px 4px !important;
+            min-width: 36px !important;
+            letter-spacing: 0.2px !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
           }
           .row .sub {
-            font-size: 10px;
+            font-size: 9px;
           }
           .row .info {
             font-size: 9px;
           }
-          .row .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 3px;
-            justify-content: flex-end;
+          /* Barra progresso sottilissima */
+          .bar {
+            height: 3px !important;
           }
-          .row .actions .btn.slim {
-            min-height: 24px;
-            padding: 3px 6px;
-            font-size: 9px;
-          }
+          /* Input numero piccolo */
           input[type='number'] {
-            width: 58px;
-            max-width: 58px;
-            min-height: 30px;
-            padding: 4px 6px;
-            font-size: 14px;
-            border-radius: 8px;
+            width: 50px;
+            max-width: 50px;
+            min-height: 26px;
+            padding: 2px 4px;
+            font-size: 13px;
+            border-radius: 6px;
             border-width: 1px;
           }
+          /* Bottoni compatti */
           .btn-expand {
-            min-width: 28px;
-            min-height: 28px;
-            padding: 3px 6px;
+            min-width: 24px;
+            min-height: 24px;
+            padding: 2px 4px;
           }
           .btn-expand svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
           }
           .btn.green {
-            padding: 4px 10px !important;
-            font-size: 10px !important;
-            min-height: 28px;
+            padding: 2px 8px !important;
+            font-size: 9px !important;
+            min-height: 24px;
           }
           select {
-            min-height: 28px;
-            padding: 4px 8px;
+            min-height: 26px;
+            padding: 3px 6px;
             font-size: 10px;
           }
           .row-details {
-            margin-top: 6px;
-            padding-top: 6px;
+            margin-top: 4px;
+            padding-top: 4px;
           }
           .qa-dialog {
             width: 95vw;
@@ -2862,38 +2877,7 @@ export default function ConvalidaResiduiPage() {
           }
         }
 
-        @media (max-width: 1024px) {
-          .wrap {
-            padding: 0 8px 12px;
-          }
-          .title {
-            font-size: 16px;
-          }
-          .list .row {
-            grid-template-columns: 1fr 1fr;
-          }
-          .row .prod,
-          .row .bar {
-            grid-column: 1 / -1;
-          }
-          .qa-dialog {
-            width: 95vw;
-            max-height: 85vh;
-            display: flex;
-            flex-direction: column;
-          }
-          .qa-body {
-            flex: 1;
-            overflow-y: auto;
-            max-height: calc(85vh - 140px);
-          }
-          .qa-foot {
-            flex-shrink: 0;
-          }
-          .qa-suggest {
-            max-height: 30vh;
-          }
-        }
+        /* max-width 1024px rules merged into main tablet block above */
 
         @media (max-width: 768px) {
           body {
