@@ -11,6 +11,7 @@ const nextConfig = {
   },
   // Optimize serverless function size for Vercel
   experimental: {
+    serverComponentsExternalPackages: ['sharp'],
     outputFileTracingExcludes: {
       '*': [
         'node_modules/@swc/core-linux-x64-gnu',
