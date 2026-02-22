@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
-// Nota: sharp rimosso per compatibilità Vercel serverless
-// La conversione PNG->JPEG è gestita lato client o tramite fallback mimetype
+// Nota: usa jimp per conversione PNG->JPEG (compatibile con Vercel serverless)
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minuti per pubblicazione completa
@@ -150,17 +149,18 @@ async function uploadImageToOdoo(
 
   // INSTAGRAM FIX: Instagram richiede JPEG reale (non basta cambiare mimetype)
   if (forSocial && mimetype !== 'image/jpeg') {
-    console.log(`  🔄 Image is ${mimetype}, converting to real JPEG with sharp...`);
+    console.log(`  🔄 Image is ${mimetype}, converting to real JPEG with jimp...`);
     try {
-      const sharp = require('sharp');
+      const { Jimp } = await import('jimp');
       const inputBuffer = Buffer.from(cleanBase64, 'base64');
-      const jpegBuffer = await sharp(inputBuffer).jpeg({ quality: 90 }).toBuffer();
-      cleanBase64 = jpegBuffer.toString('base64');
+      const image = await Jimp.read(inputBuffer);
+      const jpegBuffer = await image.getBuffer('image/jpeg', { quality: 90 });
+      cleanBase64 = Buffer.from(jpegBuffer).toString('base64');
       mimetype = 'image/jpeg';
       filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
       console.log(`  ✅ Converted to JPEG (${Math.round(jpegBuffer.length / 1024)}KB)`);
     } catch (e: any) {
-      console.error(`  ⚠️ Sharp conversion failed: ${e.message}, using original`);
+      console.error(`  ⚠️ Jimp conversion failed: ${e.message}, using original`);
       mimetype = 'image/jpeg';
       filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
     }

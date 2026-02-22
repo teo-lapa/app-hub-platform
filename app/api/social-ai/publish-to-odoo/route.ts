@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const sharp = require('sharp');
 
 /**
  * Rileva il formato immagine dai magic bytes
@@ -16,7 +14,7 @@ function detectImageFormat(buffer: Buffer): string {
 }
 
 /**
- * Converte un'immagine in JPEG usando sharp
+ * Converte un'immagine in JPEG usando jimp (puro JS/WASM, no binari nativi)
  * Instagram accetta SOLO JPEG veri - WebP/PNG mascherati da JPEG vengono rifiutati
  */
 async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype: string; extension: string }> {
@@ -27,16 +25,15 @@ async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype
     return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
   }
 
-  console.log(`🔄 [PUBLISH-ODOO] Conversione ${format.toUpperCase()} → JPEG con sharp...`);
+  console.log(`🔄 [PUBLISH-ODOO] Conversione ${format.toUpperCase()} → JPEG con jimp...`);
   try {
-    const jpegBuffer = await sharp(buffer)
-      .jpeg({ quality: 90 })
-      .toBuffer();
-    const metadata = await sharp(buffer).metadata();
-    console.log(`✅ [PUBLISH-ODOO] Convertito: ${metadata.width}x${metadata.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
-    return { buffer: jpegBuffer, mimetype: 'image/jpeg', extension: 'jpg' };
+    const { Jimp } = await import('jimp');
+    const image = await Jimp.read(buffer);
+    const jpegBuffer = await image.getBuffer('image/jpeg', { quality: 90 });
+    console.log(`✅ [PUBLISH-ODOO] Convertito: ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    return { buffer: Buffer.from(jpegBuffer), mimetype: 'image/jpeg', extension: 'jpg' };
   } catch (e: any) {
-    console.error('⚠️ [PUBLISH-ODOO] Errore conversione sharp:', e.message);
+    console.error('⚠️ [PUBLISH-ODOO] Errore conversione jimp:', e.message);
     return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
   }
 }
