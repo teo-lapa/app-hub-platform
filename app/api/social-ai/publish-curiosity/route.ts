@@ -65,14 +65,24 @@ async function uploadImageToOdoo(
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
   let mimetype = mimeMatch ? mimeMatch[1] : 'image/png';
 
-  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+  let cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
-  // INSTAGRAM FIX: Instagram accetta SOLO image/jpeg
-  // Forza il mimetype a JPEG per evitare errori
+  // INSTAGRAM FIX: Instagram richiede JPEG reale (non basta cambiare mimetype)
   if (mimetype !== 'image/jpeg') {
-    console.log(`  ⚠️ Instagram requires JPEG. Converting from ${mimetype} to image/jpeg`);
-    mimetype = 'image/jpeg';
-    filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+    console.log(`  🔄 Instagram requires JPEG. Converting ${mimetype} to real JPEG with sharp...`);
+    try {
+      const sharp = require('sharp');
+      const inputBuffer = Buffer.from(cleanBase64, 'base64');
+      const jpegBuffer = await sharp(inputBuffer).jpeg({ quality: 90 }).toBuffer();
+      cleanBase64 = jpegBuffer.toString('base64');
+      mimetype = 'image/jpeg';
+      filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+      console.log(`  ✅ Converted to JPEG (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    } catch (e: any) {
+      console.error(`  ⚠️ Sharp conversion failed: ${e.message}, using original`);
+      mimetype = 'image/jpeg';
+      filename = filename.replace(/\.(png|webp|gif)$/i, '.jpg');
+    }
   }
 
   // Genera access_token per Instagram/Facebook API

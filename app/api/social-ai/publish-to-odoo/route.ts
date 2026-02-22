@@ -1,41 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
-import { PNG } from 'pngjs';
-import * as jpeg from 'jpeg-js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sharp = require('sharp');
 
 /**
- * Converte un'immagine in JPEG se necessario
- * Instagram accetta SOLO JPEG, quindi convertiamo sempre per sicurezza
+ * Rileva il formato immagine dai magic bytes
  */
-function convertToJpeg(buffer: Buffer): { buffer: Buffer; mimetype: string; extension: string } {
-  // Se è già JPEG, restituisci così com'è
-  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+function detectImageFormat(buffer: Buffer): string {
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return 'jpeg';
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return 'png';
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return 'webp';
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) return 'gif';
+  return 'unknown';
+}
+
+/**
+ * Converte un'immagine in JPEG usando sharp
+ * Instagram accetta SOLO JPEG veri - WebP/PNG mascherati da JPEG vengono rifiutati
+ */
+async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype: string; extension: string }> {
+  const format = detectImageFormat(buffer);
+
+  if (format === 'jpeg') {
     console.log('✅ [PUBLISH-ODOO] Immagine già JPEG');
     return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
   }
 
-  // Se è PNG, converti in JPEG
-  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-    console.log('🔄 [PUBLISH-ODOO] Conversione PNG → JPEG...');
-    try {
-      const png = PNG.sync.read(buffer);
-      const jpegData = jpeg.encode({
-        data: png.data,
-        width: png.width,
-        height: png.height
-      }, 90);
-      console.log(`✅ [PUBLISH-ODOO] Convertito: ${png.width}x${png.height} (${Math.round(jpegData.data.length / 1024)}KB)`);
-      return { buffer: jpegData.data, mimetype: 'image/jpeg', extension: 'jpg' };
-    } catch (e: any) {
-      console.error('⚠️ [PUBLISH-ODOO] Errore conversione:', e.message);
-      // Fallback: restituisci originale
-      return { buffer, mimetype: 'image/png', extension: 'png' };
-    }
+  console.log(`🔄 [PUBLISH-ODOO] Conversione ${format.toUpperCase()} → JPEG con sharp...`);
+  try {
+    const jpegBuffer = await sharp(buffer)
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const metadata = await sharp(buffer).metadata();
+    console.log(`✅ [PUBLISH-ODOO] Convertito: ${metadata.width}x${metadata.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    return { buffer: jpegBuffer, mimetype: 'image/jpeg', extension: 'jpg' };
+  } catch (e: any) {
+    console.error('⚠️ [PUBLISH-ODOO] Errore conversione sharp:', e.message);
+    return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
   }
-
-  // Altri formati: restituisci come JPEG (potrebbe non funzionare)
-  console.warn('⚠️ [PUBLISH-ODOO] Formato non riconosciuto, uso originale');
-  return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
 }
 
 export const runtime = 'nodejs';
@@ -231,11 +234,18 @@ export async function POST(req: NextRequest) {
         }
 
         // Determina formato originale
+        const detectedFormat = detectImageFormat(buffer);
         let origMimetype = 'image/png';
         let origExtension = 'png';
-        if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+        if (detectedFormat === 'jpeg') {
           origMimetype = 'image/jpeg';
           origExtension = 'jpg';
+        } else if (detectedFormat === 'webp') {
+          origMimetype = 'image/webp';
+          origExtension = 'webp';
+        } else if (detectedFormat === 'gif') {
+          origMimetype = 'image/gif';
+          origExtension = 'gif';
         }
 
         // Salva versione originale per Facebook, Twitter, LinkedIn
@@ -246,7 +256,7 @@ export async function POST(req: NextRequest) {
         console.log(`📦 [PUBLISH-ODOO] Immagine originale: ${origMimetype} (${Math.round(buffer.length / 1024)}KB)`);
 
         // Converti in JPEG per Instagram (solo se necessario)
-        const { buffer: jpegBuffer, mimetype: jpegMimetype, extension: jpegExt } = convertToJpeg(buffer);
+        const { buffer: jpegBuffer, mimetype: jpegMimetype, extension: jpegExt } = await convertToJpeg(buffer);
         jpegImageBase64 = jpegBuffer.toString('base64');
         jpegImageName = `social-ai-${Date.now()}.${jpegExt}`;
 
