@@ -228,6 +228,16 @@ function requireAuth(ctx: ToolContext): number {
   return ctx.customerId;
 }
 
+// Build product URL from name and template ID (Odoo website format)
+function buildProductUrl(name: string, tmplId: number): string {
+  const slug = name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `https://lapa.ch/shop/${slug}-${tmplId}`;
+}
+
 export const toolExecutors: Record<string, ToolExecutor> = {
 
   // ---- PRODUCTS ----
@@ -241,17 +251,21 @@ export const toolExecutors: Record<string, ToolExecutor> = {
     }
     // Return clean product data (no internal costs/margins)
     return {
-      products: result.data.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        code: p.default_code || undefined,
-        category: p.categ_id?.[1] || 'General',
-        price: p.list_price,
-        currency: 'CHF',
-        available: p.qty_available > 0,
-        qty_available: p.qty_available,
-        unit: p.uom_id?.[1] || 'Unit',
-      })),
+      products: result.data.map((p: any) => {
+        const tmplId = Array.isArray(p.product_tmpl_id) ? p.product_tmpl_id[0] : p.product_tmpl_id || p.id;
+        return {
+          id: p.id,
+          name: p.name,
+          code: p.default_code || undefined,
+          category: p.categ_id?.[1] || 'General',
+          price: p.list_price,
+          currency: 'CHF',
+          available: p.qty_available > 0,
+          qty_available: p.qty_available,
+          unit: p.uom_id?.[1] || 'Unit',
+          url: buildProductUrl(p.name, tmplId),
+        };
+      }),
       total_found: result.data.length,
     };
   },

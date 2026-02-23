@@ -358,9 +358,24 @@ export default function LapaAgentsWidgetPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Render inline text: **bold** and [links](urls) with product buttons
+  // Product button component (reused for markdown links and bare URLs)
+  const productButton = (key: string, url: string, label: string) => (
+    <a
+      key={key}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 px-2.5 py-1 my-0.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-200 transition-colors"
+    >
+      {label}
+      <svg className="w-3 h-3 opacity-50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+    </a>
+  );
+
+  // Render inline text: **bold**, [links](urls), and bare product URLs
   const renderInline = (text: string) => {
-    const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\))/g;
+    // Combined regex: **bold** | [markdown](links) | bare lapa.ch/shop URLs
+    const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/lapa\.ch\/shop\/[^\s),]+))/g;
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     let match;
@@ -374,30 +389,21 @@ export default function LapaAgentsWidgetPage() {
         // **bold**
         parts.push(<strong key={`b-${k++}`}>{match[2]}</strong>);
       } else if (match[3] && match[4]) {
+        // [text](url) markdown link
         const linkText = match[3];
         const linkUrl = match[4];
         if (linkUrl.includes('lapa.ch/shop')) {
-          // Product link → small elegant button
-          parts.push(
-            <a
-              key={`pl-${k++}`}
-              href={linkUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1 my-0.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-200 transition-colors"
-            >
-              {linkText}
-              <svg className="w-3 h-3 opacity-50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-            </a>
-          );
+          parts.push(productButton(`pl-${k++}`, linkUrl, linkText));
         } else {
-          // Normal link
           parts.push(
             <a key={`l-${k++}`} href={linkUrl} target="_blank" rel="noopener noreferrer"
               className="text-red-600 hover:text-red-700 underline font-medium"
             >{linkText}</a>
           );
         }
+      } else if (match[5]) {
+        // Bare URL https://lapa.ch/shop/... → product button
+        parts.push(productButton(`bu-${k++}`, match[5], 'Vedi prodotto'));
       }
       lastIndex = match.index + match[0].length;
     }
