@@ -16,8 +16,8 @@
     buttonColor: '#dc2626', // red-600
     buttonHoverColor: '#b91c1c', // red-700
     buttonSize: 60,
-    chatWidth: 380,
-    chatHeight: 600,
+    chatWidth: 440,
+    chatHeight: 700,
     position: 'right', // 'right' o 'left'
     bottomOffset: 20,
     sideOffset: 20,

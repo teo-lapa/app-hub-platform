@@ -358,45 +358,67 @@ export default function LapaAgentsWidgetPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Render message content with clickable links
-  const renderMessageContent = (content: string) => {
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  // Render inline text: **bold** and [links](urls) with product buttons
+  const renderInline = (text: string) => {
+    const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\))/g;
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     let match;
-    let keyIndex = 0;
+    let k = 0;
 
-    while ((match = linkRegex.exec(content)) !== null) {
+    while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(content.substring(lastIndex, match.index));
+        parts.push(text.substring(lastIndex, match.index));
       }
-
-      const linkText = match[1];
-      const linkUrl = match[2];
-      parts.push(
-        <a
-          key={`link-${keyIndex++}`}
-          href={linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-red-600 hover:text-red-700 underline font-medium"
-        >
-          {linkText}
-        </a>
-      );
-
+      if (match[2]) {
+        // **bold**
+        parts.push(<strong key={`b-${k++}`}>{match[2]}</strong>);
+      } else if (match[3] && match[4]) {
+        const linkText = match[3];
+        const linkUrl = match[4];
+        if (linkUrl.includes('lapa.ch/shop')) {
+          // Product link → small elegant button
+          parts.push(
+            <a
+              key={`pl-${k++}`}
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 my-0.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-200 transition-colors"
+            >
+              {linkText}
+              <svg className="w-3 h-3 opacity-50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            </a>
+          );
+        } else {
+          // Normal link
+          parts.push(
+            <a key={`l-${k++}`} href={linkUrl} target="_blank" rel="noopener noreferrer"
+              className="text-red-600 hover:text-red-700 underline font-medium"
+            >{linkText}</a>
+          );
+        }
+      }
       lastIndex = match.index + match[0].length;
     }
+    if (lastIndex < text.length) parts.push(text.substring(lastIndex));
+    return parts.length > 0 ? parts : [text];
+  };
 
-    if (lastIndex < content.length) {
-      parts.push(content.substring(lastIndex));
-    }
-
-    if (parts.length === 0) {
-      return content;
-    }
-
-    return parts;
+  // Render message: paragraphs, bold, product buttons
+  const renderMessageContent = (content: string) => {
+    const paragraphs = content.split(/\n{2,}/);
+    return (
+      <>
+        {paragraphs.map((para, pIdx) => (
+          <div key={`p-${pIdx}`} className={pIdx > 0 ? 'mt-2' : ''}>
+            {para.split('\n').map((line, lIdx) => (
+              <div key={`l-${pIdx}-${lIdx}`}>{renderInline(line)}</div>
+            ))}
+          </div>
+        ))}
+      </>
+    );
   };
 
   const sendMessage = async (messageText?: string) => {
@@ -647,7 +669,7 @@ export default function LapaAgentsWidgetPage() {
                     : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>
+                <div>{renderMessageContent(msg.content)}</div>
 
                 {msg.attachments && msg.attachments.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-red-500/20 flex flex-wrap gap-1">
@@ -689,7 +711,7 @@ export default function LapaAgentsWidgetPage() {
           </motion.div>
         ))}
 
-        {isLoading && (
+        {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
