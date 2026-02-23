@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
 
             // Make Claude API call
             const response = await anthropic.messages.create({
-              model: 'claude-sonnet-4-6-20250217',
+              model: 'claude-sonnet-4-5-20250929',
               max_tokens: 4096,
               temperature: 0.7,
               system: [
@@ -389,7 +389,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'online',
     version: 'v2-streaming',
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-4-5',
     timestamp: new Date().toISOString(),
   });
 }
