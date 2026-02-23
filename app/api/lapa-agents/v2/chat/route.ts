@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
         let fullResponse = '';
         let currentMessages = [...messages];
         let iterations = 0;
-        const MAX_ITERATIONS = 5; // Safety limit for tool-use loops
+        const MAX_ITERATIONS = 8; // Safety limit for tool-use loops (increased for multi-search queries)
 
         try {
           while (iterations < MAX_ITERATIONS) {

@@ -314,31 +314,71 @@ export class ProductsAgent {
       }
 
       // Mappa sinonimi/alias per espandere ricerche comuni
-      // Se l'utente cerca "spaghetti" ma in Odoo sono catalogati come "SPAGHETTO", trova comunque
+      // Include: varianti linguistiche, nomi commerciali, prodotti correlati nella stessa famiglia
       const synonymsMap: Record<string, string[]> = {
+        // === PASTA ===
         'spaghetti': ['spaghetto', 'spaghettini', 'spaghettoni', 'spaghet'],
         'spaghetto': ['spaghetti', 'spaghettini', 'spaghettoni'],
         'pasta': ['penne', 'rigatoni', 'fusilli', 'linguine', 'tagliatelle', 'paccheri'],
-        'prosciutto': ['prosciut'],
-        'mozzarella': ['mozzarel', 'fior di latte'],
-        'parmigiano': ['parmigian', 'grana'],
-        'pecorino': ['pecorin'],
-        'guanciale': ['guancial', 'pancetta'],
-        'pancetta': ['pancett', 'guanciale'],
-        'pomodoro': ['pomodor', 'pelati', 'passata'],
-        'olio': ['extravergine', 'evo'],
-        'aceto': ['balsamico'],
-        // Frutti di mare - IMPORTANTE per ricerche astice/coda
+        // === FORMAGGI & LATTICINI ===
+        'mozzarella': ['mozzarel', 'fiordilatte', 'fior di latte', 'mozzamix', 'bocconcino', 'treccia', 'treccione', 'nodino', 'ciliegine', 'filone'],
+        'fiordilatte': ['fior di latte', 'mozzarella', 'mozzarel', 'julienne', 'bocconcino', 'treccia', 'treccina', 'nodino', 'ciliegine', 'filone'],
+        'julienne': ['fiordilatte', 'fior di latte', 'mozzarella', 'mozzamix', 'taglio napoli'],
+        'mozzamix': ['mozzarella', 'fiordilatte', 'julienne', 'cuor di pizza', 'pizzalux'],
+        'bufala': ['mozzarella', 'burrata', 'treccia', 'treccione', 'bocconcino'],
+        'burrata': ['burrat', 'stracciatella'],
+        'parmigiano': ['parmigian', 'grana', 'reggiano'],
+        'grana': ['parmigiano', 'parmigian', 'padano'],
+        'pecorino': ['pecorin', 'romano', 'sardo'],
+        'provolone': ['provola', 'provolon'],
+        'scamorza': ['scamorz', 'provola'],
+        'ricotta': ['ricott'],
+        'mascarpone': ['mascarpon'],
+        'gorgonzola': ['gorgonzol'],
+        'taleggio': ['taleggi'],
+        // === SALUMI ===
+        'prosciutto': ['prosciut', 'crudo', 'cotto', 'speck'],
+        'salame': ['salami', 'salam', 'sopressata', 'cacciatore', 'felino', 'milano', 'napoli', 'ventricina', 'spianata'],
+        'salami': ['salame', 'salam'],
+        'guanciale': ['guancial', 'pancetta', 'bacon'],
+        'pancetta': ['pancett', 'guanciale', 'bacon'],
+        'nduja': ['anduja', "'nduja", 'nduja piccante'],
+        'bresaola': ['bresaol'],
+        'mortadella': ['mortadell'],
+        'coppa': ['capocollo', 'capicollo'],
+        'speck': ['prosciutto', 'affumicato'],
+        'sopressata': ['soppressata', 'salame'],
+        // === POMODORI & SALSE ===
+        'pomodoro': ['pomodor', 'pelati', 'passata', 'pomodorini', 'ciliegino', 'san marzano', 'datterino'],
+        'pelati': ['pomodoro', 'pomodor', 'san marzano'],
+        'passata': ['pomodoro', 'pomodor', 'pelati'],
+        // === OLIO & CONDIMENTI ===
+        'olio': ['extravergine', 'evo', 'oliva'],
+        'aceto': ['balsamico', 'modena'],
+        // === PESCE & FRUTTI DI MARE ===
         'astice': ['hummer', 'lobster', 'aragosta'],
         'coda': ['hummerschwaenze', 'schwanz', 'tail', 'code'],
         'aragosta': ['astice', 'lobster', 'hummer'],
         'polpo': ['octopus', 'poulpe', 'krake', 'tentacoli'],
-        'gamberi': ['gamber', 'shrimp', 'garnelen', 'crevettes'],
+        'gamberi': ['gamber', 'shrimp', 'garnelen', 'crevettes', 'gamberetto', 'gamberoni'],
         'scampi': ['scampo', 'langoustine'],
         'seppia': ['sepia', 'cuttlefish', 'seppie'],
         'calamari': ['calamar', 'squid', 'totani'],
         'vongole': ['vongola', 'clams', 'muscheln'],
         'cozze': ['cozza', 'mussels', 'miesmuscheln'],
+        // === PIZZA (termine generico → ingredienti per pizza) ===
+        'pizza': ['fiordilatte', 'julienne', 'mozzarella', 'mozzamix', 'cuor di pizza'],
+        // === TRADUZIONI TEDESCO (clienti svizzeri) ===
+        'käse': ['formaggio', 'mozzarella', 'parmigiano', 'pecorino'],
+        'schinken': ['prosciutto', 'speck'],
+        'wurst': ['salame', 'salsiccia', 'würstel'],
+        'teigwaren': ['pasta', 'spaghetti', 'penne'],
+        'öl': ['olio', 'extravergine'],
+        // === TRADUZIONI FRANCESE ===
+        'fromage': ['formaggio', 'mozzarella', 'parmigiano'],
+        'jambon': ['prosciutto'],
+        'saucisson': ['salame'],
+        'huile': ['olio', 'extravergine'],
       };
 
       // Ricerca testuale intelligente

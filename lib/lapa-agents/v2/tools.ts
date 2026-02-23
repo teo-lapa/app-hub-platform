@@ -43,12 +43,12 @@ export const ALL_TOOL_DEFINITIONS: Anthropic.Tool[] = [
   // ---- PRODUCTS (no auth required) ----
   {
     name: 'search_products',
-    description: 'Search the LAPA product catalog by name, keyword, ingredient, or category. Returns product names, prices, categories, and availability. Use this when a customer asks about any food product, ingredient, or recipe.',
+    description: 'Search the LAPA product catalog by name, keyword, or ingredient. Returns product names, prices, URLs, categories, and availability. Call this MULTIPLE TIMES with different keywords to cover product variants (e.g. search "mozzarella" AND "fiordilatte" AND "julienne" for pizza cheeses). Products may be cataloged under different names than what customers use.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        query: { type: 'string', description: 'Search query: product name, ingredient, or food keyword (e.g. "mozzarella", "guanciale", "pasta")' },
-        limit: { type: 'number', description: 'Max results to return (default 10, max 20)' },
+        query: { type: 'string', description: 'Search query: product name, ingredient, or food keyword. Use specific terms, not full sentences. Examples: "fiordilatte", "salame napoli", "pelati"' },
+        limit: { type: 'number', description: 'Max results to return (default 15, max 30)' },
       },
       required: ['query'],
     },
@@ -244,7 +244,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
 
   search_products: async (input, ctx) => {
     const agent = new ProductsAgent(toLanguage(ctx.language));
-    const limit = Math.min(input.limit || 10, 20);
+    const limit = Math.min(input.limit || 15, 30);
     const result = await agent.searchProducts({ query: input.query }, limit);
     if (!result.success || !result.data) {
       return { products: [], message: 'No products found for this search.' };
