@@ -372,43 +372,63 @@ export default function LapaAgentsWidgetPage() {
     </a>
   );
 
-  // Render inline text: **bold**, [links](urls), and bare product URLs
-  const renderInline = (text: string) => {
-    // Combined regex: **bold** | [markdown](links) | bare lapa.ch/shop URLs
-    const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/lapa\.ch\/shop\/[^\s),]+))/g;
+  // Process **bold** in a text segment (no links)
+  const processBold = (text: string, startK: number): (string | JSX.Element)[] => {
+    const boldRegex = /\*\*(.+?)\*\*/g;
     const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let k = startK;
+    while ((match = boldRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) parts.push(text.substring(lastIndex, match.index));
+      parts.push(<strong key={`b-${k++}`}>{match[1]}</strong>);
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) parts.push(text.substring(lastIndex));
+    return parts.length > 0 ? parts : text.length > 0 ? [text] : [];
+  };
+
+  // Render inline: links FIRST (highest priority), then bold in remaining text
+  const renderInline = (text: string) => {
+    // Strip **bold** wrapping around markdown links: **[text](url)** → [text](url)
+    const cleaned = text.replace(/\*\*(\[[^\]]+\]\([^)]+\))\*\*/g, '$1');
+
+    // Find all links and bare URLs first
+    const linkRegex = /(\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/lapa\.ch\/shop\/[^\s),]+))/g;
+    const segments: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     let match;
     let k = 0;
 
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = linkRegex.exec(cleaned)) !== null) {
+      // Text before the link → process for bold
       if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
+        segments.push(...processBold(cleaned.substring(lastIndex, match.index), k));
+        k += 50;
       }
-      if (match[2]) {
-        // **bold**
-        parts.push(<strong key={`b-${k++}`}>{match[2]}</strong>);
-      } else if (match[3] && match[4]) {
+      if (match[2] && match[3]) {
         // [text](url) markdown link
-        const linkText = match[3];
-        const linkUrl = match[4];
+        const linkUrl = match[3];
         if (linkUrl.includes('lapa.ch/shop')) {
-          parts.push(productButton(`pl-${k++}`, linkUrl, linkText));
+          segments.push(productButton(`pl-${k++}`, linkUrl, match[2]));
         } else {
-          parts.push(
+          segments.push(
             <a key={`l-${k++}`} href={linkUrl} target="_blank" rel="noopener noreferrer"
               className="text-red-600 hover:text-red-700 underline font-medium"
-            >{linkText}</a>
+            >{match[2]}</a>
           );
         }
-      } else if (match[5]) {
+      } else if (match[4]) {
         // Bare URL https://lapa.ch/shop/... → product button
-        parts.push(productButton(`bu-${k++}`, match[5], 'Vedi prodotto'));
+        segments.push(productButton(`bu-${k++}`, match[4], 'Vedi prodotto'));
       }
       lastIndex = match.index + match[0].length;
     }
-    if (lastIndex < text.length) parts.push(text.substring(lastIndex));
-    return parts.length > 0 ? parts : [text];
+    // Remaining text after last link → process for bold
+    if (lastIndex < cleaned.length) {
+      segments.push(...processBold(cleaned.substring(lastIndex), k));
+    }
+    return segments.length > 0 ? segments : [text];
   };
 
   // Render message: paragraphs, bold, product buttons
