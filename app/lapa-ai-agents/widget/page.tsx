@@ -417,58 +417,132 @@ export default function LapaAgentsWidgetPage() {
     setInput('');
     setIsLoading(true);
 
-    try {
-      // Get the API base URL - use parent origin or default
-      const apiBaseUrl = window.location.origin;
+    const assistantMsgId = `assistant-${Date.now()}`;
+    const apiBaseUrl = window.location.origin;
+    const requestBody = {
+      message: text,
+      customerType: odooUser ? 'b2b' : 'anonymous',
+      sessionId,
+      language: 'it',
+      ...(odooUser && {
+        customerId: odooUser.partnerId ? parseInt(odooUser.partnerId, 10) : undefined,
+        customerEmail: odooUser.email,
+        customerName: odooUser.name
+      }),
+      attachments: currentAttachments.length > 0 ? currentAttachments.map(a => ({
+        name: a.name,
+        content: a.content,
+        mimetype: a.mimetype
+      })) : undefined
+    };
 
-      const response = await fetch(`${apiBaseUrl}/api/lapa-agents/chat`, {
+    try {
+      // v2: SSE streaming
+      const response = await fetch(`${apiBaseUrl}/api/lapa-agents/v2/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          customerType: odooUser ? 'b2b' : 'anonymous',
-          sessionId,
-          language: 'it',
-          // Passa dati utente Odoo se disponibili (converti partnerId in numero)
-          ...(odooUser && {
-            customerId: odooUser.partnerId ? parseInt(odooUser.partnerId, 10) : undefined,
-            customerEmail: odooUser.email,
-            customerName: odooUser.name
-          }),
-          attachments: currentAttachments.length > 0 ? currentAttachments.map(a => ({
-            name: a.name,
-            content: a.content,
-            mimetype: a.mimetype
-          })) : undefined
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      const data: ChatResponse = await response.json();
-
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.message || 'Mi dispiace, non ho capito. Puoi ripetere?',
-        timestamp: new Date(),
-        agentId: data.agentId,
-        suggestedActions: data.suggestedActions
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (voiceEnabled && data.message) {
-        speakMessage(data.message);
+      if (!response.ok || !response.body) {
+        throw new Error('v2-unavailable');
       }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+      let messageAdded = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+
+            if (event.type === 'text') {
+              fullText += event.content;
+              if (!messageAdded) {
+                messageAdded = true;
+                setMessages(prev => [...prev, {
+                  id: assistantMsgId,
+                  role: 'assistant' as const,
+                  content: fullText,
+                  timestamp: new Date(),
+                  agentId: 'lapa-ai-v2'
+                }]);
+              } else {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMsgId ? { ...m, content: fullText } : m
+                ));
+              }
+            } else if (event.type === 'error') {
+              const errorContent = event.message || 'Si è verificato un errore.';
+              if (!messageAdded) {
+                messageAdded = true;
+                setMessages(prev => [...prev, {
+                  id: assistantMsgId,
+                  role: 'assistant' as const,
+                  content: errorContent,
+                  timestamp: new Date(),
+                  agentId: 'error'
+                }]);
+              } else {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMsgId ? { ...m, content: errorContent, agentId: 'error' } : m
+                ));
+              }
+            }
+          } catch {
+            // skip non-JSON lines
+          }
+        }
+      }
+
+      if (voiceEnabled && fullText) {
+        speakMessage(fullText);
+      }
+
     } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: 'Mi dispiace, si è verificato un errore. Riprova tra qualche istante.',
-        timestamp: new Date(),
-        agentId: 'error'
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.warn('v2 failed, falling back to v1:', error);
+
+      // Remove streaming message if partially added
+      setMessages(prev => prev.filter(m => m.id !== assistantMsgId));
+
+      // v1 fallback
+      try {
+        const v1Response = await fetch(`${apiBaseUrl}/api/lapa-agents/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+        const data: ChatResponse = await v1Response.json();
+        setMessages(prev => [...prev, {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant' as const,
+          content: data.message || 'Mi dispiace, non ho capito. Puoi ripetere?',
+          timestamp: new Date(),
+          agentId: data.agentId,
+          suggestedActions: data.suggestedActions
+        }]);
+        if (voiceEnabled && data.message) speakMessage(data.message);
+      } catch (fallbackErr) {
+        console.error('Both v1 and v2 failed:', fallbackErr);
+        setMessages(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          role: 'assistant' as const,
+          content: 'Mi dispiace, si è verificato un errore. Riprova tra qualche istante.',
+          timestamp: new Date(),
+          agentId: 'error'
+        }]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -487,6 +561,7 @@ export default function LapaAgentsWidgetPage() {
 
   const getAgentColor = (agentId?: string) => {
     const colors: Record<string, string> = {
+      'lapa-ai-v2': 'bg-red-600',
       orchestrator: 'bg-purple-500',
       orders: 'bg-blue-500',
       invoices: 'bg-green-500',
@@ -495,11 +570,12 @@ export default function LapaAgentsWidgetPage() {
       helpdesk: 'bg-red-500',
       error: 'bg-gray-500'
     };
-    return colors[agentId || 'orchestrator'] || 'bg-red-600';
+    return colors[agentId || 'lapa-ai-v2'] || 'bg-red-600';
   };
 
   const getAgentName = (agentId?: string) => {
     const names: Record<string, string> = {
+      'lapa-ai-v2': 'Marco',
       orchestrator: 'LAPA AI',
       orders: 'Ordini',
       invoices: 'Fatture',
@@ -508,7 +584,7 @@ export default function LapaAgentsWidgetPage() {
       helpdesk: 'Supporto',
       error: 'Sistema'
     };
-    return names[agentId || 'orchestrator'] || 'LAPA AI';
+    return names[agentId || 'lapa-ai-v2'] || 'Marco';
   };
 
   return (
