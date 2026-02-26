@@ -930,6 +930,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2025-01-09'),
     updatedAt: new Date('2025-01-09'),
   },
+  {
+    id: 'infra-monitor',
+    name: 'Infra Monitor',
+    description: 'Monitoraggio live infrastruttura LAPA: tutti i PC, agenti AI, bot, Docker NAS, Odoo. Status real-time con auto-refresh, metriche CPU/RAM/disco, temperatura, servizi attivi.',
+    icon: '\uD83D\uDDA5\uFE0F',
+    badge: 'AZIENDALE',
+    category: 'AI & Tech',
+    url: '/infra-monitor',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved',
+    createdAt: new Date('2026-02-26'),
+    updatedAt: new Date('2026-02-26'),
+  },
 ];
 
 // Combina tutte le app
