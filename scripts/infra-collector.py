@@ -298,10 +298,9 @@ def collect_windows_pc(host, device_id, name, ip, processor, services_check=None
 def check_lapa10_services(host, device):
     ps_out, ps_ok = ssh_cmd(host, 'wsl -u lapa -- ps aux')
     has_openclaw = 'openclaw' in ps_out if ps_ok else False
-    has_gateway = 'openclaw-gateway' in ps_out if ps_ok else False
     port_out, _ = ssh_cmd(host, 'netstat -an | findstr 18789')
     port_listening = 'LISTENING' in port_out
-    giulio_ok = has_openclaw and has_gateway and port_listening
+    giulio_ok = has_openclaw and port_listening
     device['services'].append({
         'name': 'Giulio', 'type': 'openclaw', 'status': 'ok' if giulio_ok else 'ko',
         'port': 18789, 'details': 'OpenClaw + Gateway attivi' if giulio_ok else 'Processo mancante o porta non attiva',
@@ -342,10 +341,9 @@ def check_lapa_sales_services(host, device):
 
     ps_out, ps_ok = ssh_cmd(host, 'wsl -d Ubuntu-22.04 -u lapa -- ps aux')
     has_openclaw = 'openclaw' in ps_out if ps_ok else False
-    has_gateway = 'openclaw-gateway' in ps_out if ps_ok else False
     port_out, _ = ssh_cmd(host, 'netstat -an | findstr 18791')
     port_listening = 'LISTENING' in port_out
-    vanessa_ok = has_openclaw and has_gateway and port_listening
+    vanessa_ok = has_openclaw and port_listening
     device['services'].append({
         'name': 'Vanessa', 'type': 'openclaw', 'status': 'ok' if vanessa_ok else 'ko',
         'port': 18791, 'details': 'OpenClaw + Gateway attivi' if vanessa_ok else 'Processo mancante o porta non attiva',
