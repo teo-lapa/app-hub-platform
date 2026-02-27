@@ -102,31 +102,24 @@ def parse_wmic_disks(output):
     current = {}
     for line in output.split('\n'):
         line = line.strip()
-        if not line:
-            if current.get('caption'):
-                total_gb = int(current.get('size', 0)) / (1024**3)
-                free_gb = int(current.get('freespace', 0)) / (1024**3)
+        if '=' in line:
+            key, val = line.split('=', 1)
+            current[key.strip().lower()] = val.strip()
+        # Process record when we have all 3 fields (caption, freespace, size)
+        if current.get('caption') and current.get('size') and current.get('freespace'):
+            try:
+                total_gb = int(current['size']) / (1024**3)
+                free_gb = int(current['freespace']) / (1024**3)
                 if total_gb > 0:
                     disks.append({
                         'name': current['caption'],
                         'totalGB': round(total_gb, 1),
                         'freeGB': round(free_gb, 1),
-                        'usedPercent': round((1 - free_gb / total_gb) * 100, 1) if total_gb > 0 else 0,
+                        'usedPercent': round((1 - free_gb / total_gb) * 100, 1),
                     })
+            except (ValueError, ZeroDivisionError):
+                pass
             current = {}
-        elif '=' in line:
-            key, val = line.split('=', 1)
-            current[key.strip().lower()] = val.strip()
-    if current.get('caption'):
-        total_gb = int(current.get('size', 0)) / (1024**3)
-        free_gb = int(current.get('freespace', 0)) / (1024**3)
-        if total_gb > 0:
-            disks.append({
-                'name': current['caption'],
-                'totalGB': round(total_gb, 1),
-                'freeGB': round(free_gb, 1),
-                'usedPercent': round((1 - free_gb / total_gb) * 100, 1) if total_gb > 0 else 0,
-            })
     return disks
 
 
@@ -513,9 +506,9 @@ def collect_jetson():
     return device
 
 
-def collect_simple_ping(device_id, name, ip, note):
+def collect_simple_ping(device_id, name, ip, note, device_type='windows'):
     device = {
-        'id': device_id, 'name': name, 'ip': ip, 'type': 'windows',
+        'id': device_id, 'name': name, 'ip': ip, 'type': device_type,
         'online': False, 'services': [], 'warnings': [], 'errors': [],
     }
     device['online'] = ping_host(ip)
@@ -527,15 +520,46 @@ def collect_simple_ping(device_id, name, ip, note):
 def collect_paul_local():
     device = {
         'id': 'paul', 'name': 'PAUL', 'ip': '192.168.1.109',
-        'type': 'local', 'online': True,
+        'type': 'local', 'processor': 'i7-11700', 'online': True,
         'services': [], 'warnings': [], 'errors': [],
     }
-    task_out, _ = local_cmd('tasklist /fi "imagename eq pythonw.exe"')
-    has_pythonw = 'pythonw.exe' in task_out
+    # CPU
+    cpu_out, _ = local_cmd('wmic cpu get loadpercentage')
+    device['cpu'] = {'percent': parse_wmic_cpu(cpu_out)}
+    temp_out, _ = local_cmd('wmic /namespace:\\\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature')
+    temp = parse_wmic_temp(temp_out)
+    if temp is not None:
+        device['cpu']['temp'] = temp
+        if temp > 80:
+            device['warnings'].append(f"Temperatura alta: {temp}C")
+    # RAM
+    mem_out, _ = local_cmd('wmic os get FreePhysicalMemory,TotalVisibleMemorySize /format:list')
+    total, free = parse_wmic_memory(mem_out)
+    if total > 0:
+        device['ram'] = {'totalGB': round(total, 1), 'freeGB': round(free, 1),
+                         'usedPercent': round((1 - free / total) * 100, 1)}
+        if free < 2:
+            device['warnings'].append(f"RAM libera bassa: {free:.1f} GB")
+    # Disks
+    disk_out, _ = local_cmd('wmic logicaldisk get caption,freespace,size /format:list')
+    device['disks'] = parse_wmic_disks(disk_out)
+    for d in device['disks']:
+        if d['usedPercent'] > 90:
+            device['errors'].append(f"Disco {d['name']} al {d['usedPercent']}%!")
+        elif d['usedPercent'] > 80:
+            device['warnings'].append(f"Disco {d['name']} al {d['usedPercent']}%")
+    # Uptime
+    boot_out, _ = local_cmd('systeminfo | findstr /C:"Tempo di avvio"')
+    if not boot_out:
+        boot_out, _ = local_cmd('systeminfo | findstr /C:"System Boot Time"')
+    device['uptime'] = parse_boot_time(boot_out) if boot_out else None
+    # Paul Bot
+    task_out, _ = local_cmd('tasklist')
+    has_pythonw = 'pythonw' in task_out.lower()
     device['services'].append({
         'name': 'Paul Bot', 'type': 'bot',
         'status': 'ok' if has_pythonw else 'ko',
-        'details': 'pythonw.exe attivo' if has_pythonw else 'Processo non trovato',
+        'details': 'pythonw attivo' if has_pythonw else 'Processo non trovato',
     })
     if not has_pythonw:
         device['errors'].append('Paul Bot non attivo!')
@@ -594,7 +618,7 @@ def main():
         ('BOOK-PAUL', lambda: collect_powershell_pc('book-paul', 'book-paul', 'BOOK-PAUL', '192.168.1.55', 'Snapdragon X Elite')),
         ('JETSON', collect_jetson),
         ('LAURA-PC', lambda: collect_simple_ping('laura-pc', 'LAURA-PC', '192.168.1.21', 'PC spento (normale)')),
-        ('RPI', lambda: collect_simple_ping('rpi', 'Raspberry Pi', '192.168.1.225', 'Staccato (normale)')),
+        ('RPI', lambda: collect_simple_ping('rpi', 'Raspberry Pi', '192.168.1.225', 'Staccato (normale)', device_type='linux')),
         ('PAUL', collect_paul_local),
     ]
 
@@ -620,7 +644,28 @@ def main():
 
     agents = build_agents_summary(devices)
     summary = build_summary(devices)
+
+    # Check Odoo production (Odoo.sh)
     odoo = {'connected': False, 'ordersToday': 0}
+    try:
+        odoo_req = urllib.request.Request(
+            'https://lapadevadmin-lapa-v2.odoo.com/web/login',
+            headers={'User-Agent': 'LAPA-InfraCollector/1.0'},
+        )
+        with urllib.request.urlopen(odoo_req, timeout=10) as resp:
+            odoo['connected'] = resp.status == 200
+            odoo['details'] = 'Odoo.sh raggiungibile'
+    except urllib.error.HTTPError as e:
+        # Even 303/302 redirects mean server is alive
+        if e.code in (301, 302, 303):
+            odoo['connected'] = True
+            odoo['details'] = 'Odoo.sh raggiungibile (redirect)'
+        else:
+            odoo['connected'] = False
+            odoo['details'] = f'HTTP {e.code}'
+    except Exception as e:
+        odoo['connected'] = False
+        odoo['details'] = f'Non raggiungibile: {str(e)[:50]}'
 
     payload = {
         'timestamp': datetime.now().isoformat(),
