@@ -90,6 +90,17 @@ export const ALL_TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_order_details',
+    description: 'Get the detailed product list of a specific order: product names, quantities, unit prices, subtotals. Use when the customer asks "what was in order X", "reorder my last order", or wants to see order contents.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        order_id: { type: 'number', description: 'Odoo sale.order ID (from get_order_history results)' },
+      },
+      required: ['order_id'],
+    },
+  },
+  {
     name: 'add_to_cart',
     description: 'Add a product to the customer\'s cart (draft quotation). If no cart exists, one is created automatically. Use when the customer confirms they want a product.',
     input_schema: {
@@ -208,7 +219,7 @@ export const ANONYMOUS_TOOLS = [
 
 export const AUTHENTICATED_TOOLS = [
   ...ANONYMOUS_TOOLS,
-  'get_order_history', 'add_to_cart', 'view_cart', 'confirm_order',
+  'get_order_history', 'get_order_details', 'add_to_cart', 'view_cart', 'confirm_order',
   'get_invoices', 'get_customer_balance', 'get_payment_link'
 ];
 
@@ -334,6 +345,50 @@ export const toolExecutors: Record<string, ToolExecutor> = {
         line_count: Array.isArray(o.order_line) ? o.order_line.length : 0,
       })),
       total: orders.length,
+    };
+  },
+
+  get_order_details: async (input, ctx) => {
+    const customerId = requireAuth(ctx);
+    const odoo = await getOdooClient();
+    const { ids: partnerIds } = await getPartnerIdsForSearch(customerId);
+
+    // Verify the order belongs to this customer
+    const orders = await odoo.searchRead(
+      'sale.order',
+      [['id', '=', input.order_id], ['partner_id', 'in', partnerIds], ['company_id', '=', 1]],
+      ['name', 'date_order', 'state', 'amount_total', 'currency_id'],
+      1
+    );
+
+    if (orders.length === 0) {
+      throw new Error('Order not found or access denied.');
+    }
+
+    const order = orders[0];
+
+    // Get order lines with product details
+    const lines = await odoo.searchRead(
+      'sale.order.line',
+      [['order_id', '=', input.order_id], ['display_type', '=', false]],
+      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom'],
+      100
+    );
+
+    return {
+      order_id: order.id,
+      order_name: order.name,
+      date: order.date_order,
+      total: order.amount_total,
+      currency: order.currency_id?.[1] || 'CHF',
+      items: lines.map((l: any) => ({
+        product_id: Array.isArray(l.product_id) ? l.product_id[0] : l.product_id,
+        product_name: l.product_id?.[1] || 'Unknown',
+        quantity: l.product_uom_qty,
+        price_unit: l.price_unit,
+        subtotal: l.price_subtotal,
+        unit: l.product_uom?.[1] || 'Unit',
+      })),
     };
   },
 
