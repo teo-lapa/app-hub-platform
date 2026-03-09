@@ -180,14 +180,18 @@ export default function LapaAgentsWidgetPage() {
   // Carica conversazione esistente o mostra messaggio di benvenuto
   useEffect(() => {
     async function loadExistingConversation() {
+      // Determina il conversationId corretto (come fa il backend)
+      const conversationId = odooUser?.partnerId
+        ? `customer-${odooUser.partnerId}`
+        : sessionId;
+
       // Prova a caricare conversazione esistente
-      if (sessionId && sessionId.startsWith('web-')) {
+      if (conversationId) {
         try {
-          const response = await fetch(`/api/lapa-agents/conversations?sessionId=${sessionId}`);
+          const response = await fetch(`/api/lapa-agents/conversations?sessionId=${conversationId}`);
           const data = await response.json();
 
           if (data.success && data.conversation && data.conversation.messages?.length > 0) {
-            // Converti i messaggi dal formato storage al formato UI
             const loadedMessages: Message[] = data.conversation.messages.map((msg: any, index: number) => ({
               id: `loaded-${index}`,
               role: msg.role as 'user' | 'assistant',
@@ -197,12 +201,12 @@ export default function LapaAgentsWidgetPage() {
               suggestedActions: msg.suggestedActions
             }));
 
-            console.log('LAPA Widget: Loaded existing conversation with', loadedMessages.length, 'messages');
+            console.log('LAPA Widget: Loaded existing conversation with', loadedMessages.length, 'messages for', conversationId);
             setMessages(loadedMessages);
-            return; // Non mostrare welcome message
+            return;
           }
         } catch (error) {
-          console.log('LAPA Widget: No existing conversation found');
+          console.log('LAPA Widget: No existing conversation found for', conversationId);
         }
       }
 
@@ -759,8 +763,8 @@ export default function LapaAgentsWidgetPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - padding extra per safe area mobile (70px per gesture bar) */}
-      <div className="p-3 pb-20 md:pb-3 border-t border-gray-200 bg-white shrink-0" style={{ paddingBottom: 'max(70px, calc(12px + env(safe-area-inset-bottom, 60px)))' }}>
+      {/* Input Area */}
+      <div className="p-3 border-t border-gray-200 bg-white shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {attachments.map((att, index) => {
@@ -837,15 +841,28 @@ export default function LapaAgentsWidgetPage() {
             </div>
           </div>
 
-          <input
-            ref={inputRef}
-            type="text"
+          <textarea
+            ref={inputRef as any}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // Auto-resize: reset then set to scrollHeight
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                e.preventDefault();
+                sendMessage();
+                // Reset height dopo invio
+                const el = e.target as HTMLTextAreaElement;
+                setTimeout(() => { el.style.height = 'auto'; }, 0);
+              }
+            }}
             placeholder={isListening ? 'Sto ascoltando...' : 'Scrivi un messaggio...'}
             disabled={isLoading}
-            className="flex-1 px-3 py-2 bg-gray-100 border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+            rows={1}
+            className="flex-1 px-3 py-2 bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50 resize-none overflow-hidden"
           />
 
           <motion.button
