@@ -289,6 +289,8 @@
 
   // Variabile per memorizzare i dati utente una volta ottenuti
   let cachedUser = null;
+  // Promise che si risolve quando i dati utente sono pronti (o fallisce)
+  let userDataReady = null;
 
   // Ottieni dati utente Odoo chiamando l'API
   async function fetchOdooUser() {
@@ -309,39 +311,53 @@
       });
 
       const data = await response.json();
+      const r = data.result;
 
-      if (data.result && data.result.user_id && data.result.user_id !== false) {
-        console.log('LAPA Chat: user found via API', data.result.name);
-        return {
-          id: data.result.partner_id,
-          name: data.result.name,
-          email: data.result.username,
-          userId: data.result.user_id
+      // Odoo 17 restituisce uid (non user_id), partner_id puo essere int o [id, "name"]
+      const uid = r && (r.uid || r.user_id);
+      const partnerId = r && r.partner_id;
+      const partnerIdNum = Array.isArray(partnerId) ? partnerId[0] : partnerId;
+      const isPublic = !uid || uid === false || (r.is_public === true);
+
+      console.log('LAPA Chat: session_info raw:', JSON.stringify({uid: r?.uid, user_id: r?.user_id, partner_id: r?.partner_id, name: r?.name, username: r?.username, is_public: r?.is_public}));
+
+      if (r && !isPublic && partnerIdNum) {
+        console.log('LAPA Chat: user found via API', r.name, 'partner_id:', partnerIdNum);
+        cachedUser = {
+          id: partnerIdNum,
+          name: r.name,
+          email: r.username,
+          userId: uid
         };
+        return cachedUser;
+      } else {
+        console.log('LAPA Chat: session found but public user (uid:', uid, 'partner_id:', partnerId, ')');
       }
     } catch (e) {
       console.log('LAPA Chat: API call failed', e);
     }
+
+    // Fallback: prova a leggere i dati dal DOM
+    try {
+      var userLink = document.querySelector('.o_header_right .dropdown-toggle, a[href="/my/home"], [data-user-name]');
+      if (userLink) {
+        var nameText = userLink.getAttribute('data-user-name') || userLink.textContent.trim();
+        if (nameText && nameText !== 'Sign in' && nameText !== 'Accedi') {
+          console.log('LAPA Chat: user found via DOM fallback:', nameText);
+          cachedUser = { name: nameText };
+          return cachedUser;
+        }
+      }
+    } catch (e) {
+      console.log('LAPA Chat: DOM fallback failed', e);
+    }
+
     return null;
   }
 
-  // Versione sincrona che usa la cache o dati dal DOM
-  function getOdooUser() {
-    if (cachedUser) return cachedUser;
-
-    try {
-      // Controlla se c'è il link "Il mio account" (utente loggato sul portale)
-      const myAccountIcon = document.querySelector('a[href="/my/home"] i.fa-user, a[href="/my"] i.fa-user');
-      const logoutLink = document.querySelector('a[href*="/web/session/logout"]');
-
-      if (myAccountIcon || logoutLink) {
-        console.log('LAPA Chat: user appears logged in (UI check)');
-        return { name: 'Cliente' }; // Placeholder, verrà aggiornato
-      }
-    } catch (e) {
-      console.log('LAPA Chat: error in sync check', e);
-    }
-    return null;
+  // Pre-fetch utente al caricamento pagina (non aspettare il click)
+  function startUserFetch() {
+    userDataReady = fetchOdooUser();
   }
 
   // Crea il widget
@@ -434,27 +450,58 @@
             localStorage.setItem('lapa-chat-session', sessionId);
           }
 
-          // Carica iframe con sessionId per persistere la conversazione
-          const params = new URLSearchParams();
-          params.set('sessionId', sessionId);
-          iframe.src = CONFIG.widgetUrl + '?' + params.toString();
+          // Aspetta i dati utente (pre-fetched al page load) poi carica iframe UNA SOLA VOLTA
+          var loadIframe = function(user) {
+            var params = new URLSearchParams();
+            params.set('sessionId', sessionId);
+            if (user && user.id) params.set('partnerId', user.id);
+            if (user && user.name) params.set('name', user.name);
+            if (user && user.email) params.set('email', user.email);
+            if (user && user.userId) params.set('userId', user.userId);
+            iframe.src = CONFIG.widgetUrl + '?' + params.toString();
+            console.log('LAPA Chat: iframe loaded', user ? ('with user: ' + user.name) : 'anonymous');
+
+            // Backup: manda dati utente anche via postMessage dopo che iframe carica
+            if (user) {
+              iframe.addEventListener('load', function() {
+                iframe.contentWindow.postMessage({
+                  type: 'lapa-user-data',
+                  user: {
+                    partnerId: user.id,
+                    name: user.name,
+                    email: user.email,
+                    userId: user.userId
+                  }
+                }, '*');
+                console.log('LAPA Chat: user data sent via postMessage');
+              });
+            }
+          };
+
           iframeContainer.appendChild(iframe);
 
-          // Poi cerca dati utente via API (asincrono)
-          fetchOdooUser().then(function(user) {
-            if (user) {
-              cachedUser = user;
-              // Aggiorna iframe con dati utente + sessionId
-              const params = new URLSearchParams();
-              params.set('sessionId', sessionId);
-              if (user.id) params.set('partnerId', user.id);
-              if (user.name) params.set('name', user.name);
-              if (user.email) params.set('email', user.email);
-              if (user.userId) params.set('userId', user.userId);
-              iframe.src = CONFIG.widgetUrl + '?' + params.toString();
-              console.log('LAPA Chat: iframe updated with user data', user.name);
-            }
-          });
+          // Se i dati utente sono gia pronti (pre-fetched), usali subito
+          // Altrimenti aspetta max 2 secondi, poi carica comunque
+          if (cachedUser) {
+            loadIframe(cachedUser);
+          } else if (userDataReady) {
+            var timeout = setTimeout(function() {
+              console.log('LAPA Chat: user fetch timeout, loading anonymous');
+              loadIframe(null);
+            }, 5000);
+
+            userDataReady.then(function(user) {
+              clearTimeout(timeout);
+              if (!iframe.src || iframe.src === 'about:blank') {
+                loadIframe(user);
+              } else if (user && !iframe.src.includes('partnerId=')) {
+                // iframe gia caricato anonimo, ricarica con dati utente
+                loadIframe(user);
+              }
+            });
+          } else {
+            loadIframe(null);
+          }
         }
       } else {
         // Chiudi chat
@@ -490,6 +537,9 @@
     `;
     document.head.appendChild(style);
   }
+
+  // Pre-fetch dati utente SUBITO (prima ancora del DOM ready)
+  startUserFetch();
 
   // Inizializza quando il DOM è pronto
   if (document.readyState === 'loading') {
