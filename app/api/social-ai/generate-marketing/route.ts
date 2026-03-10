@@ -79,6 +79,7 @@ interface GenerateMarketingRequest {
   targetAudience?: string;
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
   videoDuration?: 4 | 6 | 8;  // Durata video in secondi - Veo 3.1 supporta solo 4, 6, 8s (default: 6)
+  videoPrompt?: string;
 
   // Branding
   includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
       targetAudience = 'pubblico generale',
       videoStyle = 'default',
       videoDuration = 6,    // Default: 6 secondi (Veo 3.1: solo 4, 6, 8s supportati)
+      videoPrompt,
       includeLogo = false,
       logoImage,        // Logo aziendale (base64) - opzionale
       companyMotto,     // Slogan/Motto aziendale - opzionale
@@ -246,6 +248,7 @@ export async function POST(request: NextRequest) {
           productImageBase64: cleanBase64,
           videoStyle,
           videoDuration,
+          videoPrompt,
           includeLogo,
           logoImage,
           companyMotto
@@ -837,6 +840,7 @@ async function generateMarketingVideo(
     productImageBase64: string;
     videoStyle?: string;
     videoDuration?: number;
+    videoPrompt?: string;
     includeLogo: boolean;
     logoImage?: string;
     companyMotto?: string;
@@ -859,96 +863,30 @@ async function generateMarketingVideo(
     brandingLine += `Include the company motto "${params.companyMotto}" as elegant text at the beginning or end of the video.`;
   }
 
-  // Prompt diversi per ogni stile (INGLESE per migliore qualità)
-  // IMPORTANTE: Veo 3.1 supporta SOLO 4, 6, o 8 secondi (massimo 8s)
-  // NOTA: Il parametro duration deve essere validato e limitato a 4, 6, o 8
+  // Prompt per IMAGE-TO-VIDEO: descrivono AZIONE e MOVIMENTO, non la scena
+  // Veo 3.1 best practices: camera come frase separata, 1 azione per clip,
+  // specificare luce e audio, 100-150 parole max
   const stylePrompts = {
-    default: `Create a premium, hyper-realistic ${duration}-second product video for ${params.platform} social media advertising.
-DURATION: Exactly ${duration} seconds - pace the movement to fill the entire duration smoothly.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference. The product MUST look identical to the reference photo.
-CAMERA: Smooth, natural movement that showcases the product elegantly.
-LIGHTING: Professional studio lighting with soft shadows.
-STYLE: Clean, premium commercial photography in motion.
-${brandingLine}`,
+    default: `The camera slowly dollies in toward the product. The ${params.productName} sits elegantly, with soft light catching its details. Smooth, steady movement. Professional studio lighting, warm 3200K key light from camera-right, soft fill from left. Clean background. Ambient soft hum, no music. ${brandingLine}`,
 
-    zoom: `Create a premium ${duration}-second product video with SLOW ZOOM IN effect for ${params.platform}.
-DURATION: Exactly ${duration} seconds - adjust zoom speed to fill the entire duration.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference.
-CAMERA MOVEMENT: Start with medium shot, slowly zoom in to close-up revealing product details.
-The zoom should be smooth, slow, and elegant - like a luxury commercial.
-LIGHTING: Professional studio lighting that highlights product features.
-STYLE: High-end commercial with emphasis on product details.
-${brandingLine}`,
+    zoom: `Slow, steady zoom-in from medium shot to extreme close-up. The ${params.productName} gradually fills the frame, revealing fine texture and details. The camera pushes forward smoothly over ${duration} seconds. Warm studio key light from above-right, soft shadows underneath. Gentle ambient sound. ${brandingLine}`,
 
-    rotate: `Create a premium ${duration}-second 360-DEGREE ROTATION product video for ${params.platform}.
-DURATION: Exactly ${duration} seconds - adjust rotation speed to complete full 360° in this time.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference.
-CAMERA MOVEMENT: Smooth 360° horizontal rotation around the product at constant speed.
-Professional turntable showcase style - camera orbits the product showing it from all angles.
-LIGHTING: Studio lighting with consistent illumination from all angles.
-STYLE: Classic product showcase rotation - professional and elegant.
-${brandingLine}`,
+    rotate: `The camera orbits smoothly around the ${params.productName} in a complete 360-degree rotation at constant speed. The product stays centered and still. Even studio lighting from all angles, consistent illumination throughout the orbit. Clean minimal background. Soft ambient sound. ${brandingLine}`,
 
-    dynamic: `Create a DYNAMIC, ENERGETIC ${duration}-second product video for ${params.platform}.
-DURATION: Exactly ${duration} seconds - maintain high energy throughout the entire duration.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference.
-CAMERA MOVEMENT: Fast, energetic movements - quick zoom in combined with slight rotation.
-Dynamic angles that create excitement and grab attention.
-LIGHTING: High contrast, vibrant lighting with bold shadows.
-STYLE: Modern, high-energy commercial - fast-paced and attention-grabbing.
-${brandingLine}`,
+    dynamic: `Fast dolly-in with a quick whip-pan around the ${params.productName}. Energetic, punchy movement with sharp angle changes. High-contrast lighting, bold shadows, vibrant rim light from behind. The product stays sharp and centered throughout. Upbeat ambient energy. ${brandingLine}`,
 
-    cinematic: `Create a CINEMATIC, HOLLYWOOD-STYLE ${duration}-second product video for ${params.platform}.
-DURATION: Exactly ${duration} seconds - slow, deliberate movements that fill the entire duration.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference.
-CAMERA MOVEMENT: Professional dolly-in shot with subtle parallax effect.
-Slow, controlled push toward product with slight vertical rise - hero angle.
-LIGHTING: Dramatic cinematic lighting with rim lights and atmospheric haze.
-STYLE: Blockbuster film quality - epic, dramatic product reveal with depth and atmosphere.
-${brandingLine}`,
+    cinematic: `Slow dolly-in with subtle vertical crane-up revealing the ${params.productName} as a hero shot. Shallow depth of field, 85mm lens feel. Dramatic Rembrandt lighting from camera-right, atmospheric haze, warm 3000K key with cool 5600K rim light from behind. Deep shadows. Cinematic ambient tone, no dialogue. ${brandingLine}`,
 
-    explosion: `Create a MESMERIZING PRODUCT ASSEMBLY video for ${params.platform}.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference for the final assembled product.
-EFFECT: Product REASSEMBLY - starts with floating pieces/components that smoothly come together.
-ANIMATION: Individual parts gracefully float and assemble into the complete product.
-Start scattered (0-1 sec), converge smoothly (1-4 sec), fully assembled (4-6 sec).
-CAMERA: Static or slow push-in to emphasize the assembly magic.
-LIGHTING: Dramatic lighting that highlights each component as it moves into place.
-STYLE: Cinematic product reveal - Apple-style product showcase with satisfying assembly effect.
-${brandingLine}`,
+    explosion: `The ${params.productName} starts as scattered floating pieces suspended in mid-air. Over ${duration} seconds the pieces gracefully converge and assemble into the complete product. Camera holds steady with slow push-in. Dramatic top lighting, each piece catches light as it moves. Satisfying mechanical assembly sounds. ${brandingLine}`,
 
-    orbital: `Create a STUNNING ORBITAL 360° product video for ${params.platform}.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference.
-PRODUCT POSITION: Product floating elegantly in mid-air, suspended in space.
-CAMERA MOVEMENT: Camera orbits in a complete 360° circle around the floating product at constant height.
-Smooth, continuous orbital movement - camera flies around the product showing all sides.
-SPEED: Moderate orbital speed - complete 360° rotation in 5-6 seconds.
-LIGHTING: Professional studio lighting that follows the camera, maintaining consistent illumination.
-BACKGROUND: Clean, minimal background - let the product be the star.
-STYLE: Premium commercial showcase - elegant orbital reveal like luxury product advertising.
-${brandingLine}`,
+    orbital: `The ${params.productName} floats in mid-air. The camera flies in a smooth complete 360-degree orbit around it at constant height and speed. Professional studio lighting follows the camera angle, keeping the product evenly lit. Clean dark background. Soft ambient whoosh. ${brandingLine}`,
 
-    reassembly: `Create a SPECTACULAR PRODUCT REASSEMBLY video for ${params.platform}.
-PRODUCT: ${params.productName}
-Use the provided product image as EXACT visual reference for the final product.
-EFFECT: Product RECONSTRUCTION from small fragments - starts with tiny scattered pieces.
-ANIMATION: Hundreds of small pieces/particles smoothly converge and fuse together.
-Start completely fragmented (0-1 sec), progressive reassembly (1-5 sec), perfect final product (5-6 sec).
-VISUAL STYLE: Particle simulation effect - each piece flies into position with precision.
-CAMERA: Slow circular movement around the reassembly process to show depth and dimension.
-LIGHTING: Bright, high-key lighting with subtle glow effect on moving pieces.
-STYLE: High-tech product reveal - futuristic reassembly like sci-fi hologram materialization.
-${brandingLine}`
+    reassembly: `Hundreds of tiny fragments swirl in space, then smoothly converge and fuse together to form the complete ${params.productName}. Start fragmented, progressive assembly over ${duration} seconds, final product perfect at the end. Camera slowly circles during reassembly. Bright high-key lighting with subtle glow on moving pieces. Futuristic assembly sound effects. ${brandingLine}`
   };
 
-  const fullPrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
+  const stylePrompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.default;
+  // Se c'è un videoPrompt custom, usare SOLO quello (non concatenare col template)
+  const fullPrompt = params.videoPrompt ? params.videoPrompt : stylePrompt;
 
   try {
     // Converti l'aspect ratio per Veo (solo 16:9 o 9:16)
@@ -974,8 +912,10 @@ ${brandingLine}`
       },
       config: {
         aspectRatio: veoAspectRatio,
-        durationSeconds: [4, 6, 8].includes(duration) ? duration : 6,  // Veo 3.1: solo 4, 6, 8s supportati
-        resolution: '720p'
+        durationSeconds: [4, 6, 8].includes(duration) ? duration : 6,
+        resolution: '720p',
+        generateAudio: true,
+        negativePrompt: 'blurry, distorted, low quality, watermark, text overlay, subtitles, split screen, collage, multiple frames'
       }
     });
 
