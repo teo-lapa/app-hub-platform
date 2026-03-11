@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     console.log('Include Logo:', includeLogo);
     console.log('Has base image:', !!baseImage);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
     // Build tone description
     const toneDescriptions: Record<string, string> = {
