@@ -913,8 +913,6 @@ async function generateMarketingVideo(
       config: {
         aspectRatio: veoAspectRatio,
         durationSeconds: [4, 6, 8].includes(duration) ? duration : 6,
-        resolution: '720p',
-        generateAudio: true,
         negativePrompt: 'blurry, distorted, low quality, watermark, text overlay, subtitles, split screen, collage, multiple frames'
       }
     });
