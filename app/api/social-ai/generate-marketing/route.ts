@@ -757,9 +757,9 @@ TECHNICAL:
     // Aggiungi prompt
     contents.push({ text: fullPrompt });
 
-    // NUOVO SDK - usa generateContent() con gemini-2.5-flash-image (Nano Banana)
+    // NUOVO SDK - usa generateContent() con Nano Banana 2 (gemini-3.1-flash-image-preview)
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3.1-flash-image-preview',
       contents,
       config: {
         responseModalities: ['Text', 'Image']

@@ -92,7 +92,7 @@ DO NOT include any text, watermarks, logos, or hands in the image.`;
 
     try {
       const imageResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3.1-flash-image-preview',
         contents: [{ text: fullPrompt }],
         config: {
           responseModalities: ['Text', 'Image']

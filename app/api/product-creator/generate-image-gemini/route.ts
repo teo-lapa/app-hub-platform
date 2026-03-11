@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     console.log('🔑 API Key present:', API_KEY.substring(0, 10) + '...');
 
     // Use Gemini 2.5 Flash Image model for image generation
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
     // Create the perfect prompt for product photography
     const imagePrompt = `Professional product photography of ${productName}. ${productDescription || ''}. Clean white background, e-commerce style, well-lit, centered, high quality, studio lighting, detailed, sharp focus, commercial photo.`;

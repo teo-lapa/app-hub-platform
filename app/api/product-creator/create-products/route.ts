@@ -966,7 +966,7 @@ export async function POST(request: NextRequest) {
                 }
 
                 const genAI = new GoogleGenerativeAI(API_KEY);
-                const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
+                const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
                 // Create product photography prompt
                 const imagePrompt = `Professional product photography of ${product.nome_completo}. ${product.descrizione_breve || ''}. Clean white background, e-commerce style, well-lit, centered, high quality, studio lighting, detailed, sharp focus, commercial photo.`;
@@ -1224,7 +1224,7 @@ export async function POST(request: NextRequest) {
                 const API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
                 if (API_KEY) {
                   const genAI = new GoogleGenerativeAI(API_KEY);
-                  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
+                  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
                   // Generate up to 2 usage images
                   for (let i = 0; i < Math.min(usagePrompts.length, 2); i++) {
