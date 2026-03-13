@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionManager } from '@/lib/odoo/sessionManager';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,9 @@ export const dynamic = 'force-dynamic';
  * Recupera tutti i dipendenti attivi da Odoo per l'enrollment/selezione
  */
 export async function GET(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const sessionManager = getOdooSessionManager();
 

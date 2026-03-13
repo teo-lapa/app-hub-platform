@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Simple rate limiting: track last request time per IP
+const rateLimitMap = new Map<string, number>();
 
 // CHF Banknote denominations
 const VALID_DENOMINATIONS = [10, 20, 50, 100, 200, 1000];
@@ -23,6 +27,18 @@ const openai = process.env.OPENAI_API_KEY
  * Response: { denomination: number, serial_number: string, confidence: number, currency: string }
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
+  // Rate limit: 1 request per second per IP
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const now = Date.now();
+  const lastRequest = rateLimitMap.get(ip);
+  if (lastRequest && now - lastRequest < 1000) {
+    return NextResponse.json({ success: false, error: 'Troppo veloce, riprova.' }, { status: 429 });
+  }
+  rateLimitMap.set(ip, now);
+
   try {
     const formData = await request.formData();
     const imageFile = formData.get('image') as File;

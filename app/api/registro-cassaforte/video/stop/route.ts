@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Reolink configuration
-const REOLINK_IP = process.env.REOLINK_IP || '10.0.0.50';
-const REOLINK_USERNAME = process.env.REOLINK_USERNAME || 'admin';
-const REOLINK_PASSWORD = process.env.REOLINK_PASSWORD || 'admin';
+const REOLINK_IP = process.env.REOLINK_IP;
+const REOLINK_USERNAME = process.env.REOLINK_USERNAME;
+const REOLINK_PASSWORD = process.env.REOLINK_PASSWORD;
 
 /**
  * Get authentication token from Reolink
@@ -47,6 +48,9 @@ async function getReolinkToken(): Promise<string> {
  * Ferma la registrazione video sulla telecamera Reolink
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json().catch(() => ({}));
     const { session_id, payment_id } = body;

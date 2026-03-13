@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionManager } from '@/lib/odoo/sessionManager';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Jetson Nano configuration
-const JETSON_URL = process.env.JETSON_OCR_URL || process.env.JETSON_URL || 'http://192.168.1.171:3100';
-const JETSON_SECRET = process.env.JETSON_WEBHOOK_SECRET || 'jetson-ocr-secret-2025';
+const JETSON_URL = process.env.JETSON_OCR_URL || process.env.JETSON_URL;
+const JETSON_SECRET = process.env.JETSON_WEBHOOK_SECRET || '';
 
 /**
  * POST /api/registro-cassaforte/face-enroll
@@ -20,6 +21,9 @@ const JETSON_SECRET = process.env.JETSON_WEBHOOK_SECRET || 'jetson-ocr-secret-20
  * Response: { success: boolean, message: string }
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const formData = await request.formData();
 

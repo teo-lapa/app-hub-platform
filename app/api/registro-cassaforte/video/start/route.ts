@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Reolink configuration
-const REOLINK_IP = process.env.REOLINK_IP || '10.0.0.50';
-const REOLINK_USERNAME = process.env.REOLINK_USERNAME || 'admin';
-const REOLINK_PASSWORD = process.env.REOLINK_PASSWORD || 'admin';
-
-// Active recording sessions
-const activeSessions = new Map<string, { startTime: Date; token: string }>();
+const REOLINK_IP = process.env.REOLINK_IP;
+const REOLINK_USERNAME = process.env.REOLINK_USERNAME;
+const REOLINK_PASSWORD = process.env.REOLINK_PASSWORD;
 
 /**
  * Generate a unique session ID
@@ -59,6 +57,9 @@ async function getReolinkToken(): Promise<string> {
  * Avvia la registrazione video sulla telecamera Reolink
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json().catch(() => ({}));
     const { employee_id, employee_name, deposit_type } = body;
@@ -99,12 +100,6 @@ export async function POST(request: NextRequest) {
       const success = result[0]?.code === 0 || result[0]?.value?.rspCode === 200;
 
       if (success) {
-        // Store session
-        activeSessions.set(sessionId, {
-          startTime: new Date(),
-          token: token,
-        });
-
         return NextResponse.json({
           success: true,
           session_id: sessionId,

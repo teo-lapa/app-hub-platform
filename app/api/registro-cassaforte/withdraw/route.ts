@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionManager } from '@/lib/odoo/sessionManager';
+import { verifyCassaforteAuth, getCashJournalId } from '@/lib/registro-cassaforte/api-auth';
+import { escapeHtml } from '@/lib/registro-cassaforte/helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Journal Cash ID
-const CASH_JOURNAL_ID = 8;
 
 interface WithdrawRequest {
   employee_id: number;
@@ -19,6 +18,9 @@ interface WithdrawRequest {
  * Registra un prelievo dalla cassaforte creando una statement line negativa
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const body: WithdrawRequest = await request.json();
 
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
       'account.bank.statement.line',
       'create',
       [{
-        journal_id: CASH_JOURNAL_ID,
+        journal_id: getCashJournalId(),
         date: today,
         payment_ref: communication,
         amount: -body.amount, // Negative for withdrawal
@@ -86,9 +88,9 @@ export async function POST(request: NextRequest) {
     const noteBody = `
       <h3>💸 Prelievo Cassaforte</h3>
       <ul>
-        <li><strong>Dipendente:</strong> ${body.employee_name} (ID: ${body.employee_id})</li>
+        <li><strong>Dipendente:</strong> ${escapeHtml(body.employee_name)} (ID: ${body.employee_id})</li>
         <li><strong>Importo:</strong> CHF ${body.amount.toFixed(2)}</li>
-        ${body.note ? `<li><strong>Note:</strong> ${body.note}</li>` : ''}
+        ${body.note ? `<li><strong>Note:</strong> ${escapeHtml(body.note)}</li>` : ''}
         <li><strong>Data/Ora:</strong> ${new Date().toLocaleString('it-CH')}</li>
       </ul>
     `;

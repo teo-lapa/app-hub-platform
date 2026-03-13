@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionManager } from '@/lib/odoo/sessionManager';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,14 +13,14 @@ export const dynamic = 'force-dynamic';
  * - employee_id: ID dipendente (opzionale, filtra per driver)
  */
 export async function GET(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
 
     const sessionManager = getOdooSessionManager();
-
-    // Prima cerchiamo i picking completati con pagamento cash
-    // I pagamenti cash sono registrati nel chatter come messaggi contenenti "INCASSO PAGAMENTO"
 
     // 1. Recupera picking completati degli ultimi 30 giorni
     const thirtyDaysAgo = new Date();
@@ -32,9 +33,7 @@ export async function GET(request: NextRequest) {
       ['date_done', '>=', dateFrom],
     ];
 
-    // Se specificato employee_id, filtra per driver
     if (employeeId) {
-      // Trova l'hr.employee per ottenere il partner_id associato
       const employees = await sessionManager.callKw(
         'hr.employee',
         'search_read',
@@ -43,7 +42,6 @@ export async function GET(request: NextRequest) {
       );
 
       if (employees.length > 0 && employees[0].user_id) {
-        // Cerca picking dove il driver corrisponde
         domain.push(['user_id', '=', employees[0].user_id[0]]);
       }
     }
@@ -59,107 +57,140 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // 2. Per ogni picking, cerca nei messaggi se c'è un incasso cash non ancora versato
-    const pendingPayments: any[] = [];
+    // 2. Collect ALL message_ids from ALL pickings into one array
+    const allMessageIds: number[] = [];
+    for (const picking of pickings) {
+      if (picking.message_ids && picking.message_ids.length > 0) {
+        allMessageIds.push(...picking.message_ids);
+      }
+    }
+
+    // 3. Fetch ALL messages in ONE batch query
+    const allMessages: any[] = allMessageIds.length > 0
+      ? await sessionManager.callKw(
+          'mail.message',
+          'search_read',
+          [[['id', 'in', allMessageIds]]],
+          { fields: ['id', 'body', 'date'] }
+        )
+      : [];
+
+    // 4. Build a map of message id -> message
+    const messageMap = new Map<number, any>();
+    for (const msg of allMessages) {
+      messageMap.set(msg.id, msg);
+    }
+
+    // 5. Process pickings in memory to find cash payments and filter deposited ones
+    const cashPickings: { picking: any; amount: number; messageId: number }[] = [];
 
     for (const picking of pickings) {
       if (!picking.message_ids || picking.message_ids.length === 0) continue;
 
-      // Leggi i messaggi del picking
-      const messages = await sessionManager.callKw(
-        'mail.message',
-        'search_read',
-        [[['id', 'in', picking.message_ids]]],
-        { fields: ['id', 'body', 'date'] }
-      );
+      const pickingMessages = picking.message_ids
+        .map((id: number) => messageMap.get(id))
+        .filter(Boolean);
 
-      // Prima controlla se questo picking è già stato versato in cassaforte
-      const alreadyDeposited = messages.some((msg: any) => {
+      // Skip if already deposited
+      const alreadyDeposited = pickingMessages.some((msg: any) => {
         const body = msg.body?.toLowerCase() || '';
         return body.includes('versato in cassaforte');
       });
+      if (alreadyDeposited) continue;
 
-      // Se già versato, salta questo picking
-      if (alreadyDeposited) {
-        continue;
-      }
-
-      // Cerca messaggi con "INCASSO PAGAMENTO" e metodo "contanti" o "cash"
-      for (const msg of messages) {
+      // Find first cash payment message
+      for (const msg of pickingMessages) {
         const body = msg.body?.toLowerCase() || '';
-
         if (body.includes('incasso pagamento') && (body.includes('contanti') || body.includes('cash'))) {
-          // Estrai importo dal messaggio (pattern: "€ 123.45" o "CHF 123.45")
           const amountMatch = body.match(/(?:€|chf)\s*([\d.,]+)/i);
           if (amountMatch) {
             const amount = parseFloat(amountMatch[1].replace(',', '.'));
-
-            // Recupera la fattura dal sale order
-            let invoiceId: number | null = null;
-            let invoiceName: string | null = null;
-            let invoiceAmount: number | null = null;
-
-            if (picking.sale_id) {
-              const saleId = Array.isArray(picking.sale_id) ? picking.sale_id[0] : picking.sale_id;
-              try {
-                const saleOrders = await sessionManager.callKw(
-                  'sale.order',
-                  'search_read',
-                  [[['id', '=', saleId]]],
-                  { fields: ['invoice_ids'], limit: 1 }
-                );
-
-                if (saleOrders.length > 0 && saleOrders[0].invoice_ids && saleOrders[0].invoice_ids.length > 0) {
-                  // Prendi la prima fattura
-                  const firstInvoiceId = saleOrders[0].invoice_ids[0];
-                  const invoices = await sessionManager.callKw(
-                    'account.move',
-                    'search_read',
-                    [[['id', '=', firstInvoiceId]]],
-                    { fields: ['id', 'name', 'amount_total'], limit: 1 }
-                  );
-
-                  if (invoices.length > 0) {
-                    invoiceId = invoices[0].id;
-                    invoiceName = invoices[0].name;
-                    invoiceAmount = invoices[0].amount_total;
-                  }
-                }
-              } catch (invoiceError) {
-                console.warn(`⚠️ Errore recupero fattura per picking ${picking.id}:`, invoiceError);
-              }
-            }
-
-            pendingPayments.push({
-              picking_id: picking.id,
-              picking_name: picking.name,
-              partner_id: picking.partner_id ? picking.partner_id[0] : null,
-              partner_name: picking.partner_id ? picking.partner_id[1] : 'Cliente sconosciuto',
-              amount: amount,
-              date: picking.date_done?.split(' ')[0] || '',
-              driver_name: picking.user_id ? picking.user_id[1] : 'Non assegnato',
-              message_id: msg.id,
-              invoice_id: invoiceId,
-              invoice_name: invoiceName,
-              invoice_amount: invoiceAmount,
-            });
+            cashPickings.push({ picking, amount, messageId: msg.id });
+            break; // Only first match per picking (dedup)
           }
         }
       }
     }
 
-    // Rimuovi duplicati (stesso picking)
-    const uniquePayments = pendingPayments.reduce((acc: any[], payment: any) => {
-      if (!acc.find(p => p.picking_id === payment.picking_id)) {
-        acc.push(payment);
+    // 6. Batch-fetch sale orders for pickings with sale_id
+    const saleIds = Array.from(new Set(
+      cashPickings
+        .filter(cp => cp.picking.sale_id)
+        .map(cp => Array.isArray(cp.picking.sale_id) ? cp.picking.sale_id[0] : cp.picking.sale_id)
+    ))
+
+    const saleOrderMap = new Map<number, any>();
+    if (saleIds.length > 0) {
+      const saleOrders = await sessionManager.callKw(
+        'sale.order',
+        'search_read',
+        [[['id', 'in', saleIds]]],
+        { fields: ['id', 'invoice_ids'] }
+      );
+      for (const so of saleOrders) {
+        saleOrderMap.set(so.id, so);
       }
-      return acc;
-    }, []);
+    }
+
+    // 7. Collect all invoice ids and batch-fetch
+    const allInvoiceIds: number[] = [];
+    Array.from(saleOrderMap.values()).forEach((so) => {
+      if (so.invoice_ids && so.invoice_ids.length > 0) {
+        allInvoiceIds.push(so.invoice_ids[0]); // First invoice only
+      }
+    });
+
+    const invoiceMap = new Map<number, any>();
+    if (allInvoiceIds.length > 0) {
+      const invoices = await sessionManager.callKw(
+        'account.move',
+        'search_read',
+        [[['id', 'in', Array.from(new Set(allInvoiceIds))]]],
+        { fields: ['id', 'name', 'amount_total'] }
+      );
+      for (const inv of invoices) {
+        invoiceMap.set(inv.id, inv);
+      }
+    }
+
+    // 8. Build response
+    const pendingPayments = cashPickings.map(({ picking, amount, messageId }) => {
+      let invoiceId: number | null = null;
+      let invoiceName: string | null = null;
+      let invoiceAmount: number | null = null;
+
+      if (picking.sale_id) {
+        const saleId = Array.isArray(picking.sale_id) ? picking.sale_id[0] : picking.sale_id;
+        const so = saleOrderMap.get(saleId);
+        if (so && so.invoice_ids && so.invoice_ids.length > 0) {
+          const inv = invoiceMap.get(so.invoice_ids[0]);
+          if (inv) {
+            invoiceId = inv.id;
+            invoiceName = inv.name;
+            invoiceAmount = inv.amount_total;
+          }
+        }
+      }
+
+      return {
+        picking_id: picking.id,
+        picking_name: picking.name,
+        partner_id: picking.partner_id ? picking.partner_id[0] : null,
+        partner_name: picking.partner_id ? picking.partner_id[1] : 'Cliente sconosciuto',
+        amount,
+        date: picking.date_done?.split(' ')[0] || '',
+        driver_name: picking.user_id ? picking.user_id[1] : 'Non assegnato',
+        message_id: messageId,
+        invoice_id: invoiceId,
+        invoice_name: invoiceName,
+        invoice_amount: invoiceAmount,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      pickings: uniquePayments,
-      count: uniquePayments.length,
+      pickings: pendingPayments,
+      count: pendingPayments.length,
     });
 
   } catch (error: any) {
