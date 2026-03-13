@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { verifyCassaforteAuth } from '@/lib/registro-cassaforte/api-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,13 +45,19 @@ async function ensureTable() {
   }
 }
 
+// Ensure table exists once at module load
+const _tableReady = ensureTable();
+
 /**
  * GET /api/registro-cassaforte/face-embeddings
  * Get all enrolled face embeddings
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
-    await ensureTable();
+    await _tableReady;
     const sql = getDb();
 
     const embeddings = await sql`
@@ -79,6 +86,9 @@ export async function GET() {
  * Save a new face embedding
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { employee_id, employee_name, embedding } = body;
@@ -97,7 +107,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    await ensureTable();
+    await _tableReady;
     const sql = getDb();
 
     // Upsert: insert or update if employee_id already exists
@@ -134,6 +144,9 @@ export async function POST(request: NextRequest) {
  * Delete face embedding for an employee
  */
 export async function DELETE(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
@@ -145,7 +158,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
-    await ensureTable();
+    await _tableReady;
     const sql = getDb();
 
     await sql`

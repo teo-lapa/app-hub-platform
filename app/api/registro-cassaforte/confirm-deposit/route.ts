@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionManager } from '@/lib/odoo/sessionManager';
+import { verifyCassaforteAuth, getCashJournalId } from '@/lib/registro-cassaforte/api-auth';
+import { escapeHtml } from '@/lib/registro-cassaforte/helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Journal Cash ID (verificato in Odoo)
-const CASH_JOURNAL_ID = 8;
 
 interface BanknoteCount {
   denomination: number;
@@ -36,6 +35,9 @@ interface DepositRequest {
  * La statement line crea automaticamente il move contabile e appare nella riconciliazione bancaria.
  */
 export async function POST(request: NextRequest) {
+  const authError = verifyCassaforteAuth(request);
+  if (authError) return authError;
+
   try {
     const body: DepositRequest = await request.json();
 
@@ -77,23 +79,22 @@ export async function POST(request: NextRequest) {
     let pickingNames: string[] = [];
     let saleOrderNames: string[] = [];
 
-    if (body.type === 'from_delivery') {
-      // Recupera i nomi dei picking e sale order per tracciabilità
-      if (body.picking_ids && body.picking_ids.length > 0) {
-        try {
-          const pickingDetails = await sessionManager.callKw(
-            'stock.picking',
-            'search_read',
-            [[['id', 'in', body.picking_ids]]],
-            { fields: ['id', 'name', 'sale_id'] }
-          );
-          pickingNames = pickingDetails.map((p: any) => p.name).filter(Boolean);
-          saleOrderNames = pickingDetails
-            .map((p: any) => Array.isArray(p.sale_id) ? p.sale_id[1] : null)
-            .filter(Boolean);
-        } catch (e) {
-          console.warn('⚠️ Errore recupero dettagli picking:', e);
-        }
+    // Fetch picking details once (used for names, sale orders, and partner)
+    let pickingDetails: any[] = [];
+    if (body.type === 'from_delivery' && body.picking_ids && body.picking_ids.length > 0) {
+      try {
+        pickingDetails = await sessionManager.callKw(
+          'stock.picking',
+          'search_read',
+          [[['id', 'in', body.picking_ids]]],
+          { fields: ['id', 'name', 'sale_id', 'partner_id'] }
+        );
+        pickingNames = pickingDetails.map((p: any) => p.name).filter(Boolean);
+        saleOrderNames = pickingDetails
+          .map((p: any) => Array.isArray(p.sale_id) ? p.sale_id[1] : null)
+          .filter(Boolean);
+      } catch (e) {
+        console.warn('⚠️ Errore recupero dettagli picking:', e);
       }
     } else {
       communication += ` - Extra: ${body.customer_name}`;
@@ -109,20 +110,13 @@ export async function POST(request: NextRequest) {
     let partnerId: number | null = null;
     let partnerName: string = '';
 
-    if (body.type === 'from_delivery' && body.picking_ids && body.picking_ids.length > 0) {
+    if (body.type === 'from_delivery' && pickingDetails.length > 0) {
       // Per versamenti da consegne, recupera il cliente AZIENDA (non il contatto di consegna)
       try {
-        const pickings = await sessionManager.callKw(
-          'stock.picking',
-          'search_read',
-          [[['id', 'in', body.picking_ids]]],
-          { fields: ['id', 'partner_id', 'sale_id'], limit: 1 }
-        );
-
-        if (pickings.length > 0 && pickings[0].partner_id) {
-          const deliveryPartnerId = Array.isArray(pickings[0].partner_id)
-            ? pickings[0].partner_id[0]
-            : pickings[0].partner_id;
+        if (pickingDetails[0].partner_id) {
+          const deliveryPartnerId = Array.isArray(pickingDetails[0].partner_id)
+            ? pickingDetails[0].partner_id[0]
+            : pickingDetails[0].partner_id;
 
           // Recupera il partner di consegna per trovare l'azienda madre
           const deliveryPartner = await sessionManager.callKw(
@@ -214,7 +208,7 @@ export async function POST(request: NextRequest) {
       'account.bank.statement.line',
       'create',
       [{
-        journal_id: CASH_JOURNAL_ID,
+        journal_id: getCashJournalId(),
         date: today,
         payment_ref: communication,
         partner_id: partnerId,
@@ -247,10 +241,10 @@ export async function POST(request: NextRequest) {
     const noteBody = `
       <h3>🔐 Versamento Cassaforte</h3>
       <ul>
-        <li><strong>Dipendente:</strong> ${body.employee_name} (ID: ${body.employee_id})</li>
+        <li><strong>Dipendente:</strong> ${escapeHtml(body.employee_name)} (ID: ${escapeHtml(String(body.employee_id))})</li>
         <li><strong>Tipo:</strong> ${body.type === 'from_delivery' ? 'Da consegne' : 'Extra'}</li>
-        ${body.type === 'extra' ? `<li><strong>Cliente:</strong> ${body.customer_name}</li>` : ''}
-        ${body.picking_ids && body.picking_ids.length > 0 ? `<li><strong>Picking IDs:</strong> ${body.picking_ids.join(', ')}</li>` : ''}
+        ${body.type === 'extra' && body.customer_name ? `<li><strong>Cliente:</strong> ${escapeHtml(body.customer_name)}</li>` : ''}
+        ${pickingNames.length > 0 ? `<li><strong>Picking:</strong> ${pickingNames.map(n => escapeHtml(n)).join(', ')}</li>` : ''}
         <li><strong>Importo:</strong> CHF ${body.amount.toFixed(2)}</li>
         ${body.expected_amount ? `<li><strong>Importo atteso:</strong> CHF ${body.expected_amount.toFixed(2)}</li>` : ''}
         ${discrepancy !== 0 ? `<li><strong>Discrepanza:</strong> CHF ${discrepancy > 0 ? '+' : ''}${discrepancy.toFixed(2)}</li>` : ''}
@@ -287,7 +281,7 @@ export async function POST(request: NextRequest) {
             'mail.message',
             'create',
             [{
-              body: `<p>💰 <strong>Versato in cassaforte</strong> da ${body.employee_name} - Statement Line ID: ${statementLineId}${moveId ? ` (Move: ${moveId})` : ''}</p>`,
+              body: `<p>💰 <strong>Versato in cassaforte</strong> da ${escapeHtml(body.employee_name)} - Statement Line ID: ${statementLineId}${moveId ? ` (Move: ${moveId})` : ''}</p>`,
               model: 'stock.picking',
               res_id: pickingId,
               message_type: 'comment',
