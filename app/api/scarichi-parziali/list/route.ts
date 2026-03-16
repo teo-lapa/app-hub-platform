@@ -69,21 +69,20 @@ async function cercaScarichiParziali(sessionId: string, pickingId: number) {
 
   const messaggiFormattati = [];
 
-  for (const msg of messages) {
-    // Leggi allegati
-    let allegati = [];
-    if (msg.attachment_ids && msg.attachment_ids.length > 0) {
-      const attachments = await callOdoo(sessionId, 'ir.attachment', 'read', [msg.attachment_ids], {
-        fields: ['id', 'name', 'mimetype', 'description']
-      });
-
-      allegati = attachments.map((att: any) => ({
-        id: att.id,
-        nome: att.name,
-        tipo: att.mimetype,
-        descrizione: att.description
-      }));
+  // Leggi tutti gli allegati in parallelo
+  const allAttachmentIds = messages.flatMap((msg: any) => msg.attachment_ids || []);
+  let attachmentMap = new Map();
+  if (allAttachmentIds.length > 0) {
+    const attachments = await callOdoo(sessionId, 'ir.attachment', 'read', [allAttachmentIds], {
+      fields: ['id', 'name', 'mimetype', 'description']
+    });
+    for (const att of attachments) {
+      attachmentMap.set(att.id, { id: att.id, nome: att.name, tipo: att.mimetype, descrizione: att.description });
     }
+  }
+
+  for (const msg of messages) {
+    const allegati = (msg.attachment_ids || []).map((id: number) => attachmentMap.get(id)).filter(Boolean);
 
     // Pulisci HTML dal body
     const cleanBody = msg.body
@@ -240,71 +239,53 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Trovati ${pickingsResidui.length} ordini OUT residui`);
 
-    // Per ogni ordine residuo, trova Sales Order → OUT completato → messaggi scarico parziale
+    // Processa tutti gli ordini in parallelo (max 10 alla volta per non sovraccaricare Odoo)
+    const BATCH_SIZE = 10;
     const ordiniConDettagli = [];
 
-    for (const pickingResiduo of pickingsResidui) {
-      console.log(`\n🔍 Analisi ordine residuo: ${pickingResiduo.name}`);
+    const pickingsValidi = pickingsResidui.filter((p: any) => p.origin);
 
-      const salesOrderName = pickingResiduo.origin;
+    for (let i = 0; i < pickingsValidi.length; i += BATCH_SIZE) {
+      const batch = pickingsValidi.slice(i, i + BATCH_SIZE);
 
-      if (!salesOrderName) {
-        console.log('   ⚠️  Nessun Sales Order collegato, skip');
-        continue;
-      }
+      const results = await Promise.all(batch.map(async (pickingResiduo: any) => {
+        const salesOrderName = pickingResiduo.origin;
+        const batchId = pickingResiduo.batch_id ? pickingResiduo.batch_id[0] : null;
+        const locationName = pickingResiduo.location_id ? pickingResiduo.location_id[1] : null;
 
-      console.log(`   📦 Sales Order: ${salesOrderName}`);
+        // Fase 1: 4 query in parallelo
+        const [outCompletato, { autista, veicolo }, returnCreated, prodottiNonScaricati] = await Promise.all([
+          trovaOutCompletato(sessionId, salesOrderName),
+          getAutistaEVeicolo(sessionId, pickingResiduo.id, batchId, locationName),
+          checkReturnCreated(sessionId, pickingResiduo.name),
+          getProdottiNonScaricati(sessionId, pickingResiduo.id)
+        ]);
 
-      // Trova OUT completato per questo Sales Order
-      const outCompletato = await trovaOutCompletato(sessionId, salesOrderName);
+        // FILTRO 1: almeno 1 prodotto nel furgone
+        if (prodottiNonScaricati.length === 0) return null;
+        // FILTRO 2: deve avere OUT completato (scarico parziale precedente)
+        if (!outCompletato) return null;
 
-      // Recupera info autista e veicolo
-      const batchId = pickingResiduo.batch_id ? pickingResiduo.batch_id[0] : null;
-      const locationName = pickingResiduo.location_id ? pickingResiduo.location_id[1] : null;
-      const { autista, veicolo } = await getAutistaEVeicolo(sessionId, pickingResiduo.id, batchId, locationName);
+        // Fase 2: messaggi scarico parziale (serve outCompletato.id)
+        const messaggiScaricoParziale = await cercaScarichiParziali(sessionId, outCompletato.id);
 
-      // Verifica se il return è già stato creato
-      const returnCreated = await checkReturnCreated(sessionId, pickingResiduo.name);
+        return {
+          numeroOrdineResiduo: pickingResiduo.name,
+          cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
+          clienteId: pickingResiduo.partner_id ? pickingResiduo.partner_id[0] : 0,
+          dataPrevisita: pickingResiduo.scheduled_date,
+          salesOrder: salesOrderName,
+          outCompletato: outCompletato.name,
+          prodottiNonScaricati,
+          messaggiScaricoParziale,
+          haScarichiParziali: messaggiScaricoParziale.length > 0,
+          autista,
+          veicolo,
+          returnCreated
+        };
+      }));
 
-      // Trova prodotti non scaricati PRIMA di decidere se aggiungere l'ordine
-      const prodottiNonScaricati = await getProdottiNonScaricati(sessionId, pickingResiduo.id);
-
-      console.log(`   📦 Prodotti non scaricati: ${prodottiNonScaricati.length}`);
-
-      // ⚠️ FILTRO 1: Aggiungi solo ordini con almeno 1 prodotto nel furgone
-      if (prodottiNonScaricati.length === 0) {
-        console.log('   ✅ Nessun prodotto nel furgone, skip');
-        continue;
-      }
-
-      // ⚠️ FILTRO 2: Mostra SOLO ordini con scarico parziale precedente (OUT completato)
-      // Skip ordini al primo tentativo di consegna (senza OUT completato)
-      if (!outCompletato) {
-        console.log('   ✅ Primo tentativo consegna (no scarico parziale precedente), skip');
-        continue;
-      }
-
-      console.log(`   ✅ OUT completato trovato: ${outCompletato.name}`);
-
-      // Cerca messaggi di scarico parziale nell'OUT completato
-      const messaggiScaricoParziale = await cercaScarichiParziali(sessionId, outCompletato.id);
-
-      console.log(`   📨 Messaggi scarico parziale: ${messaggiScaricoParziale.length}`);
-
-      ordiniConDettagli.push({
-        numeroOrdineResiduo: pickingResiduo.name,
-        cliente: pickingResiduo.partner_id ? pickingResiduo.partner_id[1] : 'Sconosciuto',
-        clienteId: pickingResiduo.partner_id ? pickingResiduo.partner_id[0] : 0,
-        dataPrevisita: pickingResiduo.scheduled_date,
-        salesOrder: salesOrderName,
-        outCompletato: outCompletato.name,
-        prodottiNonScaricati,
-        messaggiScaricoParziale,
-        haScarichiParziali: messaggiScaricoParziale.length > 0,
-        autista,
-        veicolo,
-        returnCreated
-      });
+      ordiniConDettagli.push(...results.filter(Boolean));
     }
 
     console.log(`\n✅ Analisi completata! ${ordiniConDettagli.length} ordini con dettagli`);
