@@ -193,36 +193,40 @@ export async function POST(request: NextRequest) {
       }]);
     }
 
-    // Scrivi nel chatter del picking
-    let chatterBody = `<h3>📦 Reso: ${product.nome}</h3>`;
-    chatterBody += `<p><b>Quantità:</b> ${qty} ${product.uom}</p>`;
-    chatterBody += `<p><b>Da:</b> ${vanLocationName} → <b>A:</b> ${bufferInfo.name}</p>`;
-    if (lotName) chatterBody += `<p><b>Lotto:</b> ${lotName}</p>`;
+    // Scrivi nel chatter del picking (testo semplice, no HTML)
+    let chatterLines = [];
+    chatterLines.push(`📦 RESO: ${product.nome}`);
+    chatterLines.push(`Quantità: ${qty} ${product.uom}`);
+    chatterLines.push(`Da: ${vanLocationName} → A: ${bufferInfo.name}`);
+    if (lotName) chatterLines.push(`Lotto: ${lotName}`);
 
     // Motivazione autista
     if (messaggiAutista && messaggiAutista.length > 0) {
-      chatterBody += `<hr/><h4>🚛 Motivazione Autista</h4>`;
+      chatterLines.push('');
+      chatterLines.push('🚛 MOTIVAZIONE AUTISTA');
       for (const msg of messaggiAutista) {
-        chatterBody += `<div style="background:#FEF3C7;padding:8px;border-radius:4px;margin:4px 0;">`;
-        chatterBody += `<small><b>${msg.autore}</b> — ${new Date(msg.data).toLocaleString('it-IT')}</small><br/>`;
-        chatterBody += `${msg.messaggio}`;
-        chatterBody += `</div>`;
+        chatterLines.push(`${msg.autore} — ${new Date(msg.data).toLocaleString('it-IT')}`);
+        chatterLines.push(msg.messaggio);
       }
     }
 
     // Risultato AI (se foto)
     if (action === 'photo' && aiResult) {
-      chatterBody += `<hr/><h4>🤖 Analisi Gemini</h4>`;
-      chatterBody += `<p><b>Match:</b> ${aiResult.match ? '✅ Confermato' : '⚠️ Da verificare'}</p>`;
-      chatterBody += `<p><b>Etichetta letta:</b> ${aiResult.labelText}</p>`;
-      chatterBody += `<p><b>Confidenza:</b> ${aiResult.confidence}</p>`;
+      chatterLines.push('');
+      chatterLines.push('🤖 ANALISI GEMINI');
+      chatterLines.push(`Match: ${aiResult.match ? '✅ Confermato' : '⚠️ Da verificare'}`);
+      chatterLines.push(`Etichetta letta: ${aiResult.labelText}`);
+      chatterLines.push(`Confidenza: ${aiResult.confidence}`);
     }
 
     // Motivo non trovato
     if (action === 'not_found' && reason) {
-      chatterBody += `<hr/><h4>❌ Prodotto Non Trovato</h4>`;
-      chatterBody += `<p><b>Motivo:</b> ${reason}</p>`;
+      chatterLines.push('');
+      chatterLines.push('❌ PRODOTTO NON TROVATO');
+      chatterLines.push(`Motivo: ${reason}`);
     }
+
+    const chatterBody = chatterLines.join('\n');
 
     const messagePostKwargs: any = {
       body: chatterBody,
