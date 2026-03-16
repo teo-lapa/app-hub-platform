@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader,
-  ArrowRight,
   MapPin,
   Calendar,
   FileText,
@@ -59,7 +58,6 @@ export default function ScarichiParzialiPage() {
   const [orders, setOrders] = useState<ResidualOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [creatingTransfer, setCreatingTransfer] = useState<string | null>(null);
   const [selectedOrderForMotivation, setSelectedOrderForMotivation] = useState<ResidualOrder | null>(null);
   const [processingProduct, setProcessingProduct] = useState<string | null>(null); // "orderNum|prodName"
   const [notFoundModal, setNotFoundModal] = useState<{ order: ResidualOrder; product: ProductNotDelivered } | null>(null);
@@ -150,48 +148,6 @@ export default function ScarichiParzialiPage() {
       // Fallback: apri la lista
       const searchUrl = `${odooUrl}/web#action=sale.action_orders&model=sale.order&view_type=list&cids=1&menu_id=162`;
       window.open(searchUrl, '_blank');
-    }
-  };
-
-  const handleCreateReturn = async (order: ResidualOrder) => {
-    if (!order.prodottiNonScaricati || order.prodottiNonScaricati.length === 0) {
-      alert('Nessun prodotto da rientrare');
-      return;
-    }
-
-    const confirmMsg = `Creare il reso per l'ordine ${order.numeroOrdineResiduo}?\n\n` +
-      `Cliente: ${order.cliente}\n` +
-      `Prodotti: ${order.prodottiNonScaricati.length} articoli non consegnati`;
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      setCreatingTransfer(order.numeroOrdineResiduo);
-
-      const response = await fetch('/api/scarichi-parziali/create-return', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ordine: order
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Errore creazione reso');
-      }
-
-      alert(`✅ Reso creato con successo!\n\n${data.message}`);
-
-      // Ricarica ordini
-      await loadOrders();
-
-    } catch (err: any) {
-      console.error('Errore creazione reso:', err);
-      alert(`❌ Errore: ${err.message}`);
-    } finally {
-      setCreatingTransfer(null);
     }
   };
 
@@ -558,30 +514,6 @@ export default function ScarichiParzialiPage() {
                     )}
                   </div>
 
-                  {/* Card Footer - Reso completo (tutti i prodotti insieme) */}
-                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    <button
-                      onClick={() => handleCreateReturn(order)}
-                      disabled={
-                        creatingTransfer === order.numeroOrdineResiduo ||
-                        !order.prodottiNonScaricati ||
-                        order.prodottiNonScaricati.length === 0
-                      }
-                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                    >
-                      {creatingTransfer === order.numeroOrdineResiduo ? (
-                        <>
-                          <Loader className="w-3.5 h-3.5 animate-spin" />
-                          <span>Creazione in corso...</span>
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                          <span>Reso completo (tutti i prodotti)</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
