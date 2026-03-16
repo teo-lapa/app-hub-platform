@@ -20,7 +20,13 @@ async function callOdoo(sessionId: string, model: string, method: string, args: 
       id: Math.floor(Math.random() * 1000000000)
     })
   });
-  const data = await response.json();
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Odoo ha risposto con errore (${response.status}): ${text.substring(0, 100)}`);
+  }
   if (data.error) throw new Error(`Errore ${model}.${method}: ${JSON.stringify(data.error)}`);
   return data.result;
 }
