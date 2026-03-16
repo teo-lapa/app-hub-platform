@@ -166,14 +166,25 @@ export default function ScarichiParzialiPage() {
     setProcessingProduct(key);
 
     try {
-      // Converti in base64
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]); // rimuovi "data:image/jpeg;base64,"
+      // Comprimi foto (max 1200px, qualità 70%) e converti in base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl.split(',')[1]);
         };
-        reader.readAsDataURL(file);
+        img.onerror = () => reject(new Error('Errore caricamento immagine'));
+        img.src = URL.createObjectURL(file);
       });
 
       const response = await fetch('/api/scarichi-parziali/process-product', {
