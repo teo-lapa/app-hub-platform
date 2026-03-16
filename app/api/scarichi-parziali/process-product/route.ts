@@ -73,12 +73,13 @@ export async function POST(request: NextRequest) {
     if (!sessionId) return NextResponse.json({ success: false, error: 'Non autenticato' }, { status: 401 });
 
     const body = await request.json();
-    const { action, product, order, photo, reason } = body;
+    const { action, product, order, photo, reason, messaggiAutista } = body;
     // action: 'photo' | 'not_found'
     // product: { nome, quantitaRichiesta, quantitaEffettiva, uom }
     // order: { numeroOrdineResiduo, cliente, salesOrder }
     // photo: base64 string (solo per action='photo')
     // reason: string (solo per action='not_found')
+    // messaggiAutista: array di messaggi scarico parziale dell'autista
 
     if (!product || !order) {
       return NextResponse.json({ success: false, error: 'Dati mancanti' }, { status: 400 });
@@ -173,9 +174,10 @@ export async function POST(request: NextRequest) {
     if (lotId) moveLineData.lot_id = lotId;
     await callOdoo(sessionId, 'stock.move.line', 'create', [moveLineData]);
 
-    // Allega foto al picking (se presente)
+    // Allega foto al picking e ottieni attachment_id per il chatter
+    let photoAttachmentId = null;
     if (action === 'photo' && photo) {
-      await callOdoo(sessionId, 'ir.attachment', 'create', [{
+      photoAttachmentId = await callOdoo(sessionId, 'ir.attachment', 'create', [{
         name: `foto_reso_${product.nome.substring(0, 30)}.jpg`,
         type: 'binary',
         datas: photo,
@@ -184,6 +186,47 @@ export async function POST(request: NextRequest) {
         mimetype: 'image/jpeg'
       }]);
     }
+
+    // Scrivi nel chatter del picking
+    let chatterBody = `<h3>📦 Reso: ${product.nome}</h3>`;
+    chatterBody += `<p><b>Quantità:</b> ${qty} ${product.uom}</p>`;
+    chatterBody += `<p><b>Da:</b> ${vanLocationName} → <b>A:</b> ${bufferInfo.name}</p>`;
+    if (lotName) chatterBody += `<p><b>Lotto:</b> ${lotName}</p>`;
+
+    // Motivazione autista
+    if (messaggiAutista && messaggiAutista.length > 0) {
+      chatterBody += `<hr/><h4>🚛 Motivazione Autista</h4>`;
+      for (const msg of messaggiAutista) {
+        chatterBody += `<div style="background:#FEF3C7;padding:8px;border-radius:4px;margin:4px 0;">`;
+        chatterBody += `<small><b>${msg.autore}</b> — ${new Date(msg.data).toLocaleString('it-IT')}</small><br/>`;
+        chatterBody += `${msg.messaggio}`;
+        chatterBody += `</div>`;
+      }
+    }
+
+    // Risultato AI (se foto)
+    if (action === 'photo' && aiResult) {
+      chatterBody += `<hr/><h4>🤖 Analisi Gemini</h4>`;
+      chatterBody += `<p><b>Match:</b> ${aiResult.match ? '✅ Confermato' : '⚠️ Da verificare'}</p>`;
+      chatterBody += `<p><b>Etichetta letta:</b> ${aiResult.labelText}</p>`;
+      chatterBody += `<p><b>Confidenza:</b> ${aiResult.confidence}</p>`;
+    }
+
+    // Motivo non trovato
+    if (action === 'not_found' && reason) {
+      chatterBody += `<hr/><h4>❌ Prodotto Non Trovato</h4>`;
+      chatterBody += `<p><b>Motivo:</b> ${reason}</p>`;
+    }
+
+    const messagePostKwargs: any = {
+      body: chatterBody,
+      message_type: 'comment',
+      subtype_xmlid: 'mail.mt_note'
+    };
+    if (photoAttachmentId) {
+      messagePostKwargs.attachment_ids = [photoAttachmentId];
+    }
+    await callOdoo(sessionId, 'stock.picking', 'message_post', [[pickingId]], messagePostKwargs);
 
     // Valida il picking (button_validate)
     if (action === 'photo') {

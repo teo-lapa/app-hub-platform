@@ -187,7 +187,8 @@ export default function ScarichiParzialiPage() {
             cliente: pendingPhoto.order.cliente,
             salesOrder: pendingPhoto.order.salesOrder
           },
-          photo: base64
+          photo: base64,
+          messaggiAutista: pendingPhoto.order.messaggiScaricoParziale
         })
       });
 
@@ -223,7 +224,8 @@ export default function ScarichiParzialiPage() {
             cliente: order.cliente,
             salesOrder: order.salesOrder
           },
-          reason: notFoundReason
+          reason: notFoundReason,
+          messaggiAutista: order.messaggiScaricoParziale
         })
       });
 
