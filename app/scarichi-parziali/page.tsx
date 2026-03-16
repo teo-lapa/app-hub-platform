@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Volume2,
   Image as ImageIcon,
-  X
+  X,
+  Camera,
+  Search
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -59,6 +61,12 @@ export default function ScarichiParzialiPage() {
   const [error, setError] = useState<string | null>(null);
   const [creatingTransfer, setCreatingTransfer] = useState<string | null>(null);
   const [selectedOrderForMotivation, setSelectedOrderForMotivation] = useState<ResidualOrder | null>(null);
+  const [processingProduct, setProcessingProduct] = useState<string | null>(null); // "orderNum|prodName"
+  const [notFoundModal, setNotFoundModal] = useState<{ order: ResidualOrder; product: ProductNotDelivered } | null>(null);
+  const [notFoundReason, setNotFoundReason] = useState('');
+  const [productResults, setProductResults] = useState<Record<string, { success: boolean; message: string; aiResult?: any }>>({}); // key: "orderNum|prodName"
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<{ order: ResidualOrder; product: ProductNotDelivered } | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -184,6 +192,94 @@ export default function ScarichiParzialiPage() {
       alert(`❌ Errore: ${err.message}`);
     } finally {
       setCreatingTransfer(null);
+    }
+  };
+
+  const productKey = (orderNum: string, prodName: string) => `${orderNum}|${prodName}`;
+
+  const handlePhotoCapture = (order: ResidualOrder, product: ProductNotDelivered) => {
+    setPendingPhoto({ order, product });
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingPhoto) return;
+
+    const key = productKey(pendingPhoto.order.numeroOrdineResiduo, pendingPhoto.product.nome);
+    setProcessingProduct(key);
+
+    try {
+      // Converti in base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // rimuovi "data:image/jpeg;base64,"
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const response = await fetch('/api/scarichi-parziali/process-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'photo',
+          product: pendingPhoto.product,
+          order: {
+            numeroOrdineResiduo: pendingPhoto.order.numeroOrdineResiduo,
+            cliente: pendingPhoto.order.cliente,
+            salesOrder: pendingPhoto.order.salesOrder
+          },
+          photo: base64
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      setProductResults(prev => ({ ...prev, [key]: { success: true, message: data.message, aiResult: data.aiResult } }));
+    } catch (err: any) {
+      setProductResults(prev => ({ ...prev, [key]: { success: false, message: err.message } }));
+    } finally {
+      setProcessingProduct(null);
+      setPendingPhoto(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleNotFound = async () => {
+    if (!notFoundModal) return;
+    const { order, product } = notFoundModal;
+    const key = productKey(order.numeroOrdineResiduo, product.nome);
+    setProcessingProduct(key);
+    setNotFoundModal(null);
+
+    try {
+      const response = await fetch('/api/scarichi-parziali/process-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'not_found',
+          product,
+          order: {
+            numeroOrdineResiduo: order.numeroOrdineResiduo,
+            cliente: order.cliente,
+            salesOrder: order.salesOrder
+          },
+          reason: notFoundReason
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      setProductResults(prev => ({ ...prev, [key]: { success: true, message: data.message } }));
+    } catch (err: any) {
+      setProductResults(prev => ({ ...prev, [key]: { success: false, message: err.message } }));
+    } finally {
+      setProcessingProduct(null);
+      setNotFoundReason('');
     }
   };
 
@@ -397,7 +493,7 @@ export default function ScarichiParzialiPage() {
                       </div>
                     </div>
 
-                    {/* Prodotti non scaricati */}
+                    {/* Prodotti non scaricati con azioni */}
                     {order.prodottiNonScaricati && order.prodottiNonScaricati.length > 0 && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 mb-2">
@@ -406,26 +502,63 @@ export default function ScarichiParzialiPage() {
                             Prodotti nel furgone ({order.prodottiNonScaricati.length})
                           </h4>
                         </div>
-                        <div className="space-y-1.5">
-                          {order.prodottiNonScaricati.slice(0, 3).map((prod, idx) => (
-                            <div key={idx} className="flex justify-between items-start text-xs">
-                              <span className="text-gray-700 flex-1">{prod.nome}</span>
-                              <span className="font-semibold text-blue-700 ml-2">
-                                {prod.quantitaRichiesta - prod.quantitaEffettiva} {prod.uom}
-                              </span>
-                            </div>
-                          ))}
-                          {order.prodottiNonScaricati.length > 3 && (
-                            <p className="text-xs text-gray-500 italic">
-                              + altri {order.prodottiNonScaricati.length - 3} prodotti...
-                            </p>
-                          )}
+                        <div className="space-y-2">
+                          {order.prodottiNonScaricati.map((prod, idx) => {
+                            const key = productKey(order.numeroOrdineResiduo, prod.nome);
+                            const result = productResults[key];
+                            const isProcessing = processingProduct === key;
+
+                            return (
+                              <div key={idx} className="bg-white rounded-lg p-2 border border-blue-100">
+                                <div className="flex justify-between items-start text-xs mb-2">
+                                  <span className="text-gray-700 flex-1 font-medium">{prod.nome}</span>
+                                  <span className="font-semibold text-blue-700 ml-2 whitespace-nowrap">
+                                    {prod.quantitaRichiesta - prod.quantitaEffettiva} {prod.uom}
+                                  </span>
+                                </div>
+
+                                {result ? (
+                                  <div className={`text-xs px-2 py-1.5 rounded ${result.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                    {result.message}
+                                    {result.aiResult && (
+                                      <div className="mt-1 text-[10px] opacity-75">
+                                        AI: {result.aiResult.labelText} ({result.aiResult.confidence})
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handlePhotoCapture(order, prod)}
+                                      disabled={isProcessing}
+                                      className="flex-1 flex items-center justify-center space-x-1.5 px-2 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 text-xs font-semibold"
+                                    >
+                                      {isProcessing ? (
+                                        <Loader className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Camera className="w-3.5 h-3.5" />
+                                      )}
+                                      <span>{isProcessing ? 'Elaboro...' : 'Foto'}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => { setNotFoundModal({ order, product: prod }); setNotFoundReason(''); }}
+                                      disabled={isProcessing}
+                                      className="flex-1 flex items-center justify-center space-x-1.5 px-2 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all disabled:opacity-50 text-xs font-semibold"
+                                    >
+                                      <Search className="w-3.5 h-3.5" />
+                                      <span>Non Trovato</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Card Footer */}
+                  {/* Card Footer - Reso completo (tutti i prodotti insieme) */}
                   <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
                     <button
                       onClick={() => handleCreateReturn(order)}
@@ -434,17 +567,17 @@ export default function ScarichiParzialiPage() {
                         !order.prodottiNonScaricati ||
                         order.prodottiNonScaricati.length === 0
                       }
-                      className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm"
+                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                     >
                       {creatingTransfer === order.numeroOrdineResiduo ? (
                         <>
-                          <Loader className="w-4 h-4 animate-spin" />
+                          <Loader className="w-3.5 h-3.5 animate-spin" />
                           <span>Creazione in corso...</span>
                         </>
                       ) : (
                         <>
-                          <ArrowRight className="w-4 h-4" />
-                          <span>Crea Reso Furgone → Buffer</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                          <span>Reso completo (tutti i prodotti)</span>
                         </>
                       )}
                     </button>
@@ -498,6 +631,55 @@ export default function ScarichiParzialiPage() {
               </div>
               <div className="px-6 py-4 bg-gray-50 border-t">
                 <button onClick={() => setSelectedOrderForMotivation(null)} className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Chiudi</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Input file nascosto per camera */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Modal Non Trovato */}
+      <AnimatePresence>
+        {notFoundModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white">Prodotto Non Trovato</h3>
+                <button onClick={() => setNotFoundModal(null)} className="text-white hover:bg-white/20 rounded-lg p-1.5"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500">Prodotto</p>
+                  <p className="font-semibold text-gray-900">{notFoundModal.product.nome}</p>
+                  <p className="text-sm text-gray-600">{notFoundModal.product.quantitaRichiesta - notFoundModal.product.quantitaEffettiva} {notFoundModal.product.uom}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Perché non è stato trovato?</label>
+                  <textarea
+                    value={notFoundReason}
+                    onChange={(e) => setNotFoundReason(e.target.value)}
+                    placeholder="Es: non presente nel buffer, prodotto danneggiato, ubicazione sbagliata..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    rows={3}
+                    autoFocus
+                  />
+                </div>
+                <button
+                  onClick={handleNotFound}
+                  disabled={!notFoundReason.trim()}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 font-semibold disabled:opacity-50"
+                >
+                  Conferma Non Trovato
+                </button>
               </div>
             </motion.div>
           </div>
