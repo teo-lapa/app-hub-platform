@@ -43,6 +43,8 @@ export interface DocumentAttachment {
   mimetype?: string; // MIME type of the attachment (e.g., 'audio/webm', 'image/png', 'application/pdf')
   message_id?: number; // ID del messaggio Odoo associato
   reason?: string; // Motivo del reso (solo per tipo 'reso')
+  processed?: boolean; // true se il reso e' stato processato (WH/RET creato)
+  processed_note?: string; // Nota del messaggio RESO PROCESSATO
 }
 
 export interface FilterState {
