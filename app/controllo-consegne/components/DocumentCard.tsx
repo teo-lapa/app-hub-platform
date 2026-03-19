@@ -127,20 +127,26 @@ export default function DocumentCard({ document }: DocumentCardProps) {
             <>
               {/* Mostra tutti i resi se ce ne sono multipli */}
               {document.attachments.resi && document.attachments.resi.length > 0 ? (
-                document.attachments.resi.map((reso, index) => (
-                  <div key={reso.message_id || index} className={styles.resoSection}>
-                    <button
-                      className={`${styles.attachmentBtn} ${styles.resoBtn}`}
-                      onClick={() => setSelectedAttachment(reso)}
-                    >
-                      <span className={styles.icon}>🔄</span>
-                      <span>Reso {resiCount > 1 ? `${index + 1}/${resiCount}` : ''}</span>
-                    </button>
-                    {(reso as any)?.note && (
-                      <div className={styles.resoInfo} dangerouslySetInnerHTML={{ __html: (reso as any).note }} />
-                    )}
-                  </div>
-                ))
+                document.attachments.resi.map((reso, index) => {
+                  const isProcessed = !!(reso as any)?.processed;
+                  return (
+                    <div key={reso.message_id || index} className={styles.resoSection}>
+                      <button
+                        className={`${styles.attachmentBtn} ${isProcessed ? styles.resoProcessedBtn : styles.resoBtn}`}
+                        onClick={() => setSelectedAttachment(reso)}
+                      >
+                        <span className={styles.icon}>{isProcessed ? '✅' : '🔄'}</span>
+                        <span>{isProcessed ? 'Reso Fatto' : 'Reso'} {resiCount > 1 ? `${index + 1}/${resiCount}` : ''}</span>
+                      </button>
+                      {(reso as any)?.note && (
+                        <div className={isProcessed ? styles.resoProcessedInfo : styles.resoInfo} dangerouslySetInnerHTML={{ __html: (reso as any).note }} />
+                      )}
+                      {isProcessed && (reso as any)?.processed_note && (
+                        <div className={styles.resoProcessedInfo} dangerouslySetInnerHTML={{ __html: (reso as any).processed_note }} />
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 // Fallback per compatibilità con dati vecchi
                 <div className={styles.resoSection}>

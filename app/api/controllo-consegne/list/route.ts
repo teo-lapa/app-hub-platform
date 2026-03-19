@@ -317,8 +317,15 @@ export async function GET(request: NextRequest) {
         (msg: any) => msg.body?.includes('RESO REGISTRATO')
       );
 
+      // Cerca messaggi "RESO PROCESSATO" per sapere se il reso e' stato gestito
+      const resoProcessatoMessages = pickingMessages.filter(
+        (msg: any) => msg.body?.includes('RESO PROCESSATO')
+      );
+      const isResoProcessed = resoProcessatoMessages.length > 0;
+      const processedNote = isResoProcessed ? (resoProcessatoMessages[0]?.body || '') : '';
+
       if (resoMessages.length > 0) {
-        console.log(`[RESO DEBUG] Picking ${picking.name}: Found ${resoMessages.length} RESO messages`);
+        console.log(`[RESO DEBUG] Picking ${picking.name}: Found ${resoMessages.length} RESO messages, processed: ${isResoProcessed}`);
 
         // Array per contenere tutti i resi
         const resiArray: any[] = [];
@@ -362,6 +369,8 @@ export async function GET(request: NextRequest) {
             message_id: resoMessage.id,
             odoo_attachment_id: returnAttachment?.id,
             reason: reason,
+            processed: isResoProcessed,
+            processed_note: processedNote,
           });
         }
 
