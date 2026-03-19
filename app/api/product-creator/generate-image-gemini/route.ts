@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
     // Use Gemini 2.5 Flash Image model for image generation
     const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
-    // Create the perfect prompt for product photography
-    const imagePrompt = `Professional product photography of ${productName}. ${productDescription || ''}. Clean white background, e-commerce style, well-lit, centered, high quality, studio lighting, detailed, sharp focus, commercial photo.`;
+    // Create the perfect prompt for product photography - SQUARE 1:1 format for mobile
+    const imagePrompt = `Professional product photography of ${productName}. ${productDescription || ''}. IMPORTANT: Generate a SQUARE image (1:1 aspect ratio, same width and height). Clean white background, e-commerce style, well-lit, centered composition, product fills 70-80% of the frame, high quality, studio lighting, detailed, sharp focus, commercial photo optimized for mobile viewing.`;
 
     console.log('📝 Generating image with prompt:', imagePrompt);
 
