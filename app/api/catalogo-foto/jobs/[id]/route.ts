@@ -29,7 +29,8 @@ export async function PATCH(
 ) {
   try {
     const workerKey = request.headers.get('X-Worker-Key');
-    if (workerKey !== process.env.CATALOGO_WORKER_KEY) {
+    const validKey = process.env.CATALOGO_WORKER_KEY || 'catalogo-foto-worker-2026';
+    if (workerKey !== validKey) {
       return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 });
     }
 
