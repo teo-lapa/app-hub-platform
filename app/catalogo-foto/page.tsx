@@ -25,7 +25,7 @@ import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
 // Types
 interface JobItem {
   id: string;
-  status: 'pending' | 'processing' | 'completed' | 'review' | 'error';
+  status: 'pending' | 'processing' | 'completed' | 'review' | 'error' | 'failed';
   product_name?: string;
   odoo_product_id?: number;
   photo_count: number;
@@ -33,6 +33,7 @@ interface JobItem {
   notes?: string;
   created_at: string;
   error_message?: string;
+  result_json?: any;
 }
 
 type TabType = 'scatta' | 'risultati';
@@ -140,11 +141,18 @@ export default function CatalogoFotoPage() {
       const res = await fetch('/api/catalogo-foto/jobs?limit=50');
       if (!res.ok) throw new Error('Errore caricamento jobs');
       const data = await res.json();
-      const mapped = (data.data || []).map((j: any) => ({
-        ...j,
-        product_name: j.odoo_product_name,
-        first_photo_url: j.photo_urls?.[0],
-      }));
+      const mapped = (data.data || []).map((j: any) => {
+        let productName = j.odoo_product_name;
+        let odooId = j.odoo_product_id;
+        if (!productName && j.result_json) {
+          const raw = j.result_json.raw_result || '';
+          const m = raw.match(/Prodotto trovato:\s*(.+?)(?:\s*\(ID:\s*(\d+)\))?$/m);
+          if (m) { productName = m[1].trim(); odooId = odooId || (m[2] ? parseInt(m[2]) : null); }
+          if (!productName) { productName = j.result_json.odoo_product_name; }
+          if (!odooId) { odooId = j.result_json.odoo_product_id; }
+        }
+        return { ...j, product_name: productName, odoo_product_id: odooId, first_photo_url: j.photo_urls?.[0] };
+      });
       setJobs(mapped);
     } catch (err) {
       toast.error('Errore caricamento risultati');
@@ -176,8 +184,10 @@ export default function CatalogoFotoPage() {
       completed: { label: 'Completato', icon: Check, bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
       review: { label: 'Da rivedere', icon: AlertTriangle, bg: 'bg-orange-500/20', text: 'text-orange-400' },
       error: { label: 'Errore', icon: X, bg: 'bg-red-500/20', text: 'text-red-400' },
+      failed: { label: 'Fallito', icon: X, bg: 'bg-red-500/20', text: 'text-red-400' },
     }[status];
 
+    if (!config) return null;
     const Icon = config.icon;
 
     return (
@@ -436,7 +446,7 @@ export default function CatalogoFotoPage() {
                           {/* Odoo link for completed */}
                           {job.status === 'completed' && job.odoo_product_id && (
                             <a
-                              href={`${process.env.NEXT_PUBLIC_ODOO_URL}/web#id=${job.odoo_product_id}&model=product.template&view_type=form`}
+                              href={`https://lapadevadmin-lapa-v2.odoo.com/odoo/inventory/products/${job.odoo_product_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
@@ -444,6 +454,13 @@ export default function CatalogoFotoPage() {
                               <ExternalLink className="h-3.5 w-3.5" />
                               Apri in Odoo
                             </a>
+                          )}
+
+                          {/* Result summary */}
+                          {job.status === 'completed' && job.result_json?.raw_result && (
+                            <p className="mt-1.5 text-xs text-slate-400 line-clamp-2">
+                              {job.result_json.raw_result.split('\n').filter((l: string) => l.trim() && !l.startsWith('|') && !l.startsWith('#') && !l.startsWith('---')).slice(0, 2).join(' — ')}
+                            </p>
                           )}
 
                           {job.status === 'error' && job.error_message && (
