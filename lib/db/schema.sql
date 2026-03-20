@@ -243,3 +243,26 @@ SELECT *
 FROM voice_recordings
 WHERE ai_status IN ('pending', 'transcribing', 'processing')
 ORDER BY created_at ASC;
+
+-- ============================================
+-- CATALOGO FOTO: Product Photo Catalog Jobs
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS catalog_photo_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_name TEXT NOT NULL,
+  odoo_product_id INTEGER,
+  odoo_product_name TEXT,
+  notes TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'review')),
+  photo_urls JSONB DEFAULT '[]'::jsonb,
+  photo_count INTEGER DEFAULT 0,
+  result_json JSONB,
+  error_message TEXT,
+  processed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_jobs_status ON catalog_photo_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_catalog_jobs_created ON catalog_photo_jobs(created_at DESC);
