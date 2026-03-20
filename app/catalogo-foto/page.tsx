@@ -404,11 +404,9 @@ export default function CatalogoFotoPage() {
                         {/* Thumbnail */}
                         <div className="h-16 w-16 rounded-lg bg-slate-700 overflow-hidden shrink-0">
                           {job.first_photo_url ? (
-                            <Image
+                            <img
                               src={job.first_photo_url}
                               alt="Product"
-                              width={64}
-                              height={64}
                               className="object-cover h-full w-full"
                             />
                           ) : (
