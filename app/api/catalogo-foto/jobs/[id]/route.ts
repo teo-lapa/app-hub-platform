@@ -28,12 +28,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workerKey = request.headers.get('X-Worker-Key');
-    const validKey = process.env.CATALOGO_WORKER_KEY || 'catalogo-foto-worker-2026';
-    if (workerKey !== validKey) {
-      return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 });
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { status, odoo_product_id, odoo_product_name, result_json, error_message } = body;

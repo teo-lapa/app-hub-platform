@@ -140,7 +140,12 @@ export default function CatalogoFotoPage() {
       const res = await fetch('/api/catalogo-foto/jobs?limit=50');
       if (!res.ok) throw new Error('Errore caricamento jobs');
       const data = await res.json();
-      setJobs(data.jobs || []);
+      const mapped = (data.data || []).map((j: any) => ({
+        ...j,
+        product_name: j.odoo_product_name,
+        first_photo_url: j.photo_urls?.[0],
+      }));
+      setJobs(mapped);
     } catch (err) {
       toast.error('Errore caricamento risultati');
     } finally {
