@@ -112,6 +112,7 @@ export default function CatalogoFotoPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          operator_name: 'Paul',
           photo_urls: uploadedUrls,
           notes: notes || undefined,
         }),

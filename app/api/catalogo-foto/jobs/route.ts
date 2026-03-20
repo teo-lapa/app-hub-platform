@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { getOdooSession } from '@/lib/odoo-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const workerKey = request.headers.get('X-Worker-Key');
-    if (workerKey !== process.env.CATALOGO_WORKER_KEY) {
-      const userCookies = request.headers.get('cookie');
-      const { uid } = await getOdooSession(userCookies || undefined);
-      if (!uid) {
-        return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 });
-      }
-    }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
