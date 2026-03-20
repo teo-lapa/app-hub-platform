@@ -34,17 +34,18 @@ export async function PATCH(
 
     const processedAt = status === 'completed' ? new Date().toISOString() : null;
 
-    await sql`
-      UPDATE catalog_photo_jobs SET
-        status = COALESCE(${status || null}, status),
-        odoo_product_id = COALESCE(${odoo_product_id || null}, odoo_product_id),
-        odoo_product_name = COALESCE(${odoo_product_name || null}, odoo_product_name),
-        result_json = COALESCE(${result_json ? JSON.stringify(result_json) : null}::jsonb, result_json),
-        error_message = COALESCE(${error_message || null}, error_message),
-        processed_at = COALESCE(${processedAt}::timestamp, processed_at),
-        updated_at = NOW()
-      WHERE id = ${id}
-    `;
+    const updates: string[] = ['updated_at = NOW()'];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (status !== undefined) { updates.push(`status = $${idx++}`); values.push(status); }
+    if (odoo_product_id !== undefined) { updates.push(`odoo_product_id = $${idx++}`); values.push(odoo_product_id); }
+    if (odoo_product_name !== undefined) { updates.push(`odoo_product_name = $${idx++}`); values.push(odoo_product_name); }
+    if (result_json !== undefined) { updates.push(`result_json = $${idx++}::jsonb`); values.push(JSON.stringify(result_json)); }
+    if (error_message !== undefined) { updates.push(`error_message = $${idx++}`); values.push(error_message); }
+    if (processedAt) { updates.push(`processed_at = $${idx++}::timestamp`); values.push(processedAt); }
+
+    await sql.query(`UPDATE catalog_photo_jobs SET ${updates.join(', ')} WHERE id = $${idx}`, [...values, id]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
