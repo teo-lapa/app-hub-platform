@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productName, productDescription, productId } = await request.json();
+    const { productName, productDescription, productId, productModel } = await request.json();
 
     if (!productName) {
       return NextResponse.json(
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             jsonrpc: '2.0',
             method: 'call',
             params: {
-              model: 'product.product',
+              model: productModel || 'product.template',
               method: 'write',
               args: [
                 [productId],
