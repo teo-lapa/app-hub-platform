@@ -49,6 +49,7 @@ export default function CatalogoFotoPage() {
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
+  const [bgUploads, setBgUploads] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Risultati tab state
@@ -81,57 +82,51 @@ export default function CatalogoFotoPage() {
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Save product
-  const handleSave = async () => {
+  // Save product - reset form immediately, upload in background
+  const handleSave = () => {
     if (photos.length === 0) {
       toast.error('Scatta almeno una foto!');
       return;
     }
 
-    setIsSaving(true);
+    // Capture current photos and notes before resetting
+    const savedPhotos = [...photos];
+    const savedNotes = notes;
 
-    try {
-      // 1. Upload photos
-      const uploadedUrls: string[] = [];
-      for (const photo of photos) {
-        const formData = new FormData();
-        formData.append('file', photo);
+    // Reset form IMMEDIATELY
+    setPhotos([]);
+    setPreviews([]);
+    setNotes('');
+    setSessionCount(prev => prev + 1);
+    setBgUploads(prev => prev + 1);
+    toast.success(`${savedPhotos.length} foto in upload...`);
 
-        const uploadRes = await fetch('/api/catalogo-foto/upload', {
+    // Upload in background
+    (async () => {
+      try {
+        const uploadedUrls: string[] = [];
+        for (const photo of savedPhotos) {
+          const formData = new FormData();
+          formData.append('file', photo);
+          const uploadRes = await fetch('/api/catalogo-foto/upload', { method: 'POST', body: formData });
+          if (!uploadRes.ok) throw new Error('Errore upload');
+          const uploadData = await uploadRes.json();
+          uploadedUrls.push(uploadData.url);
+        }
+
+        const jobRes = await fetch('/api/catalogo-foto/jobs', {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operator_name: 'Paul', photo_urls: uploadedUrls, notes: savedNotes || undefined }),
         });
-
-        if (!uploadRes.ok) throw new Error('Errore upload foto');
-
-        const uploadData = await uploadRes.json();
-        uploadedUrls.push(uploadData.url);
+        if (!jobRes.ok) throw new Error('Errore creazione job');
+        toast.success('Upload completato!', { icon: '✅' });
+      } catch (err) {
+        toast.error('Errore upload foto - riprova');
+      } finally {
+        setBgUploads(prev => prev - 1);
       }
-
-      // 2. Create job
-      const jobRes = await fetch('/api/catalogo-foto/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operator_name: 'Paul',
-          photo_urls: uploadedUrls,
-          notes: notes || undefined,
-        }),
-      });
-
-      if (!jobRes.ok) throw new Error('Errore creazione job');
-
-      // Reset form
-      setPhotos([]);
-      setPreviews([]);
-      setNotes('');
-      setSessionCount(prev => prev + 1);
-      toast.success('Prodotto salvato! Puoi scattare il prossimo.');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Errore nel salvataggio');
-    } finally {
-      setIsSaving(false);
-    }
+    })();
   };
 
   // Fetch jobs
@@ -252,6 +247,7 @@ export default function CatalogoFotoPage() {
               {sessionCount > 0 && (
                 <div className="text-center text-sm text-slate-400">
                   Prodotti salvati in questa sessione: <span className="text-emerald-400 font-bold text-lg">{sessionCount}</span>
+                  {bgUploads > 0 && <span className="ml-3 text-blue-400">({bgUploads} in upload...)</span>}
                 </div>
               )}
 
@@ -321,20 +317,10 @@ export default function CatalogoFotoPage() {
               {photos.length > 0 && (
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
-                  className="w-full min-h-[64px] rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-3 text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full min-h-[64px] rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-3 text-lg font-bold"
                 >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      Salvataggio...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-6 w-6" />
-                      SALVA PRODOTTO ({photos.length} foto)
-                    </>
-                  )}
+                  <Save className="h-6 w-6" />
+                  SALVA PRODOTTO ({photos.length} foto)
                 </button>
               )}
             </motion.div>
