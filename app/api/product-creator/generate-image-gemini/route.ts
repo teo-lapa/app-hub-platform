@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productName, productDescription, productId, productModel } = await request.json();
+    const { productName, productDescription, productId, productModel, photoUrls } = await request.json();
 
     if (!productName) {
       return NextResponse.json(
@@ -38,23 +38,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🎨 Generating product image with Gemini 2.5 Flash Image for:', productName);
-    console.log('🔑 API Key present:', API_KEY.substring(0, 10) + '...');
+    console.log('🎨 Generating product image with Gemini for:', productName);
+    console.log('📸 Reference photos:', photoUrls?.length || 0);
 
-    // Use Gemini 2.5 Flash Image model for image generation
     const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
-    // Create the perfect prompt for product photography - SQUARE 1:1 format for mobile
-    const imagePrompt = `Professional product photography of ${productName}. ${productDescription || ''}. IMPORTANT: Generate a SQUARE image (1:1 aspect ratio, same width and height). Clean white background, e-commerce style, well-lit, centered composition, product fills 70-80% of the frame, high quality, studio lighting, detailed, sharp focus, commercial photo optimized for mobile viewing.`;
+    // Download reference photos if provided
+    const photoParts: any[] = [];
+    if (photoUrls && photoUrls.length > 0) {
+      for (const url of photoUrls.slice(0, 4)) {
+        try {
+          const photoRes = await fetch(url);
+          const arrayBuf = await photoRes.arrayBuffer();
+          const base64 = Buffer.from(arrayBuf).toString('base64');
+          const mime = photoRes.headers.get('content-type') || 'image/jpeg';
+          photoParts.push({ inlineData: { data: base64, mimeType: mime } });
+        } catch (e) {
+          console.warn('⚠️ Failed to download photo:', url);
+        }
+      }
+      console.log(`📸 Downloaded ${photoParts.length} reference photos`);
+    }
 
-    console.log('📝 Generating image with prompt:', imagePrompt);
+    const imagePrompt = photoParts.length > 0
+      ? `Guarda attentamente queste foto reali del prodotto "${productName}". ${productDescription || ''}
 
-    // Generate image with Gemini 2.5 Flash Image (Nano Banana)
-    // Using simplified API format for image generation
+Genera una NUOVA foto professionale per e-commerce basandoti sulle foto reali:
+
+REGOLE FONDAMENTALI:
+- Il prodotto deve essere IDENTICO a quello nelle foto: stessa forma, stesse dimensioni, stessa etichetta, stessi colori
+- NON inventare o modificare l'etichetta, il design, il logo, i colori della confezione
+- Se nelle foto c'è un cartone/confezione multipla, mettilo DIETRO. Davanti metti 1-2 unita singole
+- Se il prodotto e' una lattina, deve restare una lattina. Se e' una busta, deve restare una busta. Se sono bottiglie, devono restare bottiglie
+- Migliora SOLO: illuminazione, nitidezza, sfondo (bianco pulito), composizione
+- Il risultato deve sembrare una foto da studio professionale dello STESSO identico prodotto
+- Formato QUADRATO (1:1), prodotto al centro, riempie 70-80% del frame
+- Il cliente che compra online deve riconoscere ESATTAMENTE il prodotto che ricevera`
+      : `Professional product photography of ${productName}. ${productDescription || ''}. IMPORTANT: Generate a SQUARE image (1:1 aspect ratio). Clean white background, e-commerce style, well-lit, centered composition, product fills 70-80% of the frame, studio lighting, sharp focus.`;
+
     console.log('⏳ Calling Gemini API...');
     const startTime = Date.now();
 
-    const result = await model.generateContent(imagePrompt);
+    const contentParts: any[] = [...photoParts, { text: imagePrompt }];
+    const result = await model.generateContent(contentParts);
 
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`✅ Gemini API responded in ${elapsedTime}s`);
