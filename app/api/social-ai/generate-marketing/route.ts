@@ -63,7 +63,7 @@ function cleanProductDescription(description: string, productName: string): stri
  * - productImage: string (base64) - Foto del prodotto
  * - productName?: string - Nome del prodotto
  * - productDescription?: string - Descrizione
- * - socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin'
+ * - socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'youtube'
  * - contentType: 'image' | 'video' | 'both'
  * - tone?: 'random' | 'professional' | 'casual' | 'fun' | 'luxury'
  * - targetAudience?: string - Descrizione target
@@ -73,7 +73,7 @@ interface GenerateMarketingRequest {
   productImage: string;
   productName?: string;
   productDescription?: string;
-  socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin';
+  socialPlatform: 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'youtube';
   contentType: 'image' | 'video' | 'both';
   tone?: 'random' | 'professional' | 'casual' | 'fun' | 'luxury';
   targetAudience?: string;
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     const cleanedName = cleanProductName(productName);
     const cleanedDescription = cleanProductDescription(productDescription, productName);
 
-    if (!['instagram', 'facebook', 'tiktok', 'linkedin'].includes(socialPlatform)) {
+    if (!['instagram', 'facebook', 'tiktok', 'linkedin', 'youtube'].includes(socialPlatform)) {
       return NextResponse.json(
         { error: 'socialPlatform non valido' },
         { status: 400 }
@@ -191,7 +191,8 @@ export async function POST(request: NextRequest) {
       instagram: '1:1', // Feed post
       facebook: '4:3',
       tiktok: '9:16',   // Vertical video
-      linkedin: '16:9'  // Professional widescreen
+      linkedin: '16:9', // Professional widescreen
+      youtube: '16:9'   // Landscape video
     };
     const aspectRatio = aspectRatioMap[socialPlatform];
 
