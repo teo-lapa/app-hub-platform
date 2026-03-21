@@ -82,6 +82,27 @@ export default function CatalogoFotoPage() {
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Compress photo client-side before upload (max 3MB)
+  const compressPhoto = async (file: File): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1920;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob || file), 'image/jpeg', 0.75);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // Save product - reset form immediately, upload in background
   const handleSave = () => {
     if (photos.length === 0) {
@@ -106,10 +127,14 @@ export default function CatalogoFotoPage() {
       try {
         const uploadedUrls: string[] = [];
         for (const photo of savedPhotos) {
+          const compressed = await compressPhoto(photo);
           const formData = new FormData();
-          formData.append('file', photo);
+          formData.append('file', new File([compressed], photo.name, { type: 'image/jpeg' }));
           const uploadRes = await fetch('/api/catalogo-foto/upload', { method: 'POST', body: formData });
-          if (!uploadRes.ok) throw new Error('Errore upload');
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json().catch(() => ({}));
+            throw new Error(errData.error || 'Errore upload');
+          }
           const uploadData = await uploadRes.json();
           uploadedUrls.push(uploadData.url);
         }
@@ -121,8 +146,8 @@ export default function CatalogoFotoPage() {
         });
         if (!jobRes.ok) throw new Error('Errore creazione job');
         toast.success('Upload completato!', { icon: '✅' });
-      } catch (err) {
-        toast.error('Errore upload foto - riprova');
+      } catch (err: any) {
+        toast.error(`Errore upload: ${err.message || 'riprova'}`);
       } finally {
         setBgUploads(prev => prev - 1);
       }
