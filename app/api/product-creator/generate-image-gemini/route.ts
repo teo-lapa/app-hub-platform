@@ -63,15 +63,21 @@ export async function POST(request: NextRequest) {
     const imagePrompt = photoParts.length > 0
       ? `Guarda attentamente queste foto reali del prodotto "${productName}". ${productDescription || ''}
 
-Genera una NUOVA foto professionale per e-commerce basandoti sulle foto reali:
+Genera una NUOVA foto professionale per e-commerce basandoti sulle foto reali.
+
+COMPOSIZIONE OBBLIGATORIA (SEMPRE!):
+- DIETRO: il packaging completo (cartone, pacco, confezione multipla) come si vede nelle foto
+- DAVANTI: 1-2 unita SINGOLE del prodotto in primo piano, leggermente piu grandi, ben visibili
+- Esempio: se il prodotto sono lattine in un pacco da 6, DIETRO il pacco da 6 e DAVANTI 1 lattina singola in primo piano
+- Esempio: se il prodotto sono bottiglie in un cartone, DIETRO il cartone e DAVANTI 1 bottiglia
+- Esempio: se il prodotto sono buste, DIETRO il cartone/pacco e DAVANTI 1 busta
 
 REGOLE FONDAMENTALI:
 - Il prodotto deve essere IDENTICO a quello nelle foto: stessa forma, stesse dimensioni, stessa etichetta, stessi colori
 - NON inventare o modificare l'etichetta, il design, il logo, i colori della confezione
-- Se nelle foto c'è un cartone/confezione multipla, mettilo DIETRO. Davanti metti 1-2 unita singole
-- Se il prodotto e' una lattina, deve restare una lattina. Se e' una busta, deve restare una busta. Se sono bottiglie, devono restare bottiglie
+- Se il prodotto e' una lattina, deve restare una lattina. Se e' una busta, deve restare una busta
 - Migliora SOLO: illuminazione, nitidezza, sfondo (bianco pulito), composizione
-- Il risultato deve sembrare una foto da studio professionale dello STESSO identico prodotto
+- Sfondo bianco pulito da studio fotografico professionale
 - Formato QUADRATO (1:1), prodotto al centro, riempie 70-80% del frame
 - Il cliente che compra online deve riconoscere ESATTAMENTE il prodotto che ricevera`
       : `Professional product photography of ${productName}. ${productDescription || ''}. IMPORTANT: Generate a SQUARE image (1:1 aspect ratio). Clean white background, e-commerce style, well-lit, centered composition, product fills 70-80% of the frame, studio lighting, sharp focus.`;
