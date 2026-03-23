@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 
 // Helper per chiamate Odoo JSON-RPC
 async function odooCall(sessionId: string, model: string, method: string, args: any[], kwargs: any = {}) {
+  kwargs = injectLangContext(kwargs);
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
     headers: {

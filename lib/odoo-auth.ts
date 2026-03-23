@@ -12,6 +12,7 @@
  */
 
 import { getOdooSessionManager } from './odoo/sessionManager';
+import { injectLangContext } from './odoo/user-lang';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
@@ -211,6 +212,9 @@ export async function callOdoo(
   const ODOO_DB = getOdooDb();
   const ODOO_LOGIN = getOdooLogin();
   const ODOO_PASSWORD = getOdooPassword();
+
+  // Auto-inject user language into context if not already set
+  kwargs = injectLangContext(kwargs);
 
   console.log(`🔵 [ODOO-CALL] ${model}.${method}`, { args: args.length, kwargs: Object.keys(kwargs).length });
 

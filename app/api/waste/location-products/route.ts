@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import type { WasteLocationProduct, WasteLocationProductsResponse } from '@/lib/types';
 
 /**
@@ -71,9 +72,9 @@ async function fetchLocationProducts(sessionId: string, locationId: number) {
             ['location_id', '=', locationId],
             ['quantity', '>', 0]
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'product_id', 'quantity', 'lot_id', 'product_uom_id']
-          }
+          })
         },
         id: Date.now()
       })
@@ -124,9 +125,9 @@ async function fetchLocationProducts(sessionId: string, locationId: number) {
             model: 'product.product',
             method: 'search_read',
             args: [[['id', 'in', productIds]]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id']
-            }
+            })
           },
           id: Date.now()
         })
@@ -160,9 +161,9 @@ async function fetchLocationProducts(sessionId: string, locationId: number) {
               model: 'stock.lot',
               method: 'search_read',
               args: [[['id', 'in', lotIds]]],
-              kwargs: {
+              kwargs: injectLangContext({
                 fields: ['id', 'name', 'expiration_date']
-              }
+              })
             },
             id: Date.now()
           })

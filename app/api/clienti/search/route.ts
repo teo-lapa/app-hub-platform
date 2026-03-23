@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ async function callOdoo(
   kwargs: any = {},
   sessionId: string
 ): Promise<any> {
+  kwargs = injectLangContext(kwargs);
   try {
     console.log(`📡 Chiamata Odoo: ${model}.${method}`);
 

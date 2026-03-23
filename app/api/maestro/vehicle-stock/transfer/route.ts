@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 import { ADMIN_USER_IDS } from '@/lib/maestro/vehicle-stock-service';
 
@@ -113,10 +114,10 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking.type',
           method: 'search_read',
           args: [[['code', '=', 'internal']]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id'],
             limit: 1
-          }
+          })
         },
         id: 1
       })
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
             origin: `VEICOLO-RELOAD-${targetSalespersonId}-${Date.now()}`,
             note: notes || `Ricarica veicolo - ${products.length} prodotti`
           }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 2
       })
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
               location_id: warehouseLocationId,
               location_dest_id: vehicleLocationId
             }],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: 3
         })
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'action_confirm',
           args: [[pickingId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 5
       })
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'action_assign',
           args: [[pickingId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 6
       })
@@ -265,7 +266,7 @@ export async function POST(request: NextRequest) {
           model: 'res.users',
           method: 'read',
           args: [[targetSalespersonId], ['name']],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 7
       })
@@ -300,7 +301,7 @@ export async function POST(request: NextRequest) {
             name: batchName,
             user_id: targetSalespersonId
           }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 8
       })
@@ -333,7 +334,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'write',
           args: [[pickingId], { batch_id: batchId }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 9
       })
@@ -355,7 +356,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking.batch',
           method: 'action_confirm',
           args: [[batchId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 10
       })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking.type',
           method: 'search_read',
           args: [[['code', '=', 'internal']]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id'],
             limit: 1
-          }
+          })
         },
         id: 2
       })
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
           model: 'product.product',
           method: 'read',
           args: [[productId], ['tracking']],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 2.5
       })
@@ -139,10 +140,10 @@ export async function POST(request: NextRequest) {
               ['name', '=', lotName],
               ['product_id', '=', productId]
             ]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['id'],
               limit: 1
-            }
+            })
           },
           id: 3
         })
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
               model: 'stock.lot',
               method: 'create',
               args: [lotData],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 4
           })
@@ -213,7 +214,7 @@ export async function POST(request: NextRequest) {
             location_dest_id: destLocationId,
             origin: `WEB-UBICAZIONI-${Date.now()}`
           }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 3
       })
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
             location_id: sourceLocationId,
             location_dest_id: destLocationId
           }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 4
       })
@@ -282,7 +283,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.move.line',
           method: 'create',
           args: [moveLineData],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 5
       })
@@ -304,7 +305,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'action_confirm',
           args: [[pickingId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 6
       })
@@ -326,7 +327,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'button_validate',
           args: [[pickingId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 7
       })

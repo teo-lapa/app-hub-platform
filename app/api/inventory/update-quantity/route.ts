@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
 
     // Helper per chiamate Odoo
     const callOdoo = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
+      kwargs = injectLangContext(kwargs);
       const response = await fetch(`${ODOO_URL}/web/dataset/call_kw/${model}/${method}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },

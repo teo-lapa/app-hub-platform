@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import Anthropic from '@anthropic-ai/sdk';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
@@ -353,7 +354,7 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
           model: 'uom.uom',
           method: 'search_read',
           args: [[], ['id', 'name', 'category_id']],
-          kwargs: { limit: 200 }
+          kwargs: injectLangContext({ limit: 200 })
         },
         id: 1
       })
@@ -369,7 +370,7 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
           model: 'product.category',
           method: 'search_read',
           args: [[], ['id', 'name', 'complete_name']],
-          kwargs: { limit: 200, order: 'complete_name ASC' }
+          kwargs: injectLangContext({ limit: 200, order: 'complete_name ASC' })
         },
         id: 2
       })
@@ -402,7 +403,7 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
             [['is_company', '=', true], ['supplier_rank', '>', 0], ['name', 'ilike', searchTerm]],
             ['id', 'name']
           ],
-          kwargs: { limit: 10 }
+          kwargs: injectLangContext({ limit: 10 })
         },
         id: 3
       })
@@ -432,7 +433,7 @@ async function fetchOdooData(invoiceData: any, sessionId: string) {
             [['is_company', '=', true], ['supplier_rank', '>', 0]],
             ['id', 'name']
           ],
-          kwargs: { limit: 200, order: 'name ASC' }
+          kwargs: injectLangContext({ limit: 200, order: 'name ASC' })
         },
         id: 4
       })

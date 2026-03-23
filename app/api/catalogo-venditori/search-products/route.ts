@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { getUserLang } from '@/lib/odoo/user-lang';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -89,16 +90,17 @@ export async function POST(request: NextRequest) {
       context: { lang },
     });
 
-    // Search in both languages in parallel and merge results
-    const [productsIt, productsEn] = await Promise.all([
-      callOdoo(cookies, 'product.product', 'search_read', [], searchKwargs('it_IT')),
+    // Search in both user's language and English in parallel
+    const userLang = getUserLang();
+    const [productsUserLang, productsEn] = await Promise.all([
+      callOdoo(cookies, 'product.product', 'search_read', [], searchKwargs(userLang)),
       callOdoo(cookies, 'product.product', 'search_read', [], searchKwargs('en_US')),
     ]);
 
-    // Merge and deduplicate by product ID (Italian results take priority for name)
+    // Merge and deduplicate by product ID (user's language results take priority)
     const seenIds = new Set<number>();
     const products: any[] = [];
-    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+    for (const p of [...(productsUserLang || []), ...(productsEn || [])]) {
       if (!seenIds.has(p.id)) {
         seenIds.add(p.id);
         products.push(p);

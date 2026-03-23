@@ -15,6 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 export const dynamic = 'force-dynamic';
@@ -124,10 +125,10 @@ export async function POST(request: NextRequest) {
             model: 'product.product',
             method: 'search_read',
             args: [[['id', '=', item.productId]]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['name', 'uom_id', 'default_code'],
               limit: 1
-            }
+            })
           },
           id: 1
         })
@@ -232,7 +233,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
             commitment_date: odooDate
             // NO state - viene creato come draft
           }],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 2
       })
@@ -262,7 +263,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
           model: 'sale.order',
           method: 'action_confirm',
           args: [[orderId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 3
       })
@@ -289,10 +290,10 @@ ${notes || '   Nessuna nota aggiuntiva'}
             model: 'stock.picking',
             method: 'search_read',
             args: [[['sale_id', '=', orderId]]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['id', 'move_ids'],
               limit: 1
-            }
+            })
           },
           id: 4
         })
@@ -320,7 +321,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               model: 'stock.picking',
               method: 'do_unreserve',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 4
           })
@@ -343,7 +344,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               args: [[pickingId], {
                 location_id: vehicleLocationId
               }],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 5
           })
@@ -367,7 +368,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
                 args: [moveIds, {
                   location_id: vehicleLocationId
                 }],
-                kwargs: {}
+                kwargs: injectLangContext({})
               },
               id: 6
             })
@@ -389,7 +390,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               model: 'stock.picking',
               method: 'action_confirm',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 7
           })
@@ -411,7 +412,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               model: 'stock.picking',
               method: 'action_assign',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 8
           })
@@ -433,7 +434,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               model: 'stock.picking',
               method: 'button_validate',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: 9
           })
@@ -473,11 +474,11 @@ ${notes ? `<p><strong>Note:</strong> ${notes}</p>` : ''}
             model: 'sale.order',
             method: 'message_post',
             args: [[orderId]],
-            kwargs: {
+            kwargs: injectLangContext({
               body: chatterMessage,
               message_type: 'comment',
               subtype_xmlid: 'mail.mt_note'
-            }
+            })
           },
           id: 10
         })

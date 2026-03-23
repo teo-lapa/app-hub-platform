@@ -9,6 +9,8 @@
  * - Comprehensive error handling and logging
  */
 
+import { injectLangContext } from './user-lang';
+
 interface OdooSessionData {
   sessionId: string;
   uid: number;
@@ -173,6 +175,9 @@ class OdooSessionManager {
     kwargs: any = {},
     maxRetries: number = 1
   ): Promise<T> {
+    // Auto-inject user language into context if not already set
+    kwargs = injectLangContext(kwargs);
+
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {

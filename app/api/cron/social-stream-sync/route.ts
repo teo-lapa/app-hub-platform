@@ -21,6 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
@@ -100,6 +101,7 @@ async function callOdooMethod(
   args: any[] = [],
   kwargs: Record<string, any> = {}
 ): Promise<any> {
+  kwargs = injectLangContext(kwargs);
   if (!sessionCookies) {
     await authenticateOdoo();
   }

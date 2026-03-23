@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getUserLang } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
             offset,
             limit,
             order: 'name ASC',
-            context: { lang: 'it_IT' }
+            context: { lang: getUserLang() }
           }
         },
         id: Math.random()
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
             ]],
             kwargs: {
               fields: ['product_id', 'location_id', 'quantity'],
-              context: { lang: 'it_IT' }
+              context: { lang: getUserLang() }
             }
           },
           id: Math.random()

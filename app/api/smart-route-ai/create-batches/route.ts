@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
                 user_id: route.vehicle.employeeId || false,
                 picking_ids: [[6, 0, route.pickings.map(p => p.id)]]
               }],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: Date.now(),
           }),

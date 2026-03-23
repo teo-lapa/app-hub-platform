@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const WASTE_CUSTOMER_ID = 1200; // SPAZZATURA SCADUTI DETERIORATI
 const WASTE_LOCATION_ID = 648; // MERCE DETERIORATA
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
           model: 'sale.order',
           method: 'create',
           args: [orderData],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: Date.now()
       })
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
             model: 'sale.order.line',
             method: 'create',
             args: [lineData],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: Date.now() + orderLineIds.length
         })
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
           model: 'sale.order',
           method: 'action_confirm',
           args: [[orderId]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: Date.now() + 1000
       })
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
           model: 'sale.order',
           method: 'read',
           args: [[orderId], ['name']],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: Date.now() + 1500
       })
@@ -173,10 +174,7 @@ export async function POST(request: NextRequest) {
           args: [[
             ['origin', '=', orderNameTemp]
           ]],
-          kwargs: {
-            fields: ['id', 'name', 'state', 'location_id'],
-            limit: 1
-          }
+          kwargs: injectLangContext({})
         },
         id: Date.now() + 2000
       })
@@ -206,7 +204,7 @@ export async function POST(request: NextRequest) {
             model: 'stock.picking',
             method: 'write',
             args: [[pickingId], { location_id: WASTE_LOCATION_ID }],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: Date.now() + 3000
         })
@@ -232,7 +230,7 @@ export async function POST(request: NextRequest) {
               [['picking_id', '=', pickingId]],
               { location_id: WASTE_LOCATION_ID }
             ],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: Date.now() + 4000
         })
