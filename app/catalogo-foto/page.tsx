@@ -17,10 +17,12 @@ import {
   ScanLine,
   RefreshCw,
   Filter,
+  MapPin,
 } from 'lucide-react';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
 import { AppHeader, MobileHomeButton } from '@/components/layout/AppHeader';
+import { QRScanner } from '@/components/inventario/QRScanner';
 
 // Types
 interface JobItem {
@@ -36,7 +38,17 @@ interface JobItem {
   result_json?: any;
 }
 
-type TabType = 'scatta' | 'risultati';
+interface LocationProduct {
+  id: number;
+  name: string;
+  code: string;
+  barcode: string;
+  image: string | null;
+  quantity: number;
+  catalogato: boolean;
+}
+
+type TabType = 'scatta' | 'ubicazione' | 'risultati';
 type FilterType = 'tutti' | 'completati' | 'review' | 'pending';
 
 export default function CatalogoFotoPage() {
@@ -51,6 +63,13 @@ export default function CatalogoFotoPage() {
   const [sessionCount, setSessionCount] = useState(0);
   const [bgUploads, setBgUploads] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ubicazione tab state
+  const [showLocationScanner, setShowLocationScanner] = useState(false);
+  const [locationName, setLocationName] = useState('');
+  const [locationProducts, setLocationProducts] = useState<LocationProduct[]>([]);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [locationFilter, setLocationFilter] = useState<'tutti' | 'da_fare' | 'fatti'>('tutti');
 
   // Risultati tab state
   const [jobs, setJobs] = useState<JobItem[]>([]);
@@ -181,6 +200,50 @@ export default function CatalogoFotoPage() {
     }
   };
 
+  // Location scanning
+  const handleLocationScan = async (code: string) => {
+    setShowLocationScanner(false);
+    setIsLoadingLocation(true);
+    setLocationProducts([]);
+    setLocationName('');
+
+    try {
+      const res = await fetch('/api/catalogo-foto/location-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ locationCode: code }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setLocationName(data.location?.complete_name || data.location?.name || code);
+      setLocationProducts(data.products || []);
+
+      const done = (data.products || []).filter((p: LocationProduct) => p.catalogato).length;
+      const total = (data.products || []).length;
+      toast.success(`${total} prodotti trovati (${done} fatti, ${total - done} da fare)`);
+    } catch (err: any) {
+      toast.error(err.message || 'Errore caricamento ubicazione');
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
+  const handleSelectProductFromLocation = (product: LocationProduct) => {
+    setNotes(`Sistema prodotto: ${product.name} (ID: ${product.id})`);
+    setActiveTab('scatta');
+    toast.success(`Prodotto selezionato: ${product.name}`);
+    setTimeout(() => fileInputRef.current?.click(), 300);
+  };
+
+  const filteredLocationProducts = locationProducts.filter(p => {
+    if (locationFilter === 'tutti') return true;
+    if (locationFilter === 'da_fare') return !p.catalogato;
+    if (locationFilter === 'fatti') return p.catalogato;
+    return true;
+  });
+
   // Tab switch handler
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -233,7 +296,7 @@ export default function CatalogoFotoPage() {
         <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700">
           <button
             onClick={() => handleTabChange('scatta')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg text-base font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg text-sm font-semibold transition-all ${
               activeTab === 'scatta'
                 ? 'bg-emerald-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -243,8 +306,19 @@ export default function CatalogoFotoPage() {
             Scatta
           </button>
           <button
+            onClick={() => handleTabChange('ubicazione')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'ubicazione'
+                ? 'bg-emerald-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <MapPin className="h-5 w-5" />
+            Ubicazione
+          </button>
+          <button
             onClick={() => handleTabChange('risultati')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg text-base font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg text-sm font-semibold transition-all ${
               activeTab === 'risultati'
                 ? 'bg-emerald-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -347,6 +421,132 @@ export default function CatalogoFotoPage() {
                   <Save className="h-6 w-6" />
                   SALVA PRODOTTO ({photos.length} foto)
                 </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* TAB: UBICAZIONE */}
+          {activeTab === 'ubicazione' && (
+            <motion.div
+              key="ubicazione"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-5"
+            >
+              {/* Scan button */}
+              <button
+                onClick={() => setShowLocationScanner(true)}
+                className="w-full min-h-[72px] rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-3 text-xl font-bold"
+              >
+                <MapPin className="h-7 w-7" />
+                SCANSIONA UBICAZIONE
+              </button>
+
+              {/* Location info */}
+              {locationName && (
+                <div className="rounded-xl bg-slate-800 border border-blue-500/30 p-4 flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-slate-400">Ubicazione</p>
+                    <p className="font-bold text-white">{locationName}</p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="text-sm text-slate-400">{locationProducts.length} prodotti</p>
+                    <p className="text-xs text-emerald-400">
+                      {locationProducts.filter(p => p.catalogato).length} fatti
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading */}
+              {isLoadingLocation && (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                  <Loader2 className="h-10 w-10 animate-spin mb-3" />
+                  <p>Caricamento prodotti...</p>
+                </div>
+              )}
+
+              {/* Product filters */}
+              {locationProducts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {([
+                    { key: 'tutti' as const, label: `Tutti (${locationProducts.length})` },
+                    { key: 'da_fare' as const, label: `Da fare (${locationProducts.filter(p => !p.catalogato).length})` },
+                    { key: 'fatti' as const, label: `Fatti (${locationProducts.filter(p => p.catalogato).length})` },
+                  ]).map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setLocationFilter(f.key)}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+                        locationFilter === f.key
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Product list */}
+              {locationProducts.length > 0 && !isLoadingLocation && (
+                <div className="space-y-3">
+                  {filteredLocationProducts.map((product) => (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => handleSelectProductFromLocation(product)}
+                      className="rounded-xl bg-slate-800 border border-slate-700 p-4 hover:border-slate-500 active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <div className="flex gap-3 items-center">
+                        {/* Thumbnail */}
+                        <div className="h-14 w-14 rounded-lg bg-slate-700 overflow-hidden shrink-0">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="object-cover h-full w-full" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <Package className="h-5 w-5 text-slate-500" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white text-sm truncate">{product.name}</p>
+                          {product.code && (
+                            <p className="text-xs text-slate-400">{product.code}</p>
+                          )}
+                        </div>
+
+                        {/* Status badge */}
+                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                          product.catalogato
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {product.catalogato ? (
+                            <><Check className="h-3.5 w-3.5" /> Fatto</>
+                          ) : (
+                            <><Camera className="h-3.5 w-3.5" /> Da fare</>
+                          )}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!isLoadingLocation && !locationName && (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                  <MapPin className="h-12 w-12 mb-3" />
+                  <p className="text-lg font-semibold">Scansiona un'ubicazione</p>
+                  <p className="text-sm">Vedrai i prodotti presenti e il loro stato</p>
+                </div>
               )}
             </motion.div>
           )}
@@ -485,6 +685,14 @@ export default function CatalogoFotoPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* QR Scanner for location */}
+      <QRScanner
+        isOpen={showLocationScanner}
+        onClose={() => setShowLocationScanner(false)}
+        onScan={handleLocationScan}
+        title="Scanner Ubicazione"
+      />
 
       <MobileHomeButton />
     </div>
