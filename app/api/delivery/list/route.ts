@@ -210,7 +210,9 @@ export async function GET(request: NextRequest) {
 
     console.log('📥 [DELIVERY] Ritiri trovati:', incomingPickings.length);
 
-    // Combina tutti i pickings
+    // Tagga i picking per tipo prima di combinarli
+    outgoingPickings.forEach((p: any) => p._appType = 'delivery');
+    incomingPickings.forEach((p: any) => p._appType = 'pickup');
     const pickings = [...outgoingPickings, ...incomingPickings];
 
     if (pickings.length === 0) {
@@ -325,13 +327,9 @@ export async function GET(request: NextRequest) {
       const partner: any = partnerMap.get(partnerId);
       if (!partner) continue;
 
-      // Determina il tipo (delivery o pickup)
-      const pickingTypeCode = picking.picking_type_id?.[1]?.toLowerCase() || '';
-      const isPickup = pickingTypeCode.includes('riceviment') ||
-                       pickingTypeCode.includes('incoming') ||
-                       pickingTypeCode.includes('in') ||
-                       picking.purchase_id;
-      const type = isPickup ? 'pickup' : 'delivery';
+      // Tipo già determinato dalla query (outgoing vs incoming)
+      const isPickup = picking._appType === 'pickup';
+      const type = picking._appType;
 
       // Build address
       let address = '';
