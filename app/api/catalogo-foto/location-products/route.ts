@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Get unique product details
-    const productIds = [...new Set(quants.map((q: any) => q.product_id[0]))] as number[];
+    const productIds = Array.from(new Set(quants.map((q: any) => q.product_id[0]))) as number[];
 
     const prodsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = [...productMap.values()].sort((a, b) => {
+    const result = Array.from(productMap.values()).sort((a, b) => {
       if (a.catalogato !== b.catalogato) return a.catalogato ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
