@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
@@ -31,7 +32,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { model, method, args, kwargs } = await request.json();
+    const { model, method, args, kwargs: rawKwargs } = await request.json();
+
+    // Auto-inject user language into context if not already set
+    const kwargs = injectLangContext(rawKwargs || {});
 
     console.log('🔧 [API-ODOO-RPC] Chiamata:', model, method);
 

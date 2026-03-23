@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { getVehicleLocationId, ADMIN_USER_IDS, getAllVendorIds } from '@/lib/maestro/vehicle-stock-service';
 import { getOdooSessionId, callOdoo as callOdooHelper } from '@/lib/odoo/odoo-helper';
 
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
             model: 'res.users',
             method: 'read',
             args: [[targetOdooUserId]],
-            kwargs: { fields: ['name'] }
+            kwargs: injectLangContext({ fields: ['name'] })
           }
         })
       });
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
             model: 'hr.employee',
             method: 'search_read',
             args: [[['user_id', '=', uidNum]]],
-            kwargs: { fields: ['id', 'name'], limit: 1 }
+            kwargs: injectLangContext({ fields: ['id', 'name'], limit: 1 })
           }
         })
       });
@@ -179,7 +180,7 @@ export async function GET(request: NextRequest) {
               model: 'res.users',
               method: 'read',
               args: [[uidNum]],
-              kwargs: { fields: ['name'] }
+              kwargs: injectLangContext({ fields: ['name'] })
             }
           })
         });
@@ -261,7 +262,7 @@ export async function GET(request: NextRequest) {
           model: 'stock.location',
           method: 'read',
           args: [[locationId]],
-          kwargs: { fields: ['id', 'name', 'complete_name', 'barcode'] }
+          kwargs: injectLangContext({ fields: ['id', 'name', 'complete_name', 'barcode'] })
         }
       })
     });
@@ -297,10 +298,10 @@ export async function GET(request: NextRequest) {
             ['location_id', '=', locationId],
             ['quantity', '>', 0]
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'product_id', 'quantity', 'product_uom_id', 'lot_id'],
             order: 'product_id'
-          }
+          })
         }
       })
     });
@@ -347,7 +348,7 @@ export async function GET(request: NextRequest) {
           model: 'product.product',
           method: 'read',
           args: [productIds],
-          kwargs: { fields: ['id', 'name', 'default_code', 'image_128', 'uom_id', 'categ_id', 'barcode'] }
+          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'image_128', 'uom_id', 'categ_id', 'barcode'] })
         }
       })
     });
@@ -374,7 +375,7 @@ export async function GET(request: NextRequest) {
             model: 'stock.lot',
             method: 'read',
             args: [lotIds],
-            kwargs: { fields: ['id', 'name', 'expiration_date'] }
+            kwargs: injectLangContext({ fields: ['id', 'name', 'expiration_date'] })
           }
         })
       });

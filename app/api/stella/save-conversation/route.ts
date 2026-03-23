@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { sql } from '@vercel/postgres';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 // ✅ SALVA IN DUE POSTI:
 // 1. Odoo (task/ticket) - usando credenziali ADMIN
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
               [['email', '=', userEmail]],
               ['id', 'name']
             ],
-            kwargs: {}
+            kwargs: injectLangContext({})
           }
         })
       });
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
             ],
             ['id', 'name', 'description']
           ],
-          kwargs: {}
+          kwargs: injectLangContext({})
         }
       })
     });
@@ -210,7 +211,7 @@ export async function POST(request: NextRequest) {
                 description: updatedDescription
               }
             ],
-            kwargs: {}
+            kwargs: injectLangContext({})
           }
         })
       });
@@ -268,7 +269,7 @@ ${newMessageText}
               priority: '1', // Normale
               tag_ids: [[6, 0, []]] // Puoi aggiungere tag se vuoi
             }],
-            kwargs: {}
+            kwargs: injectLangContext({})
           }
         })
       });

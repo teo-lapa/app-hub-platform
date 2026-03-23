@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 /**
  * API endpoint per testare la tracciabilità lotto -> ordine -> cliente
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
 
     // Helper per chiamate Odoo
     const odooCall = async (model: string, method: string, args: any[] = [], kwargs: any = {}) => {
+      kwargs = injectLangContext(kwargs);
       const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
         headers: authHeaders,

@@ -4,6 +4,7 @@
  */
 
 import { cookies } from 'next/headers';
+import { injectLangContext } from './user-lang';
 
 /**
  * Autentica con Odoo usando credenziali (fallback)
@@ -149,6 +150,9 @@ export async function callOdoo(
   if (!sessionId) {
     throw new Error('Session Odoo non valida. Impossibile autenticare.');
   }
+
+  // Auto-inject user language into context if not already set
+  kwargs = injectLangContext(kwargs);
 
   let data = await callOdooInternal(model, method, args, kwargs, sessionId);
 

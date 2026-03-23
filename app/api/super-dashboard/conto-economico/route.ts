@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
@@ -42,6 +43,8 @@ async function searchRead<T>(
   fields: string[],
   options: any = {}
 ): Promise<T[]> {
+  let kwargs: any = { domain, fields, limit: options.limit || 50000, offset: options.offset || 0, order: options.order };
+  kwargs = injectLangContext(kwargs);
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
     headers: {
@@ -55,7 +58,7 @@ async function searchRead<T>(
         model,
         method: 'search_read',
         args: [],
-        kwargs: { domain, fields, limit: options.limit || 50000, offset: options.offset || 0, order: options.order }
+        kwargs
       },
       id: Date.now()
     })

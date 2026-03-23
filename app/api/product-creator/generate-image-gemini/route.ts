@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 // Use GEMINI_API_KEY or fallback to GOOGLE_GEMINI_API_KEY
 const API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
@@ -159,7 +160,7 @@ REGOLE FONDAMENTALI:
                 [productId],
                 { image_1920: imageBase64 }
               ],
-              kwargs: {},
+              kwargs: injectLangContext({}),
             },
             id: Math.floor(Math.random() * 1000000000)
           })

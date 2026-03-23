@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -53,12 +54,12 @@ export async function GET(request: NextRequest) {
           model: 'product.product',
           method: 'search_read',
           args: [domain],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'name', 'image_256', 'qty_available', 'uom_id', 'seller_ids', 'list_price', 'product_tmpl_id'],
             limit: 2000,  // Increased to show all products
             order: 'name ASC',
             context: { bin_size: false }  // Get full base64 image, not just size
-          }
+          })
         },
         id: Math.random()
       })
@@ -95,9 +96,9 @@ export async function GET(request: NextRequest) {
             model: 'product.supplierinfo',
             method: 'search_read',
             args: [[['id', 'in', allSellerIds]]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['id', 'partner_id', 'product_tmpl_id']
-            }
+            })
           },
           id: Math.random()
         })
@@ -140,9 +141,9 @@ export async function GET(request: NextRequest) {
             ['date_order', '>=', fourteenDaysAgoStr],
             ['state', 'in', ['sale', 'done']]
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'date_order', 'state']
-          }
+          })
         },
         id: Math.random()
       })
@@ -169,9 +170,9 @@ export async function GET(request: NextRequest) {
             model: 'sale.order.line',
             method: 'search_read',
             args: [[['order_id', 'in', saleOrderIds]]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['product_id', 'product_uom_qty', 'order_id']
-            }
+            })
           },
           id: Math.random()
         })

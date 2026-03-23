@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 /**
  * API per verificare se un prodotto esiste già in un'ubicazione
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
           model: 'product.product',
           method: 'read',
           args: [[productId], ['tracking']],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 1.5
       })
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
             ['location_id', '=', locationId],
             ['quantity', '>', 0]
           ]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 2
       })

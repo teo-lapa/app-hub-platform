@@ -1,4 +1,4 @@
-export type UserRole = 'visitor' | 'cliente_gratuito' | 'cliente_premium' | 'dipendente' | 'admin';
+export type UserRole = 'visitor' | 'cliente_gratuito' | 'cliente_premium' | 'dipendente' | 'admin' | 'agente';
 
 export type AppStatus = 'FREE' | 'PRO' | 'COMING_SOON' | 'AZIENDALE';
 

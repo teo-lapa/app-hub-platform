@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   let deliveryId: number | undefined;
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
           model: 'ir.actions.report',
           method: 'search_read',
           args: [[['report_name', '=', reportName]]],
-          kwargs: { fields: ['id', 'report_name', 'report_type'] }
+          kwargs: injectLangContext({ fields: ['id', 'report_name', 'report_type'] })
         },
         id: Date.now()
       })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { getUserLang } from '@/lib/odoo/user-lang';
 
 /**
  * POST /api/valida-fatture/search-products
@@ -44,19 +45,20 @@ export async function POST(request: NextRequest) {
       'list_price', 'standard_price', 'uom_id', 'seller_ids'
     ];
 
-    const [productsIt, productsEn] = await Promise.all([
+    const userLang = getUserLang();
+    const [productsUserLang, productsEn] = await Promise.all([
       callOdoo(cookies, 'product.product', 'search_read', [productDomain], {
-        fields: fattureFields, limit: 50, order: 'name asc', context: { lang: 'it_IT' }
+        fields: fattureFields, limit: 50, order: 'name asc', context: { lang: userLang }
       }),
       callOdoo(cookies, 'product.product', 'search_read', [productDomain], {
         fields: fattureFields, limit: 50, order: 'name asc', context: { lang: 'en_US' }
       }),
     ]);
 
-    // Merge and deduplicate by product ID (Italian results take priority)
+    // Merge and deduplicate by product ID (user's language results take priority)
     const seenIds = new Set<number>();
     const products: any[] = [];
-    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+    for (const p of [...(productsUserLang || []), ...(productsEn || [])]) {
       if (!seenIds.has(p.id)) {
         seenIds.add(p.id);
         products.push(p);

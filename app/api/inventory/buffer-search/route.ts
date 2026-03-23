@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOdooClient } from '@/lib/odoo/client';
+import { getUserLang } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,17 +42,18 @@ export async function POST(request: NextRequest) {
     ];
     const bufferFields = ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id'];
 
-    const [productsIt, productsEn] = await Promise.all([
+    const userLang = getUserLang();
+    const [productsUserLang, productsEn] = await Promise.all([
       odooClient.callKw('product.product', 'search_read', [bufferDomain, bufferFields],
-        { limit: 20, context: { lang: 'it_IT' } }, session),
+        { limit: 20, context: { lang: userLang } }, session),
       odooClient.callKw('product.product', 'search_read', [bufferDomain, bufferFields],
         { limit: 20, context: { lang: 'en_US' } }, session),
     ]);
 
-    // Merge and deduplicate by product ID (Italian results take priority)
+    // Merge and deduplicate by product ID (user's language results take priority)
     const seenIds = new Set<number>();
     const products: any[] = [];
-    for (const p of [...(productsIt || []), ...(productsEn || [])]) {
+    for (const p of [...(productsUserLang || []), ...(productsEn || [])]) {
       if (!seenIds.has(p.id)) {
         seenIds.add(p.id);
         products.push(p);

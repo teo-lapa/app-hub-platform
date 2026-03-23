@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,9 +42,7 @@ export async function POST(request: NextRequest) {
             ['location_id', '=', locationId],
             ['quantity', '>', 0]
           ]],
-          kwargs: {
-            fields: ['id', 'product_id', 'quantity', 'lot_id', 'product_uom_id']
-          }
+          kwargs: injectLangContext({})
         },
         id: 2
       })
@@ -78,9 +77,7 @@ export async function POST(request: NextRequest) {
           model: 'product.product',
           method: 'search_read',
           args: [[['id', 'in', productIds]]],
-          kwargs: {
-            fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id', 'seller_ids']
-          }
+          kwargs: injectLangContext({})
         },
         id: 3
       })
@@ -113,10 +110,7 @@ export async function POST(request: NextRequest) {
             model: 'product.supplierinfo',
             method: 'search_read',
             args: [[['id', 'in', sellerIds]]],
-            kwargs: {
-              fields: ['id', 'partner_id', 'product_tmpl_id'],
-              order: 'sequence asc'
-            }
+            kwargs: injectLangContext({})
           },
           id: 5
         })
@@ -176,9 +170,7 @@ export async function POST(request: NextRequest) {
             model: 'stock.lot',
             method: 'search_read',
             args: [[['id', 'in', lotIds]]],
-            kwargs: {
-              fields: ['id', 'name', 'expiration_date']
-            }
+            kwargs: injectLangContext({})
           },
           id: 4
         })

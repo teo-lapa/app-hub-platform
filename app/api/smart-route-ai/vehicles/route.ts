@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com';
 
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
           model: 'fleet.vehicle',
           method: 'search_read',
           args: [[]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'name', 'license_plate', 'driver_id', 'driver_employee_id'],
             limit: 100
-          }
+          })
         },
         id: Date.now(),
       }),
