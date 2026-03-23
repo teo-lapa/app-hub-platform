@@ -68,18 +68,37 @@ export async function POST(request: NextRequest) {
         params: {
           model: 'product.product', method: 'search_read',
           args: [[['id', 'in', productIds]]],
-          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128'] })
+          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'product_tmpl_id'] })
         }, id: 3
       })
     });
     const products = (await prodsResponse.json()).result || [];
 
-    // 4. Check which products have been cataloged
+    // 4. Check which products have been cataloged (via chatter message)
+    const chatterResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'call',
+        params: {
+          model: 'mail.message', method: 'search_read',
+          args: [[
+            ['model', '=', 'product.template'],
+            ['body', 'ilike', 'Catalogato da App Catalogo Foto'],
+          ]],
+          kwargs: { fields: ['res_id'], limit: 5000 }
+        }, id: 4
+      })
+    });
+    const chatterMessages = (await chatterResponse.json()).result || [];
+    const catalogedTemplateIds = new Set(chatterMessages.map((m: any) => m.res_id));
+
+    // Also check catalog_photo_jobs table
     const jobsResult = await sql`
       SELECT DISTINCT odoo_product_id FROM catalog_photo_jobs
       WHERE status = 'completed' AND odoo_product_id IS NOT NULL
     `;
-    const catalogedIds = new Set(jobsResult.rows.map(r => r.odoo_product_id));
+    const catalogedJobIds = new Set(jobsResult.rows.map(r => r.odoo_product_id));
 
     // 5. Build result - aggregate quantities per product
     const productMap = new Map<number, any>();
@@ -96,7 +115,7 @@ export async function POST(request: NextRequest) {
           barcode: prod?.barcode || '',
           image: prod?.image_128 ? `data:image/png;base64,${prod.image_128}` : null,
           quantity: q.quantity,
-          catalogato: catalogedIds.has(pid),
+          catalogato: catalogedJobIds.has(pid) || catalogedTemplateIds.has(prod?.product_tmpl_id?.[0]),
         });
       }
     }
