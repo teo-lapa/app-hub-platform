@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         params: {
           model: 'product.product', method: 'search_read',
           args: [[['id', 'in', productIds]]],
-          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'description_sale'] })
+          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'website_description'] })
         }, id: 3
       })
     });
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           barcode: prod?.barcode || '',
           image: prod?.image_128 ? `data:image/png;base64,${prod.image_128}` : null,
           quantity: q.quantity,
-          catalogato: catalogedIds.has(pid) || !!(prod?.description_sale),
+          catalogato: catalogedIds.has(pid) || !!(prod?.website_description),
         });
       }
     }
