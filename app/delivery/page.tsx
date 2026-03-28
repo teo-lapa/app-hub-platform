@@ -36,7 +36,7 @@ export default function DeliveryPage() {
   // Estados principales
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
-  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico' | 'vehicle-check' | 'pickup'>('list');
+  const [view, setView] = useState<'list' | 'map' | 'stats' | 'scarico' | 'vehicle-check' | 'pickup' | 'svuota-furgone'>('list');
   const [loading, setLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +131,14 @@ export default function DeliveryPage() {
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [currentPhotoItem, setCurrentPhotoItem] = useState<{ categoryId: string; itemId: string } | null>(null);
 
+  // Estados svuota furgone
+  const [vanPendingOrders, setVanPendingOrders] = useState<any[]>([]);
+  const [vanPendingLoading, setVanPendingLoading] = useState(false);
+  const [vanPendingProcessing, setVanPendingProcessing] = useState<string | null>(null);
+  const [vanPendingResults, setVanPendingResults] = useState<Record<string, { success: boolean; message: string }>>({});
+  const [vanPendingPhoto, setVanPendingPhoto] = useState<{ orderIdx: number; productIdx: number } | null>(null);
+  const vanPhotoInputRef = useRef<HTMLInputElement>(null);
+
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +178,9 @@ export default function DeliveryPage() {
       await db.cache.clear();
       console.log('✅ Cache pulita');
 
+      // Carica prodotti pendenti nel furgone
+      await loadVanPending();
+
       // Carica consegne (l'API ritorna anche il nome del driver)
       await loadDeliveries();
     } catch (err: any) {
@@ -179,6 +190,121 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadVanPending() {
+    try {
+      setVanPendingLoading(true);
+      const response = await fetch(`/api/delivery/van-pending?t=${Date.now()}`, {
+        cache: 'no-store',
+        credentials: 'include'
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const orders = data.orders || [];
+      setVanPendingOrders(orders);
+      // Blocco: se ci sono prodotti pendenti non ancora processati, forza view
+      const hasUnprocessed = orders.some((o: any) => !o.returnCreated);
+      if (hasUnprocessed) {
+        setView('svuota-furgone');
+      }
+    } catch (err) {
+      console.error('❌ [VAN] Errore caricamento pendenti:', err);
+    } finally {
+      setVanPendingLoading(false);
+    }
+  }
+
+  async function handleVanPhoto(orderIdx: number, productIdx: number) {
+    setVanPendingPhoto({ orderIdx, productIdx });
+    setTimeout(() => vanPhotoInputRef.current?.click(), 100);
+  }
+
+  async function handleVanPhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !vanPendingPhoto) return;
+
+    const order = vanPendingOrders[vanPendingPhoto.orderIdx];
+    const product = order.prodotti[vanPendingPhoto.productIdx];
+    const key = `${order.pickingName}|${product.nome}`;
+
+    setVanPendingProcessing(key);
+
+    try {
+      // Compress image
+      const base64 = await compressFileToBase64(file);
+
+      // Send to process-product API (same as scarichi-parziali)
+      const response = await fetch('/api/scarichi-parziali/process-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'photo',
+          product: {
+            nome: product.nome,
+            quantitaRichiesta: product.quantita,
+            quantitaEffettiva: 0,
+            uom: product.uom
+          },
+          order: {
+            numeroOrdineResiduo: order.pickingName,
+            cliente: order.cliente,
+            salesOrder: order.salesOrder
+          },
+          photo: base64,
+          messaggiAutista: []
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setVanPendingResults(prev => ({
+          ...prev,
+          [key]: { success: true, message: `Trasferito a ${result.bufferName}` }
+        }));
+        showToast(`${product.nome.substring(0, 30)} → ${result.bufferName}`, 'success');
+      } else {
+        setVanPendingResults(prev => ({
+          ...prev,
+          [key]: { success: false, message: result.error || 'Errore' }
+        }));
+        showToast(result.error || 'Errore', 'error');
+      }
+    } catch (err: any) {
+      setVanPendingResults(prev => ({
+        ...prev,
+        [key]: { success: false, message: err.message }
+      }));
+      showToast('Errore invio foto', 'error');
+    } finally {
+      setVanPendingProcessing(null);
+      setVanPendingPhoto(null);
+      if (vanPhotoInputRef.current) vanPhotoInputRef.current.value = '';
+    }
+  }
+
+  function compressFileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 1200;
+          const scale = Math.min(1, maxW / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl.split(',')[1]); // Return base64 without prefix
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   function setupOnlineListener() {
@@ -2964,12 +3090,157 @@ export default function DeliveryPage() {
             })()}
           </div>
         )}
+
+        {/* VIEW SVUOTA FURGONE */}
+        {view === 'svuota-furgone' && (
+          <div className="space-y-4 p-4">
+            {/* Header alert */}
+            <div className="bg-orange-500 text-white rounded-xl p-4 shadow-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">🚛</span>
+                <div>
+                  <h2 className="text-lg font-bold">Svuota il Furgone</h2>
+                  <p className="text-sm opacity-90">
+                    Hai {vanPendingOrders.reduce((acc, o) => acc + o.prodotti.filter((p: any) => !vanPendingResults[`${o.pickingName}|${p.nome}`]?.success).length, 0)} prodotti da riportare in magazzino
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs opacity-75">Fai una foto a ogni prodotto dopo averlo appoggiato nel buffer</p>
+            </div>
+
+            {vanPendingLoading && (
+              <div className="text-center py-8 text-gray-500">Caricamento...</div>
+            )}
+
+            {/* Orders list */}
+            {vanPendingOrders.map((order, orderIdx) => (
+              <div key={order.pickingName} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Order header */}
+                <div className={`p-3 ${order.returnCreated ? 'bg-green-50 border-b border-green-200' : 'bg-red-50 border-b border-red-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900 text-sm">{order.cliente}</div>
+                      <div className="text-xs text-gray-500">{order.pickingName} - {order.salesOrder}</div>
+                    </div>
+                    {order.returnCreated && (
+                      <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold">Fatto</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div className="divide-y divide-gray-100">
+                  {order.prodotti.map((product: any, productIdx: number) => {
+                    const key = `${order.pickingName}|${product.nome}`;
+                    const result = vanPendingResults[key];
+                    const isProcessing = vanPendingProcessing === key;
+
+                    return (
+                      <div key={productIdx} className={`p-3 ${result?.success ? 'bg-green-50' : ''}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-900 truncate">{product.nome}</div>
+                            <div className="text-xs text-gray-500">{product.quantita} {product.uom}</div>
+                            {product.lotName && (
+                              <div className="text-xs text-blue-600">Lotto: {product.lotName}</div>
+                            )}
+                          </div>
+
+                          {result?.success ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <span className="text-lg">&#10003;</span>
+                              <span className="text-xs font-semibold">{result.message}</span>
+                            </div>
+                          ) : result && !result.success ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-red-600">{result.message}</span>
+                              <button
+                                onClick={() => handleVanPhoto(orderIdx, productIdx)}
+                                className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-semibold min-h-[40px]"
+                              >
+                                Riprova
+                              </button>
+                            </div>
+                          ) : isProcessing ? (
+                            <div className="flex items-center gap-2 text-indigo-600">
+                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent" />
+                              <span className="text-xs">Analisi...</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleVanPhoto(orderIdx, productIdx)}
+                              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-semibold flex items-center gap-1 min-h-[44px]"
+                            >
+                              <span>&#128247;</span> Foto
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Button to proceed when all done */}
+            {vanPendingOrders.length > 0 && vanPendingOrders.every(o =>
+              o.returnCreated || o.prodotti.every((p: any) => vanPendingResults[`${o.pickingName}|${p.nome}`]?.success)
+            ) && (
+              <button
+                onClick={() => {
+                  setView('list');
+                  loadDeliveries();
+                }}
+                className="w-full py-4 bg-green-500 text-white rounded-xl font-bold text-lg shadow-lg min-h-[56px]"
+              >
+                Furgone svuotato - Vai alle consegne
+              </button>
+            )}
+
+            {vanPendingOrders.length === 0 && !vanPendingLoading && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">&#10003;</div>
+                <div className="text-gray-600 font-semibold">Nessun prodotto pendente nel furgone</div>
+                <button
+                  onClick={() => setView('list')}
+                  className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold min-h-[48px]"
+                >
+                  Vai alle consegne
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* BOTTOM NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 h-[70px] bg-white border-t border-gray-200 flex items-center justify-around z-50">
+        {/* Van pending button - visible when there are pending items */}
+        {vanPendingOrders.some(o => !o.returnCreated && !o.prodotti.every((p: any) => vanPendingResults[`${o.pickingName}|${p.nome}`]?.success)) && (
+          <button
+            onClick={() => setView('svuota-furgone')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 relative ${
+              view === 'svuota-furgone' ? 'text-orange-600' : 'text-orange-400'
+            }`}
+          >
+            <span className="text-2xl">🚛</span>
+            <span className="text-xs font-semibold">Furgone</span>
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {vanPendingOrders.reduce((acc, o) => acc + o.prodotti.filter((p: any) => !vanPendingResults[`${o.pickingName}|${p.nome}`]?.success).length, 0)}
+            </span>
+          </button>
+        )}
+
         <button
-          onClick={() => setView('list')}
+          onClick={() => {
+            const hasVanPending = vanPendingOrders.some(o => !o.returnCreated && !o.prodotti.every((p: any) => vanPendingResults[`${o.pickingName}|${p.nome}`]?.success));
+            if (hasVanPending) {
+              showToast('Prima svuota il furgone!', 'warning');
+              setView('svuota-furgone');
+              return;
+            }
+            setView('list');
+          }}
           className={`flex flex-col items-center gap-1 px-4 py-2 ${
             view === 'list' ? 'text-indigo-600' : 'text-gray-400'
           }`}
@@ -4173,6 +4444,16 @@ export default function DeliveryPage() {
         accept="image/*"
         capture="environment"
         onChange={handleVehicleCheckPhotoCapture}
+        className="hidden"
+      />
+
+      {/* Hidden file input for van photos */}
+      <input
+        ref={vanPhotoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleVanPhotoCapture}
         className="hidden"
       />
 
