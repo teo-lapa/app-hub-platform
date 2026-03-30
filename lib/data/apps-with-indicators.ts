@@ -959,6 +959,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2026-02-26'),
     updatedAt: new Date('2026-02-26'),
   },
+  {
+    id: 'skills-dashboard',
+    name: 'Skills Dashboard [P]',
+    description: 'Mappa interattiva di tutte le skills Claude Code: nome, comando, categoria, descrizione, trigger, architettura multi-agente.',
+    icon: '🎯',
+    badge: 'AZIENDALE',
+    category: 'AI & Tech',
+    url: '/skills-dashboard',
+    requiredRole: 'admin',
+    isNew: true,
+    isPopular: false,
+    controlStatus: 'approved',
+    createdAt: new Date('2026-03-30'),
+    updatedAt: new Date('2026-03-30'),
+  },
 ];
 
 // Combina tutte le app
