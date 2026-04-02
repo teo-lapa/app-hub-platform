@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = Array.from(productMap.values()).sort((a, b) => {
+    const result = Array.from(productMap.values()).sort((a: any, b: any) => {
       if (a.catalogato !== b.catalogato) return a.catalogato ? 1 : -1;
       return a.name.localeCompare(b.name);
     });

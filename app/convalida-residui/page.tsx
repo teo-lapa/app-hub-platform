@@ -247,6 +247,11 @@ export default function ConvalidaResiduiPage() {
   // Filtro per tipo: 'tutti' | 'residui' | 'attesa'
   const [typeFilter, setTypeFilter] = useState<'tutti' | 'residui' | 'attesa'>('tutti');
 
+  // Vista: 'home' (2 card), 'zona' (lista zone), 'autista' (lista autisti), 'zona-detail' / 'autista-detail' (dettaglio)
+  const [viewMode, setViewMode] = useState<'home' | 'zona' | 'autista' | 'zona-detail' | 'autista-detail'>('home');
+  const [selectedZone, setSelectedZone] = useState<ZoneType | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+
   // Dati principali
   const [picks, setPicks] = useState<StockPicking[]>([]);
   const [moves, setMoves] = useState<StockMove[]>([]);
@@ -1525,24 +1530,214 @@ export default function ConvalidaResiduiPage() {
   // RENDER HELPERS
   // --------------------------------------------------------------------------
 
-  const renderGroups = () => {
-    if (groups.size === 0 && !isLoading) {
-      return (
-        <div className="card">
-          <p style={{ color: 'var(--muted)' }}>{statusMessage}</p>
+  const renderHome = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+      <button
+        onClick={() => { setViewMode('zona'); handleLoad(); }}
+        style={{
+          background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+          border: 'none',
+          borderRadius: '20px',
+          padding: '40px 30px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          color: '#fff',
+          minHeight: '200px',
+          display: 'flex',
+          flexDirection: 'column' as const,
+          justifyContent: 'space-between',
+          boxShadow: '0 8px 32px rgba(37, 99, 235, 0.3)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(37, 99, 235, 0.4)'; }}
+        onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 32px rgba(37, 99, 235, 0.3)'; }}
+      >
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
+        <div>
+          <div style={{ fontSize: '24px', fontWeight: '800', marginBottom: '8px' }}>Per Zona</div>
+          <div style={{ fontSize: '15px', opacity: 0.85 }}>Frigo, Pingu, Secco 1, Secco 2 — preleva zona per zona</div>
         </div>
-      );
-    }
+      </button>
+      <button
+        onClick={() => { setViewMode('autista'); handleLoad(); }}
+        style={{
+          background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
+          border: 'none',
+          borderRadius: '20px',
+          padding: '40px 30px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          color: '#fff',
+          minHeight: '200px',
+          display: 'flex',
+          flexDirection: 'column' as const,
+          justifyContent: 'space-between',
+          boxShadow: '0 8px 32px rgba(234, 88, 12, 0.3)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(234, 88, 12, 0.4)'; }}
+        onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 32px rgba(234, 88, 12, 0.3)'; }}
+      >
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚛</div>
+        <div>
+          <div style={{ fontSize: '24px', fontWeight: '800', marginBottom: '8px' }}>Per Autista</div>
+          <div style={{ fontSize: '15px', opacity: 0.85 }}>Raggruppa per driver — distribuisci i prodotti</div>
+        </div>
+      </button>
+    </div>
+  );
 
-    return Array.from(groups.entries()).map(([key, grp]) => (
-      <div key={key} className="group">
-        <div className="ghead">
-          <span className="pill strong">👤 {grp.driver}</span>
-          <span className="pill strong">🧭 {grp.carrier}</span>
-        </div>
-        {grp.pickings.map((pick) => renderPicking(pick))}
+  const getZoneGroups = () => {
+    const zoneGroups: Record<string, { zone: ZoneInfo; count: number; pickIds: Set<number> }> = {};
+    for (const pick of picks) {
+      const pickMoves = moves.filter(m => m.picking_id && m.picking_id[0] === pick.id);
+      for (const move of pickMoves) {
+        const zone = getZoneForMove(move.id);
+        if (!zoneGroups[zone.type]) {
+          zoneGroups[zone.type] = { zone, count: 0, pickIds: new Set() };
+        }
+        zoneGroups[zone.type].count++;
+        zoneGroups[zone.type].pickIds.add(pick.id);
+      }
+    }
+    return Object.values(zoneGroups).sort((a, b) => a.zone.order - b.zone.order);
+  };
+
+  const renderGroupsByZone = () => {
+    if (picks.length === 0 && !isLoading) {
+      return <div className="card"><p style={{ color: 'var(--muted)' }}>{statusMessage}</p></div>;
+    }
+    const sorted = getZoneGroups();
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px', marginTop: '20px' }}>
+        {sorted.map(({ zone, count, pickIds }) => (
+          <button
+            key={zone.type}
+            onClick={() => { setSelectedZone(zone.type); setViewMode('zona-detail'); }}
+            style={{
+              background: zone.bgColor,
+              border: 'none',
+              borderRadius: '16px',
+              padding: '28px 24px',
+              cursor: 'pointer',
+              color: '#fff',
+              textAlign: 'left',
+              transition: 'transform 0.15s',
+              boxShadow: `0 6px 24px ${zone.bgColor}44`,
+            }}
+            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
+            onMouseOut={e => { e.currentTarget.style.transform = ''; }}
+          >
+            <div style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>{zone.label}</div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>{count} righe — {pickIds.size} pick</div>
+          </button>
+        ))}
       </div>
-    ));
+    );
+  };
+
+  const renderZoneDetail = () => {
+    if (!selectedZone) return null;
+    const zone = ZONE_MAP[selectedZone];
+    // Filtra solo i picking che hanno move in questa zona
+    const relevantPickIds = new Set<number>();
+    moves.forEach(m => {
+      if (getZoneForMove(m.id).type === selectedZone) {
+        relevantPickIds.add(m.picking_id[0]);
+      }
+    });
+    const zonePicks = picks.filter(p => relevantPickIds.has(p.id));
+    return (
+      <>
+        <div style={{ margin: '16px 0 12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button className="btn ghost" onClick={() => setViewMode('zona')}>← Zone</button>
+          <span className="pill strong" style={{ background: zone.bgColor, color: '#fff', borderColor: zone.bgColor, fontSize: '16px', padding: '10px 20px' }}>
+            {zone.label}
+          </span>
+          <span className="info">{zonePicks.length} pick</span>
+        </div>
+        {zonePicks.map(pick => renderPicking(pick))}
+      </>
+    );
+  };
+
+  const getDriverList = () => {
+    const drivers: Array<{ key: string; driver: string; pickCount: number; moveCount: number }> = [];
+    Array.from(groups.entries()).forEach(([key, grp]) => {
+      const moveCount = grp.pickings.reduce((sum, p) => sum + moves.filter(m => m.picking_id && m.picking_id[0] === p.id).length, 0);
+      drivers.push({ key, driver: grp.driver, pickCount: grp.pickings.length, moveCount });
+    });
+    // Metti "Non assegnato" in fondo
+    return drivers.sort((a, b) => {
+      if (a.driver === 'Autista N/D') return 1;
+      if (b.driver === 'Autista N/D') return -1;
+      return a.driver.localeCompare(b.driver);
+    });
+  };
+
+  const renderGroupsByDriver = () => {
+    if (groups.size === 0 && !isLoading) {
+      return <div className="card"><p style={{ color: 'var(--muted)' }}>{statusMessage}</p></div>;
+    }
+    const drivers = getDriverList();
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px', marginTop: '20px' }}>
+        {drivers.map(({ key, driver, pickCount, moveCount }) => {
+          const isUnassigned = driver === 'Autista N/D';
+          return (
+            <button
+              key={key}
+              onClick={() => { setSelectedDriver(key); setViewMode('autista-detail'); }}
+              style={{
+                background: isUnassigned ? '#dc2626' : 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+                border: 'none',
+                borderRadius: '16px',
+                padding: '28px 24px',
+                cursor: 'pointer',
+                color: '#fff',
+                textAlign: 'left',
+                transition: 'transform 0.15s',
+                boxShadow: isUnassigned ? '0 6px 24px #dc262644' : '0 6px 24px #ea580c44',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = ''; }}
+            >
+              <div style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px' }}>
+                {isUnassigned ? '⚠️ Non assegnato' : `👤 ${driver}`}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>{moveCount} righe — {pickCount} pick</div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderDriverDetail = () => {
+    if (!selectedDriver || !groups.has(selectedDriver)) return null;
+    const grp = groups.get(selectedDriver)!;
+    return (
+      <>
+        <div style={{ margin: '16px 0 12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button className="btn ghost" onClick={() => setViewMode('autista')}>← Autisti</button>
+          <span className="pill strong" style={{ fontSize: '16px', padding: '10px 20px' }}>
+            👤 {grp.driver}
+          </span>
+          <span className="pill strong">🧭 {grp.carrier}</span>
+          <span className="info">{grp.pickings.length} pick</span>
+        </div>
+        {grp.pickings.map(pick => renderPicking(pick))}
+      </>
+    );
+  };
+
+  const renderGroups = () => {
+    if (viewMode === 'home') return renderHome();
+    if (viewMode === 'zona') return renderGroupsByZone();
+    if (viewMode === 'zona-detail') return renderZoneDetail();
+    if (viewMode === 'autista') return renderGroupsByDriver();
+    if (viewMode === 'autista-detail') return renderDriverDetail();
+    return null;
   };
 
   const renderPicking = (pick: StockPicking) => {
@@ -1704,6 +1899,19 @@ export default function ConvalidaResiduiPage() {
             }}>
               {uom}
             </span>
+            {pick.partner_id && (
+              <span style={{
+                display: 'inline-block',
+                background: '#fef3c7',
+                color: '#92400e',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '600',
+              }}>
+                👤 {pick.partner_id[1]}
+              </span>
+            )}
           </div>
 
           {/* Quantità prevista */}
@@ -3083,13 +3291,24 @@ export default function ConvalidaResiduiPage() {
             <button className="btn ghost" type="button" onClick={toggleTheme} title="Cambia tema">
               {theme === 'light' ? '☀️ Chiaro' : '🌙 Scuro'}
             </button>
-            <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
-              {isLoading ? <span className="loading"></span> : 'CERCA'}
-            </button>
+            {viewMode !== 'home' && (
+              <>
+                <button className="btn ghost" type="button" onClick={() => {
+                  if (viewMode === 'zona-detail') setViewMode('zona');
+                  else if (viewMode === 'autista-detail') setViewMode('autista');
+                  else setViewMode('home');
+                }}>
+                  ← Indietro
+                </button>
+                <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
+                  {isLoading ? <span className="loading"></span> : 'CERCA'}
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Filtri per data e tipo */}
-          <div className="filters-bar">
+          {/* Filtri per data e tipo - solo quando non in home */}
+          {viewMode !== 'home' && <div className="filters-bar">
             <div className="filter-group">
               <span className="filter-label">📅 Data:</span>
               <button
@@ -3139,9 +3358,9 @@ export default function ConvalidaResiduiPage() {
               </button>
             </div>
             <div className="info">
-              Invio salva la riga • Raggruppo per <b>Autista</b> e <b>Giro</b>
+              Invio salva la riga • Raggruppo per <b>{viewMode === 'zona' ? 'Zona' : 'Autista'}</b> e <b>Giro</b>
             </div>
-          </div>
+          </div>}
           {renderGroups()}
         </div>
 
