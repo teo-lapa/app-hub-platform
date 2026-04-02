@@ -1662,13 +1662,18 @@ export default function ConvalidaResiduiPage() {
   };
 
   const getDriverList = () => {
-    const drivers: Array<{ key: string; driver: string; pickCount: number; moveCount: number }> = [];
+    // Raggruppa per driver (non per driver+carrier)
+    const driverMap: Record<string, { driver: string; pickCount: number; moveCount: number; groupKeys: string[] }> = {};
     Array.from(groups.entries()).forEach(([key, grp]) => {
-      const moveCount = grp.pickings.reduce((sum, p) => sum + moves.filter(m => m.picking_id && m.picking_id[0] === p.id).length, 0);
-      drivers.push({ key, driver: grp.driver, pickCount: grp.pickings.length, moveCount });
+      const driverName = grp.driver;
+      if (!driverMap[driverName]) {
+        driverMap[driverName] = { driver: driverName, pickCount: 0, moveCount: 0, groupKeys: [] };
+      }
+      driverMap[driverName].groupKeys.push(key);
+      driverMap[driverName].pickCount += grp.pickings.length;
+      driverMap[driverName].moveCount += grp.pickings.reduce((sum, p) => sum + moves.filter(m => m.picking_id && m.picking_id[0] === p.id).length, 0);
     });
-    // Metti "Non assegnato" in fondo
-    return drivers.sort((a, b) => {
+    return Object.values(driverMap).sort((a, b) => {
       if (a.driver === 'Autista N/D') return 1;
       if (b.driver === 'Autista N/D') return -1;
       return a.driver.localeCompare(b.driver);
@@ -1682,12 +1687,12 @@ export default function ConvalidaResiduiPage() {
     const drivers = getDriverList();
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px', marginTop: '20px' }}>
-        {drivers.map(({ key, driver, pickCount, moveCount }) => {
+        {drivers.map(({ driver, pickCount, moveCount }) => {
           const isUnassigned = driver === 'Autista N/D';
           return (
             <button
-              key={key}
-              onClick={() => { setSelectedDriver(key); setViewMode('autista-detail'); }}
+              key={driver}
+              onClick={() => { setSelectedDriver(driver); setViewMode('autista-detail'); }}
               style={{
                 background: isUnassigned ? '#dc2626' : 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
                 border: 'none',
@@ -1714,19 +1719,21 @@ export default function ConvalidaResiduiPage() {
   };
 
   const renderDriverDetail = () => {
-    if (!selectedDriver || !groups.has(selectedDriver)) return null;
-    const grp = groups.get(selectedDriver)!;
+    if (!selectedDriver) return null;
+    // Trova tutti i gruppi di questo driver
+    const driverGroups = Array.from(groups.entries()).filter(([, grp]) => grp.driver === selectedDriver);
+    if (driverGroups.length === 0) return null;
+    const allPicks = driverGroups.flatMap(([, grp]) => grp.pickings);
     return (
       <>
         <div style={{ margin: '16px 0 12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button className="btn ghost" onClick={() => setViewMode('autista')}>← Autisti</button>
           <span className="pill strong" style={{ fontSize: '16px', padding: '10px 20px' }}>
-            👤 {grp.driver}
+            👤 {selectedDriver}
           </span>
-          <span className="pill strong">🧭 {grp.carrier}</span>
-          <span className="info">{grp.pickings.length} pick</span>
+          <span className="info">{allPicks.length} pick</span>
         </div>
-        {grp.pickings.map(pick => renderPicking(pick))}
+        {allPicks.map(pick => renderPicking(pick))}
       </>
     );
   };
@@ -1744,7 +1751,11 @@ export default function ConvalidaResiduiPage() {
     const saleName = pick.sale_id ? pick.sale_id[1] : pick.origin || '-';
     const righe = moves
       .filter((m) => m.picking_id && m.picking_id[0] === pick.id)
+      .filter((m) => viewMode !== 'zona-detail' || !selectedZone || getZoneForMove(m.id).type === selectedZone)
       .sort((a, b) => getZoneForMove(a.id).order - getZoneForMove(b.id).order);
+
+    // Non mostrare picking senza righe dopo filtro zona
+    if (righe.length === 0 && viewMode === 'zona-detail') return null;
 
     // Formatta data di consegna
     const deliveryDate = pick.scheduled_date
@@ -1899,19 +1910,6 @@ export default function ConvalidaResiduiPage() {
             }}>
               {uom}
             </span>
-            {pick.partner_id && (
-              <span style={{
-                display: 'inline-block',
-                background: '#fef3c7',
-                color: '#92400e',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: '600',
-              }}>
-                👤 {pick.partner_id[1]}
-              </span>
-            )}
           </div>
 
           {/* Quantità prevista */}
@@ -1965,6 +1963,12 @@ export default function ConvalidaResiduiPage() {
         {/* SEZIONE ESPANDIBILE - dettagli e pulsanti aggiuntivi */}
         {isExpanded && (
           <div className="row-details">
+            {/* Cliente */}
+            {pick.partner_id && (
+              <div className="sub" style={{ marginBottom: '8px', color: '#92400e', fontWeight: '600' }}>
+                👤 Cliente: <b>{pick.partner_id[1]}</b>
+              </div>
+            )}
             {/* Ubicazione */}
             <div className="sub" style={{ marginBottom: '8px' }}>
               Ubic.: <b>{ubic}</b>
