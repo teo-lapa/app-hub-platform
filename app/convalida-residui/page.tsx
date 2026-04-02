@@ -1828,6 +1828,19 @@ export default function ConvalidaResiduiPage() {
             }}>
               {uom}
             </span>
+            {pick.partner_id && (
+              <span style={{
+                display: 'inline-block',
+                background: '#fef3c7',
+                color: '#92400e',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '600',
+              }}>
+                👤 {pick.partner_id[1]}
+              </span>
+            )}
           </div>
 
           {/* Quantità prevista */}
