@@ -415,8 +415,9 @@ export async function GET(request: NextRequest) {
         fields: ['id', 'user_id'],
       });
 
+      const EXCLUDED_USER_IDS_CUM = [7, 8];
       const userIdsCum = teamMembersCum
-        .filter((m: any) => m.user_id)
+        .filter((m: any) => m.user_id && !EXCLUDED_USER_IDS_CUM.includes(m.user_id[0]))
         .map((m: any) => m.user_id[0]);
 
       let totalBonusWithdrawn = 0;
@@ -498,8 +499,10 @@ export async function GET(request: NextRequest) {
       }
 
       // 2. Trova gli employee_id corrispondenti ai user_id
+      // Escludi Paul (user_id=7) e Laura (user_id=8) — non partecipano al ritiro bonus
+      const EXCLUDED_USER_IDS = [7, 8];
       const userIds = teamMembers
-        .filter((m: any) => m.user_id)
+        .filter((m: any) => m.user_id && !EXCLUDED_USER_IDS.includes(m.user_id[0]))
         .map((m: any) => m.user_id[0]);
 
       if (userIds.length === 0) {
