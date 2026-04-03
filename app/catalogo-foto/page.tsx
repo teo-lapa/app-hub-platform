@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Filter,
   MapPin,
+  Send,
 } from 'lucide-react';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
@@ -75,6 +76,8 @@ export default function CatalogoFotoPage() {
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [filter, setFilter] = useState<FilterType>('tutti');
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [reprocessingJobs, setReprocessingJobs] = useState<Set<string>>(new Set());
 
   // Photo capture
   const handlePhotos = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,6 +200,31 @@ export default function CatalogoFotoPage() {
       toast.error('Errore caricamento risultati');
     } finally {
       setIsLoadingJobs(false);
+    }
+  };
+
+  // Reprocess a review job with new instructions
+  const handleReprocess = async (jobId: string) => {
+    const instruction = reviewNotes[jobId]?.trim();
+    if (!instruction) {
+      toast.error('Scrivi le istruzioni prima di riprocessare');
+      return;
+    }
+    setReprocessingJobs(prev => new Set(prev).add(jobId));
+    try {
+      const res = await fetch(`/api/catalogo-foto/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pending', notes: instruction }),
+      });
+      if (!res.ok) throw new Error('Errore');
+      toast.success('Job rimesso in coda con le nuove istruzioni');
+      setReviewNotes(prev => { const n = { ...prev }; delete n[jobId]; return n; });
+      fetchJobs();
+    } catch {
+      toast.error('Errore nel riprocessamento');
+    } finally {
+      setReprocessingJobs(prev => { const n = new Set(prev); n.delete(jobId); return n; });
     }
   };
 
@@ -674,6 +702,27 @@ export default function CatalogoFotoPage() {
 
                           {job.status === 'error' && job.error_message && (
                             <p className="mt-1 text-xs text-red-400 truncate">{job.error_message}</p>
+                          )}
+
+                          {/* Review: instruction input + reprocess button */}
+                          {job.status === 'review' && (
+                            <div className="mt-3 space-y-2">
+                              <textarea
+                                value={reviewNotes[job.id] || ''}
+                                onChange={(e) => setReviewNotes(prev => ({ ...prev, [job.id]: e.target.value }))}
+                                placeholder="Scrivi istruzioni: es. cerca PISTACCHIO in Odoo, fornitore Innovaction..."
+                                rows={2}
+                                className="w-full rounded-lg bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none resize-none"
+                              />
+                              <button
+                                onClick={() => handleReprocess(job.id)}
+                                disabled={reprocessingJobs.has(job.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                              >
+                                {reprocessingJobs.has(job.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                Riprocessa
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
