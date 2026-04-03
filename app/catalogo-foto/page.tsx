@@ -294,8 +294,8 @@ export default function CatalogoFotoPage() {
       processing: { label: 'Elaborazione', icon: Loader2, bg: 'bg-blue-500/20', text: 'text-blue-400' },
       completed: { label: 'Completato', icon: Check, bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
       review: { label: 'Da rivedere', icon: AlertTriangle, bg: 'bg-orange-500/20', text: 'text-orange-400' },
-      error: { label: 'Errore', icon: X, bg: 'bg-red-500/20', text: 'text-red-400' },
-      failed: { label: 'Fallito', icon: X, bg: 'bg-red-500/20', text: 'text-red-400' },
+      error: { label: 'Da rifare', icon: AlertTriangle, bg: 'bg-orange-500/20', text: 'text-orange-400' },
+      failed: { label: 'Da rifare', icon: AlertTriangle, bg: 'bg-orange-500/20', text: 'text-orange-400' },
     }[status];
 
     if (!config) return null;
@@ -700,9 +700,6 @@ export default function CatalogoFotoPage() {
                             </p>
                           )}
 
-                          {(job.status === 'error' || job.status === 'failed') && job.error_message && (
-                            <p className="mt-1 text-xs text-red-400 truncate">{job.error_message}</p>
-                          )}
 
                           {/* Review/Failed: instruction input + reprocess button */}
                           {(job.status === 'review' || job.status === 'failed' || job.status === 'error') && (
