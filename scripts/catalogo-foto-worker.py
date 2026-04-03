@@ -31,14 +31,28 @@ def get_odoo_session():
     return r.cookies.get("session_id")
 
 
-def post_odoo_chatter(product_id, message):
+def add_catalogato_tag(product_id):
+    """Add tag 'Catalogato App' (ID 316) to product.template via product.product ID"""
     sid = get_odoo_session()
+    # Get template ID from product.product
+    r = requests.post(f"{ODOO_URL}/web/dataset/call_kw", json={
+        "jsonrpc": "2.0", "method": "call",
+        "params": {
+            "model": "product.product", "method": "search_read",
+            "args": [[["id", "=", product_id]]],
+            "kwargs": {"fields": ["product_tmpl_id"], "limit": 1}
+        }
+    }, headers={"Content-Type": "application/json"}, cookies={"session_id": sid}, timeout=15)
+    tmpl_id = r.json().get("result", [{}])[0].get("product_tmpl_id", [None])[0]
+    if not tmpl_id:
+        return
+    # Add tag 316 to template
     requests.post(f"{ODOO_URL}/web/dataset/call_kw", json={
         "jsonrpc": "2.0", "method": "call",
         "params": {
-            "model": "product.template", "method": "message_post",
-            "args": [[product_id]],
-            "kwargs": {"body": message, "message_type": "comment", "subtype_xmlid": "mail.mt_note"}
+            "model": "product.template", "method": "write",
+            "args": [[tmpl_id], {"product_tag_ids": [[4, 316]]}],
+            "kwargs": {}
         }
     }, headers={"Content-Type": "application/json"}, cookies={"session_id": sid}, timeout=15)
 
@@ -100,7 +114,7 @@ def run_claude(prompt):
     env = os.environ.copy()
     env.pop("CLAUDECODE", None)
     result = subprocess.run(
-        [CLAUDE_CMD, "-p", "-", "--output-format", "json", "--dangerously-skip-permissions", "--model", "opus", "--max-turns", "25"],
+        [CLAUDE_CMD, "-p", "-", "--output-format", "json", "--dangerously-skip-permissions", "--model", "sonnet", "--max-turns", "25"],
         input=prompt,
         encoding="utf-8",
         capture_output=True,
@@ -150,14 +164,14 @@ def process_job(job):
 
     patch_job(job_id, update)
 
-    # Write chatter message on Odoo product
+    # Add "Catalogato App" tag to product
     odoo_pid = result_json.get("odoo_product_id")
     if odoo_pid:
         try:
-            post_odoo_chatter(odoo_pid, "✅ Catalogato da App Catalogo Foto")
-            log(f"  Chatter message posted on product {odoo_pid}")
+            add_catalogato_tag(odoo_pid)
+            log(f"  Tag 'Catalogato App' added to product {odoo_pid}")
         except Exception as e:
-            log(f"  Chatter post failed: {e}")
+            log(f"  Tag add failed: {e}")
 
     log(f"  Job {job_id} completed")
 

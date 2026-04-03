@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
@@ -74,31 +73,22 @@ export async function POST(request: NextRequest) {
     });
     const products = (await prodsResponse.json()).result || [];
 
-    // 4. Check which products have been cataloged (via chatter message)
-    const chatterResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+    // 4. Check which products have tag "Catalogato App" (ID 316) on their template
+    const TAG_CATALOGATO = 316;
+    const taggedResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
       body: JSON.stringify({
         jsonrpc: '2.0', method: 'call',
         params: {
-          model: 'mail.message', method: 'search_read',
-          args: [[
-            ['model', '=', 'product.template'],
-            ['body', 'ilike', 'Catalogato da App Catalogo Foto'],
-          ]],
-          kwargs: { fields: ['res_id'], limit: 5000 }
+          model: 'product.template', method: 'search_read',
+          args: [[['product_tag_ids', 'in', [TAG_CATALOGATO]], ['id', 'in', products.map((p: any) => p.product_tmpl_id[0])]]],
+          kwargs: { fields: ['id'], limit: 5000 }
         }, id: 4
       })
     });
-    const chatterMessages = (await chatterResponse.json()).result || [];
-    const catalogedTemplateIds = new Set(chatterMessages.map((m: any) => m.res_id));
-
-    // Also check catalog_photo_jobs table
-    const jobsResult = await sql`
-      SELECT DISTINCT odoo_product_id FROM catalog_photo_jobs
-      WHERE status = 'completed' AND odoo_product_id IS NOT NULL
-    `;
-    const catalogedJobIds = new Set(jobsResult.rows.map(r => r.odoo_product_id));
+    const taggedTemplates = (await taggedResponse.json()).result || [];
+    const catalogedTemplateIds = new Set(taggedTemplates.map((t: any) => t.id));
 
     // 5. Build result - aggregate quantities per product
     const productMap = new Map<number, any>();
@@ -115,7 +105,7 @@ export async function POST(request: NextRequest) {
           barcode: prod?.barcode || '',
           image: prod?.image_128 ? `data:image/png;base64,${prod.image_128}` : null,
           quantity: q.quantity,
-          catalogato: catalogedJobIds.has(pid) || catalogedTemplateIds.has(prod?.product_tmpl_id?.[0]),
+          catalogato: catalogedTemplateIds.has(prod?.product_tmpl_id?.[0]),
         });
       }
     }
