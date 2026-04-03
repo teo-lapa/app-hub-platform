@@ -282,7 +282,7 @@ export default function CatalogoFotoPage() {
   const filteredJobs = jobs.filter(job => {
     if (filter === 'tutti') return true;
     if (filter === 'completati') return job.status === 'completed';
-    if (filter === 'review') return job.status === 'review';
+    if (filter === 'review') return job.status === 'review' || job.status === 'failed' || job.status === 'error';
     if (filter === 'pending') return job.status === 'pending' || job.status === 'processing';
     return true;
   });
@@ -659,7 +659,7 @@ export default function CatalogoFotoPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1.5">
                             <p className="font-semibold text-white truncate">
-                              {job.product_name || 'In attesa...'}
+                              {job.product_name || (job.status === 'completed' ? 'Confermato — generazione foto completata con successo.' : job.status === 'failed' || job.status === 'error' ? 'Elaborazione fallita' : 'In attesa...')}
                             </p>
                             <StatusBadge status={job.status} />
                           </div>
@@ -700,12 +700,12 @@ export default function CatalogoFotoPage() {
                             </p>
                           )}
 
-                          {job.status === 'error' && job.error_message && (
+                          {(job.status === 'error' || job.status === 'failed') && job.error_message && (
                             <p className="mt-1 text-xs text-red-400 truncate">{job.error_message}</p>
                           )}
 
-                          {/* Review: instruction input + reprocess button */}
-                          {job.status === 'review' && (
+                          {/* Review/Failed: instruction input + reprocess button */}
+                          {(job.status === 'review' || job.status === 'failed' || job.status === 'error') && (
                             <div className="mt-3 space-y-2">
                               <textarea
                                 value={reviewNotes[job.id] || ''}
