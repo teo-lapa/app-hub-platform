@@ -36,6 +36,11 @@ export async function PATCH(
       await sql`UPDATE catalog_photo_jobs SET status = ${body.status}, updated_at = NOW() WHERE id = ${id}`;
     }
 
+    // Update notes if provided (for review instructions)
+    if (body.notes !== undefined) {
+      await sql`UPDATE catalog_photo_jobs SET notes = ${body.notes}, updated_at = NOW() WHERE id = ${id}`;
+    }
+
     // Update result fields if provided
     if (body.result_json || body.odoo_product_id || body.odoo_product_name || body.error_message) {
       const resultJsonStr = body.result_json ? JSON.stringify(body.result_json) : null;
