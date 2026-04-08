@@ -138,9 +138,10 @@ export default function RecuperoClientiPage() {
       const navigaUrl = `https://www.google.com/maps/dir/?api=1&destination=${cl.lat},${cl.lng}`;
       const phoneHtml = cl.phone ? `<a href="tel:${cl.phone}" style="color:#60A5FA;text-decoration:none">${cl.phone}</a>` : '<span style="color:#6B7280">N/D</span>';
 
+      const odooUrl = `https://lapa-v2.odoo.com/odoo/contacts/${cl.id}`;
       const popup = `
         <div style="font-family:system-ui;min-width:220px">
-          <div style="font-size:15px;font-weight:700;margin-bottom:4px">${cl.name}</div>
+          <a href="${odooUrl}" target="_blank" rel="noopener" style="font-size:15px;font-weight:700;margin-bottom:4px;display:block;color:#60A5FA;text-decoration:none">${cl.name}</a>
           <div style="font-size:12px;color:#9CA3AF;margin-bottom:8px">${cl.street}, ${cl.zip} ${cl.city}</div>
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
             <span style="color:#9CA3AF">Telefono</span>${phoneHtml}
@@ -174,8 +175,8 @@ export default function RecuperoClientiPage() {
 
   return (
     <div className="min-h-screen bg-[#0f0f23] text-white">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#16213e] to-[#0f3460] px-4 py-4 shadow-lg">
+      {/* Header — hidden in fullscreen */}
+      <div className={`bg-gradient-to-r from-[#16213e] to-[#0f3460] px-4 py-4 shadow-lg ${mapFullscreen ? 'hidden' : ''}`}>
         <div className="flex items-center gap-3 mb-3">
           <Link href="/" className="text-gray-400 hover:text-white"><ArrowLeft size={20} /></Link>
           <div>
@@ -240,10 +241,27 @@ export default function RecuperoClientiPage() {
         >
           {mapFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
         </button>
+        {mapFullscreen && (
+          <div className="absolute top-3 left-3 z-[1000] flex gap-1">
+            {ZONE.map(z => {
+              const cfg = zoneConfig[z];
+              return (
+                <button
+                  key={z}
+                  onClick={() => { setZona(z); setSearch(''); }}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-bold shadow-lg transition-all ${zona === z ? 'text-white' : 'bg-[#16213e]/90 text-gray-300 hover:bg-[#1e3a5f]'}`}
+                  style={zona === z ? { backgroundColor: cfg.color, borderColor: cfg.color } : { border: '1px solid rgba(255,255,255,0.2)' }}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Search */}
-      <div className="px-4 py-3 bg-[#0f0f23] sticky top-0 z-10">
+      {/* Search — hidden in fullscreen */}
+      <div className={`px-4 py-3 bg-[#0f0f23] sticky top-0 z-10 ${mapFullscreen ? 'hidden' : ''}`}>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
@@ -256,8 +274,8 @@ export default function RecuperoClientiPage() {
         </div>
       </div>
 
-      {/* Client List */}
-      <div className="px-4 pb-20">
+      {/* Client List — hidden in fullscreen */}
+      <div className={`px-4 pb-20 ${mapFullscreen ? 'hidden' : ''}`}>
         {clientiFiltrati.map(cl => {
           const tierCfg = tierConfig[cl.tier];
           const navigaUrl = `https://www.google.com/maps/dir/?api=1&destination=${cl.lat},${cl.lng}`;
