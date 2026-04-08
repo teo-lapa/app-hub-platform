@@ -138,7 +138,7 @@ export default function RecuperoClientiPage() {
       const navigaUrl = `https://www.google.com/maps/dir/?api=1&destination=${cl.lat},${cl.lng}`;
       const phoneHtml = cl.phone ? `<a href="tel:${cl.phone}" style="color:#60A5FA;text-decoration:none">${cl.phone}</a>` : '<span style="color:#6B7280">N/D</span>';
 
-      const odooUrl = `https://lapa-v2.odoo.com/web#id=${cl.id}&model=res.partner&view_type=form`;
+      const odooUrl = `https://lapadevadmin-lapa-v2.odoo.com/web#id=${cl.id}&action=159&model=res.partner&view_type=form&cids=1&menu_id=117`;
       const popup = `
         <div style="font-family:system-ui;min-width:220px">
           <a href="${odooUrl}" target="_blank" rel="noopener" style="font-size:15px;font-weight:700;margin-bottom:4px;display:block;color:#60A5FA;text-decoration:none">${cl.name}</a>
