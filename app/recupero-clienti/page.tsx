@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Phone, Navigation, Users, TrendingUp, Clock, Search, ChevronDown, ArrowLeft, MessageSquare, Check, AlertCircle } from 'lucide-react';
+import { MapPin, Phone, Navigation, Users, TrendingUp, Clock, Search, ChevronDown, ArrowLeft, MessageSquare, Check, AlertCircle, Maximize2, Minimize2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { clientiAlessandro, zoneConfig, tierConfig, type ClienteRecupero } from './clienti-data';
 
@@ -38,11 +38,29 @@ export default function RecuperoClientiPage() {
   const [notes, setNotes] = useState<Record<string, ClienteNoteData>>({});
   const [editingNote, setEditingNote] = useState<number | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
   useEffect(() => { setNotes(loadNotes()); }, []);
+
+  // Salva nota nel chatter Odoo + localStorage
+  async function handleSaveNote(clientId: number, clientName: string, text: string) {
+    setSavingNote(true);
+    try {
+      await fetch('/api/recupero-clienti/nota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partnerId: clientId, note: text, autore: 'Mihai' }),
+      });
+    } catch (e) { console.error('Errore salvataggio Odoo:', e); }
+    setNotes(saveNote(clientId, 'contattato', text));
+    setEditingNote(null);
+    setNoteText('');
+    setSavingNote(false);
+  }
 
   const clientiFiltrati = useMemo(() => {
     let list = clientiAlessandro.filter(c => c.zona === zona);
@@ -211,7 +229,18 @@ export default function RecuperoClientiPage() {
       </div>
 
       {/* Map */}
-      <div ref={mapRef} className="w-full" style={{ height: '40vh' }} />
+      <div className={`relative ${mapFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+        <div ref={mapRef} className="w-full" style={{ height: mapFullscreen ? '100vh' : '40vh' }} />
+        <button
+          onClick={() => {
+            setMapFullscreen(!mapFullscreen);
+            setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
+          }}
+          className="absolute top-3 right-3 z-[1000] bg-[#16213e] hover:bg-[#1e3a5f] text-white p-2 rounded-lg shadow-lg border border-white/20"
+        >
+          {mapFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+        </button>
+      </div>
 
       {/* Search */}
       <div className="px-4 py-3 bg-[#0f0f23] sticky top-0 z-10">
@@ -299,9 +328,10 @@ export default function RecuperoClientiPage() {
                       autoFocus
                     />
                     <button
-                      onClick={() => { setNotes(saveNote(cl.id, 'contattato', noteText)); setEditingNote(null); setNoteText(''); }}
-                      className="bg-green-600 text-white text-xs px-3 rounded font-medium"
-                    >Salva</button>
+                      onClick={() => handleSaveNote(cl.id, cl.name, noteText)}
+                      disabled={savingNote}
+                      className="bg-green-600 text-white text-xs px-3 rounded font-medium disabled:opacity-50 flex items-center gap-1"
+                    >{savingNote ? <><Loader2 size={12} className="animate-spin" /> Salvo...</> : 'Salva'}</button>
                   </div>
                 )}
 
