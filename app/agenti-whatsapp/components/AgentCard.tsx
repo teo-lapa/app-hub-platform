@@ -48,9 +48,10 @@ export function AgentCard({ slug, agent, status, onRestart, restarting }: AgentC
         <p>👤 {agent.owner.name}</p>
         <p>📱 {agent.whatsapp}</p>
         <p>💻 {agent.pc.ip} ({agent.pc.os})</p>
-        {status?.lastLog && (
-          <p className="truncate text-xs text-white/40" title={status.lastLog}>
-            📝 {status.lastLog}
+        {status && (
+          <p className="truncate text-xs text-white/40" title={status.lastLog || ''}>
+            📝 {isOnline ? `Connesso a WhatsApp.` : (sshReachable ? 'Bot fermo' : 'PC non raggiungibile')}
+            {status.lastLog && ` — ${status.lastLog}`}
           </p>
         )}
       </div>
