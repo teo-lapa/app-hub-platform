@@ -11,12 +11,14 @@ import { TabMemoria } from '../components/TabMemoria';
 import { TabLog } from '../components/TabLog';
 import { TabSettaggi } from '../components/TabSettaggi';
 import { TabTelegram } from '../components/TabTelegram';
+import { TabFollowup } from '../components/TabFollowup';
 
 const TABS = [
   { id: 'stato', label: 'Stato' },
   { id: 'skills', label: 'Skills' },
   { id: 'memoria', label: 'Memoria' },
   { id: 'log', label: 'Log' },
+  { id: 'followup', label: 'Follow-up' },
   { id: 'settaggi', label: 'Settaggi' },
   { id: 'telegram', label: 'Telegram' },
 ] as const;
@@ -81,6 +83,7 @@ export default function AgentDetailPage() {
           {activeTab === 'skills' && <TabSkills slug={nome} />}
           {activeTab === 'memoria' && <TabMemoria slug={nome} />}
           {activeTab === 'log' && <TabLog slug={nome} />}
+          {activeTab === 'followup' && <TabFollowup slug={nome} />}
           {activeTab === 'settaggi' && <TabSettaggi slug={nome} agent={agent} />}
           {activeTab === 'telegram' && <TabTelegram agent={agent} />}
         </div>
