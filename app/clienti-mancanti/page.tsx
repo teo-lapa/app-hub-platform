@@ -9,7 +9,7 @@ import {
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-const ODOO = 'https://lapa.odoo.com';
+const ODOO = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const fmt = (n: number) => n.toLocaleString('de-CH').replace(/'/g, "'");
 const fmtCHF = (n: number) => `CHF ${fmt(Math.round(n))}`;
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
