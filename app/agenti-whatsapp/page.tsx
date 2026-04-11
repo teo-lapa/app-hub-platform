@@ -72,7 +72,7 @@ export default function AgentiWhatsAppPage() {
               <Home className="w-5 h-5 text-white/60" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white">Agenti WhatsApp LAPA</h1>
+              <h1 className="text-2xl font-bold text-white">Agenti AI LAPA</h1>
               <p className="text-sm text-white/50">Pannello di controllo centrale</p>
             </div>
           </div>

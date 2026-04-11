@@ -99,7 +99,7 @@ export function TabSettaggi({ slug, agent }: { slug: string; agent: WhatsAppAgen
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <ConfigItem label="Modello" value={agent.model} />
         <ConfigItem label="Max Turns" value={`${agent.maxTurns.default}${agent.maxTurns.heavy ? ` / ${agent.maxTurns.heavy}` : ''}`} />
-        <ConfigItem label="WhatsApp" value={agent.whatsapp} />
+        <ConfigItem label="WhatsApp" value={agent.whatsapp || '—'} />
         <ConfigItem label="Proprietario" value={agent.owner.name} />
         <ConfigItem label="PC" value={`${agent.pc.ip} (${agent.pc.os})`} />
         <ConfigItem label="SSH" value={agent.pc.ssh} />

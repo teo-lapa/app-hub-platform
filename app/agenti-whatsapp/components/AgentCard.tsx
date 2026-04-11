@@ -46,11 +46,21 @@ export function AgentCard({ slug, agent, status, onRestart, restarting }: AgentC
 
       <div className="space-y-2 text-sm text-white/60 mb-4">
         <p>👤 {agent.owner.name}</p>
-        <p>📱 {agent.whatsapp}</p>
+        {agent.whatsapp && <p>📱 {agent.whatsapp}</p>}
+        {agent.telegram && <p>✈️ {agent.telegram.bot}</p>}
         <p>💻 {agent.pc.ip} ({agent.pc.os})</p>
+        <div className="flex gap-1.5 mt-1">
+          {agent.platforms.map(p => (
+            <span key={p} className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+              p === 'whatsapp' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+            }`}>
+              {p === 'whatsapp' ? 'WhatsApp' : 'Telegram'}
+            </span>
+          ))}
+        </div>
         {status && (
           <p className="truncate text-xs text-white/40" title={status.lastLog || ''}>
-            📝 {isOnline ? `Connesso a WhatsApp.` : (sshReachable ? 'Bot fermo' : 'PC non raggiungibile')}
+            📝 {isOnline ? 'Connesso.' : (sshReachable ? 'Bot fermo' : 'PC non raggiungibile')}
             {status.lastLog && ` — ${status.lastLog}`}
           </p>
         )}
