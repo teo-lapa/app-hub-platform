@@ -1247,6 +1247,20 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2026-03-30'),
     updatedAt: new Date('2026-03-30'),
   },
+  {
+    id: 'silvano-app',
+    name: 'Area Agente',
+    description: 'Portale agente commerciale: catalogo, ordini, clienti, commissioni e dashboard.',
+    icon: '💼',
+    badge: 'AZIENDALE' as const,
+    category: 'Vendite',
+    url: '/silvano',
+    requiredRole: 'agente' as const,
+    isNew: true,
+    controlStatus: 'approved' as const,
+    createdAt: new Date('2026-03-20'),
+    updatedAt: new Date('2026-03-20'),
+  },
 ];
 
 // Combina tutte le app

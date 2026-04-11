@@ -22,6 +22,7 @@ const excludedAppRoutes = [
   '/admin',
   '/gestione-visibilita-app',
   '/email-ai-monitor',  // Email AI Monitor - has internal OAuth
+  '/silvano',  // Area Agente Commerciale - protetta da JWT
   '/api',
   '/_next'
 ];

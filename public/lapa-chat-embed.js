@@ -311,27 +311,18 @@
       });
 
       const data = await response.json();
-      const r = data.result;
 
-      // Odoo 17 restituisce uid (non user_id), partner_id puo essere int o [id, "name"]
-      const uid = r && (r.uid || r.user_id);
-      const partnerId = r && r.partner_id;
-      const partnerIdNum = Array.isArray(partnerId) ? partnerId[0] : partnerId;
-      const isPublic = !uid || uid === false || (r.is_public === true);
-
-      console.log('LAPA Chat: session_info raw:', JSON.stringify({uid: r?.uid, user_id: r?.user_id, partner_id: r?.partner_id, name: r?.name, username: r?.username, is_public: r?.is_public}));
-
-      if (r && !isPublic && partnerIdNum) {
-        console.log('LAPA Chat: user found via API', r.name, 'partner_id:', partnerIdNum);
+      if (data.result && data.result.user_id && data.result.user_id !== false) {
+        console.log('LAPA Chat: user found via API', data.result.name, 'partner_id:', data.result.partner_id);
         cachedUser = {
-          id: partnerIdNum,
-          name: r.name,
-          email: r.username,
-          userId: uid
+          id: data.result.partner_id,
+          name: data.result.name,
+          email: data.result.username,
+          userId: data.result.user_id
         };
         return cachedUser;
       } else {
-        console.log('LAPA Chat: session found but public user (uid:', uid, 'partner_id:', partnerId, ')');
+        console.log('LAPA Chat: session found but no user_id (public user)');
       }
     } catch (e) {
       console.log('LAPA Chat: API call failed', e);
@@ -488,7 +479,7 @@
             var timeout = setTimeout(function() {
               console.log('LAPA Chat: user fetch timeout, loading anonymous');
               loadIframe(null);
-            }, 5000);
+            }, 2000);
 
             userDataReady.then(function(user) {
               clearTimeout(timeout);
