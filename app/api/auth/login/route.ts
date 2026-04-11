@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       // ========== STEP 2: DETERMINA RUOLO UTENTE DA ODOO ==========
       console.log('✅ Step 2: Determining user role from Odoo groups...');
 
-      let userRole: 'admin' | 'dipendente' | 'cliente_premium' | 'visitor' = 'visitor';
+      let userRole: 'admin' | 'dipendente' | 'cliente_premium' | 'visitor' | 'agente' = 'visitor';
       let appPermessi: string[] = ['profile'];
 
       // Prima controlla is_admin nella risposta di autenticazione
@@ -157,6 +157,17 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ========== STEP 2.5: AGENTI COMMERCIALI — Override ruolo ==========
+      const AGENTI_EMAILS: Record<string, string[]> = {
+        'ilaria@lapa.ch': ['profile', 'silvano-app'],
+      };
+      const agentePermessi = AGENTI_EMAILS[email.toLowerCase()];
+      if (agentePermessi) {
+        userRole = 'agente';
+        appPermessi = agentePermessi;
+        console.log('💼 User is AGENTE COMMERCIALE (' + email + ')');
+      }
+
       // ========== STEP 3: CREA UTENTE DAI DATI ODOO ==========
       console.log('✅ Step 3: Creating user object from Odoo data...');
 
@@ -213,7 +224,17 @@ export async function POST(request: NextRequest) {
         path: '/',
       });
 
-      console.log('✅ Login completato con successo! JWT token e Odoo session_id salvati.');
+      // Salva la lingua dell'utente Odoo per le chiamate RPC
+      const userLang = odooAuthData.result.user_context?.lang || 'it_IT';
+      response.cookies.set('odoo_user_lang', userLang, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60,
+        path: '/',
+      });
+
+      console.log(`✅ Login completato! JWT + session_id + lang (${userLang}) salvati.`);
       return response;
 
     } catch (odooError) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchReadOdoo, getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,10 +87,7 @@ export async function POST(request: NextRequest) {
             args: [
               [['id', 'in', productIds]]
             ],
-            kwargs: {
-              fields: ['id', 'image_128', 'default_code', 'barcode', 'uom_id'],
-              limit: 100
-            }
+            kwargs: injectLangContext({})
           },
           id: Math.random()
         })
@@ -129,10 +127,7 @@ export async function POST(request: NextRequest) {
               args: [
                 [['id', 'in', lotIds]]
               ],
-              kwargs: {
-                fields: ['id', 'name', 'expiration_date', 'product_id'],
-                limit: 100
-              }
+              kwargs: injectLangContext({})
             },
             id: Math.random()
           })

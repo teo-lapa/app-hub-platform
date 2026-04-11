@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
                 [productId],
                 { image_1920: base64Image }
               ],
-              kwargs: {},
+              kwargs: injectLangContext({}),
             },
             id: Math.floor(Math.random() * 1000000000)
           })

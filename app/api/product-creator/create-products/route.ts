@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Jimp } from 'jimp';
@@ -186,7 +187,7 @@ async function findRelatedProducts(
             [['name', 'ilike', searchKeyword], ['sale_ok', '=', true]],
             ['id', 'name', 'categ_id']
           ],
-          kwargs: { limit: 10 }
+          kwargs: injectLangContext({ limit: 10 })
         },
         id: Math.floor(Math.random() * 1000000000)
       })
@@ -226,7 +227,7 @@ async function findRelatedProducts(
             [['name', 'ilike', searchKeyword], ['sale_ok', '=', true]],
             ['id', 'name', 'categ_id']
           ],
-          kwargs: { limit: 10 }
+          kwargs: injectLangContext({ limit: 10 })
         },
         id: Math.floor(Math.random() * 1000000000)
       })
@@ -267,7 +268,7 @@ async function findRelatedProducts(
                 [['name', 'ilike', keyword], ['sale_ok', '=', true]],
                 ['id', 'name']
               ],
-              kwargs: { limit: 3 }
+              kwargs: injectLangContext({ limit: 3 })
             },
             id: Math.floor(Math.random() * 1000000000)
           })
@@ -612,7 +613,7 @@ export async function POST(request: NextRequest) {
                 model: 'account.tax',
                 method: 'search_read',
                 args: [[['amount', '=', taxRate], ['type_tax_use', '=', 'sale']], ['id']],
-                kwargs: { limit: 1 }
+                kwargs: injectLangContext({ limit: 1 })
               },
               id: Math.floor(Math.random() * 1000000000)
             })
@@ -639,7 +640,7 @@ export async function POST(request: NextRequest) {
                 model: 'account.tax',
                 method: 'search_read',
                 args: [[['amount', '=', 0], ['type_tax_use', '=', 'purchase']], ['id']],
-                kwargs: { limit: 1 }
+                kwargs: injectLangContext({ limit: 1 })
               },
               id: Math.floor(Math.random() * 1000000000)
             })
@@ -696,7 +697,7 @@ export async function POST(request: NextRequest) {
               model: 'product.product',
               method: 'create',
               args: [odooProduct],
-              kwargs: {},
+              kwargs: injectLangContext({}),
               context: {}
             },
             id: Math.floor(Math.random() * 1000000000)
@@ -738,7 +739,7 @@ export async function POST(request: NextRequest) {
                   model: 'product.product',
                   method: 'read',
                   args: [[productId], ['product_tmpl_id']],
-                  kwargs: {}
+                  kwargs: injectLangContext({})
                 },
                 id: Math.floor(Math.random() * 1000000000)
               })
@@ -778,7 +779,7 @@ export async function POST(request: NextRequest) {
                       ['attribute_id', '=', BRAND_ATTRIBUTE_ID],
                       ['name', '=ilike', product.marca]
                     ], ['id', 'name']],
-                    kwargs: { limit: 1 }
+                    kwargs: injectLangContext({ limit: 1 })
                   },
                   id: Math.floor(Math.random() * 1000000000)
                 })
@@ -810,7 +811,7 @@ export async function POST(request: NextRequest) {
                         attribute_id: BRAND_ATTRIBUTE_ID,
                         name: product.marca
                       }],
-                      kwargs: {}
+                      kwargs: injectLangContext({})
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -844,7 +845,7 @@ export async function POST(request: NextRequest) {
                         attribute_id: BRAND_ATTRIBUTE_ID,
                         value_ids: [[6, 0, [brandValueId]]] // Many2many set
                       }],
-                      kwargs: {}
+                      kwargs: injectLangContext({})
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -882,7 +883,7 @@ export async function POST(request: NextRequest) {
                     model: 'res.currency',
                     method: 'search_read',
                     args: [[['name', '=', 'EUR']], ['id']],
-                    kwargs: { limit: 1 }
+                    kwargs: injectLangContext({ limit: 1 })
                   },
                   id: Math.floor(Math.random() * 1000000000)
                 })
@@ -920,7 +921,7 @@ export async function POST(request: NextRequest) {
                     model: 'product.supplierinfo',
                     method: 'create',
                     args: [priceListData],
-                    kwargs: {},
+                    kwargs: injectLangContext({}),
                   },
                   id: Math.floor(Math.random() * 1000000000)
                 })
@@ -1027,7 +1028,7 @@ export async function POST(request: NextRequest) {
                         [productId],
                         { image_1920: imageBase64 }
                       ],
-                      kwargs: {},
+                      kwargs: injectLangContext({}),
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -1081,7 +1082,7 @@ export async function POST(request: NextRequest) {
                             [productTemplateId],
                             { description_sale: lang.desc }
                           ],
-                          kwargs: { context: { lang: lang.code } }
+                          kwargs: injectLangContext({ context: { lang: lang.code } })
                         },
                         id: Math.floor(Math.random() * 1000000000)
                       })
@@ -1135,7 +1136,7 @@ export async function POST(request: NextRequest) {
                         [productTemplateId],
                         { accessory_product_ids: [[6, 0, relatedProducts.accessory]] }
                       ],
-                      kwargs: {}
+                      kwargs: injectLangContext({})
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -1165,7 +1166,7 @@ export async function POST(request: NextRequest) {
                         [productTemplateId],
                         { alternative_product_ids: [[6, 0, relatedProducts.alternative]] }
                       ],
-                      kwargs: {}
+                      kwargs: injectLangContext({})
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -1195,7 +1196,7 @@ export async function POST(request: NextRequest) {
                         [productTemplateId],
                         { optional_product_ids: [[6, 0, relatedProducts.optional]] }
                       ],
-                      kwargs: {}
+                      kwargs: injectLangContext({})
                     },
                     id: Math.floor(Math.random() * 1000000000)
                   })
@@ -1259,7 +1260,7 @@ export async function POST(request: NextRequest) {
                                     name: `${product.nome_completo} - Utilizzo ${i + 1}`,
                                     image_1920: watermarkedImage
                                   }],
-                                  kwargs: {}
+                                  kwargs: injectLangContext({})
                                 },
                                 id: Math.floor(Math.random() * 1000000000)
                               })

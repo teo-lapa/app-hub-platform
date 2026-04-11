@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
             ['location_id', '=', locationId],
             ['quantity', '>', 0]
           ]],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: 2
       })

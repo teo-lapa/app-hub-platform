@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -43,10 +44,10 @@ export async function GET(request: NextRequest) {
             ['complete_name', 'ilike', '%FURGONI%'],
             ['usage', '=', 'internal']
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'name', 'complete_name', 'barcode'],
             order: 'name'
-          }
+          })
         },
         id: Math.floor(Math.random() * 1000000)
       })
@@ -86,10 +87,10 @@ export async function GET(request: NextRequest) {
                 ['location_id', '=', location.id],
                 ['quantity', '>', 0]
               ]],
-              kwargs: {
+              kwargs: injectLangContext({
                 fields: ['product_id', 'quantity', 'lot_id', 'package_id', 'owner_id', 'reserved_quantity'],
                 limit: 100
-              }
+              })
             },
             id: Math.floor(Math.random() * 1000000)
           })
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
               model: 'product.product',
               method: 'read',
               args: [productIds, ['name', 'default_code', 'barcode', 'image_128', 'uom_id']],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: Math.floor(Math.random() * 1000000)
           })
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
                 model: 'stock.lot',
                 method: 'read',
                 args: [lotIds, ['name', 'expiration_date']],
-                kwargs: {}
+                kwargs: injectLangContext({})
               },
               id: Math.floor(Math.random() * 1000000)
             })
@@ -174,10 +175,10 @@ export async function GET(request: NextRequest) {
                 ['location_dest_id', '=', location.id],
                 ['state', 'in', ['assigned', 'done']]
               ]],
-              kwargs: {
+              kwargs: injectLangContext({
                 fields: ['id', 'product_id', 'lot_id', 'qty_done', 'picking_id', 'move_id'],
                 limit: 500
-              }
+              })
             },
             id: Math.floor(Math.random() * 1000000)
           })
@@ -222,7 +223,7 @@ export async function GET(request: NextRequest) {
                   model: 'stock.picking',
                   method: 'read',
                   args: [[pickingId], ['name', 'partner_id', 'scheduled_date', 'date_done', 'origin']],
-                  kwargs: {}
+                  kwargs: injectLangContext({})
                 },
                 id: Math.floor(Math.random() * 1000000)
               })
@@ -249,10 +250,10 @@ export async function GET(request: NextRequest) {
                         model: 'sale.order',
                         method: 'search_read',
                         args: [[['name', '=', picking.origin]]],
-                        kwargs: {
+                        kwargs: injectLangContext({
                           fields: ['name', 'partner_id', 'commitment_date', 'date_order'],
                           limit: 1
-                        }
+                        })
                       },
                       id: Math.floor(Math.random() * 1000000)
                     })

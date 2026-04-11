@@ -7,35 +7,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-t
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // Timeout 30 secondi (ottimizzato)
 
-// Funzione per mappare la categoria Odoo alle categorie dell'app
-function mapCategoryToAppCategory(odooCategName: string | undefined): string {
-  if (!odooCategName) return 'Secco';
-
-  const categLower = odooCategName.toLowerCase();
-
-  // Frigo
-  if (categLower.includes('frigo') || categLower.includes('fresco') ||
-      categLower.includes('refrigerat') || categLower.includes('latticini') ||
-      categLower.includes('fresc')) {
-    return 'Frigo';
-  }
-
-  // Pingu (Congelato)
-  if (categLower.includes('congel') || categLower.includes('surgel') ||
-      categLower.includes('frozen') || categLower.includes('pingu')) {
-    return 'Pingu';
-  }
-
-  // Non Food
-  if (categLower.includes('non food') || categLower.includes('nonfood') ||
-      categLower.includes('pulizia') || categLower.includes('igiene') ||
-      categLower.includes('detersiv') || categLower.includes('cosmet')) {
-    return 'NonFood';
-  }
-
-  // Default: Secco
-  return 'Secco';
-}
+// Mappa root category ID Odoo → categoria app (immutabile, non dipende dalla lingua)
+const ROOT_CATEGORY_MAP: Record<number, string> = {
+  6: 'Frigo',
+  11: 'Pingu',
+  19: 'NonFood',
+  8: 'Secco',
+  10: 'Secco',  // Secco 2
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -210,7 +189,9 @@ export async function GET(request: NextRequest) {
 
     console.log('📥 [DELIVERY] Ritiri trovati:', incomingPickings.length);
 
-    // Combina tutti i pickings
+    // Tagga i picking per tipo prima di combinarli
+    outgoingPickings.forEach((p: any) => p._appType = 'delivery');
+    incomingPickings.forEach((p: any) => p._appType = 'pickup');
     const pickings = [...outgoingPickings, ...incomingPickings];
 
     if (pickings.length === 0) {
@@ -283,7 +264,7 @@ export async function GET(request: NextRequest) {
     const productImageMap = new Map(products.map((p: any) => [p.id, p.image_128]));
     const productCategMap = new Map(products.map((p: any) => [p.id, p.categ_id]));
 
-    // Carica dettagli categorie con parent_id
+    // Carica categorie con parent_path per risalire alla root via ID numerico
     const categIdsSet = new Set(products.map((p: any) => p.categ_id?.[0]).filter(Boolean));
     const categIds = Array.from(categIdsSet);
     const categories = categIds.length > 0 ? await callOdoo(
@@ -292,16 +273,15 @@ export async function GET(request: NextRequest) {
       'read',
       [categIds],
       {
-        fields: ['id', 'name', 'parent_id']
+        fields: ['id', 'parent_path']
       }
     ) : [];
 
-    // Costruisci mappa categorie con nomi completi (risalendo alla categoria padre)
-    const categoryNameMap = new Map();
+    // Mappa categ_id → app category usando root ID da parent_path (es. "6/52/204/")
+    const categoryAppMap = new Map();
     for (const cat of categories) {
-      // Se ha parent, prendi il nome del parent, altrimenti usa il proprio
-      const categoryName = cat.parent_id ? cat.parent_id[1] : cat.name;
-      categoryNameMap.set(cat.id, categoryName);
+      const rootId = cat.parent_path ? parseInt(cat.parent_path.split('/')[0]) : 0;
+      categoryAppMap.set(cat.id, ROOT_CATEGORY_MAP[rootId] || 'Secco');
     }
 
     // Crea mappa per accesso rapido
@@ -325,13 +305,9 @@ export async function GET(request: NextRequest) {
       const partner: any = partnerMap.get(partnerId);
       if (!partner) continue;
 
-      // Determina il tipo (delivery o pickup)
-      const pickingTypeCode = picking.picking_type_id?.[1]?.toLowerCase() || '';
-      const isPickup = pickingTypeCode.includes('riceviment') ||
-                       pickingTypeCode.includes('incoming') ||
-                       pickingTypeCode.includes('in') ||
-                       picking.purchase_id;
-      const type = isPickup ? 'pickup' : 'delivery';
+      // Tipo già determinato dalla query (outgoing vs incoming)
+      const isPickup = picking._appType === 'pickup';
+      const type = picking._appType;
 
       // Build address
       let address = '';
@@ -353,8 +329,7 @@ export async function GET(request: NextRequest) {
 
         // Ottieni categoria Odoo e mappa alla categoria dell'app
         const categId = productCategMap.get(productId);
-        const odooCategName = categId && Array.isArray(categId) ? categoryNameMap.get(categId[0]) : undefined;
-        const appCategory = mapCategoryToAppCategory(odooCategName);
+        const appCategory = categId && Array.isArray(categId) ? (categoryAppMap.get(categId[0]) || 'Secco') : 'Secco';
 
         return {
           id: moveLine.id,  // Questo è il move_line_id!

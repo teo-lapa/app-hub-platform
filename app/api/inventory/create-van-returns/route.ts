@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { cookies } from 'next/headers';
 
 interface ReturnItem {
@@ -71,10 +72,10 @@ export async function POST(request: NextRequest) {
             ['complete_name', 'ilike', '%Buffer%'],
             ['usage', '=', 'internal']
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'name', 'complete_name'],
             limit: 50
-          }
+          })
         },
         id: Math.floor(Math.random() * 1000000)
       })
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
               origin: `RESO_FURGONE_${vanLocationName}_${new Date().toISOString().split('T')[0]}`,
               note: `Reso massivo da furgone ${vanLocationName} a buffer ${zoneName.toUpperCase()}\nCreato: ${new Date().toLocaleString('it-IT')}`
             }],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: Math.floor(Math.random() * 1000000)
         })
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
                 location_dest_id: bufferLocationId,
                 note: returnItem.customerName ? `Cliente: ${returnItem.customerName}` : undefined
               }],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: Math.floor(Math.random() * 1000000)
           })
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
               model: 'stock.picking',
               method: 'action_confirm',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: Math.floor(Math.random() * 1000000)
           })
@@ -266,7 +267,7 @@ export async function POST(request: NextRequest) {
               model: 'stock.picking',
               method: 'action_assign',
               args: [[pickingId]],
-              kwargs: {}
+              kwargs: injectLangContext({})
             },
             id: Math.floor(Math.random() * 1000000)
           })

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { injectLangContext } from '@/lib/odoo/user-lang';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
 
 export const dynamic = 'force-dynamic';
@@ -69,9 +70,9 @@ export async function GET(request: NextRequest) {
             ['location_id', '=', WASTE_LOCATION_ID],
             ['quantity', '>', 0]
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'product_id', 'quantity', 'lot_id', 'product_uom_id', 'create_date']
-          }
+          })
         },
         id: Date.now()
       })
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
           model: 'product.product',
           method: 'read',
           args: [productIds, ['id', 'name', 'default_code', 'barcode', 'image_128', 'uom_id', 'standard_price']],
-          kwargs: {}
+          kwargs: injectLangContext({})
         },
         id: Date.now() + 1
       })
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
             model: 'stock.lot',
             method: 'read',
             args: [lotIds, ['id', 'name', 'expiration_date']],
-            kwargs: {}
+            kwargs: injectLangContext({})
           },
           id: Date.now() + 2
         })
@@ -172,10 +173,10 @@ export async function GET(request: NextRequest) {
             ['location_dest_id', '=', WASTE_LOCATION_ID],
             ['state', '=', 'done']
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'name', 'note', 'date_done', 'create_date'],
             order: 'date_done desc'
-          }
+          })
         },
         id: Date.now() + 3
       })
@@ -208,9 +209,9 @@ export async function GET(request: NextRequest) {
               ['res_id', 'in', pickingIds],
               ['mimetype', 'like', 'image']
             ]],
-            kwargs: {
+            kwargs: injectLangContext({
               fields: ['id', 'name', 'res_id', 'datas', 'mimetype', 'create_date']
-            }
+            })
           },
           id: Date.now() + 4
         })
@@ -239,9 +240,9 @@ export async function GET(request: NextRequest) {
             ['picking_id', 'in', pickingIds],
             ['location_dest_id', '=', WASTE_LOCATION_ID]
           ]],
-          kwargs: {
+          kwargs: injectLangContext({
             fields: ['id', 'picking_id', 'product_id', 'lot_id', 'qty_done']
-          }
+          })
         },
         id: Date.now() + 5
       })

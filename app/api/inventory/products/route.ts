@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { getUserLang } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,19 +64,20 @@ export async function POST(request: NextRequest) {
       })
     }).then(r => r.json());
 
-    const [dataIt, dataEn] = await Promise.all([
-      makeRequest('it_IT'),
+    const userLang = getUserLang();
+    const [dataUserLang, dataEn] = await Promise.all([
+      makeRequest(userLang),
       makeRequest('en_US'),
     ]);
 
-    if (dataIt.error && dataEn.error) {
-      throw new Error(dataIt.error.message || 'Errore ricerca prodotti');
+    if (dataUserLang.error && dataEn.error) {
+      throw new Error(dataUserLang.error.message || 'Errore ricerca prodotti');
     }
 
-    // Merge and deduplicate by product ID (Italian results take priority)
+    // Merge and deduplicate by product ID (user's language results take priority)
     const seenIds = new Set<number>();
     const mergedProducts: any[] = [];
-    for (const p of [...(dataIt.result || []), ...(dataEn.result || [])]) {
+    for (const p of [...(dataUserLang.result || []), ...(dataEn.result || [])]) {
       if (!seenIds.has(p.id)) {
         seenIds.add(p.id);
         mergedProducts.push(p);
