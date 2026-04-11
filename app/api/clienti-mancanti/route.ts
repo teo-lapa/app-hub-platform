@@ -50,10 +50,10 @@ async function getPartnerIdsFromPickings(cookies: string | null, dateStart: stri
 
   const orders = await callOdoo(cookies, 'sale.order', 'search_read',
     [[['id', 'in', saleIds]]],
-    { fields: ['partner_id'] }
+    { fields: ['commercial_partner_id'] }
   );
 
-  return new Set(orders.map((o: any) => o.partner_id[0]));
+  return new Set(orders.map((o: any) => o.commercial_partner_id[0]));
 }
 
 function classify(ordini3m: number, fatturato3m: number): string {
@@ -100,8 +100,8 @@ async function getWeeklyData(cookies: string | null) {
 
   const [history, partners] = await Promise.all([
     callOdoo(cookies, 'sale.order', 'search_read',
-      [[['partner_id', 'in', missingIds], ['date_order', '>=', formatDate(threeMonthsAgo)], ['state', 'in', ['sale', 'done']]]],
-      { fields: ['partner_id', 'amount_total', 'date_order'] }
+      [[['commercial_partner_id', 'in', missingIds], ['date_order', '>=', formatDate(threeMonthsAgo)], ['state', 'in', ['sale', 'done']]]],
+      { fields: ['commercial_partner_id', 'amount_total', 'date_order'] }
     ),
     callOdoo(cookies, 'res.partner', 'search_read',
       [[['id', 'in', missingIds]]],
@@ -113,7 +113,7 @@ async function getWeeklyData(cookies: string | null) {
 
   const stats: Record<number, { fatturato: number; ordini: number }> = {};
   for (const h of history) {
-    const pid = h.partner_id[0];
+    const pid = h.commercial_partner_id[0];
     if (!stats[pid]) stats[pid] = { fatturato: 0, ordini: 0 };
     stats[pid].fatturato += h.amount_total;
     stats[pid].ordini += 1;
@@ -141,12 +141,12 @@ async function getWeeklyData(cookies: string | null) {
     if (daySaleIds.length > 0) {
       const dayOrders = await callOdoo(cookies, 'sale.order', 'search_read',
         [[['id', 'in', daySaleIds]]],
-        { fields: ['partner_id', 'name', 'amount_total'] }
+        { fields: ['commercial_partner_id', 'name', 'amount_total'] }
       );
 
       const dayMap = new Map<number, { orderId: number; orderName: string; amount: number }>();
       for (const o of dayOrders) {
-        const pid = o.partner_id[0];
+        const pid = o.commercial_partner_id[0];
         if (missingIds.includes(pid)) {
           dayMap.set(pid, { orderId: o.id, orderName: o.name, amount: o.amount_total });
         }
@@ -211,7 +211,7 @@ async function getClientProducts(cookies: string | null, partnerId: number) {
   threeMonthsAgo.setDate(threeMonthsAgo.getDate() - 90);
 
   const lines = await callOdoo(cookies, 'sale.order.line', 'search_read',
-    [[['order_id.partner_id', '=', partnerId], ['order_id.state', 'in', ['sale', 'done']], ['order_id.date_order', '>=', formatDate(threeMonthsAgo)]]],
+    [[['order_id.commercial_partner_id', '=', partnerId], ['order_id.state', 'in', ['sale', 'done']], ['order_id.date_order', '>=', formatDate(threeMonthsAgo)]]],
     { fields: ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal'] }
   );
 
@@ -240,8 +240,8 @@ async function getClientProducts(cookies: string | null, partnerId: number) {
 
 async function getClientOrders(cookies: string | null, partnerId: number) {
   return await callOdoo(cookies, 'sale.order', 'search_read',
-    [[['partner_id', '=', partnerId], ['state', 'in', ['sale', 'done']]]],
-    { fields: ['id', 'name', 'date_order', 'amount_total', 'state'], limit: 20, order: 'date_order desc' }
+    [[['commercial_partner_id', '=', partnerId], ['state', 'in', ['sale', 'done']]]],
+    { fields: ['id', 'name', 'date_order', 'amount_total', 'partner_id', 'state'], limit: 20, order: 'date_order desc' }
   );
 }
 
