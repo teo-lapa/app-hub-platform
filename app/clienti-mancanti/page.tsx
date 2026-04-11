@@ -133,7 +133,7 @@ export default function ClientiMancantiPage() {
                 { label: 'Clienti sett. scorsa', value: data.totalLastWeek, icon: Users, color: 'text-blue-400' },
                 { label: 'Clienti questa sett.', value: data.totalThisWeek, icon: Users, color: 'text-green-400' },
                 { label: 'Mancanti', value: missing, icon: AlertTriangle, color: 'text-red-400', accent: true },
-                { label: 'Fatturato a rischio', value: fmtCHF(fatRischio), icon: DollarSign, color: 'text-red-400', accent: true },
+                { label: 'Ordini a rischio', value: fmtCHF(fatRischio), icon: DollarSign, color: 'text-red-400', accent: true },
               ].map((kpi, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                   className={`rounded-xl p-4 border ${kpi.accent ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}>
@@ -156,7 +156,7 @@ export default function ClientiMancantiPage() {
                   <thead>
                     <tr className="bg-white/5 text-gray-400 text-xs uppercase">
                       <th className="text-left px-4 py-3">Cliente</th>
-                      <th className="text-right px-3 py-3 hidden sm:table-cell">Valore 3M</th>
+                      <th className="text-right px-3 py-3 hidden sm:table-cell">Ordini 3M (CHF)</th>
                       <th className="text-right px-3 py-3 hidden md:table-cell">Ordini 3M</th>
                       {DAY_LABELS.map((d, i) => (
                         <th key={d} className="text-center px-2 py-3 w-12">{d}</th>
