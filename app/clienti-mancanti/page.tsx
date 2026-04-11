@@ -9,7 +9,7 @@ import {
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-const ODOO = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+const ODOO = 'https://www.lapa.ch';
 const fmt = (n: number) => n.toLocaleString('de-CH').replace(/'/g, "'");
 const fmtCHF = (n: number) => `CHF ${fmt(Math.round(n))}`;
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
@@ -170,7 +170,7 @@ export default function ClientiMancantiPage() {
                         transition={{ delay: 0.05 * Math.min(idx, 20) }}
                         className={`border-t border-white/5 ${bgRow[client.category]} border-l-4 ${borderColor[client.category]} hover:bg-white/5 transition-colors`}>
                         <td className="px-4 py-3">
-                          <a href={`${ODOO}/web#id=${client.id}&model=res.partner&view_type=form`}
+                          <a href={`${ODOO}/web#id=${client.id}&cids=1&menu_id=117&action=159&model=res.partner&view_type=form`}
                             target="_blank" rel="noopener noreferrer"
                             className="font-medium text-blue-300 hover:text-blue-200 hover:underline flex items-center gap-1">
                             {client.name} <ExternalLink size={12} className="opacity-50" />
@@ -206,7 +206,7 @@ export default function ClientiMancantiPage() {
                               {dayPopup?.clientId === client.id && dayPopup?.day === day && (
                                 <div className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 bg-slate-800 border border-white/20 rounded-lg p-3 shadow-xl min-w-[180px] text-left"
                                   onMouseLeave={() => setDayPopup(null)}>
-                                  <a href={`${ODOO}/web#id=${dayPopup.order.orderId}&model=sale.order&view_type=form`}
+                                  <a href={`${ODOO}/web#id=${dayPopup.order.orderId}&cids=1&model=sale.order&view_type=form`}
                                     target="_blank" rel="noopener noreferrer"
                                     className="text-blue-300 hover:underline font-medium flex items-center gap-1">
                                     {dayPopup.order.orderName} <ExternalLink size={12} />
