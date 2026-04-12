@@ -60,25 +60,31 @@ export default function ClientiMancantiPage() {
   const openProducts = async (client: Client) => {
     setLoadingModal(true);
     setProdModal({ id: client.id, name: client.name, products: [] });
-    const res = await fetch('/api/clienti-mancanti', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'get_client_products', partnerId: client.id })
-    });
-    const d = await res.json();
-    setProdModal({ id: client.id, name: client.name, products: d.products || [] });
-    setLoadingModal(false);
+    try {
+      const res = await fetch('/api/clienti-mancanti', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_client_products', partnerId: client.id })
+      });
+      const d = await res.json();
+      setProdModal({ id: client.id, name: client.name, products: Array.isArray(d) ? d : (d.products || []) });
+    } finally {
+      setLoadingModal(false);
+    }
   };
 
   const openTrend = async (client: Client) => {
     setLoadingModal(true);
     setTrendModal({ id: client.id, name: client.name, data: [] });
-    const res = await fetch('/api/clienti-mancanti', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'get_client_orders', partnerId: client.id })
-    });
-    const d = await res.json();
-    setTrendModal({ id: client.id, name: client.name, data: d.trends || [] });
-    setLoadingModal(false);
+    try {
+      const res = await fetch('/api/clienti-mancanti', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_client_orders', partnerId: client.id })
+      });
+      const d = await res.json();
+      setTrendModal({ id: client.id, name: client.name, data: d.trends || [] });
+    } finally {
+      setLoadingModal(false);
+    }
   };
 
   const saveFeedback = async (partnerId: number, text: string) => {
@@ -89,8 +95,8 @@ export default function ClientiMancantiPage() {
     });
   };
 
-  const missing = data ? data.totalLastWeek - data.totalThisWeek : 0;
-  const fatRischio = data?.clients?.reduce((s, c) => s + c.mediaOrdine, 0) || 0;
+  const missing = data?.clients?.length || 0;
+  const fatRischio = data?.clients?.reduce((s, c) => s + c.fatturato3m, 0) || 0;
 
   const todayIdx = Math.min(new Date().getDay() - 1, 4); // 0=mon..4=fri, cap at fri
 
@@ -240,26 +246,6 @@ export default function ClientiMancantiPage() {
                 </table>
               </div>
             </motion.div>
-
-            {/* Inline Feedback */}
-            <AnimatePresence>
-              {expandedFeedback && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-gray-400 mb-2">
-                    Feedback per {data.clients.find(c => c.id === expandedFeedback)?.name}
-                  </p>
-                  <textarea
-                    value={feedbacks[expandedFeedback] || ''}
-                    onChange={e => setFeedbacks(p => ({ ...p, [expandedFeedback]: e.target.value }))}
-                    onBlur={e => saveFeedback(expandedFeedback, e.target.value)}
-                    placeholder="Scrivi note su questo cliente..."
-                    className="w-full bg-slate-800/50 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    rows={3}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </>
         ) : null}
       </div>
@@ -309,6 +295,54 @@ export default function ClientiMancantiPage() {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {expandedFeedback && data && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+            onClick={() => setExpandedFeedback(null)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-800 border border-white/10 rounded-xl max-w-lg w-full"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div>
+                  <h3 className="font-bold">Feedback cliente</h3>
+                  <p className="text-sm text-gray-400">
+                    {data.clients.find(c => c.id === expandedFeedback)?.name}
+                  </p>
+                </div>
+                <button onClick={() => setExpandedFeedback(null)} className="p-1 hover:bg-white/10 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                <textarea
+                  autoFocus
+                  value={feedbacks[expandedFeedback] || ''}
+                  onChange={e => setFeedbacks(p => ({ ...p, [expandedFeedback]: e.target.value }))}
+                  placeholder="Perche' non ha ordinato? Qual e' il piano per riprenderlo?"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  rows={6}
+                />
+                <div className="flex justify-end gap-2 mt-3">
+                  <button onClick={() => setExpandedFeedback(null)}
+                    className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                    Annulla
+                  </button>
+                  <button onClick={() => {
+                    saveFeedback(expandedFeedback, feedbacks[expandedFeedback] || '');
+                    setExpandedFeedback(null);
+                  }}
+                    className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+                    Salva
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
