@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const INTERNAL_PARTNERS = [1, 12, 18, 2421, 6524, 8570, 8852, 8998];
+const EXCLUDED_CATEGORIES = [231, 232, 233];
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const FEEDBACK_FILE = path.join(process.cwd(), 'data', 'clienti-mancanti-feedback.json');
 
@@ -105,7 +106,7 @@ async function getWeeklyData(cookies: string | null) {
     ),
     callOdoo(cookies, 'res.partner', 'search_read',
       [[['id', 'in', missingIds]]],
-      { fields: ['name', 'phone', 'mobile', 'email', 'is_company'] }
+      { fields: ['name', 'phone', 'mobile', 'email', 'is_company', 'category_id'] }
     )
   ]);
 
@@ -163,7 +164,9 @@ async function getWeeklyData(cookies: string | null) {
   const clients = missingIds
     .filter(id => {
       const partner = partnerMap.get(id);
-      if (!partner || !partner.is_company) return false;
+      if (!partner) return false;
+      const cats: number[] = partner.category_id || [];
+      if (cats.some((c: number) => EXCLUDED_CATEGORIES.includes(c))) return false;
       const s = stats[id] || { fatturato: 0, ordini: 0 };
       return s.ordini >= 2;
     })
