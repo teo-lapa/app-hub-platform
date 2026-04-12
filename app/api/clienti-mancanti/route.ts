@@ -105,7 +105,7 @@ async function getWeeklyData(cookies: string | null) {
     ),
     callOdoo(cookies, 'res.partner', 'search_read',
       [[['id', 'in', missingIds]]],
-      { fields: ['name', 'phone', 'mobile', 'email'] }
+      { fields: ['name', 'phone', 'mobile', 'email', 'is_company'] }
     )
   ]);
 
@@ -160,38 +160,45 @@ async function getWeeklyData(cookies: string | null) {
   const feedbackData = loadFeedback();
   const weekFeedback = feedbackData[formatDate(thisWeekStart)] || {};
 
-  const clients = missingIds.map(id => {
-    const partner = partnerMap.get(id);
-    const s = stats[id] || { fatturato: 0, ordini: 0 };
-    const dailyStatus: Record<string, any> = {};
-    let recovered = false;
+  const clients = missingIds
+    .filter(id => {
+      const partner = partnerMap.get(id);
+      if (!partner || !partner.is_company) return false;
+      const s = stats[id] || { fatturato: 0, ordini: 0 };
+      return s.ordini >= 2;
+    })
+    .map(id => {
+      const partner = partnerMap.get(id);
+      const s = stats[id] || { fatturato: 0, ordini: 0 };
+      const dailyStatus: Record<string, any> = {};
+      let recovered = false;
 
-    for (let i = 0; i < 7; i++) {
-      const key = DAY_KEYS[i];
-      const dayMap = dailyDeliveries[key];
-      if (dayMap && dayMap.has(id)) {
-        const d = dayMap.get(id)!;
-        dailyStatus[key] = { orderId: d.orderId, orderName: d.orderName, amount: d.amount };
-        recovered = true;
-      } else {
-        dailyStatus[key] = null;
+      for (let i = 0; i < 7; i++) {
+        const key = DAY_KEYS[i];
+        const dayMap = dailyDeliveries[key];
+        if (dayMap && dayMap.has(id)) {
+          const d = dayMap.get(id)!;
+          dailyStatus[key] = { orderId: d.orderId, orderName: d.orderName, amount: d.amount };
+          recovered = true;
+        } else {
+          dailyStatus[key] = null;
+        }
       }
-    }
 
-    return {
-      id,
-      name: partner?.name || `Partner #${id}`,
-      phone: partner?.phone || partner?.mobile || '',
-      email: partner?.email || '',
-      fatturato3m: Math.round(s.fatturato),
-      ordini3m: s.ordini,
-      mediaOrdine: s.ordini > 0 ? Math.round(s.fatturato / s.ordini) : 0,
-      category: classify(s.ordini, s.fatturato),
-      dailyStatus,
-      recovered,
-      feedback: weekFeedback[String(id)] || ''
-    };
-  });
+      return {
+        id,
+        name: partner?.name || `Partner #${id}`,
+        phone: partner?.phone || partner?.mobile || '',
+        email: partner?.email || '',
+        fatturato3m: Math.round(s.fatturato),
+        ordini3m: s.ordini,
+        mediaOrdine: s.ordini > 0 ? Math.round(s.fatturato / s.ordini) : 0,
+        category: classify(s.ordini, s.fatturato),
+        dailyStatus,
+        recovered,
+        feedback: weekFeedback[String(id)] || ''
+      };
+    });
 
   clients.sort((a, b) => b.fatturato3m - a.fatturato3m);
 
@@ -225,24 +232,49 @@ async function getClientProducts(cookies: string | null, partnerId: number) {
     grouped[pid].count += 1;
   }
 
-  return Object.entries(grouped)
+  const products = Object.entries(grouped)
     .map(([id, g]) => ({
       productId: Number(id),
       name: g.name,
-      frequency: g.count,
-      totalQty: Math.round(g.qty * 100) / 100,
+      qty: Math.round(g.qty * 100) / 100,
+      times: g.count,
       totalAmount: Math.round(g.total),
-      avgPrice: g.count > 0 ? Math.round(g.total / g.qty * 100) / 100 : 0
+      avgPrice: g.qty > 0 ? Math.round(g.total / g.qty * 100) / 100 : 0
     }))
-    .sort((a, b) => b.frequency - a.frequency)
+    .sort((a, b) => b.times - a.times)
     .slice(0, 20);
+
+  return { products };
 }
 
 async function getClientOrders(cookies: string | null, partnerId: number) {
-  return await callOdoo(cookies, 'sale.order', 'search_read',
-    [[['commercial_partner_id', '=', partnerId], ['state', 'in', ['sale', 'done']]]],
-    { fields: ['id', 'name', 'date_order', 'amount_total', 'partner_id', 'state'], limit: 20, order: 'date_order desc' }
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
+  const orders = await callOdoo(cookies, 'sale.order', 'search_read',
+    [[['commercial_partner_id', '=', partnerId], ['state', 'in', ['sale', 'done']], ['date_order', '>=', formatDate(sixMonthsAgo)]]],
+    { fields: ['id', 'name', 'date_order', 'amount_total'], order: 'date_order asc' }
   );
+
+  const weekMap: Record<string, { amount: number; orders: number }> = {};
+  for (const o of orders) {
+    const d = new Date(o.date_order);
+    const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+    const mon = new Date(d);
+    mon.setDate(d.getDate() + diff);
+    const wk = `${String(mon.getDate()).padStart(2, '0')}/${String(mon.getMonth() + 1).padStart(2, '0')}`;
+    if (!weekMap[wk]) weekMap[wk] = { amount: 0, orders: 0 };
+    weekMap[wk].amount += o.amount_total;
+    weekMap[wk].orders += 1;
+  }
+
+  const trends = Object.entries(weekMap).map(([week, v]) => ({
+    week,
+    amount: Math.round(v.amount),
+    orders: v.orders
+  }));
+
+  return { trends, orders };
 }
 
 export async function POST(request: NextRequest) {
