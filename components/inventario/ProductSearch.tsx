@@ -70,7 +70,7 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
         name: product.name,
         code: product.default_code || product.barcode || '',
         barcode: product.barcode,
-        image: product.image_128 ? `data:${product.image_128.startsWith('/9j/') ? 'image/jpeg' : product.image_128.startsWith('R0lGOD') ? 'image/gif' : product.image_128.startsWith('UklGR') ? 'image/webp' : 'image/png'};base64,${product.image_128}` : null,
+        image: product.image_128 ? `data:image/jpeg;base64,${product.image_128}` : null,
         uom: product.uom_id ? product.uom_id[1] : 'PZ'
       }));
 

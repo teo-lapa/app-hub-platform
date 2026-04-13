@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         name: product?.name || '',
         code: product?.default_code || '',
         barcode: product?.barcode || '',
-        image: product?.image_128 ? `data:${product.image_128.startsWith('/9j/') ? 'image/jpeg' : product.image_128.startsWith('R0lGOD') ? 'image/gif' : product.image_128.startsWith('UklGR') ? 'image/webp' : 'image/png'};base64,${product.image_128}` : undefined,
+        image: product?.image_128 ? `data:image/jpeg;base64,${product.image_128}` : undefined,
         quantity: quant.quantity || 0,
         uom: quant.product_uom_id ? quant.product_uom_id[1] : 'PZ',
         lot_id: quant.lot_id ? quant.lot_id[0] : null,
