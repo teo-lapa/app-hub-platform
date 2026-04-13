@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { getOdooSessionId, authenticateWithCredentials } from '@/lib/odoo/odoo-helper';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
@@ -84,9 +84,30 @@ export async function POST(request: NextRequest) {
     });
 
     const productsData = await productsResponse.json();
-    const products = productsData.result || [];
+    let products = productsData.result || [];
 
     console.log('📦 Prodotti trovati:', products.length);
+
+    if (products.length < productIds.length) {
+      console.log('⚠️ Utente vede solo', products.length, '/', productIds.length, 'prodotti — retry con admin');
+      const adminSession = await authenticateWithCredentials();
+      if (adminSession) {
+        const adminResp = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${adminSession}` },
+          body: JSON.stringify({
+            jsonrpc: '2.0', method: 'call',
+            params: { model: 'product.product', method: 'search_read', args: [[['id', 'in', productIds]]], kwargs: injectLangContext({}) },
+            id: 31
+          })
+        });
+        const adminData = await adminResp.json();
+        if (adminData.result?.length > products.length) {
+          products = adminData.result;
+          console.log('✅ Admin fallback:', products.length, 'prodotti');
+        }
+      }
+    }
 
     // Carica fornitori (seller_ids -> product.supplierinfo)
     const sellerIds = Array.from(new Set(
@@ -137,8 +158,8 @@ export async function POST(request: NextRequest) {
       }
 
       return {
-        id: product?.id || 0,
-        name: product?.name || '',
+        id: product?.id || quant.product_id[0],
+        name: product?.name || quant.product_id[1] || '',
         code: product?.default_code || '',
         barcode: product?.barcode || '',
         image: product?.image_128 ? `data:image/jpeg;base64,${product.image_128}` : undefined,

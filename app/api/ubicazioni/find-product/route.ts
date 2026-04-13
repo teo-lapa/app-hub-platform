@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooSessionId } from '@/lib/odoo/odoo-helper';
+import { getOdooSessionId, authenticateWithCredentials } from '@/lib/odoo/odoo-helper';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export async function POST(request: NextRequest) {
@@ -50,15 +50,29 @@ export async function POST(request: NextRequest) {
     });
 
     const productsData = await productsResponse.json();
-    const products = productsData.result || [];
+    let products = productsData.result || [];
 
     console.log('📦 Prodotti trovati:', products.length);
 
     if (!products || products.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Prodotto non trovato'
-      }, { status: 404 });
+      console.log('⚠️ Utente non vede il prodotto — retry con admin');
+      const adminSession = await authenticateWithCredentials();
+      if (adminSession) {
+        const adminResp = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${adminSession}` },
+          body: JSON.stringify({
+            jsonrpc: '2.0', method: 'call',
+            params: { model: 'product.product', method: 'search_read', args: [['|', ['barcode', '=', code], ['default_code', '=', code]]], kwargs: injectLangContext({}) },
+            id: 21
+          })
+        });
+        const adminData = await adminResp.json();
+        products = adminData.result || [];
+      }
+      if (!products || products.length === 0) {
+        return NextResponse.json({ success: false, error: 'Prodotto non trovato' }, { status: 404 });
+      }
     }
 
     const product = products[0];

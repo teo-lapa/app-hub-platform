@@ -9,7 +9,7 @@ import { injectLangContext } from './user-lang';
 /**
  * Autentica con Odoo usando credenziali (fallback)
  */
-async function authenticateWithCredentials(): Promise<string | null> {
+export async function authenticateWithCredentials(): Promise<string | null> {
   // Fallback allineati con sessionManager - usa DB main
   const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
   const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
