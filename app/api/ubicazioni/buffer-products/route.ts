@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           model: 'product.product',
           method: 'search_read',
           args: [[['id', 'in', productIds]]],
-          kwargs: injectLangContext({})
+          kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'seller_ids', 'uom_id'] })
         },
         id: 3
       })
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${adminSession}` },
           body: JSON.stringify({
             jsonrpc: '2.0', method: 'call',
-            params: { model: 'product.product', method: 'search_read', args: [[['id', 'in', productIds]]], kwargs: injectLangContext({}) },
+            params: { model: 'product.product', method: 'search_read', args: [[['id', 'in', productIds]]], kwargs: injectLangContext({ fields: ['id', 'name', 'default_code', 'barcode', 'image_128', 'seller_ids', 'uom_id'] }) },
             id: 31
           })
         });
