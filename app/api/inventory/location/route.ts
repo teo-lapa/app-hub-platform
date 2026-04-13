@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
             args: [
               [['id', 'in', productIds]]
             ],
-            kwargs: injectLangContext({})
+            kwargs: injectLangContext({ fields: ['id', 'name', 'image_128', 'default_code', 'barcode', 'uom_id'] })
           },
           id: Math.random()
         })
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
               args: [
                 [['id', 'in', lotIds]]
               ],
-              kwargs: injectLangContext({})
+              kwargs: injectLangContext({ fields: ['id', 'name', 'expiration_date', 'product_id'] })
             },
             id: Math.random()
           })
