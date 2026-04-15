@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Home, RefreshCw } from 'lucide-react';
+import { Home, RefreshCw, AlertTriangle, Activity, Bell } from 'lucide-react';
 import { WHATSAPP_AGENTS } from '@/lib/agents/whatsapp-agents';
 import { AgentCard } from './components/AgentCard';
+
+type FilterMode = 'all' | 'errors' | 'offline';
 
 interface AgentStatus {
   online: boolean;
@@ -15,8 +17,10 @@ interface AgentStatus {
 
 export default function AgentiWhatsAppPage() {
   const [statuses, setStatuses] = useState<Record<string, AgentStatus | null>>({});
+  const [statsMap, setStatsMap] = useState<Record<string, { errors24h: number; total24h: number } | null>>({});
   const [restartingAgent, setRestartingAgent] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [filter, setFilter] = useState<FilterMode>('all');
 
   const fetchStatuses = useCallback(async () => {
     const entries = Object.keys(WHATSAPP_AGENTS);
@@ -37,6 +41,19 @@ export default function AgentiWhatsAppPage() {
     }
     setStatuses(newStatuses);
     setLastRefresh(new Date());
+
+    // fetch stats in parallel (cheap aggregate for top banner + filter)
+    const statsResults = await Promise.allSettled(
+      entries.map(async slug => {
+        const r = await fetch(`/api/agenti-whatsapp/${slug}/stats`);
+        if (!r.ok) return { slug, s: null };
+        const d = await r.json();
+        return { slug, s: d.error ? null : { errors24h: d.errors24h || 0, total24h: d.total24h || 0 } };
+      })
+    );
+    const newStats: Record<string, any> = {};
+    for (const r of statsResults) if (r.status === 'fulfilled') newStats[r.value.slug] = r.value.s;
+    setStatsMap(newStats);
   }, []);
 
   useEffect(() => {
@@ -61,6 +78,18 @@ export default function AgentiWhatsAppPage() {
 
   const onlineCount = Object.values(statuses).filter(s => s?.online).length;
   const totalCount = Object.keys(WHATSAPP_AGENTS).length;
+  const totalErrors = Object.values(statsMap).reduce((acc, s) => acc + (s?.errors24h || 0), 0);
+  const totalMsg = Object.values(statsMap).reduce((acc, s) => acc + (s?.total24h || 0), 0);
+  const agentsWithErrors = Object.entries(statsMap).filter(([, s]) => (s?.errors24h || 0) > 0).map(([k]) => k);
+  const globalHealth = totalCount === 0 ? 0 : Math.round((onlineCount / totalCount) * 100 - Math.min(totalErrors * 2, 30));
+  const globalColor = globalHealth >= 80 ? 'text-green-400' : globalHealth >= 50 ? 'text-yellow-400' : 'text-red-400';
+
+  const visible = Object.entries(WHATSAPP_AGENTS).filter(([slug]) => {
+    if (filter === 'all') return true;
+    if (filter === 'errors') return agentsWithErrors.includes(slug);
+    if (filter === 'offline') return !statuses[slug]?.online;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6">
@@ -90,16 +119,61 @@ export default function AgentiWhatsAppPage() {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="flex gap-4 mb-8 text-sm">
-          <div className="px-4 py-2 rounded-lg bg-white/5 text-white/70">
-            <span className="text-green-400 font-bold">{onlineCount}</span>/{totalCount} online
+        {/* Banner salute globale */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs text-white/50 uppercase tracking-wide mb-1">
+              <Activity className="w-3.5 h-3.5" /> Salute globale
+            </div>
+            <div className={`text-3xl font-bold ${globalColor}`}>{globalHealth}<span className="text-sm text-white/40">/100</span></div>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="text-xs text-white/50 uppercase tracking-wide mb-1">Online</div>
+            <div className="text-3xl font-bold text-white">
+              <span className="text-green-400">{onlineCount}</span>
+              <span className="text-white/40 text-xl">/{totalCount}</span>
+            </div>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="text-xs text-white/50 uppercase tracking-wide mb-1">Msg 24h</div>
+            <div className="text-3xl font-bold text-white">{totalMsg}</div>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="flex items-center gap-2 text-xs text-white/50 uppercase tracking-wide mb-1">
+              <AlertTriangle className="w-3.5 h-3.5" /> Errori 24h
+            </div>
+            <div className={`text-3xl font-bold ${totalErrors > 0 ? 'text-red-400' : 'text-white'}`}>{totalErrors}</div>
           </div>
         </div>
 
+        {/* Filtri */}
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {([
+            { id: 'all' as const, label: `Tutti (${totalCount})` },
+            { id: 'errors' as const, label: `Con errori (${agentsWithErrors.length})` },
+            { id: 'offline' as const, label: `Offline (${totalCount - onlineCount})` },
+          ]).map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                filter === f.id ? 'bg-white/20 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <Link
+            href="/agenti-whatsapp/alerts"
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 transition-colors"
+          >
+            <Bell className="w-4 h-4" /> Centro alert
+          </Link>
+        </div>
+
         {/* Agent grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {Object.entries(WHATSAPP_AGENTS).map(([slug, agent]) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
+          {visible.map(([slug, agent]) => (
             <AgentCard
               key={slug}
               slug={slug}
