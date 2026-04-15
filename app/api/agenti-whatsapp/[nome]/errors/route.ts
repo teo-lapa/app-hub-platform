@@ -7,7 +7,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, { params }: { params: { nome: string } }) {
   const { nome } = params;
-  if (!getAgent(nome)) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  const agent = getAgent(nome);
+  if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  if (agent.apiAvailable === false) return NextResponse.json({ errors: [], total: 0, apiAvailable: false });
   const lines = new URL(req.url).searchParams.get('lines') || '1000';
   try {
     const data = await proxyGet(nome, 'log', { lines });

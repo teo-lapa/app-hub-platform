@@ -76,18 +76,21 @@ export default function AgentiWhatsAppPage() {
     }
   };
 
-  const onlineCount = Object.values(statuses).filter(s => s?.online).length;
+  const monitorable = Object.entries(WHATSAPP_AGENTS).filter(([, a]) => a.apiAvailable !== false);
+  const onlineCount = monitorable.filter(([slug]) => statuses[slug]?.online).length;
+  const monitorableCount = monitorable.length;
   const totalCount = Object.keys(WHATSAPP_AGENTS).length;
+  const offlineCount = monitorableCount - onlineCount;
   const totalErrors = Object.values(statsMap).reduce((acc, s) => acc + (s?.errors24h || 0), 0);
   const totalMsg = Object.values(statsMap).reduce((acc, s) => acc + (s?.total24h || 0), 0);
   const agentsWithErrors = Object.entries(statsMap).filter(([, s]) => (s?.errors24h || 0) > 0).map(([k]) => k);
-  const globalHealth = totalCount === 0 ? 0 : Math.round((onlineCount / totalCount) * 100 - Math.min(totalErrors * 2, 30));
+  const globalHealth = monitorableCount === 0 ? 0 : Math.round((onlineCount / monitorableCount) * 100 - Math.min(totalErrors * 2, 30));
   const globalColor = globalHealth >= 80 ? 'text-green-400' : globalHealth >= 50 ? 'text-yellow-400' : 'text-red-400';
 
-  const visible = Object.entries(WHATSAPP_AGENTS).filter(([slug]) => {
+  const visible = Object.entries(WHATSAPP_AGENTS).filter(([slug, a]) => {
     if (filter === 'all') return true;
     if (filter === 'errors') return agentsWithErrors.includes(slug);
-    if (filter === 'offline') return !statuses[slug]?.online;
+    if (filter === 'offline') return a.apiAvailable !== false && !statuses[slug]?.online;
     return true;
   });
 
@@ -131,8 +134,11 @@ export default function AgentiWhatsAppPage() {
             <div className="text-xs text-white/50 uppercase tracking-wide mb-1">Online</div>
             <div className="text-3xl font-bold text-white">
               <span className="text-green-400">{onlineCount}</span>
-              <span className="text-white/40 text-xl">/{totalCount}</span>
+              <span className="text-white/40 text-xl">/{monitorableCount}</span>
             </div>
+            {totalCount !== monitorableCount && (
+              <div className="text-[10px] text-white/40 mt-0.5">+{totalCount - monitorableCount} solo-Telegram</div>
+            )}
           </div>
           <div className="rounded-xl bg-white/5 border border-white/10 p-4">
             <div className="text-xs text-white/50 uppercase tracking-wide mb-1">Msg 24h</div>
@@ -151,7 +157,7 @@ export default function AgentiWhatsAppPage() {
           {([
             { id: 'all' as const, label: `Tutti (${totalCount})` },
             { id: 'errors' as const, label: `Con errori (${agentsWithErrors.length})` },
-            { id: 'offline' as const, label: `Offline (${totalCount - onlineCount})` },
+            { id: 'offline' as const, label: `Offline (${offlineCount})` },
           ]).map(f => (
             <button
               key={f.id}

@@ -56,6 +56,7 @@ export async function GET(req: Request) {
   const now = Date.now();
 
   for (const [slug, agent] of Object.entries(WHATSAPP_AGENTS)) {
+    if (agent.apiAvailable === false) continue;
     try {
       const [statusD, logD] = await Promise.all([
         proxyGet(slug, 'status').catch(() => ({ online: false })),

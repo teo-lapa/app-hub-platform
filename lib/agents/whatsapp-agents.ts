@@ -22,6 +22,8 @@ export interface WhatsAppAgentConfig {
   maxTurns: { default: number; heavy?: number };
   telegram: { bot: string } | null;
   color: string;
+  /** Se true, il tunnel WhatsApp API espone questo agente (status/log/ecc). */
+  apiAvailable?: boolean;
 }
 
 export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
@@ -47,6 +49,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15, heavy: 50 },
     telegram: { bot: '@stella_lapa_bot' },
     color: '#e94560',
+    apiAvailable: true,
   },
   romeo: {
     name: 'Romeo',
@@ -70,6 +73,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@romeo_lapa_bot' },
     color: '#0f3460',
+    apiAvailable: true,
   },
   diana: {
     name: 'Diana',
@@ -93,6 +97,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@diana_lapa_bot' },
     color: '#533483',
+    apiAvailable: true,
   },
   vanessa: {
     name: 'Vanessa',
@@ -116,6 +121,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: null,
     color: '#1fab89',
+    apiAvailable: true,
   },
   aurora: {
     name: 'Aurora',
@@ -139,6 +145,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@aurora_social_lapa_bot' },
     color: '#ff6b35',
+    apiAvailable: false,
   },
   sergio: {
     name: 'Sergio',
@@ -162,6 +169,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@lapa_sales_bot' },
     color: '#2196f3',
+    apiAvailable: false,
   },
   giulio: {
     name: 'Giulio',
@@ -185,6 +193,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@giulio_lapa_bot' },
     color: '#4caf50',
+    apiAvailable: false,
   },
   magazzino: {
     name: 'Magazzino',
@@ -208,6 +217,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@lapa_magazzino_bot' },
     color: '#795548',
+    apiAvailable: false,
   },
 };
 

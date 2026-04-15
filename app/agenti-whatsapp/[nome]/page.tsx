@@ -15,8 +15,10 @@ import { TabFollowup } from '../components/TabFollowup';
 import { TabConversazioni } from '../components/TabConversazioni';
 import { TabErrori } from '../components/TabErrori';
 import { TabStatistiche } from '../components/TabStatistiche';
+import { TabMappa } from '../components/TabMappa';
 
 const TABS = [
+  { id: 'mappa', label: 'Mappa' },
   { id: 'stato', label: 'Stato' },
   { id: 'conversazioni', label: 'Conversazioni' },
   { id: 'errori', label: 'Errori' },
@@ -33,7 +35,7 @@ type TabId = typeof TABS[number]['id'];
 
 export default function AgentDetailPage() {
   const { nome } = useParams<{ nome: string }>();
-  const [activeTab, setActiveTab] = useState<TabId>('stato');
+  const [activeTab, setActiveTab] = useState<TabId>('mappa');
 
   const agent = WHATSAPP_AGENTS[nome];
   if (!agent) {
@@ -82,6 +84,7 @@ export default function AgentDetailPage() {
         </div>
 
         <div className="min-h-[400px]">
+          {activeTab === 'mappa' && <TabMappa slug={nome} agent={agent} />}
           {activeTab === 'stato' && <TabStato slug={nome} />}
           {activeTab === 'conversazioni' && <TabConversazioni slug={nome} />}
           {activeTab === 'errori' && <TabErrori slug={nome} />}

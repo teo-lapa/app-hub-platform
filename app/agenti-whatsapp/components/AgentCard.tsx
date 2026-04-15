@@ -7,10 +7,13 @@ import { AgentStatusBadge } from './AgentStatusBadge';
 import type { WhatsAppAgentConfig } from '@/lib/agents/whatsapp-agents';
 
 interface AgentStatus {
-  online: boolean;
-  sshReachable: boolean;
+  online: boolean | null;
+  sshReachable: boolean | null;
   lastLog: string | null;
   pid: string | null;
+  apiAvailable?: boolean;
+  note?: string;
+  error?: string;
 }
 
 interface AgentCardProps {
@@ -46,6 +49,7 @@ function formatAgo(min: number | null) {
 }
 
 export function AgentCard({ slug, agent, status, onRestart, restarting }: AgentCardProps) {
+  const noApi = status?.apiAvailable === false;
   const isOnline = status?.online ?? false;
   const sshReachable = status?.sshReachable ?? false;
   const [stats, setStats] = useState<QuickStats | null>(null);
@@ -79,39 +83,54 @@ export function AgentCard({ slug, agent, status, onRestart, restarting }: AgentC
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          {status ? <AgentStatusBadge online={isOnline} sshReachable={sshReachable} /> : <span className="text-xs text-white/30">…</span>}
-          <div className="flex items-center gap-1.5">
-            <div className="w-10 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full transition-all" style={{ width: `${h}%`, background: healthColor(h) }} />
+          {noApi ? (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium">Telegram</span>
+          ) : status ? (
+            <AgentStatusBadge online={isOnline} sshReachable={sshReachable} />
+          ) : (
+            <span className="text-xs text-white/30">…</span>
+          )}
+          {!noApi && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-10 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full transition-all" style={{ width: `${h}%`, background: healthColor(h) }} />
+              </div>
+              <span className="text-[10px] font-mono text-white/60 w-7 text-right">{h}</span>
             </div>
-            <span className="text-[10px] font-mono text-white/60 w-7 text-right">{h}</span>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* 3 metriche live */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="rounded-lg bg-white/5 p-2 text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
-            <MessageSquare className="w-3 h-3" /> 24h
+      {/* 3 metriche live — solo se API disponibile */}
+      {!noApi && (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="rounded-lg bg-white/5 p-2 text-center">
+            <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
+              <MessageSquare className="w-3 h-3" /> 24h
+            </div>
+            <div className="text-lg font-bold text-white">{stats?.total24h ?? '—'}</div>
           </div>
-          <div className="text-lg font-bold text-white">{stats?.total24h ?? '—'}</div>
+          <div className="rounded-lg bg-white/5 p-2 text-center">
+            <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
+              <AlertTriangle className="w-3 h-3" /> err
+            </div>
+            <div className={`text-lg font-bold ${(stats?.errors24h ?? 0) > 0 ? 'text-red-400' : 'text-white'}`}>
+              {stats?.errors24h ?? '—'}
+            </div>
+          </div>
+          <div className="rounded-lg bg-white/5 p-2 text-center">
+            <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
+              <Clock className="w-3 h-3" /> ultimo
+            </div>
+            <div className="text-sm font-semibold text-white">{formatAgo(stats?.lastMsgMinutesAgo ?? null)}</div>
+          </div>
         </div>
-        <div className="rounded-lg bg-white/5 p-2 text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
-            <AlertTriangle className="w-3 h-3" /> err
-          </div>
-          <div className={`text-lg font-bold ${(stats?.errors24h ?? 0) > 0 ? 'text-red-400' : 'text-white'}`}>
-            {stats?.errors24h ?? '—'}
-          </div>
+      )}
+      {noApi && (
+        <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-2 mb-3 text-center">
+          <p className="text-[11px] text-purple-300">Agente Telegram-only — apri <span className="underline">Mappa</span> per dettagli</p>
         </div>
-        <div className="rounded-lg bg-white/5 p-2 text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-white/40 uppercase tracking-wide">
-            <Clock className="w-3 h-3" /> ultimo
-          </div>
-          <div className="text-sm font-semibold text-white">{formatAgo(stats?.lastMsgMinutesAgo ?? null)}</div>
-        </div>
-      </div>
+      )}
 
       <div className="space-y-1 text-xs text-white/55 mb-3">
         <p>👤 {agent.owner.name}{agent.whatsapp ? ` · 📱 ${agent.whatsapp}` : ''}</p>
@@ -135,14 +154,16 @@ export function AgentCard({ slug, agent, status, onRestart, restarting }: AgentC
         >
           Apri
         </Link>
-        <button
-          onClick={() => onRestart(slug)}
-          disabled={restarting}
-          className="py-2 px-3 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-sm font-medium transition-colors disabled:opacity-50"
-          title="Restart bot"
-        >
-          <RefreshCw className={`w-4 h-4 ${restarting ? 'animate-spin' : ''}`} />
-        </button>
+        {!noApi && (
+          <button
+            onClick={() => onRestart(slug)}
+            disabled={restarting}
+            className="py-2 px-3 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-sm font-medium transition-colors disabled:opacity-50"
+            title="Restart bot"
+          >
+            <RefreshCw className={`w-4 h-4 ${restarting ? 'animate-spin' : ''}`} />
+          </button>
+        )}
       </div>
     </div>
   );

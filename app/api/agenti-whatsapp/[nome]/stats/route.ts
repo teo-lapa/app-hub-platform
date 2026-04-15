@@ -7,7 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(_req: Request, { params }: { params: { nome: string } }) {
   const { nome } = params;
-  if (!getAgent(nome)) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  const agent = getAgent(nome);
+  if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  if (agent.apiAvailable === false) {
+    return NextResponse.json({
+      total24h: 0, in24h: 0, out24h: 0, last1h: 0, errors24h: 0,
+      lastMsgTs: null, lastMsgMinutesAgo: null, buckets: [], health: 0, online: null, apiAvailable: false,
+    });
+  }
   try {
     const [logData, statusData] = await Promise.all([
       proxyGet(nome, 'log', { lines: '1000' }).catch(() => ({ log: '' })),
