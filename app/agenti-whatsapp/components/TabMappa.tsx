@@ -99,7 +99,7 @@ export function TabMappa({ slug, agent }: { slug: string; agent: WhatsAppAgentCo
             <div className="text-sm font-bold text-white">Memoria</div>
           </div>
           <div className="text-xs text-white/60 space-y-1">
-            <div>📄 MEMORY.md: <span className="font-mono text-white/80">{memorySize != null ? `${(memorySize / 1024).toFixed(1)} KB` : '—'}</span></div>
+            <div>📄 Contenuto: <span className="font-mono text-white/80">{memorySize != null ? `${(memorySize / 1024).toFixed(1)} KB` : '—'}</span></div>
             <div className="truncate" title={agent.paths.memory}>📁 {agent.paths.memory}</div>
           </div>
         </div>

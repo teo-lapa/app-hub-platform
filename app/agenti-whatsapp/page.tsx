@@ -178,18 +178,35 @@ export default function AgentiWhatsAppPage() {
         </div>
 
         {/* Agent grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
-          {visible.map(([slug, agent]) => (
-            <AgentCard
-              key={slug}
-              slug={slug}
-              agent={agent}
-              status={statuses[slug] ?? null}
-              onRestart={handleRestart}
-              restarting={restartingAgent === slug}
-            />
-          ))}
-        </div>
+        {visible.length === 0 ? (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-10 text-center">
+            <div className="text-5xl mb-3">
+              {filter === 'offline' ? '✅' : filter === 'errors' ? '🎉' : '🤖'}
+            </div>
+            <div className="text-lg font-semibold text-white mb-1">
+              {filter === 'offline' && 'Tutti gli agenti sono online'}
+              {filter === 'errors' && 'Nessun errore nelle ultime 24h'}
+              {filter === 'all' && 'Nessun agente configurato'}
+            </div>
+            <div className="text-sm text-white/50">
+              {filter === 'offline' && 'Nessun agente offline in questo momento.'}
+              {filter === 'errors' && 'Tutti gli agenti stanno lavorando senza errori.'}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
+            {visible.map(([slug, agent]) => (
+              <AgentCard
+                key={slug}
+                slug={slug}
+                agent={agent}
+                status={statuses[slug] ?? null}
+                onRestart={handleRestart}
+                restarting={restartingAgent === slug}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
