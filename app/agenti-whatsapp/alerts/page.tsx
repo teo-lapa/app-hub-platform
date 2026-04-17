@@ -44,7 +44,7 @@ export default function AlertsPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <Link href="/agenti-whatsapp" className="p-2 rounded-lg bg-white/5 hover:bg-white/10">
+          <Link href="/infra-monitor" className="p-2 rounded-lg bg-white/5 hover:bg-white/10">
             <ArrowLeft className="w-5 h-5 text-white/60" />
           </Link>
           <div>
