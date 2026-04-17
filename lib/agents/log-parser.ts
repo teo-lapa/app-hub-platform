@@ -29,10 +29,13 @@ export interface ConversationThread {
 const LINE_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s-\s(.*)$/;
 const ERROR_RE = /\b(error|errore|failed|fatal|exception|crash|timeout|undefined is not|cannot read|denied|401|403|500|502|503)\b/i;
 const CLAUDE_CALL_RE = /^processWithClaude called:\s*"([^"]*?)(?:"|…")\s*(?:claudeRunning=|$)/;
-const OUTBOX_RE = /^Outbox:\s*sent to\s*(\S+)/;
+const OUTBOX_RE = /^Outbox:\s*(?:media\+caption\s+)?sent to\s*(\S+)/;
 const OWNER_RE = /^OWNER:\s*(.*)$/;
 const FROM_RE = /^(?:FROM|from)\s+(\S+):\s*(.*)$/;
 const MEDIA_RE = /Foto inviata|audio|immagine|video|media\//i;
+// Diana format
+const PAUL_RE = /^PAUL:\s*(.*)$/;
+const MESSAGE_CREATE_RE = /^\[message_create\]\s+from=(\S+)\s+fromMe=(true|false)(?:\s+to=(\S+))?(?:\s+type=(\S+))?/;
 
 export function parseLog(raw: string): { messages: ParsedMessage[]; errors: ParsedError[] } {
   const messages: ParsedMessage[] = [];
@@ -65,6 +68,34 @@ export function parseLog(raw: string): { messages: ParsedMessage[]; errors: Pars
       lastOwnerTs = ts;
       if (lastOwnerText) {
         messages.push({ ts, direction: 'in', contact: 'owner', text: lastOwnerText });
+      }
+      continue;
+    }
+
+    // Diana format: "PAUL: testo" = owner input
+    const pa = body.match(PAUL_RE);
+    if (pa) {
+      const txt = pa[1].trim();
+      lastOwnerText = txt;
+      lastOwnerTs = ts;
+      if (txt) {
+        messages.push({ ts, direction: 'in', contact: 'owner', text: txt, hasMedia: MEDIA_RE.test(txt) });
+      }
+      continue;
+    }
+
+    // Diana format: [message_create] from=X fromMe=true/false to=Y type=Z
+    const mc = body.match(MESSAGE_CREATE_RE);
+    if (mc) {
+      const from = mc[1];
+      const fromMe = mc[2] === 'true';
+      const to = mc[3];
+      const type = mc[4] || 'chat';
+      // fromMe=false => messaggio IN dal contatto. fromMe=true con from!=to => OUT dal bot.
+      if (!fromMe) {
+        messages.push({ ts, direction: 'in', contact: from, text: `[${type}]`, hasMedia: type !== 'chat' });
+      } else if (from !== to) {
+        messages.push({ ts, direction: 'out', contact: to || from, text: `[${type}]`, hasMedia: type !== 'chat' });
       }
       continue;
     }
