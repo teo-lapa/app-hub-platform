@@ -99,10 +99,11 @@ async function getWeeklyData(cookies: string | null) {
     };
   }
 
-  const [history, partners] = await Promise.all([
-    callOdoo(cookies, 'sale.order', 'search_read',
-      [[['commercial_partner_id', 'in', missingIds], ['date_order', '>=', formatDate(threeMonthsAgo)], ['state', 'in', ['sale', 'done']]]],
-      { fields: ['commercial_partner_id', 'amount_total', 'date_order'] }
+  // Storico 3M basato su CONSEGNE EFFETTIVE (date_done su stock.picking), MAI date_order
+  const [historyPicks, partners] = await Promise.all([
+    callOdoo(cookies, 'stock.picking', 'search_read',
+      [[['picking_type_code', '=', 'outgoing'], ['state', '=', 'done'], ['date_done', '>=', formatDate(threeMonthsAgo)], ['sale_id.commercial_partner_id', 'in', missingIds]]],
+      { fields: ['sale_id', 'date_done'] }
     ),
     callOdoo(cookies, 'res.partner', 'search_read',
       [[['id', 'in', missingIds]]],
@@ -112,12 +113,28 @@ async function getWeeklyData(cookies: string | null) {
 
   const partnerMap = new Map<number, any>(partners.map((p: any) => [p.id, p]));
 
-  const stats: Record<number, { fatturato: number; ordini: number }> = {};
-  for (const h of history) {
-    const pid = h.commercial_partner_id[0];
-    if (!stats[pid]) stats[pid] = { fatturato: 0, ordini: 0 };
-    stats[pid].fatturato += h.amount_total;
-    stats[pid].ordini += 1;
+  // Risolvi sale_id -> (commercial_partner_id, amount_total)
+  const histSaleIds = Array.from(new Set(historyPicks
+    .filter((p: any) => p.sale_id && p.sale_id[0])
+    .map((p: any) => p.sale_id[0])));
+  const histOrders = histSaleIds.length > 0 ? await callOdoo(cookies, 'sale.order', 'search_read',
+    [[['id', 'in', histSaleIds]]],
+    { fields: ['commercial_partner_id', 'amount_total'] }
+  ) : [];
+  const orderInfo = new Map<number, { pid: number; amount: number }>(
+    histOrders.map((o: any) => [o.id, { pid: o.commercial_partner_id[0], amount: o.amount_total }])
+  );
+
+  const stats: Record<number, { fatturato: number; consegne: number; ultimaConsegna: string }> = {};
+  for (const p of historyPicks) {
+    if (!p.sale_id || !p.sale_id[0]) continue;
+    const info = orderInfo.get(p.sale_id[0]);
+    if (!info) continue;
+    const pid = info.pid;
+    if (!stats[pid]) stats[pid] = { fatturato: 0, consegne: 0, ultimaConsegna: '' };
+    stats[pid].fatturato += info.amount;
+    stats[pid].consegne += 1;
+    if (p.date_done > stats[pid].ultimaConsegna) stats[pid].ultimaConsegna = p.date_done;
   }
 
   // Daily status: check each day of current week
@@ -161,18 +178,21 @@ async function getWeeklyData(cookies: string | null) {
   const feedbackData = loadFeedback();
   const weekFeedback = feedbackData[formatDate(thisWeekStart)] || {};
 
+  const todayMs = Date.now();
+  const MS_PER_DAY = 86400000;
+
   const clients = missingIds
     .filter(id => {
       const partner = partnerMap.get(id);
       if (!partner) return false;
       const cats: number[] = partner.category_id || [];
       if (cats.some((c: number) => EXCLUDED_CATEGORIES.includes(c))) return false;
-      const s = stats[id] || { fatturato: 0, ordini: 0 };
-      return s.ordini >= 2;
+      const s = stats[id] || { fatturato: 0, consegne: 0, ultimaConsegna: '' };
+      return s.consegne >= 2;
     })
     .map(id => {
       const partner = partnerMap.get(id);
-      const s = stats[id] || { fatturato: 0, ordini: 0 };
+      const s = stats[id] || { fatturato: 0, consegne: 0, ultimaConsegna: '' };
       const dailyStatus: Record<string, any> = {};
       let recovered = false;
 
@@ -188,15 +208,25 @@ async function getWeeklyData(cookies: string | null) {
         }
       }
 
+      const consPerSettimana = s.consegne / 12.857; // 90 giorni / 7
+      const giorniAttesi = s.consegne > 0 ? 90 / s.consegne : 90;
+      const silenzioGiorni = s.ultimaConsegna ? Math.floor((todayMs - new Date(s.ultimaConsegna).getTime()) / MS_PER_DAY) : 999;
+      const rapporto = giorniAttesi > 0 ? silenzioGiorni / giorniAttesi : 0;
+      const allarme: 'GRAVE' | 'SI' | 'NO' = rapporto >= 2.0 ? 'GRAVE' : rapporto >= 1.5 ? 'SI' : 'NO';
+
       return {
         id,
         name: partner?.name || `Partner #${id}`,
         phone: partner?.phone || partner?.mobile || '',
         email: partner?.email || '',
         fatturato3m: Math.round(s.fatturato),
-        ordini3m: s.ordini,
-        mediaOrdine: s.ordini > 0 ? Math.round(s.fatturato / s.ordini) : 0,
-        category: classify(s.ordini, s.fatturato),
+        ordini3m: s.consegne,
+        mediaOrdine: s.consegne > 0 ? Math.round(s.fatturato / s.consegne) : 0,
+        category: classify(s.consegne, s.fatturato),
+        consPerSettimana: Math.round(consPerSettimana * 10) / 10,
+        silenzioGiorni,
+        ultimaConsegna: s.ultimaConsegna ? s.ultimaConsegna.slice(0, 10) : '',
+        allarme,
         dailyStatus,
         recovered,
         feedback: weekFeedback[String(id)] || ''
@@ -251,23 +281,35 @@ async function getClientProducts(cookies: string | null, partnerId: number) {
 }
 
 async function getClientOrders(cookies: string | null, partnerId: number) {
+  // Trend basato su CONSEGNE EFFETTIVE (date_done), non date_order
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
 
-  const orders = await callOdoo(cookies, 'sale.order', 'search_read',
-    [[['commercial_partner_id', '=', partnerId], ['state', 'in', ['sale', 'done']], ['date_order', '>=', formatDate(sixMonthsAgo)]]],
-    { fields: ['id', 'name', 'date_order', 'amount_total'], order: 'date_order asc' }
+  const picks = await callOdoo(cookies, 'stock.picking', 'search_read',
+    [[['picking_type_code', '=', 'outgoing'], ['state', '=', 'done'], ['date_done', '>=', formatDate(sixMonthsAgo)], ['sale_id.commercial_partner_id', '=', partnerId]]],
+    { fields: ['sale_id', 'date_done'] }
   );
 
+  const saleIds = Array.from(new Set(picks
+    .filter((p: any) => p.sale_id && p.sale_id[0])
+    .map((p: any) => p.sale_id[0])));
+  const orders = saleIds.length > 0 ? await callOdoo(cookies, 'sale.order', 'search_read',
+    [[['id', 'in', saleIds]]],
+    { fields: ['id', 'name', 'amount_total'] }
+  ) : [];
+  const amountMap = new Map<number, number>(orders.map((o: any) => [o.id, o.amount_total]));
+
   const weekMap: Record<string, { amount: number; orders: number }> = {};
-  for (const o of orders) {
-    const d = new Date(o.date_order);
+  for (const p of picks) {
+    if (!p.sale_id || !p.sale_id[0]) continue;
+    const amt = amountMap.get(p.sale_id[0]) || 0;
+    const d = new Date(p.date_done);
     const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
     const mon = new Date(d);
     mon.setDate(d.getDate() + diff);
     const wk = `${String(mon.getDate()).padStart(2, '0')}/${String(mon.getMonth() + 1).padStart(2, '0')}`;
     if (!weekMap[wk]) weekMap[wk] = { amount: 0, orders: 0 };
-    weekMap[wk].amount += o.amount_total;
+    weekMap[wk].amount += amt;
     weekMap[wk].orders += 1;
   }
 

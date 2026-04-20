@@ -16,10 +16,12 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven'];
 
 interface DayOrder { orderId: number; orderName: string; amount: number; }
+type Allarme = 'GRAVE' | 'SI' | 'NO';
 interface Client {
   id: number; name: string; phone: string; fatturato3m: number; ordini3m: number;
   mediaOrdine: number; category: 'hot' | 'warm' | 'cold'; recovered: boolean;
   feedback: string; dailyStatus: Record<string, DayOrder | null>;
+  consPerSettimana: number; silenzioGiorni: number; ultimaConsegna: string; allarme: Allarme;
 }
 interface WeeklyData {
   weekStart: string; weekEnd: string; totalLastWeek: number; totalThisWeek: number;
@@ -30,6 +32,11 @@ interface OrderTrend { week: string; amount: number; orders: number; }
 
 const borderColor = { hot: 'border-red-500', warm: 'border-yellow-500', cold: 'border-gray-600' };
 const bgRow = { hot: 'bg-red-500/5', warm: 'bg-yellow-500/5', cold: 'bg-slate-800/30' };
+const allarmeBadge: Record<Allarme, string> = {
+  GRAVE: 'bg-red-500/20 text-red-300 border-red-500/40',
+  SI: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+  NO: 'bg-slate-700/40 text-slate-400 border-slate-600/40',
+};
 
 export default function ClientiMancantiPage() {
   const [data, setData] = useState<WeeklyData | null>(null);
@@ -40,6 +47,7 @@ export default function ClientiMancantiPage() {
   const [feedbacks, setFeedbacks] = useState<Record<number, string>>({});
   const [expandedFeedback, setExpandedFeedback] = useState<number | null>(null);
   const [dayPopup, setDayPopup] = useState<{ clientId: number; day: string; order: DayOrder } | null>(null);
+  const [soloAllarmi, setSoloAllarmi] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -95,8 +103,12 @@ export default function ClientiMancantiPage() {
     });
   };
 
-  const missing = data?.clients?.length || 0;
-  const fatRischio = data?.clients?.reduce((s, c) => s + c.fatturato3m, 0) || 0;
+  const allClients = data?.clients || [];
+  const visibleClients = soloAllarmi ? allClients.filter(c => c.allarme !== 'NO') : allClients;
+  const missing = allClients.length;
+  const fatRischio = allClients.reduce((s, c) => s + c.fatturato3m, 0);
+  const veriAllarmi = allClients.filter(c => c.allarme !== 'NO');
+  const fatVeriAllarmi = veriAllarmi.reduce((s, c) => s + c.fatturato3m, 0);
 
   const todayIdx = Math.min(new Date().getDay() - 1, 4); // 0=mon..4=fri, cap at fri
 
@@ -136,10 +148,10 @@ export default function ClientiMancantiPage() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Clienti sett. scorsa', value: data.totalLastWeek, icon: Users, color: 'text-blue-400' },
-                { label: 'Clienti questa sett.', value: data.totalThisWeek, icon: Users, color: 'text-green-400' },
-                { label: 'Mancanti', value: missing, icon: AlertTriangle, color: 'text-red-400', accent: true },
-                { label: 'Ordini a rischio', value: fmtCHF(fatRischio), icon: DollarSign, color: 'text-red-400', accent: true },
+                { label: 'Mancanti totali', value: missing, icon: Users, color: 'text-blue-400' },
+                { label: 'Veri allarmi', value: veriAllarmi.length, icon: AlertTriangle, color: 'text-red-400', accent: true },
+                { label: 'Fatt a rischio', value: fmtCHF(fatRischio), icon: DollarSign, color: 'text-yellow-400' },
+                { label: 'Fatt veri allarmi', value: fmtCHF(fatVeriAllarmi), icon: DollarSign, color: 'text-red-400', accent: true },
               ].map((kpi, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                   className={`rounded-xl p-4 border ${kpi.accent ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}>
@@ -154,6 +166,21 @@ export default function ClientiMancantiPage() {
               ))}
             </div>
 
+            {/* Toggle filtro veri allarmi */}
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSoloAllarmi(s => !s)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  soloAllarmi
+                    ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                }`}>
+                {soloAllarmi ? 'Mostra tutti' : 'Solo veri allarmi'}
+              </button>
+              <span className="text-sm text-gray-500">
+                {soloAllarmi ? `${veriAllarmi.length} mostrati` : `${allClients.length} mostrati`}
+              </span>
+            </div>
+
             {/* Table */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
               className="rounded-xl border border-white/10 overflow-hidden">
@@ -162,8 +189,11 @@ export default function ClientiMancantiPage() {
                   <thead>
                     <tr className="bg-white/5 text-gray-400 text-xs uppercase">
                       <th className="text-left px-4 py-3">Cliente</th>
-                      <th className="text-right px-3 py-3 hidden sm:table-cell">Ordini 3M (CHF)</th>
-                      <th className="text-right px-3 py-3 hidden md:table-cell">Ordini 3M</th>
+                      <th className="text-center px-2 py-3">Allarme</th>
+                      <th className="text-right px-3 py-3 hidden sm:table-cell">Fatt 3M</th>
+                      <th className="text-right px-3 py-3 hidden md:table-cell">Cons</th>
+                      <th className="text-right px-3 py-3 hidden md:table-cell">Cons/sett</th>
+                      <th className="text-right px-3 py-3 hidden lg:table-cell">Silenzio</th>
                       {DAY_LABELS.map((d, i) => (
                         <th key={d} className="text-center px-2 py-3 w-12">{d}</th>
                       ))}
@@ -171,7 +201,7 @@ export default function ClientiMancantiPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.clients.map((client, idx) => (
+                    {visibleClients.map((client, idx) => (
                       <motion.tr key={client.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         transition={{ delay: 0.05 * Math.min(idx, 20) }}
                         className={`border-t border-white/5 ${bgRow[client.category]} border-l-4 ${borderColor[client.category]} hover:bg-white/5 transition-colors`}>
@@ -187,11 +217,24 @@ export default function ClientiMancantiPage() {
                             </span>
                           )}
                         </td>
+                        <td className="text-center px-2 py-3">
+                          <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full border ${allarmeBadge[client.allarme]}`}>
+                            {client.allarme}
+                          </span>
+                        </td>
                         <td className="text-right px-3 py-3 hidden sm:table-cell font-mono text-gray-300">
                           {fmtCHF(client.fatturato3m)}
                         </td>
                         <td className="text-right px-3 py-3 hidden md:table-cell text-gray-400">
                           {client.ordini3m}
+                        </td>
+                        <td className="text-right px-3 py-3 hidden md:table-cell text-gray-400">
+                          {client.consPerSettimana.toFixed(1)}
+                        </td>
+                        <td className="text-right px-3 py-3 hidden lg:table-cell">
+                          <span className={client.silenzioGiorni >= 10 ? 'text-red-400' : client.silenzioGiorni >= 7 ? 'text-yellow-400' : 'text-gray-400'}>
+                            {client.silenzioGiorni}gg
+                          </span>
                         </td>
                         {DAYS.map((day, di) => {
                           const status = client.dailyStatus[day];
