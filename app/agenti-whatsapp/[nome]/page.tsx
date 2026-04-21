@@ -12,9 +12,17 @@ import { TabLog } from '../components/TabLog';
 import { TabSettaggi } from '../components/TabSettaggi';
 import { TabTelegram } from '../components/TabTelegram';
 import { TabFollowup } from '../components/TabFollowup';
+import { TabConversazioni } from '../components/TabConversazioni';
+import { TabErrori } from '../components/TabErrori';
+import { TabStatistiche } from '../components/TabStatistiche';
+import { TabMappa } from '../components/TabMappa';
 
 const TABS = [
+  { id: 'mappa', label: 'Mappa' },
   { id: 'stato', label: 'Stato' },
+  { id: 'conversazioni', label: 'Conversazioni' },
+  { id: 'errori', label: 'Errori' },
+  { id: 'statistiche', label: 'Statistiche' },
   { id: 'skills', label: 'Skills' },
   { id: 'memoria', label: 'Memoria' },
   { id: 'log', label: 'Log' },
@@ -27,7 +35,7 @@ type TabId = typeof TABS[number]['id'];
 
 export default function AgentDetailPage() {
   const { nome } = useParams<{ nome: string }>();
-  const [activeTab, setActiveTab] = useState<TabId>('stato');
+  const [activeTab, setActiveTab] = useState<TabId>('mappa');
 
   const agent = WHATSAPP_AGENTS[nome];
   if (!agent) {
@@ -36,7 +44,7 @@ export default function AgentDetailPage() {
         <div className="text-center">
           <p className="text-4xl mb-4">❓</p>
           <p className="text-white/60">Agente &quot;{nome}&quot; non trovato</p>
-          <Link href="/agenti-whatsapp" className="text-blue-400 text-sm mt-4 inline-block hover:underline">
+          <Link href="/infra-monitor" className="text-blue-400 text-sm mt-4 inline-block hover:underline">
             ← Torna alla dashboard
           </Link>
         </div>
@@ -45,11 +53,10 @@ export default function AgentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/agenti-whatsapp" className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href="/infra-monitor" className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white/60" />
           </Link>
           <span className="text-4xl">{agent.emoji}</span>
@@ -59,13 +66,12 @@ export default function AgentDetailPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-white/10 pb-px overflow-x-auto">
+        <div className="flex gap-1 mb-6 border-b border-white/10 pb-px overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+              className={`px-3 md:px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-white/10 text-white border-b-2'
                   : 'text-white/40 hover:text-white/60 hover:bg-white/5'
@@ -77,9 +83,12 @@ export default function AgentDetailPage() {
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="min-h-[400px]">
+          {activeTab === 'mappa' && <TabMappa slug={nome} agent={agent} />}
           {activeTab === 'stato' && <TabStato slug={nome} />}
+          {activeTab === 'conversazioni' && <TabConversazioni slug={nome} />}
+          {activeTab === 'errori' && <TabErrori slug={nome} />}
+          {activeTab === 'statistiche' && <TabStatistiche slug={nome} />}
           {activeTab === 'skills' && <TabSkills slug={nome} />}
           {activeTab === 'memoria' && <TabMemoria slug={nome} />}
           {activeTab === 'log' && <TabLog slug={nome} />}

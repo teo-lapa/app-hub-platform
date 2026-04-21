@@ -22,6 +22,8 @@ export interface WhatsAppAgentConfig {
   maxTurns: { default: number; heavy?: number };
   telegram: { bot: string } | null;
   color: string;
+  /** Se true, il tunnel WhatsApp API espone questo agente (status/log/ecc). */
+  apiAvailable?: boolean;
 }
 
 export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
@@ -47,6 +49,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15, heavy: 50 },
     telegram: { bot: '@stella_lapa_bot' },
     color: '#e94560',
+    apiAvailable: true,
   },
   romeo: {
     name: 'Romeo',
@@ -70,6 +73,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@romeo_lapa_bot' },
     color: '#0f3460',
+    apiAvailable: true,
   },
   diana: {
     name: 'Diana',
@@ -79,20 +83,21 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     whatsapp: '+41 76 803 98 86',
     platforms: ['whatsapp', 'telegram'],
     pc: { ip: '192.168.1.33', ssh: 'diana', os: 'Win + WSL 1' },
-    useWSL: false,
+    useWSL: true,
     paths: {
-      bot: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot',
-      agent: 'C:\\Users\\lapa.DIANA\\diana-agent',
-      skills: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot\\skills',
-      memory: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot\\memory\\MEMORY.md',
-      log: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot\\bot-loop.log',
-      claude: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot\\CLAUDE.md',
-      soul: 'C:\\Users\\lapa.DIANA\\diana-whatsapp-bot\\SOUL.md',
+      bot: '/home/lapa/diana-whatsapp-bot',
+      agent: '/home/lapa/diana-whatsapp-bot',
+      skills: '/home/lapa/diana-whatsapp-bot/skills',
+      memory: '/home/lapa/diana-whatsapp-bot/memory/MEMORY.md',
+      log: '/home/lapa/diana-whatsapp-bot/bot.log',
+      claude: '/home/lapa/diana-whatsapp-bot/CLAUDE.md',
+      soul: '/home/lapa/diana-whatsapp-bot/SOUL.md',
     },
     model: 'sonnet',
     maxTurns: { default: 15 },
     telegram: { bot: '@diana_lapa_bot' },
     color: '#533483',
+    apiAvailable: true,
   },
   vanessa: {
     name: 'Vanessa',
@@ -116,6 +121,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: null,
     color: '#1fab89',
+    apiAvailable: true,
   },
   aurora: {
     name: 'Aurora',
@@ -139,6 +145,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@aurora_social_lapa_bot' },
     color: '#ff6b35',
+    apiAvailable: true,
   },
   sergio: {
     name: 'Sergio',
@@ -153,15 +160,16 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
       bot: 'C:\\Users\\Admin\\agente-vendite',
       agent: 'C:\\Users\\Admin\\agente-vendite',
       skills: 'C:\\Users\\Admin\\agente-vendite\\skills',
-      memory: 'C:\\Users\\Admin\\agente-vendite\\memory\\MEMORY.md',
+      memory: 'C:\\Users\\Admin\\agente-vendite\\MEMORY.md',
       log: 'C:\\Users\\Admin\\agente-vendite\\bot.log',
       claude: 'C:\\Users\\Admin\\agente-vendite\\CLAUDE.md',
-      soul: 'C:\\Users\\Admin\\agente-vendite\\SOUL.md',
+      soul: 'C:\\Users\\Admin\\agente-vendite\\VISIONE.md',
     },
     model: 'opus',
     maxTurns: { default: 15 },
     telegram: { bot: '@lapa_sales_bot' },
     color: '#2196f3',
+    apiAvailable: true,
   },
   giulio: {
     name: 'Giulio',
@@ -185,6 +193,7 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     maxTurns: { default: 15 },
     telegram: { bot: '@giulio_lapa_bot' },
     color: '#4caf50',
+    apiAvailable: true,
   },
   magazzino: {
     name: 'Magazzino',
@@ -194,20 +203,21 @@ export const WHATSAPP_AGENTS: Record<string, WhatsAppAgentConfig> = {
     whatsapp: null,
     platforms: ['telegram'],
     pc: { ip: '192.168.1.37', ssh: 'lapa10', os: 'Win + WSL 2' },
-    useWSL: true,
+    useWSL: false,
     paths: {
-      bot: '/home/lapa/magazzino-agent',
-      agent: '/home/lapa/magazzino-agent',
-      skills: '/home/lapa/magazzino-agent/skills',
-      memory: '/home/lapa/magazzino-agent/memory/MEMORY.md',
-      log: '/home/lapa/magazzino-agent/bot.log',
-      claude: '/home/lapa/magazzino-agent/CLAUDE.md',
-      soul: '/home/lapa/magazzino-agent/SOUL.md',
+      bot: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO',
+      agent: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO',
+      skills: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO\\skills',
+      memory: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO\\MEMORY.md',
+      log: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO\\bot.log',
+      claude: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO\\CLAUDE.md',
+      soul: 'C:\\Users\\lapa\\Dev\\Claude Code Generale\\PROGETTI\\13-AGENTE-MAGAZZINO\\SOUL.md',
     },
     model: 'sonnet',
     maxTurns: { default: 15 },
     telegram: { bot: '@lapa_magazzino_bot' },
     color: '#795548',
+    apiAvailable: true,
   },
 };
 
