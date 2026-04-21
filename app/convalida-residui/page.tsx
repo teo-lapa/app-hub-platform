@@ -1374,18 +1374,18 @@ export default function ConvalidaResiduiPage() {
         const templateId = productData[0].product_tmpl_id[0];
 
         // Ora otteniamo i prodotti alternativi dal template
-        const templateData = await searchReadConvalida<{ alternative_product_ids: number[] }>(
+        const templateData = await searchReadConvalida<{ x_prodotti_sostituzione_ids: number[] }>(
           'product.template',
           [['id', '=', templateId]],
-          ['alternative_product_ids'],
+          ['x_prodotti_sostituzione_ids'],
           1
         );
 
-        if (templateData.length > 0 && templateData[0].alternative_product_ids && templateData[0].alternative_product_ids.length > 0) {
+        if (templateData.length > 0 && templateData[0].x_prodotti_sostituzione_ids && templateData[0].x_prodotti_sostituzione_ids.length > 0) {
           // Carichiamo i dettagli dei prodotti alternativi con immagini e giacenza
           const alternativeProducts = await searchReadConvalida<Product>(
             'product.product',
-            [['product_tmpl_id', 'in', templateData[0].alternative_product_ids]],
+            [['product_tmpl_id', 'in', templateData[0].x_prodotti_sostituzione_ids]],
             ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'image_128', 'qty_available'],
             100
           );

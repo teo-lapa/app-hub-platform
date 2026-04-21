@@ -212,14 +212,14 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
           model: 'product.template',
           method: 'search_read',
           args: [[['id', '=', templateId]]],
-          kwargs: { fields: ['alternative_product_ids'], limit: 1 }
+          kwargs: { fields: ['x_prodotti_sostituzione_ids'], limit: 1 }
         }),
       });
 
       const templateData = await templateResponse.json();
       if (!templateData.result || templateData.result.length === 0 ||
-          !templateData.result[0].alternative_product_ids ||
-          templateData.result[0].alternative_product_ids.length === 0) {
+          !templateData.result[0].x_prodotti_sostituzione_ids ||
+          templateData.result[0].x_prodotti_sostituzione_ids.length === 0) {
         setError('Nessun prodotto alternativo configurato');
         setAlternativeProducts([]);
         setShowAlternatives(true);
@@ -234,7 +234,7 @@ export default function ManualProductSearch({ customerId, onProductAdd }: Manual
         body: JSON.stringify({
           model: 'product.product',
           method: 'search_read',
-          args: [[['product_tmpl_id', 'in', templateData.result[0].alternative_product_ids]]],
+          args: [[['product_tmpl_id', 'in', templateData.result[0].x_prodotti_sostituzione_ids]]],
           kwargs: {
             fields: ['id', 'name', 'default_code', 'image_128', 'qty_available', 'uom_id', 'list_price'],
             limit: 50
