@@ -4,6 +4,7 @@ import { getOdooClient } from '@/lib/odoo-client';
 export const dynamic = 'force-dynamic';
 
 const MODEL = 'x_catalog_photo_job';
+const TAG_CATALOGATO = 316;
 const FIELDS = [
   'id', 'x_operator_name', 'x_odoo_product_id', 'x_odoo_product_name',
   'x_notes', 'x_status', 'x_photo_urls', 'x_photo_count',
@@ -43,15 +44,54 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const domain = status ? [['x_status', '=', status]] : [];
-
     const client = await getOdooClient();
+
+    // 1. Job reali
+    const domain = status ? [['x_status', '=', status]] : [];
     const rows = await client.searchReadKw(MODEL, domain, FIELDS, {
       limit,
       order: 'create_date desc'
     });
+    const jobs = (rows || []).map(mapRecord);
 
-    const data = (rows || []).map(mapRecord);
+    // 2. Se filtro = completed o nessun filtro: aggiungi prodotti con tag Catalogato App
+    //    (esclusi quelli già nei job reali)
+    let legacy: any[] = [];
+    if (!status || status === 'completed') {
+      const existingTmplIds = new Set(jobs.map(j => j.odoo_product_id).filter(Boolean));
+      const products = await client.searchReadKw(
+        'product.template',
+        [['product_tag_ids', 'in', [TAG_CATALOGATO]]],
+        ['id', 'name', 'write_date', 'image_128'],
+        { limit: 500, order: 'write_date desc' }
+      );
+      legacy = (products || [])
+        .filter((p: any) => !existingTmplIds.has(p.id))
+        .map((p: any) => ({
+          id: `tpl_${p.id}`,
+          operator_name: null,
+          odoo_product_id: p.id,
+          odoo_product_name: p.name,
+          notes: null,
+          status: 'completed',
+          photo_urls: p.image_128 ? [`data:image/png;base64,${p.image_128}`] : [],
+          photo_count: 0,
+          result_json: null,
+          error_message: null,
+          processed_at: p.write_date || null,
+          created_at: p.write_date || null,
+          updated_at: p.write_date || null,
+          is_legacy: true,
+        }));
+    }
+
+    // Merge + ordina per data desc
+    const data = [...jobs, ...legacy].sort((a, b) => {
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return db - da;
+    });
+
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('catalogo-foto jobs GET error:', error);
