@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOdooXMLRPCClient } from '@/lib/odoo-xmlrpc';
+import { getOdooClient } from '@/lib/odoo-client';
 
 export const dynamic = 'force-dynamic';
 
 const MODEL = 'x_catalog_photo_job';
+const FIELDS = [
+  'id', 'x_operator_name', 'x_odoo_product_id', 'x_odoo_product_name',
+  'x_notes', 'x_status', 'x_photo_urls', 'x_photo_count',
+  'x_result_json', 'x_error_message', 'x_processed_at',
+  'create_date', 'write_date'
+];
 
-function safeJsonParse(s: string, fallback: any) {
+function safeJsonParse(s: any, fallback: any) {
+  if (!s || typeof s !== 'string') return fallback;
   try { return JSON.parse(s); } catch { return fallback; }
 }
 
 function mapRecord(r: any) {
-  const photoUrls = r.x_photo_urls ? safeJsonParse(r.x_photo_urls, []) : [];
-  const resultJson = r.x_result_json ? safeJsonParse(r.x_result_json, null) : null;
+  const photoUrls = safeJsonParse(r.x_photo_urls, []);
+  const resultJson = safeJsonParse(r.x_result_json, null);
   const odooProductId = Array.isArray(r.x_odoo_product_id) ? r.x_odoo_product_id[0] : (r.x_odoo_product_id || null);
   return {
     id: r.id,
@@ -41,14 +48,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'ID non valido' }, { status: 400 });
     }
 
-    const client = await getOdooXMLRPCClient();
-    const fields = [
-      'id', 'x_operator_name', 'x_odoo_product_id', 'x_odoo_product_name',
-      'x_notes', 'x_status', 'x_photo_urls', 'x_photo_count',
-      'x_result_json', 'x_error_message', 'x_processed_at',
-      'create_date', 'write_date'
-    ];
-    const rows = await client.execute_kw(MODEL, 'read', [[recordId], fields]);
+    const client = await getOdooClient();
+    const rows = await client.read(MODEL, [recordId], FIELDS);
 
     if (!rows || rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Job non trovato' }, { status: 404 });
@@ -56,6 +57,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: mapRecord(rows[0]) });
   } catch (error: any) {
+    console.error('catalogo-foto jobs/[id] GET error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
@@ -83,12 +85,13 @@ export async function PATCH(
     if (body.status === 'completed') values.x_processed_at = new Date().toISOString().replace('T', ' ').split('.')[0];
 
     if (Object.keys(values).length > 0) {
-      const client = await getOdooXMLRPCClient();
-      await client.execute_kw(MODEL, 'write', [[recordId], values]);
+      const client = await getOdooClient();
+      await client.write(MODEL, [recordId], values);
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error('catalogo-foto jobs/[id] PATCH error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
