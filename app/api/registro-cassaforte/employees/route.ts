@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       'search_read',
       [[['active', '=', true]]],
       {
-        fields: ['id', 'name', 'work_email', 'department_id', 'user_id', 'image_128'],
+        fields: ['id', 'name', 'work_email', 'department_id', 'user_id', 'x_face_embedding'],
         order: 'name asc',
       }
     );
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       work_email: emp.work_email || '',
       department_id: emp.department_id || null,
       user_id: emp.user_id ? emp.user_id[0] : null,
-      has_face_enrolled: !!emp.image_128, // Per ora usiamo image_128 come indicatore
+      has_face_enrolled: !!emp.x_face_embedding,
     }));
 
     // Rimuovi duplicati per nome (alcuni dipendenti hanno record doppi)
