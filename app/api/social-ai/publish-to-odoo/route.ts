@@ -30,11 +30,19 @@ async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype
     const { Jimp } = await import('jimp');
     const image = await Jimp.read(buffer);
     const jpegBuffer = await image.getBuffer('image/jpeg', { quality: 90 });
-    console.log(`✅ [PUBLISH-ODOO] Convertito: ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    console.log(`✅ [PUBLISH-ODOO] Convertito (jimp): ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
     return { buffer: Buffer.from(jpegBuffer), mimetype: 'image/jpeg', extension: 'jpg' };
   } catch (e: any) {
-    console.error('⚠️ [PUBLISH-ODOO] Errore conversione jimp:', e.message);
-    return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
+    console.error('⚠️ [PUBLISH-ODOO] jimp fallito, provo sharp fallback:', e.message);
+    try {
+      const sharp = (await import('sharp')).default;
+      const jpegBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+      console.log(`✅ [PUBLISH-ODOO] Convertito (sharp): ${Math.round(jpegBuffer.length / 1024)}KB`);
+      return { buffer: jpegBuffer, mimetype: 'image/jpeg', extension: 'jpg' };
+    } catch (e2: any) {
+      console.error('❌ [PUBLISH-ODOO] Anche sharp fallito:', e2.message);
+      throw new Error(`Conversione JPEG fallita (jimp: ${e.message}, sharp: ${e2.message}). Instagram rifiuta formato non-JPEG.`);
+    }
   }
 }
 
