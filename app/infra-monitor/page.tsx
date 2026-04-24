@@ -524,12 +524,25 @@ export default function InfraMonitorPage() {
   const summary = data?.summary;
   const devices = data?.devices || [];
   const odoo = data?.odoo;
+  const collectorAgents = data?.agents || [];
 
-  // Live agents summary
+  // Helper: per slug agente prendi msg counts dal collector (vero) se disponibili,
+  // altrimenti fallback a liveAgents (tunnel — può essere sballato)
+  const msgCountsFor = (slug: string, fallback: number) => {
+    const fromCollector = collectorAgents.find(
+      a => a.name.toLowerCase().replace(/\s+bot$/, '') === slug.toLowerCase()
+    );
+    const total = (fromCollector as any)?.total24h;
+    return typeof total === 'number' ? total : fallback;
+  };
+
+  // Live agents summary — msg counts preferibilmente dal collector (vero)
   const agentsOnlineCount = liveAgents.filter(a => a.online).length;
   const agentsTotalCount = liveAgents.length;
   const agentsWarningCount = liveAgents.filter(a => a.errors24h > 0).length;
-  const agentsMsgTotal = liveAgents.reduce((acc, a) => acc + a.total24h, 0);
+  const agentsMsgTotal = liveAgents.reduce(
+    (acc, a) => acc + msgCountsFor(a.slug, a.total24h), 0
+  );
   const agentsErrorsTotal = liveAgents.reduce((acc, a) => acc + a.errors24h, 0);
 
   // ─── Main Render ──────────────────────────────────────────
@@ -725,7 +738,10 @@ export default function InfraMonitorPage() {
                   return a.agent.name.localeCompare(b.agent.name);
                 })
                 .map(state => (
-                  <LiveAgentRow key={state.slug} state={state} />
+                  <LiveAgentRow
+                    key={state.slug}
+                    state={{ ...state, total24h: msgCountsFor(state.slug, state.total24h) }}
+                  />
                 ))}
             </div>
           </motion.div>
