@@ -17,7 +17,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- Configuration ---
@@ -56,7 +56,8 @@ def ssh_cmd(host, cmd, timeout=SSH_TIMEOUT):
             ssh_args[4] = "C:/Users/lapa/.ssh/id_rsa"
         env = {**os.environ, "HOME": "C:\\Users\\lapa", "USERPROFILE": "C:\\Users\\lapa"}
         result = subprocess.run(
-            ssh_args, capture_output=True, text=True, timeout=timeout, env=env
+            ssh_args, capture_output=True, text=True, timeout=timeout, env=env,
+            encoding='utf-8', errors='replace',
         )
         return result.stdout.strip(), result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -347,6 +348,7 @@ def check_lapa_sales_services(host, device):
     })
     if not vanessa_ok:
         device['errors'].append('Vanessa WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Vanessa', host, '/home/lapa/vanessa-whatsapp-bot/bot.log')
 
 
 def collect_powershell_pc(host, device_id, name, ip, processor, services_check=None):
@@ -443,6 +445,47 @@ def collect_powershell_pc(host, device_id, name, ip, processor, services_check=N
     return device
 
 
+# --- WhatsApp bot.log message counter (real msg counts via SSH+WSL) ---
+
+def count_bot_msgs_24h(host, log_path):
+    """Conta msg inbound/outbound nelle ultime 24h dal bot.log via SSH+WSL.
+    Ritorna (inbound, outbound, last_msg_iso). Se SSH fallisce -> (0,0,None)."""
+    out, ok = ssh_cmd(host, f'wsl tail -n 5000 {log_path}', timeout=20)
+    if not ok or not out:
+        return 0, 0, None
+    cutoff = (datetime.utcnow() - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%S')
+    inbound = 0
+    outbound = 0
+    last_msg = None
+    for line in out.split('\n'):
+        if len(line) < 23 or line[4] != '-' or line[10] != 'T':
+            continue
+        ts = line[:19]
+        if ts < cutoff:
+            continue
+        is_in = 'OWNER:' in line or '- FROM ' in line or 'Processing text:' in line
+        is_out = 'Outbox:' in line or 'sent to' in line.lower()
+        if is_in:
+            inbound += 1
+            last_msg = ts
+        if is_out:
+            outbound += 1
+            last_msg = ts
+    return inbound, outbound, last_msg
+
+
+def attach_msg_stats(device, agent_service_name, host, log_path):
+    """Aggiunge total24h, in24h, out24h, lastMsgTs al service dell'agente."""
+    inb, outb, last_ts = count_bot_msgs_24h(host, log_path)
+    for svc in device.get('services', []):
+        if svc['name'] == agent_service_name:
+            svc['in24h'] = inb
+            svc['out24h'] = outb
+            svc['total24h'] = inb + outb
+            svc['lastMsgTs'] = last_ts
+            break
+
+
 def check_stella_services(host, device):
     pid_out, pid_ok = ssh_cmd(host, 'wsl pgrep -f "node bot.js"')
     stella_ok = pid_ok and pid_out.strip() != ''
@@ -452,6 +495,7 @@ def check_stella_services(host, device):
     })
     if not stella_ok:
         device['errors'].append('Stella WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Stella', host, '/home/lapa/stella-whatsapp-bot/bot.log')
 
     # Aurora Telegram bot (pythonw.exe con "aurora" nella commandline)
     task_out, _ = ssh_cmd(host, 'tasklist /fi "imagename eq pythonw.exe"')
@@ -477,6 +521,7 @@ def check_romeo_services(host, device):
     })
     if not romeo_ok:
         device['errors'].append('Romeo WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Romeo', host, '/home/lapa/romeo-whatsapp-bot/bot.log')
 
 
 def check_diana_services(host, device):
@@ -488,6 +533,7 @@ def check_diana_services(host, device):
     })
     if not diana_ok:
         device['errors'].append('Diana WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Diana', host, '/home/lapa/diana-whatsapp-bot/bot.log')
 
 
 def collect_jetson():
@@ -603,6 +649,10 @@ def build_agents_summary(devices):
                     'device': info['device'], 'status': svc['status'],
                     'port': svc.get('port'), 'details': svc.get('details'),
                     'emoji': info['emoji'],
+                    'total24h': svc.get('total24h', 0),
+                    'in24h': svc.get('in24h', 0),
+                    'out24h': svc.get('out24h', 0),
+                    'lastMsgTs': svc.get('lastMsgTs'),
                 })
     return agents
 
