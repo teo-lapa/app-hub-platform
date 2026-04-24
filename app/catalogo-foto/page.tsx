@@ -683,7 +683,7 @@ export default function CatalogoFotoPage() {
                           {/* Odoo link for completed */}
                           {job.status === 'completed' && job.odoo_product_id && (
                             <a
-                              href={`https://lapadevadmin-lapa-v2.odoo.com/web#id=${job.odoo_product_id}&model=product.product&view_type=form`}
+                              href={`https://lapadevadmin-lapa-v2.odoo.com/web#id=${job.odoo_product_id}&model=product.template&view_type=form`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
