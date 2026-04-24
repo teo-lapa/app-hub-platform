@@ -33,16 +33,9 @@ async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype
     console.log(`✅ [PUBLISH-ODOO] Convertito (jimp): ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
     return { buffer: Buffer.from(jpegBuffer), mimetype: 'image/jpeg', extension: 'jpg' };
   } catch (e: any) {
-    console.error('⚠️ [PUBLISH-ODOO] jimp fallito, provo sharp fallback:', e.message);
-    try {
-      const sharp = (await import('sharp')).default;
-      const jpegBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-      console.log(`✅ [PUBLISH-ODOO] Convertito (sharp): ${Math.round(jpegBuffer.length / 1024)}KB`);
-      return { buffer: jpegBuffer, mimetype: 'image/jpeg', extension: 'jpg' };
-    } catch (e2: any) {
-      console.error('❌ [PUBLISH-ODOO] Anche sharp fallito:', e2.message);
-      throw new Error(`Conversione JPEG fallita (jimp: ${e.message}, sharp: ${e2.message}). Instagram rifiuta formato non-JPEG.`);
-    }
+    console.error('❌ [PUBLISH-ODOO] Conversione jimp FALLITA:', e.message);
+    // Non ritornare piu' il buffer originale come "JPEG" - Instagram rifiuta
+    throw new Error(`Conversione JPEG fallita: ${e.message}. Instagram rifiuta formato ${format}.`);
   }
 }
 
