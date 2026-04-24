@@ -131,10 +131,11 @@ function MetricBar({ label, value, max, unit, icon: Icon, thresholdWarn, thresho
 
 // ─── Device Card ───────────────────────────────────────────────────
 
-function DeviceCard({ device }: { device: DeviceStatus }) {
+function DeviceCard({ device, isStale, ageMinutes }: { device: DeviceStatus; isStale?: boolean; ageMinutes?: number }) {
   const [expanded, setExpanded] = useState(false);
 
-  const overallStatus = !device.online ? 'offline'
+  const overallStatus = isStale ? 'offline'
+    : !device.online ? 'offline'
     : device.errors && device.errors.length > 0 ? 'ko'
     : device.warnings && device.warnings.length > 0 ? 'warning'
     : 'ok';
@@ -179,7 +180,14 @@ function DeviceCard({ device }: { device: DeviceStatus }) {
               <TypeIcon className={`w-5 h-5 ${device.online ? 'text-blue-400' : 'text-slate-600'}`} />
             </div>
             <div>
-              <h3 className="font-semibold text-white text-sm">{device.name}</h3>
+              <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+                {device.name}
+                {isStale && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-600/40 text-slate-300 border border-slate-500/40">
+                    STALE {ageMinutes}min
+                  </span>
+                )}
+              </h3>
               <p className="text-xs text-slate-500">{device.ip}{device.processor ? ` \u2022 ${device.processor}` : ''}</p>
             </div>
           </div>
@@ -585,6 +593,35 @@ export default function InfraMonitorPage() {
         </div>
       </motion.div>
 
+      {/* ─── Stale Data Banner ──────────────────────────── */}
+      {isStale && (
+        <div
+          className={`w-full border-b-2 ${
+            ageMinutes >= 1440
+              ? 'bg-red-900/80 border-red-500 animate-pulse'
+              : ageMinutes >= 30
+              ? 'bg-red-900/60 border-red-500/70'
+              : 'bg-amber-900/60 border-amber-500/70'
+          }`}
+        >
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
+            <p className={`text-sm sm:text-base font-semibold ${
+              ageMinutes >= 30 ? 'text-red-100' : 'text-amber-100'
+            }`}>
+              {ageMinutes < 30 && (
+                <>⚠️ Dati in ritardo: ultima raccolta {ageMinutes} min fa. I valori potrebbero non essere aggiornati.</>
+              )}
+              {ageMinutes >= 30 && ageMinutes < 1440 && (
+                <>🚨 Collector fermo da {ageMinutes} min. Dati DISPOSITIVI/SERVIZI/ODOO non affidabili.</>
+              )}
+              {ageMinutes >= 1440 && (
+                <>🚨🚨 COLLECTOR MORTO da {Math.floor(ageMinutes / 1440)} giorni. I dati Dispositivi/Servizi/Odoo sotto sono FOTOGRAFIE OBSOLETE — NON RIFLETTONO LA REALTÀ. Riavvia LAPA-InfraCollector su PAUL.</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ─── Summary Cards ─────────────────────────────── */}
         <motion.div
@@ -597,11 +634,19 @@ export default function InfraMonitorPage() {
           <SummaryCard label="Msg 24h" value={agentsMsgTotal} icon={MessageSquare} color="bg-blue-600" />
           <SummaryCard label="Errori 24h" value={agentsErrorsTotal} icon={AlertTriangle} color={agentsErrorsTotal > 0 ? 'bg-red-600' : 'bg-slate-600'} />
           {summary ? (
-            <>
-              <SummaryCard label="Dispositivi" value={`${summary.online}/${summary.totalDevices}`} icon={Server} color="bg-emerald-600" />
-              <SummaryCard label="Servizi OK" value={summary.servicesOk} icon={CheckCircle2} color="bg-emerald-600" />
-              <SummaryCard label="Warning/KO" value={summary.servicesWarning + summary.servicesKo} icon={XCircle} color={(summary.servicesKo > 0) ? 'bg-red-600' : summary.servicesWarning > 0 ? 'bg-amber-600' : 'bg-slate-600'} />
-            </>
+            isStale ? (
+              <>
+                <SummaryCard label="Dispositivi · stale" value={'—'} icon={Server} color="bg-slate-700" />
+                <SummaryCard label="Servizi · stale" value={'—'} icon={CheckCircle2} color="bg-slate-700" />
+                <SummaryCard label="Warning/KO · stale" value={'—'} icon={XCircle} color="bg-slate-700" />
+              </>
+            ) : (
+              <>
+                <SummaryCard label="Dispositivi" value={`${summary.online}/${summary.totalDevices}`} icon={Server} color="bg-emerald-600" />
+                <SummaryCard label="Servizi OK" value={summary.servicesOk} icon={CheckCircle2} color="bg-emerald-600" />
+                <SummaryCard label="Warning/KO" value={summary.servicesWarning + summary.servicesKo} icon={XCircle} color={(summary.servicesKo > 0) ? 'bg-red-600' : summary.servicesWarning > 0 ? 'bg-amber-600' : 'bg-slate-600'} />
+              </>
+            )
           ) : (
             <>
               <SummaryCard label="Dispositivi" value={'—'} icon={Server} color="bg-slate-700" />
@@ -617,24 +662,32 @@ export default function InfraMonitorPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/30 p-4"
+            className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border p-4 ${
+              isStale ? 'border-slate-600/50' : 'border-slate-700/30'
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-purple-400" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isStale ? 'bg-slate-600/20' : 'bg-purple-600/20'
+                }`}>
+                  <Globe className={`w-5 h-5 ${isStale ? 'text-slate-400' : 'text-purple-400'}`} />
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Odoo Produzione</h3>
-                  <p className="text-xs text-slate-500">ERP LAPA</p>
+                  <p className="text-xs text-slate-500">
+                    {isStale ? 'dato non aggiornato' : 'ERP LAPA'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">{odoo.ordersToday}</p>
+                  <p className={`text-lg font-bold ${isStale ? 'text-slate-500' : 'text-white'}`}>
+                    {isStale ? '—' : odoo.ordersToday}
+                  </p>
                   <p className="text-xs text-slate-500">Ordini oggi</p>
                 </div>
-                <StatusBadge status={odoo.connected ? 'ok' : 'ko'} />
+                <StatusBadge status={isStale ? 'offline' : odoo.connected ? 'ok' : 'ko'} />
               </div>
             </div>
           </motion.div>
@@ -690,7 +743,6 @@ export default function InfraMonitorPage() {
               Dispositivi
               <span className="text-xs text-slate-500 font-normal ml-2">
                 {devices.filter(d => d.online).length}/{devices.length} online
-                {isStale && <span className="text-amber-400"> · collector stale {ageMinutes}min</span>}
               </span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -703,7 +755,7 @@ export default function InfraMonitorPage() {
                   return a.name.localeCompare(b.name);
                 })
                 .map((device) => (
-                  <DeviceCard key={device.id} device={device} />
+                  <DeviceCard key={device.id} device={device} isStale={isStale} ageMinutes={ageMinutes} />
                 ))}
             </div>
           </motion.div>
