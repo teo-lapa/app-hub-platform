@@ -250,43 +250,37 @@ export function buildChatterHtml(opts: {
   mdAttachmentId?: number;
   mdPreview?: string;
 }): string {
+  // Odoo chatter rende HTML solo se il body NON è wrappato in <p> dall'esterno.
+  // La memoria LAPA dice: "Chatter Odoo: solo testo semplice, MAI HTML".
+  // Quindi usiamo plain text con line break \n.
   if (opts.status === 'failed') {
     return [
-      `<p>🔴 <b>OCR FALLITO</b> per allegato <code>${escapeHtml(opts.attachmentName)}</code></p>`,
-      `<p>Errore: <code>${escapeHtml(opts.errorMessage || 'sconosciuto')}</code></p>`,
-      `<p>Verra ritentato al prossimo giro del cron.</p>`,
+      `🔴 OCR FALLITO per ${opts.attachmentName}`,
+      `Errore: ${opts.errorMessage || 'sconosciuto'}`,
+      `Verrà ritentato al prossimo giro del cron.`,
     ].join('\n');
   }
 
   const h = opts.header || ({} as OCRHeader);
   const lines: string[] = [];
-  lines.push(`<p>🤖 <b>OCR completato</b> in ${opts.wallTimeSec ?? 0}s su ${opts.numPages ?? 1} pagine.</p>`);
-  lines.push('<ul>');
-  if (h.doc_type) lines.push(`<li><b>Tipo:</b> ${escapeHtml(h.doc_type)}</li>`);
-  if (h.vendor) lines.push(`<li><b>Fornitore:</b> ${escapeHtml(h.vendor)}</li>`);
-  if (h.customer) lines.push(`<li><b>Cliente:</b> ${escapeHtml(h.customer)}</li>`);
-  if (h.doc_number) lines.push(`<li><b>Numero:</b> ${escapeHtml(h.doc_number)}</li>`);
-  if (h.doc_date) lines.push(`<li><b>Data:</b> ${escapeHtml(h.doc_date)}</li>`);
+  lines.push(`🤖 OCR completato in ${opts.wallTimeSec ?? 0}s su ${opts.numPages ?? 1} pagine`);
+  lines.push('');
+  if (h.doc_type) lines.push(`Tipo: ${h.doc_type}`);
+  if (h.vendor) lines.push(`Fornitore: ${h.vendor}`);
+  if (h.customer) lines.push(`Cliente: ${h.customer}`);
+  if (h.doc_number) lines.push(`Numero: ${h.doc_number}`);
+  if (h.doc_date) lines.push(`Data: ${h.doc_date}`);
   if (h.currency || h.total != null) {
     const t = h.total != null ? h.total.toFixed(2) : '?';
-    lines.push(`<li><b>Totale:</b> ${escapeHtml(h.currency || '')} ${t}</li>`);
+    lines.push(`Totale: ${h.currency || ''} ${t}`.trim());
   }
-  if (h.iban) lines.push(`<li><b>IBAN:</b> ${escapeHtml(h.iban)}</li>`);
-  if (opts.newName) lines.push(`<li><b>File:</b> <code>${escapeHtml(opts.newName)}</code></li>`);
-  if (opts.mdAttachmentId) lines.push(`<li><b>MD allegato:</b> id ${opts.mdAttachmentId}</li>`);
-  lines.push('</ul>');
+  if (h.iban) lines.push(`IBAN: ${h.iban}`);
+  if (opts.newName) lines.push(`File: ${opts.newName}`);
+  if (opts.mdAttachmentId) lines.push(`MD allegato id: ${opts.mdAttachmentId}`);
   if (opts.mdPreview) {
-    const preview = opts.mdPreview.slice(0, 600);
-    lines.push(`<details><summary>Anteprima MD</summary><pre>${escapeHtml(preview)}</pre></details>`);
+    lines.push('');
+    lines.push('--- Anteprima MD ---');
+    lines.push(opts.mdPreview.slice(0, 600));
   }
-  return lines.join('\n');
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return lines.join('\n').replace(/\n/g, '<br>');
 }
