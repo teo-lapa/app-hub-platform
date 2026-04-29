@@ -35,19 +35,6 @@ const JUNK_NAME_PATTERNS = [
   /tracking[-_]?pixel/i,
 ];
 
-/** Prefissi che indicano un file gia rinominato dal cleaner. */
-const ALREADY_CLEANED_PREFIXES = [
-  'Fattura ',
-  'Estratto ',
-  'DDT ',
-  'Bolla ',
-  'Lieferschein ',
-  'Rechnung ',
-  'Kontoauszug ',
-  'Foto ',
-  'Documento ',
-];
-
 export function isJunkAttachment(name: string, fileSize: number, mimetype: string): { skip: boolean; reason?: string } {
   if (fileSize < MIN_ATTACHMENT_BYTES) {
     return { skip: true, reason: `troppo piccolo (${fileSize}B < ${MIN_ATTACHMENT_BYTES}B)` };
@@ -63,12 +50,14 @@ export function isJunkAttachment(name: string, fileSize: number, mimetype: strin
       return { skip: true, reason: `match junk pattern: ${pattern}` };
     }
   }
-  for (const pref of ALREADY_CLEANED_PREFIXES) {
-    if (name.startsWith(pref)) {
-      return { skip: true, reason: `gia rinominato (${pref}...)` };
-    }
-  }
   return { skip: false };
+}
+
+/** Vero se nella lista esiste un .md con stesso basename del file. */
+export function hasCompanionMarkdown(name: string, allAttachmentNames: string[]): boolean {
+  const base = name.replace(/\.[A-Za-z0-9]+$/, '');
+  const expectedMd = `${base}.md`;
+  return allAttachmentNames.some((n) => n === expectedMd);
 }
 
 // ---------------------------------------------------------------------------

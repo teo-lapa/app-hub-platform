@@ -5,6 +5,7 @@ import {
   TAG_OCR_DONE,
   TAG_OCR_FAILED,
   isJunkAttachment,
+  hasCompanionMarkdown,
   jetsonJobStart,
   jetsonJobStatus,
   buildCleanedName,
@@ -63,18 +64,20 @@ interface AttachState {
 
 async function processTask(taskId: number, tagDoneId: number, tagFailedId: number) {
   const states: AttachState[] = [];
-  const attachments: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
+  // Carico tutti gli attachment del task (anche .md per check companion)
+  const allAttachments: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
     [
       ['res_model', '=', 'project.task'],
       ['res_id', '=', taskId],
-      '|',
-      ['mimetype', '=', 'application/pdf'],
-      ['mimetype', 'like', 'image/%'],
     ],
     ['id', 'name', 'mimetype', 'file_size', 'description'],
   ]);
+  const allNames = allAttachments.map((a: any) => a.name);
+  const attachments = allAttachments.filter((a: any) =>
+    a.mimetype === 'application/pdf' || (a.mimetype || '').startsWith('image/'),
+  );
 
-  if (!Array.isArray(attachments) || attachments.length === 0) {
+  if (attachments.length === 0) {
     await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
     return { processed: 0, skipped: 0, failed: 0, pending: 0, details: ['Nessun allegato candidato'] };
   }
@@ -93,6 +96,12 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
 
     if (filter.skip && !desc.startsWith(JOB_PREFIX)) {
       states.push({ ...baseState, outcome: 'skipped', detail: `SKIP ${att.name}: ${filter.reason}` });
+      continue;
+    }
+
+    // Se esiste già un MD compagno, considero gia processato e skippo
+    if (hasCompanionMarkdown(att.name, allNames) && !desc.startsWith(JOB_PREFIX)) {
+      states.push({ ...baseState, outcome: 'skipped', detail: `SKIP ${att.name}: MD compagno già presente` });
       continue;
     }
 
