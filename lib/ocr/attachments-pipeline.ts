@@ -271,5 +271,5 @@ export function buildChatterHtml(opts: {
     lines.push('--- Anteprima MD ---');
     lines.push(opts.mdPreview.slice(0, 600));
   }
-  return lines.join('\n').replace(/\n/g, '<br>');
+  return lines.join('\n');
 }
