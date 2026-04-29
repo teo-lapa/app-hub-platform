@@ -271,5 +271,21 @@ export function buildChatterHtml(opts: {
     lines.push('--- Anteprima MD ---');
     lines.push(opts.mdPreview.slice(0, 600));
   }
+  // Riga JSON machine-readable per skill /arrivi
+  if (h && (h.doc_type || h.vendor || h.doc_number)) {
+    const payload: Record<string, unknown> = {};
+    if (h.doc_type) payload.doc_type = h.doc_type;
+    if (h.vendor) payload.vendor = h.vendor;
+    if (h.customer) payload.customer = h.customer;
+    if (h.doc_number) payload.doc_number = h.doc_number;
+    if (h.doc_date) payload.doc_date = h.doc_date;
+    if (h.currency) payload.currency = h.currency;
+    if (h.total != null) payload.total = h.total;
+    if (h.iban) payload.iban = h.iban;
+    if (opts.newName) payload.filename = opts.newName;
+    if (opts.mdAttachmentId) payload.md_attachment_id = opts.mdAttachmentId;
+    lines.push('');
+    lines.push(`OCR_JSON: ${JSON.stringify(payload)}`);
+  }
   return lines.join('\n');
 }

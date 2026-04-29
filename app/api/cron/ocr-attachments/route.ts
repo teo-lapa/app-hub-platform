@@ -199,8 +199,16 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
   const skipped = states.filter((s) => s.outcome === 'skipped').length;
 
   if (pending === 0) {
-    const tagId = failed > 0 && done === 0 ? tagFailedId : tagDoneId;
-    await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagId]] }]);
+    // Tag done solo se abbiamo davvero creato almeno un MD o se non c'erano candidati reali.
+    // Tag failed se c'erano candidati e tutti hanno fallito.
+    const candidatesReali = states.filter((s) => s.outcome === 'done' || s.outcome === 'failed').length;
+    if (candidatesReali === 0) {
+      // tutti skipped (loghi) -> done (non c'e nulla da fare)
+      await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
+    } else {
+      const tagId = failed > 0 && done === 0 ? tagFailedId : tagDoneId;
+      await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagId]] }]);
+    }
   }
 
   return {
