@@ -373,12 +373,15 @@
     button.id = 'lapa-chat-button';
     button.innerHTML = chatIconSvg + closeIconSvg;
     button.setAttribute('aria-label', 'Apri chat assistenza');
+    // A11y: SVG icons are decorative - mark as hidden so aria-label is the accessible name
+    button.querySelectorAll('svg').forEach(s => s.setAttribute('aria-hidden', 'true'));
     container.appendChild(button);
 
     // Badge notifica (opzionale)
     const badge = document.createElement('div');
     badge.id = 'lapa-chat-badge';
     badge.textContent = '1';
+    badge.setAttribute('aria-hidden', 'true');
     button.appendChild(badge);
 
     // Container iframe
