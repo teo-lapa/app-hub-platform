@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '7', 10);
-const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '20', 10);
+const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '50', 10);
 const SOFT_DEADLINE_MS = 240_000;
 
 const JOB_PREFIX = 'OCR_JOB:';
