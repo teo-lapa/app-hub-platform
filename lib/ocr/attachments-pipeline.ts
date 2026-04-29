@@ -128,6 +128,60 @@ export async function callJetsonOCR(
 }
 
 // ---------------------------------------------------------------------------
+// Async jobs API — per superare timeout 100s di Cloudflare su PDF lunghi
+// ---------------------------------------------------------------------------
+export interface JetsonJobStart {
+  job_id: string;
+  status: 'queued';
+  kind: 'pdf' | 'image';
+}
+
+export interface JetsonJobStatus {
+  id: string;
+  kind: 'pdf' | 'image';
+  filename: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  queued_at?: number;
+  started_at?: number;
+  finished_at?: number;
+  wall_time_s?: number;
+  error?: string;
+  result?: {
+    filename?: string;
+    num_pages: number;
+    method: string;
+    markdown: string;
+    cleaned_markdown?: string;
+    header?: OCRHeader;
+    has_invoice_table?: boolean;
+  };
+}
+
+export async function jetsonJobStart(filename: string, base64: string, mimetype: string): Promise<JetsonJobStart> {
+  const buffer = Buffer.from(base64, 'base64');
+  const blob = new Blob([buffer], { type: mimetype });
+  const form = new FormData();
+  form.append('file', blob, filename);
+  const url = `${JETSON_OCR_URL.replace(/\/+$/, '')}/jobs/start`;
+  const r = await fetch(url, { method: 'POST', body: form });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Jetson jobs/start HTTP ${r.status}: ${err.slice(0, 300)}`);
+  }
+  return (await r.json()) as JetsonJobStart;
+}
+
+export async function jetsonJobStatus(jobId: string): Promise<JetsonJobStatus> {
+  const url = `${JETSON_OCR_URL.replace(/\/+$/, '')}/jobs/${jobId}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Jetson jobs/${jobId} HTTP ${r.status}: ${err.slice(0, 300)}`);
+  }
+  return (await r.json()) as JetsonJobStatus;
+}
+
+// ---------------------------------------------------------------------------
 // Filename builder
 // ---------------------------------------------------------------------------
 function safeName(s: string): string {

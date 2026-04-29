@@ -5,7 +5,8 @@ import {
   TAG_OCR_DONE,
   TAG_OCR_FAILED,
   isJunkAttachment,
-  callJetsonOCR,
+  jetsonJobStart,
+  jetsonJobStatus,
   buildCleanedName,
   imageFallbackName,
   extensionOf,
@@ -15,15 +16,14 @@ import {
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 min Vercel cap
+export const maxDuration = 300;
 
 const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '7', 10);
-const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '8', 10);
-const SOFT_DEADLINE_MS = 240_000; // 4 min, lasciamo buffer su 5 min
+const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '20', 10);
+const SOFT_DEADLINE_MS = 240_000;
 
-// ---------------------------------------------------------------------------
-// Tag helpers
-// ---------------------------------------------------------------------------
+const JOB_PREFIX = 'OCR_JOB:';
+
 async function ensureTag(name: string): Promise<number> {
   const existing = await callOdoo(null, 'project.tags', 'search_read', [
     [['name', '=', name]],
@@ -33,15 +33,12 @@ async function ensureTag(name: string): Promise<number> {
   return await callOdoo(null, 'project.tags', 'create', [{ name }]);
 }
 
-// ---------------------------------------------------------------------------
-// Search candidates
-// ---------------------------------------------------------------------------
 async function searchCandidateTasks(doneTagId: number, failedTagId: number): Promise<number[]> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 19)
     .replace('T', ' ');
-  const tasks = await callOdoo(
+  return (await callOdoo(
     null,
     'project.task',
     'search',
@@ -50,24 +47,23 @@ async function searchCandidateTasks(doneTagId: number, failedTagId: number): Pro
       ['create_date', '>=', since],
       ['tag_ids', 'not in', [doneTagId, failedTagId]],
     ]],
-    { limit: MAX_TASKS_PER_RUN * 4, order: 'create_date desc' },
-  );
-  return tasks as number[];
+    { limit: MAX_TASKS_PER_RUN, order: 'create_date desc' },
+  )) as number[];
 }
 
-// ---------------------------------------------------------------------------
-// Per-task processor
-// ---------------------------------------------------------------------------
-async function processTask(taskId: number, tagDoneId: number, tagFailedId: number) {
-  const summary: { processed: number; skipped: number; failed: number; details: string[] } = {
-    processed: 0,
-    skipped: 0,
-    failed: 0,
-    details: [],
-  };
+interface AttachState {
+  id: number;
+  name: string;
+  mimetype: string;
+  fileSize: number;
+  description: string;
+  outcome: 'pending' | 'done' | 'failed' | 'skipped';
+  detail: string;
+}
 
-  // Lista attachments del task (escludi quelli .md gia creati da noi)
-  const attachments = await callOdoo(null, 'ir.attachment', 'search_read', [
+async function processTask(taskId: number, tagDoneId: number, tagFailedId: number) {
+  const states: AttachState[] = [];
+  const attachments: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
     [
       ['res_model', '=', 'project.task'],
       ['res_id', '=', taskId],
@@ -75,121 +71,141 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
       ['mimetype', '=', 'application/pdf'],
       ['mimetype', 'like', 'image/%'],
     ],
-    ['id', 'name', 'mimetype', 'file_size'],
+    ['id', 'name', 'mimetype', 'file_size', 'description'],
   ]);
 
   if (!Array.isArray(attachments) || attachments.length === 0) {
-    summary.details.push(`Nessun allegato candidato`);
     await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
-    return summary;
+    return { processed: 0, skipped: 0, failed: 0, pending: 0, details: ['Nessun allegato candidato'] };
   }
 
-  let anyFailed = false;
-  let anyProcessed = false;
-
   for (const att of attachments) {
+    const description = att.description || '';
+    const desc = typeof description === 'string' ? description : '';
     const filter = isJunkAttachment(att.name, att.file_size, att.mimetype);
-    if (filter.skip) {
-      summary.skipped++;
-      summary.details.push(`SKIP ${att.name}: ${filter.reason}`);
+    const baseState: Omit<AttachState, 'outcome' | 'detail'> = {
+      id: att.id,
+      name: att.name,
+      mimetype: att.mimetype,
+      fileSize: att.file_size,
+      description: desc,
+    };
+
+    if (filter.skip && !desc.startsWith(JOB_PREFIX)) {
+      states.push({ ...baseState, outcome: 'skipped', detail: `SKIP ${att.name}: ${filter.reason}` });
       continue;
     }
 
-    try {
-      // Scarica datas (base64)
-      const [full] = await callOdoo(null, 'ir.attachment', 'read', [[att.id], ['datas']]);
-      if (!full?.datas) {
-        throw new Error('attachment.datas vuoto');
-      }
-
-      // Chiamata OCR Jetson
-      const ocr = await callJetsonOCR(att.name, full.datas, att.mimetype);
-
-      const header = ocr.header as OCRHeader | undefined;
-      const ext = extensionOf(att.name) || (att.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
-
-      // Costruisci nome nuovo
-      let newName: string;
-      if (header && (header.doc_type || header.vendor)) {
-        newName = buildCleanedName(att.name, header, ext);
-      } else if (att.mimetype.startsWith('image/')) {
-        newName = imageFallbackName(att.name);
-      } else {
-        newName = att.name; // mantieni se non classificabile
-      }
-
-      // 1) Rinomina PDF/immagine originale
-      if (newName !== att.name) {
-        await callOdoo(null, 'ir.attachment', 'write', [[att.id], { name: newName }]);
-      }
-
-      // 2) Crea attachment MD
-      const cleanedMd = ocr.cleaned_markdown || ocr.markdown || '';
-      const mdName = newName.replace(/\.[A-Za-z0-9]+$/, '') + '.md';
-      const mdBase64 = Buffer.from(cleanedMd, 'utf-8').toString('base64');
-      const mdAttachmentId = await callOdoo(null, 'ir.attachment', 'create', [{
-        name: mdName,
-        res_model: 'project.task',
-        res_id: taskId,
-        type: 'binary',
-        datas: mdBase64,
-        mimetype: 'text/markdown',
-      }]);
-
-      // 3) Chatter
-      const chatterHtml = buildChatterHtml({
-        status: 'ok',
-        attachmentName: att.name,
-        newName,
-        header,
-        wallTimeSec: Math.round(ocr.wall_time_s),
-        numPages: ocr.num_pages,
-        mdAttachmentId,
-        mdPreview: cleanedMd.slice(0, 600),
-      });
-      await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
-        body: chatterHtml,
-        message_type: 'comment',
-        subtype_xmlid: 'mail.mt_note',
-      });
-
-      summary.processed++;
-      summary.details.push(`OK ${att.name} -> ${newName} (${ocr.num_pages}p, ${Math.round(ocr.wall_time_s)}s)`);
-      anyProcessed = true;
-    } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      console.error(`[OCR-CRON] task=${taskId} att=${att.id} ${att.name} FAIL: ${errMsg}`);
-      summary.failed++;
-      summary.details.push(`FAIL ${att.name}: ${errMsg}`);
-      anyFailed = true;
-
-      // Chatter di errore
+    // Caso 1: gia' c'e' un job attivo per questo allegato
+    if (desc.startsWith(JOB_PREFIX)) {
+      const jobId = desc.slice(JOB_PREFIX.length).split(':')[0];
       try {
+        const status = await jetsonJobStatus(jobId);
+        if (status.status === 'queued' || status.status === 'running') {
+          states.push({ ...baseState, outcome: 'pending', detail: `WAIT ${att.name} job=${jobId} status=${status.status}` });
+          continue;
+        }
+        if (status.status === 'failed') {
+          await callOdoo(null, 'ir.attachment', 'write', [[att.id], { description: '' }]);
+          await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
+            body: buildChatterHtml({ status: 'failed', attachmentName: att.name, errorMessage: status.error || 'unknown' }),
+            message_type: 'comment',
+            subtype_xmlid: 'mail.mt_note',
+          });
+          states.push({ ...baseState, outcome: 'failed', detail: `FAIL ${att.name} job=${jobId}: ${status.error}` });
+          continue;
+        }
+        // status = done
+        const result = status.result!;
+        const header = result.header as OCRHeader | undefined;
+        const ext = extensionOf(att.name) || (att.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
+        let newName: string;
+        if (header && (header.doc_type || header.vendor)) {
+          newName = buildCleanedName(att.name, header, ext);
+        } else if (att.mimetype.startsWith('image/')) {
+          newName = imageFallbackName(att.name);
+        } else {
+          newName = att.name;
+        }
+        const writeData: any = { description: '' };
+        if (newName !== att.name) writeData.name = newName;
+        await callOdoo(null, 'ir.attachment', 'write', [[att.id], writeData]);
+
+        const cleanedMd = result.cleaned_markdown || result.markdown || '';
+        const mdName = newName.replace(/\.[A-Za-z0-9]+$/, '') + '.md';
+        const mdBase64 = Buffer.from(cleanedMd, 'utf-8').toString('base64');
+        const mdAttachmentId = await callOdoo(null, 'ir.attachment', 'create', [{
+          name: mdName,
+          res_model: 'project.task',
+          res_id: taskId,
+          type: 'binary',
+          datas: mdBase64,
+          mimetype: 'text/markdown',
+        }]);
         await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
-          body: buildChatterHtml({ status: 'failed', attachmentName: att.name, errorMessage: errMsg }),
+          body: buildChatterHtml({
+            status: 'ok',
+            attachmentName: att.name,
+            newName,
+            header,
+            wallTimeSec: Math.round(status.wall_time_s || 0),
+            numPages: result.num_pages,
+            mdAttachmentId,
+            mdPreview: cleanedMd.slice(0, 600),
+          }),
           message_type: 'comment',
           subtype_xmlid: 'mail.mt_note',
         });
-      } catch (e) {
-        console.error('chatter post failed:', e);
+        states.push({ ...baseState, outcome: 'done', detail: `OK ${att.name} -> ${newName} (${result.num_pages}p, ${Math.round(status.wall_time_s || 0)}s)` });
+      } catch (err: any) {
+        const errMsg = err?.message || String(err);
+        states.push({ ...baseState, outcome: 'pending', detail: `JOB STATUS ERR ${att.name}: ${errMsg.slice(0, 200)}` });
       }
+      continue;
+    }
+
+    // Caso 2: nessun job esistente -> ne avvio uno
+    try {
+      const [full] = await callOdoo(null, 'ir.attachment', 'read', [[att.id], ['datas']]);
+      if (!full?.datas) throw new Error('attachment.datas vuoto');
+      const start = await jetsonJobStart(att.name, full.datas, att.mimetype);
+      const ts = Math.floor(Date.now() / 1000);
+      await callOdoo(null, 'ir.attachment', 'write', [[att.id], { description: `${JOB_PREFIX}${start.job_id}:${ts}` }]);
+      states.push({ ...baseState, outcome: 'pending', detail: `START ${att.name} job=${start.job_id}` });
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
+        body: buildChatterHtml({ status: 'failed', attachmentName: att.name, errorMessage: errMsg }),
+        message_type: 'comment',
+        subtype_xmlid: 'mail.mt_note',
+      });
+      states.push({ ...baseState, outcome: 'failed', detail: `FAIL START ${att.name}: ${errMsg.slice(0, 200)}` });
     }
   }
 
-  // Tag finale
-  const tagId = anyFailed && !anyProcessed ? tagFailedId : tagDoneId;
-  await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagId]] }]);
+  // Tag finale: solo se NESSUN allegato e' pending
+  const pending = states.filter((s) => s.outcome === 'pending').length;
+  const done = states.filter((s) => s.outcome === 'done').length;
+  const failed = states.filter((s) => s.outcome === 'failed').length;
+  const skipped = states.filter((s) => s.outcome === 'skipped').length;
 
-  return summary;
+  if (pending === 0) {
+    const tagId = failed > 0 && done === 0 ? tagFailedId : tagDoneId;
+    await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagId]] }]);
+  }
+
+  return {
+    processed: done,
+    skipped,
+    failed,
+    pending,
+    details: states.map((s) => s.detail),
+  };
 }
 
-// ---------------------------------------------------------------------------
-// GET handler
-// ---------------------------------------------------------------------------
 export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
-  // Auth
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -207,9 +223,7 @@ export async function GET(request: NextRequest) {
     const taskIds = await searchCandidateTasks(tagDoneId, tagFailedId);
     log.candidates = taskIds.length;
 
-    let totalProcessed = 0;
-    let totalSkipped = 0;
-    let totalFailed = 0;
+    let totals = { processed: 0, skipped: 0, failed: 0, pending: 0 };
     let stoppedForTime = false;
 
     for (const taskId of taskIds) {
@@ -219,21 +233,17 @@ export async function GET(request: NextRequest) {
       }
       const t0 = Date.now();
       const r = await processTask(taskId, tagDoneId, tagFailedId);
-      totalProcessed += r.processed;
-      totalSkipped += r.skipped;
-      totalFailed += r.failed;
-      log.tasks.push({
-        task_id: taskId,
-        wall_ms: Date.now() - t0,
-        ...r,
-      });
+      totals.processed += r.processed;
+      totals.skipped += r.skipped;
+      totals.failed += r.failed;
+      totals.pending += r.pending;
+      log.tasks.push({ task_id: taskId, wall_ms: Date.now() - t0, ...r });
     }
 
-    log.totals = { processed: totalProcessed, skipped: totalSkipped, failed: totalFailed };
+    log.totals = totals;
     log.stopped_for_time = stoppedForTime;
     log.duration_ms = Date.now() - startedAt;
-
-    console.log('[OCR-CRON]', JSON.stringify(log, null, 2));
+    console.log('[OCR-CRON]', JSON.stringify(log).slice(0, 4000));
     return NextResponse.json({ success: true, ...log });
   } catch (err: any) {
     log.error = err?.message || String(err);
