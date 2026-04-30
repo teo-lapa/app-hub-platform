@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '7', 10);
+const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '30', 10);
 const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '50', 10);
 const SOFT_DEADLINE_MS = 240_000;
 
