@@ -112,6 +112,8 @@ const DEMO_STOCK_SKUS = new Set<string>([
   'cdb-annamaria-clementi-2014-2015-75cl',
   'cdb-vc-extra-brut-2019-75cl',
   'cdb-vc-dosage-zero-2020-75cl',
+  // passito / vino dolce da meditazione e pasticceria
+  'mura-mura-moscato-passito-ofelia-2020-37-5cl', // Moscato Passito Ofelia 37.5cl — accompagna dessert
   // grappe e distillati Berta — fine pasto / digestivo (tutti fascia "importante")
   'berta-tra-noi-amarone-70cl',                   // Grappa di Amarone, 42% — entry Berta
   'berta-tra-noi-nebbiolo-barolo-70cl',           // Grappa di Nebbiolo da Barolo, 42% — classica piemontese
@@ -160,19 +162,24 @@ function buildSommelierPrompt(slug: string, language: Language, wines: StockWine
   const renderWine = (w: StockWine) =>
     `  - [${w.wineId}] ${w.name} ${w.vintage} — ${w.producer} (${w.region}${w.subregion ? ', ' + w.subregion : ''}) | ${w.denomination} | ${w.wine_type} | vitigni: ${w.grape_varieties.join(', ')} | calice CHF ${w.price_glass_chf} · bottiglia CHF ${w.price_bottle_chf} | servire a ${w.service_temp_c}°C${w.decantation_minutes ? ` · decantare ${w.decantation_minutes}min` : ''}\n    storia: ${w.story_short}\n    note: ${w.tasting_notes.join(', ')}\n    abbinamenti: ${w.food_pairings.join(', ')}`;
 
-  // Separa vini da grappe/distillati per chiarezza nel prompt
+  // Separa vini fermi/spumanti, dolci/passiti, e distillati per chiarezza nel prompt
   const isDistillato = (w: StockWine) => w.wine_type === 'grappa' || w.wine_type === 'distillato';
-  const wineOnly = wines.filter((w) => !isDistillato(w));
+  const isDolce = (w: StockWine) => w.wine_type === 'passito' || w.wine_type === 'dolce';
+  const wineFermi = wines.filter((w) => !isDistillato(w) && !isDolce(w));
+  const dolci = wines.filter(isDolce);
   const distillati = wines.filter(isDistillato);
   const wineByTier: Record<Tier, StockWine[]> = { easy: [], equilibrato: [], importante: [] };
-  wineOnly.forEach((w) => wineByTier[w.fascia].push(w));
+  wineFermi.forEach((w) => wineByTier[w.fascia].push(w));
 
   const catalog =
     `## VINI\n` +
     `=== EASY (pronta beva, accessibile) ===\n${wineByTier.easy.map(renderWine).join('\n')}\n\n` +
     `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${wineByTier.equilibrato.map(renderWine).join('\n')}\n\n` +
     `=== IMPORTANTE (premium, serata speciale) ===\n${wineByTier.importante.map(renderWine).join('\n')}\n\n` +
-    `## GRAPPE & DISTILLATI (fine pasto / digestivo — tutte da Distillerie Berta, Mombaruzzo Piemonte) ===\n${distillati.map(renderWine).join('\n')}`;
+    (dolci.length
+      ? `## VINI DOLCI / PASSITI (da meditazione, pasticceria, formaggi erborinati)\n${dolci.map(renderWine).join('\n')}\n\n`
+      : '') +
+    `## GRAPPE & DISTILLATI (fine pasto / digestivo — tutte da Distillerie Berta, Mombaruzzo Piemonte)\n${distillati.map(renderWine).join('\n')}`;
 
   return `Sei il sommelier digitale del ristorante "${slug}", presente al tavolo via web app. Il cliente ti parla in chat dal proprio telefono.
 
@@ -183,6 +190,9 @@ Hai una doppia formazione: **Master Sommelier (WSET Diploma)** sui vini italiani
 Distillerie Berta, Mombaruzzo (Piemonte, AT): una delle più importanti grapperie italiane, dal 1947, ora alla terza generazione (Paolo, Enrico e Gianfranco Berta). Distillazione discontinua a vapore con alambicchi a bagnomaria, lunghi invecchiamenti in botti di rovere francese, allier, slavonia. Le linee chiave: **Tra Noi** (entry, 42% vol, classiche da fine pasto), **Riserve** (43% vol, monovitigno o blend con identità precisa). Le grappe più iconiche: **Roccanivo** (Barbera d'Asti DOCG, calda speziata), **Tre Soli Tre** (Nebbiolo da Barolo, fine ed elegante), **Bric del Gaian** (Moscato d'Asti, aromatica delicata), **Casalotto** (acquavite di vino, non grappa — distillato del vino intero, eleganza unica), **Paolo Berta** (top range, blend Nebbiolo-Barbera-Moscato, complessa). Servire a 14-18°C, calice tulipano da degustazione, mai ghiaccio. Quando le proponi, racconta UNA cosa specifica (vitigno, abbinamento, storia famiglia), non recitare la scheda tecnica.
 
 Abbinamenti distillati tipici: **dopo pasto** (digestivo dopo carni rosse strutturate o piatti grassi), **con dolci** (Bric del Gaian con torta alle nocciole, Casalotto con cioccolato fondente 70-80%), **da meditazione** (Paolo Berta, Tre Soli Tre — soli, dopo che il caffè è freddato). Se il cliente chiede "qualcosa per chiudere", "un digestivo", "una grappa", "qualcosa dopo il dolce" → proponi distillati Berta.
+
+## SUI VINI DOLCI E PASSITI (li hai in carta)
+Hai un **Moscato Passito Ofelia** di Mura Mura (Piemonte): uve di Moscato bianco appassite naturalmente sulle stuoie, vendemmia tardiva, fermentazione spontanea, 37.5cl. Un dolce equilibrato — non stucchevole — con note di miele d'acacia, albicocca disidratata, fiori di camomilla, finale lungo agrumato. **Servire a 8-10°C** in calice piccolo. Abbinamenti perfetti: pasticceria secca (cantuccini, biscotti alle mandorle, torta alle nocciole), formaggi erborinati (gorgonzola dolce, roquefort), foie gras, fine pasto da meditazione. Se il cliente chiede "qualcosa di dolce", "un vino col dessert", "qualcosa dopo il dolce", "passito", "moscato" → proponilo. È un vino da fine cena, perfetto come alternativa al digestivo per chi non beve grappa.
 
 # LUNGHEZZA
 2-5 righe per messaggio. Mai monologhi. Se il cliente chiede esplicitamente la storia di un produttore o del vino, puoi espandere fino a 8 righe ma non oltre. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole.
