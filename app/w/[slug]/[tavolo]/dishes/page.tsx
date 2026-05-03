@@ -53,7 +53,8 @@ export default function DishesPage() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
+        const apiStatus = j.apiStatus ? ` [api ${j.apiStatus}]` : '';
+        throw new Error(`${j.error || `HTTP ${res.status}`}${apiStatus}`);
       }
       const data = await res.json();
       // Stash payload in sessionStorage so /wines can render real Claude output
@@ -68,7 +69,7 @@ export default function DishesPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Errore imprevisto';
       console.error('[dishes] sommelier error:', msg);
-      setError('Il sommelier è momentaneamente irraggiungibile. Riprova.');
+      setError(`Sommelier offline: ${msg}`);
       setBusy(null);
     }
   };

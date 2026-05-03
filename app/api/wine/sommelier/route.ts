@@ -156,8 +156,16 @@ export async function POST(request: Request) {
     const wines = loadWineStock(restaurantSlug);
     const systemPrompt = buildSystemPrompt(restaurantSlug, language, wines);
 
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[SOMMELIER] ANTHROPIC_API_KEY missing');
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY missing on this environment' },
+        { status: 500 }
+      );
+    }
+
     const completion = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 2000,
       system: systemPrompt,
       messages: [
@@ -213,7 +221,13 @@ export async function POST(request: Request) {
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[SOMMELIER] Error:', message);
-    return NextResponse.json({ error: `Sommelier failed: ${message}` }, { status: 500 });
+    const stack = err instanceof Error ? err.stack : undefined;
+    // @ts-expect-error - Anthropic SDK errors expose .status
+    const apiStatus = err && typeof err === 'object' && 'status' in err ? err.status : undefined;
+    console.error('[SOMMELIER] Error:', message, { apiStatus, stack });
+    return NextResponse.json(
+      { error: `Sommelier failed: ${message}`, apiStatus },
+      { status: 500 }
+    );
   }
 }
