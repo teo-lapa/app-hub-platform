@@ -5,7 +5,7 @@ type Params = { slug: string; tavolo: string };
 
 export default function SplashPage({ params }: { params: Params }) {
   const tenant = getTenant(params.slug);
-  const dishesHref = `/w/${params.slug}/${params.tavolo}/dishes`;
+  const chatHref = `/w/${params.slug}/${params.tavolo}/chat`;
   const ink = '#1c1815';
   const sub = '#6b5f52';
 
@@ -138,7 +138,7 @@ export default function SplashPage({ params }: { params: Params }) {
         }}
       >
         <Link
-          href={dishesHref}
+          href={chatHref}
           style={{
             height: 52,
             background: 'transparent',
@@ -161,7 +161,7 @@ export default function SplashPage({ params }: { params: Params }) {
 
         {/* TODO: collegare Google OAuth */}
         <Link
-          href={dishesHref}
+          href={chatHref}
           style={{
             background: 'transparent',
             border: `1px solid ${ink}`,

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'crypto';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -11,78 +13,131 @@ const anthropic = new Anthropic({
 
 type Language = 'it' | 'de' | 'en' | 'fr';
 type Tier = 'easy' | 'equilibrato' | 'importante';
+type Intent = 'greet' | 'clarify' | 'propose' | 'explain' | 'confirm' | 'other';
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface SommelierRequest {
   restaurantSlug: string;
   tableCode: string;
-  dishesInput: string;
   language: Language;
   customerEmail?: string | null;
+  messages: ChatMessage[];
 }
 
-interface WineStock {
-  wineId: string;
+interface CatalogWine {
+  vergani_sku: string;
   name: string;
   producer: string;
   region: string;
+  subregion?: string;
+  denomination: string;
+  grape_varieties: string[];
   vintage: string;
-  grapes: string[];
-  category: string;
-  format: string;
-  cost_chf: number;
+  format_cl: number;
+  wine_type: string;
+  price_vergani_to_lapa_chf: number;
+  price_carta_suggested_chf: number;
+  fascia: Tier;
+  story_short: string;
+  tasting_notes: string[];
+  food_pairings: string[];
+  service_temp_c: number;
+  decantation_minutes: number;
+}
+
+interface StockWine extends CatalogWine {
+  wineId: string;
   price_glass_chf: number;
   price_bottle_chf: number;
 }
 
-interface WineSuggestion {
-  tier: Tier;
+interface ProposedWine {
   wineId: string;
   name: string;
   producer: string;
   region: string;
   vintage: string;
+  tier: Tier;
   price_glass_chf: number;
   price_bottle_chf: number;
   reason: string;
-  story_short: string;
-  tasting_notes: string[];
-  service_temp_c: number;
-  confidence: number;
 }
 
 interface SommelierResponse {
-  suggestionId: string;
-  wines: WineSuggestion[];
+  reply: string;
+  proposedWines?: ProposedWine[];
+  intent: Intent;
+  messageId: string;
 }
 
-// TODO: sostituire con query Prisma `wine_stock` filtrata per restaurantSlug quando il DB è pronto.
-// Lista vini di esempio tirata dal listino Vergani 2025/2026 (prezzi grossista * markup HoReCa).
-function loadWineStock(_restaurantSlug: string): WineStock[] {
-  return [
-    { wineId: 'vergani-anima-prosecco-extra-dry-75', name: 'Anima Prosecco Extra Dry', producer: "L'Anima di Vergani", region: 'Veneto', vintage: '2024', grapes: ['Glera'], category: 'Prosecco DOC', format: '75cl', cost_chf: 8.40, price_glass_chf: 7, price_bottle_chf: 26 },
-    { wineId: 'vergani-anima-prosecco-rose-75', name: 'Anima Prosecco Rosé Brut', producer: "L'Anima di Vergani", region: 'Veneto', vintage: '2024', grapes: ['Glera', 'Pinot Noir'], category: 'Prosecco DOC Rosé', format: '75cl', cost_chf: 8.40, price_glass_chf: 7, price_bottle_chf: 26 },
-    { wineId: 'vergani-cdb-cuvee-prestige-ed47-75', name: 'Cuvée Prestige ED 47 Extra Brut', producer: "Ca' del Bosco", region: 'Lombardia (Franciacorta)', vintage: 'NV', grapes: ['Chardonnay', 'Pinot Nero', 'Pinot Bianco'], category: 'Franciacorta DOCG', format: '75cl', cost_chf: 27.10, price_glass_chf: 14, price_bottle_chf: 78 },
-    { wineId: 'vergani-tessari-soave-75', name: 'Soave Tessari', producer: 'Tessari Gianni', region: 'Veneto', vintage: '2024', grapes: ['Garganega', 'Trebbiano'], category: 'Soave DOC', format: '75cl', cost_chf: 9.20, price_glass_chf: 7, price_bottle_chf: 28 },
-    { wineId: 'vergani-tessari-soave-perinotto-75', name: 'Soave Perinotto', producer: 'Tessari Gianni', region: 'Veneto', vintage: '2021', grapes: ['Garganega'], category: 'Soave Classico DOC', format: '75cl', cost_chf: 12.70, price_glass_chf: 9, price_bottle_chf: 36 },
-    { wineId: 'vergani-muramura-favorita-bianca-75', name: 'Favorita Bianca', producer: 'Mura Mura', region: 'Piemonte', vintage: '2022', grapes: ['Favorita'], category: 'Piemonte DOC', format: '75cl', cost_chf: 21.00, price_glass_chf: 12, price_bottle_chf: 56 },
-    { wineId: 'vergani-muramura-timorasso-75', name: 'Timorasso Beatrice', producer: 'Mura Mura', region: 'Piemonte (Colli Tortonesi)', vintage: '2023', grapes: ['Timorasso'], category: 'Colli Tortonesi DOC', format: '75cl', cost_chf: 25.30, price_glass_chf: 13, price_bottle_chf: 64 },
-    { wineId: 'vergani-collazzi-fiano-otto-muri-75', name: 'Fiano Otto Muri', producer: 'Collazzi', region: 'Toscana', vintage: '2023', grapes: ['Fiano'], category: 'Toscana IGT', format: '75cl', cost_chf: 14.10, price_glass_chf: 9, price_bottle_chf: 38 },
-    { wineId: 'vergani-anima-fiano-75', name: 'Anima Fiano', producer: "L'Anima di Vergani", region: 'Toscana', vintage: '2021', grapes: ['Fiano'], category: 'Toscana IGT', format: '75cl', cost_chf: 20.80, price_glass_chf: 11, price_bottle_chf: 52 },
-    { wineId: 'vergani-cdb-corte-lupo-bianco-75', name: 'Corte del Lupo Bianco', producer: "Ca' del Bosco", region: 'Lombardia (Franciacorta)', vintage: '2023', grapes: ['Chardonnay', 'Pinot Bianco'], category: 'Curtefranca DOC', format: '75cl', cost_chf: 24.60, price_glass_chf: 12, price_bottle_chf: 62 },
-    { wineId: 'vergani-tessari-due-merlot-cf-75', name: 'Due — Merlot, Cabernet Franc', producer: 'Tessari Gianni', region: 'Veneto', vintage: '2022', grapes: ['Merlot', 'Cabernet Franc'], category: 'Veneto IGT', format: '75cl', cost_chf: 10.00, price_glass_chf: 7, price_bottle_chf: 28 },
-    { wineId: 'vergani-collazzi-liberta-75', name: 'Libertà', producer: 'Collazzi', region: 'Toscana', vintage: '2022', grapes: ['Merlot', 'Cabernet Sauvignon', 'Cabernet Franc'], category: 'Toscana IGT', format: '75cl', cost_chf: 13.60, price_glass_chf: 9, price_bottle_chf: 38 },
-    { wineId: 'vergani-muramura-nebbiolo-mercuzio-75', name: 'Nebbiolo Mercuzio', producer: 'Mura Mura', region: 'Piemonte (Langhe)', vintage: '2021', grapes: ['Nebbiolo'], category: 'Langhe DOC', format: '75cl', cost_chf: 15.20, price_glass_chf: 10, price_bottle_chf: 42 },
-    { wineId: 'vergani-collazzi-chianti-bastioni-75', name: 'Chianti Bastioni', producer: 'Collazzi', region: 'Toscana', vintage: '2022', grapes: ['Sangiovese', 'Merlot', 'Malvasia'], category: 'Chianti Classico DOCG', format: '75cl', cost_chf: 18.10, price_glass_chf: 10, price_bottle_chf: 48 },
-    { wineId: 'vergani-collazzi-toscana-igt-75', name: 'Collazzi', producer: 'Collazzi', region: 'Toscana', vintage: '2021', grapes: ['Cabernet Sauvignon', 'Cabernet Franc', 'Merlot', 'Petit Verdot'], category: 'Toscana IGT', format: '75cl', cost_chf: 14.20, price_glass_chf: 9, price_bottle_chf: 42 },
-    { wineId: 'vergani-anima-toscana-75', name: 'Anima Toscana', producer: "L'Anima di Vergani", region: 'Toscana', vintage: '2020', grapes: ['Merlot', 'Cabernet Sauvignon', 'Cabernet Franc', 'Petit Verdot'], category: 'Toscana IGT', format: '75cl', cost_chf: 28.50, price_glass_chf: 15, price_bottle_chf: 78 },
-    { wineId: 'vergani-muramura-romeo-75', name: 'Romeo', producer: 'Mura Mura', region: 'Piemonte', vintage: '2022', grapes: ['Barbera', 'Nebbiolo'], category: 'Piemonte DOC', format: '75cl', cost_chf: 28.80, price_glass_chf: 15, price_bottle_chf: 78 },
-    { wineId: 'vergani-anima-amarone-75', name: 'Anima Amarone', producer: "L'Anima di Vergani", region: 'Veneto', vintage: '2019', grapes: ['Corvina', 'Corvinone', 'Rondinella'], category: 'Amarone della Valpolicella Classico DOCG', format: '75cl', cost_chf: 23.55, price_glass_chf: 14, price_bottle_chf: 68 },
-    { wineId: 'vergani-muramura-barbaresco-faset-75', name: 'Barbaresco Faset', producer: 'Mura Mura', region: 'Piemonte', vintage: '2019', grapes: ['Nebbiolo'], category: 'Barbaresco DOCG', format: '75cl', cost_chf: 49.30, price_glass_chf: 22, price_bottle_chf: 128 },
-    { wineId: 'vergani-cdb-maurizio-zanella-75', name: 'Maurizio Zanella', producer: "Ca' del Bosco", region: 'Lombardia (Franciacorta)', vintage: '2021', grapes: ['Cabernet Sauvignon', 'Cabernet Franc', 'Merlot'], category: 'Rosso del Sebino IGT', format: '75cl', cost_chf: 56.50, price_glass_chf: 26, price_bottle_chf: 145 },
-  ];
+// SKU selezionati per il ristorante demo "trattoria-da-mario".
+// 5 easy + 17 equilibrato + 8 importante = 30 vini in stock (filtrati da i 108 Vergani).
+// TODO: sostituire con query Prisma su tabella restaurant_wine_stock per restaurantSlug.
+const DEMO_STOCK_SKUS = new Set<string>([
+  // easy (5 disponibili 75cl)
+  'anima-prosecco-extra-dry-2024-75cl',
+  'anima-prosecco-rose-brut-2024-75cl',
+  'tessari-soave-2024-75cl',
+  'tessari-soave-perinotto-2021-75cl',
+  'tessari-due-2022-75cl',
+  // equilibrato (17)
+  'mura-mura-favorita-bianca-2022-75cl',
+  'mura-mura-timorasso-beatrice-2023-75cl',
+  'mura-mura-nebbiolo-mercuzio-2021-75cl',
+  'mura-mura-barbaresco-iago-2022-75cl',
+  'mura-mura-romeo-2022-75cl',
+  'cdb-cuvee-prestige-ed47-extra-brut-75cl',
+  'cdb-corte-del-lupo-bianco-2023-75cl',
+  'cdb-corte-del-lupo-rosso-2022-75cl',
+  'anima-amarone-2019-75cl',
+  'anima-fiano-2021-75cl',
+  'anima-toscana-2020-75cl',
+  'tessari-soloris-rebellis-2022-75cl',
+  'collazzi-fiano-otto-muri-2023-75cl',
+  'collazzi-bianco-2023-75cl',
+  'collazzi-liberta-2022-75cl',
+  'collazzi-collazzi-2021-75cl',
+  'le-sorgenti-scirus-2017-75cl',
+  // importante (8)
+  'mura-mura-barbaresco-faset-2019-75cl',
+  'mura-mura-barbaresco-serragrilli-2020-75cl',
+  'mura-mura-barbaresco-starderi-2020-75cl',
+  'cdb-cuvee-prestige-rose-ed47-75cl',
+  'cdb-vc-saten-2020-75cl',
+  'cdb-annamaria-clementi-2014-2015-75cl',
+  'cdb-vc-extra-brut-2019-75cl',
+  'cdb-vc-dosage-zero-2020-75cl',
+]);
+
+let _catalogCache: StockWine[] | null = null;
+
+function loadCatalog(): StockWine[] {
+  if (_catalogCache) return _catalogCache;
+  const filePath = path.join(process.cwd(), 'prisma', 'seed-data', 'lapa-wine-vini.json');
+  const raw = readFileSync(filePath, 'utf-8');
+  const all = JSON.parse(raw) as CatalogWine[];
+  const stock: StockWine[] = all
+    .filter((w) => DEMO_STOCK_SKUS.has(w.vergani_sku))
+    .map((w) => {
+      const bottle = Math.round(w.price_carta_suggested_chf);
+      // calice indicativo: ~1/5 bottiglia, arrotondato a CHF intero, min 7
+      const glass = Math.max(7, Math.round(bottle / 5));
+      return {
+        ...w,
+        wineId: w.vergani_sku,
+        price_glass_chf: glass,
+        price_bottle_chf: bottle,
+      };
+    });
+  _catalogCache = stock;
+  return stock;
 }
 
-function buildSystemPrompt(restaurantSlug: string, language: Language, wines: WineStock[]): string {
+function buildSommelierPrompt(slug: string, language: Language, wines: StockWine[]): string {
   const langMap: Record<Language, string> = {
     it: 'italiano',
     de: 'tedesco (Hochdeutsch)',
@@ -90,71 +145,81 @@ function buildSystemPrompt(restaurantSlug: string, language: Language, wines: Wi
     fr: 'francese',
   };
 
-  const wineList = wines
-    .map(
-      (w) =>
-        `- [${w.wineId}] ${w.name} — ${w.producer} (${w.region}, ${w.vintage}) | vitigni: ${w.grapes.join(', ')} | ${w.category} | calice CHF ${w.price_glass_chf} · bottiglia CHF ${w.price_bottle_chf}`
-    )
-    .join('\n');
+  const byTier: Record<Tier, StockWine[]> = { easy: [], equilibrato: [], importante: [] };
+  wines.forEach((w) => byTier[w.fascia].push(w));
 
-  return `Sei il sommelier del ristorante "${restaurantSlug}". Hai una voce umana, calda, mai snob, mai paternalistica. Parli al cliente come un amico esperto: dritto al punto, niente fuffa, niente termini tecnici inutili.
+  const renderWine = (w: StockWine) =>
+    `  - [${w.wineId}] ${w.name} ${w.vintage} — ${w.producer} (${w.region}${w.subregion ? ', ' + w.subregion : ''}) | ${w.denomination} | ${w.wine_type} | vitigni: ${w.grape_varieties.join(', ')} | calice CHF ${w.price_glass_chf} · bottiglia CHF ${w.price_bottle_chf} | servire a ${w.service_temp_c}°C${w.decantation_minutes ? ` · decantare ${w.decantation_minutes}min` : ''}\n    storia: ${w.story_short}\n    note: ${w.tasting_notes.join(', ')}\n    abbinamenti: ${w.food_pairings.join(', ')}`;
 
-Compito: dato un ordine di piatti e la lista vini disponibili in cantina QUESTA SERA, suggerisci ESATTAMENTE 3 vini in 3 fasce di prezzo:
-- "easy" → fascia accessibile, vino di pronta beva, piacevole, sicuro
-- "equilibrato" → giusto compromesso qualità/prezzo, abbinamento più ragionato
-- "importante" → vino premium, esperienza alta, da serata speciale
+  const catalog =
+    `=== EASY (pronta beva, accessibile) ===\n${byTier.easy.map(renderWine).join('\n')}\n\n` +
+    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${byTier.equilibrato.map(renderWine).join('\n')}\n\n` +
+    `=== IMPORTANTE (premium, serata speciale) ===\n${byTier.importante.map(renderWine).join('\n')}`;
 
-LISTA VINI DISPONIBILI (usa SOLO questi wineId, non inventare):
-${wineList}
+  return `Sei il sommelier digitale del ristorante "${slug}", presente al tavolo via web app. Il cliente ti parla in chat dal proprio telefono.
 
-REGOLE OUTPUT:
-1. Rispondi SOLO con un JSON valido, niente markdown, niente testo prima o dopo, niente \`\`\`.
-2. Lingua del testo (reason, story_short, tasting_notes): ${langMap[language]}.
-3. Schema esatto:
+# IDENTITÀ
+Hai una formazione da Master Sommelier (livello WSET Diploma): conosci a fondo vini italiani, regioni, vitigni, terroir, vinificazione, abbinamento. La tua specializzazione è il vino italiano. Non sei un robot: hai una voce calda, italiana, mai snob, mai pedante. Parli come un amico esperto che ha aperto bottiglie per vent'anni in trattoria e in stellato. Niente tecnicismi inutili, niente parole inglesi quando esiste l'italiano, niente formule da hotel a 5 stelle ("buongiorno gentile cliente"). Saluti naturali tipo "Ciao, sono il sommelier — cosa state mangiando?".
+
+# LUNGHEZZA
+2-5 righe per messaggio. Mai monologhi. Se il cliente chiede esplicitamente la storia di un produttore o del vino, puoi espandere fino a 8 righe ma non oltre. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole.
+
+# CANTINA DI QUESTA SERA
+Hai a disposizione SOLO i vini sotto. Non inventare nomi, non proporre vini fuori da questa lista. Usa esattamente il wineId riportato tra parentesi quadre.
+
+${catalog}
+
+# COME LAVORI
+1. Al primo messaggio, saluta in modo naturale e chiedi cosa stanno mangiando o cosa preferiscono. Niente formule fredde.
+2. Se il cliente è vago ("un vino buono"), fai UNA domanda chiarificatrice mirata: bianco o rosso, leggero o importante, calice o bottiglia, c'è un piatto guida.
+3. Proponi vini SOLO quando hai capito abbastanza. Non sparare bottiglie a caso al primo turno.
+4. Quando proponi:
+   - se la richiesta è specifica (un piatto preciso, un gusto preciso) → 1 solo vino, il migliore per il caso;
+   - se la richiesta è generica ("consigliami qualcosa") → 3 vini, uno per fascia (easy / equilibrato / importante), così il cliente sceglie il livello.
+5. Quando proponi, racconta in 1-2 righe la storia del produttore se è rilevante o curiosa: Federico Grom (sì, il gelato Grom) di Mura Mura in Piemonte, Annamaria Clementi e Maurizio Zanella di Ca' del Bosco in Franciacorta, la famiglia Tessari nel Soave, ecc. Se la storia è banale, salta.
+6. Spiega l'abbinamento in modo concreto e fisico: "il tannino del Nebbiolo asciuga la grassezza della bistecca", "la mineralità del Timorasso regge il pesce strutturato senza coprirlo". Mai frasi da brochure tipo "grande sinergia organolettica".
+7. Calice o bottiglia: se non specificato e il tavolo sembra piccolo (1-2 persone), proponi calice; se grande o serata importante, proponi bottiglia. In dubbio, chiedi.
+8. Budget: se il cliente accenna a budget basso ("qualcosa che non costi tanto", "leggero anche di prezzo") → fascia easy. Se accenna a serata speciale → importante.
+9. Conferma scelta: quando il cliente dice chiaramente di voler prendere un vino ("ok prendo quello", "va bene il Romeo", "lo prendo"), rispondi con conferma calda tipo "Ottima scelta, lo segno al cameriere" e usa intent="confirm". Questo chiude il flusso lato app.
+10. Fuori tema: se chiede d'altro (politica, cosa c'è da mangiare, conto), redirigi gentile: "Sono qui per il vino, per il resto chiedi pure al cameriere".
+
+# VINCOLI ASSOLUTI
+- MAI inventare vini fuori cantina.
+- MAI consigliare altri ristoranti o bottiglie esterne.
+- MAI parlare di politica, religione, sconti aggressivi, polemiche.
+- Lingua del campo "reply": ${langMap[language]}.
+- Il campo "reason" dentro proposedWines: stessa lingua del reply, una sola riga.
+
+# FORMATO RISPOSTA (OBBLIGATORIO)
+Rispondi SEMPRE e SOLO con un JSON valido, niente testo prima/dopo, niente \`\`\`. Schema:
 {
-  "wines": [
-    {
-      "tier": "easy" | "equilibrato" | "importante",
-      "wineId": "<id dalla lista>",
-      "reason": "<2 righe max, perché si abbina ai piatti ordinati>",
-      "story_short": "<1-2 righe sulla storia/produttore/territorio>",
-      "tasting_notes": ["<nota1>", "<nota2>", "<nota3>"],
-      "service_temp_c": <numero intero>,
-      "confidence": <intero 0-100, quanto sei sicuro dell'abbinamento>
-    }
+  "reply": "<testo in ${langMap[language]}, plain, 2-5 righe>",
+  "intent": "greet" | "clarify" | "propose" | "explain" | "confirm" | "other",
+  "proposedWines": [
+    { "wineId": "<id ESATTO dalla cantina>", "tier": "easy"|"equilibrato"|"importante", "reason": "<una riga, perché>" }
   ]
 }
-4. Esattamente 3 vini, uno per ogni tier, nell'ordine: easy, equilibrato, importante.
-5. Considera tutti i piatti dell'ordine e cerca il miglior compromesso (non un vino diverso per ogni piatto).
-6. Tasting notes: 3 descrittori sensoriali concreti (es. "ciliegia matura", "tannino morbido", "finale lungo").`;
+
+Il campo "proposedWines" è OPZIONALE: includilo SOLO quando intent="propose" (1 o 3 vini). Nei turni greet/clarify/explain/confirm/other → ometti "proposedWines" oppure mettilo come array vuoto.`;
 }
 
-interface ClaudeWine {
-  tier: Tier;
-  wineId: string;
-  reason: string;
-  story_short: string;
-  tasting_notes: string[];
-  service_temp_c: number;
-  confidence: number;
+interface ClaudeReply {
+  reply: string;
+  intent?: Intent;
+  proposedWines?: { wineId: string; tier: Tier; reason: string }[];
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as SommelierRequest;
-    const { restaurantSlug, tableCode, dishesInput, language, customerEmail } = body;
+    const { restaurantSlug, tableCode, language, customerEmail, messages } = body;
 
-    if (!restaurantSlug || !dishesInput || !language) {
+    if (!restaurantSlug || !language || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: restaurantSlug, dishesInput, language' },
+        { error: 'Missing required fields: restaurantSlug, language, messages[]' },
         { status: 400 }
       );
     }
-
-    console.log('[SOMMELIER] Request:', { restaurantSlug, tableCode, dishesInput, language, customerEmail });
-
-    const wines = loadWineStock(restaurantSlug);
-    const systemPrompt = buildSystemPrompt(restaurantSlug, language, wines);
 
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('[SOMMELIER] ANTHROPIC_API_KEY missing');
@@ -164,16 +229,22 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log('[SOMMELIER] Request:', {
+      restaurantSlug,
+      tableCode,
+      language,
+      customerEmail,
+      turns: messages.length,
+    });
+
+    const wines = loadCatalog();
+    const systemPrompt = buildSommelierPrompt(restaurantSlug, language, wines);
+
     const completion = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 2000,
+      max_tokens: 1500,
       system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Piatti ordinati al tavolo ${tableCode}:\n${dishesInput}\n\nSuggerisci 3 vini (easy / equilibrato / importante) in JSON come da schema.`,
-        },
-      ],
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
 
     const textBlock = completion.content.find((c) => c.type === 'text');
@@ -187,37 +258,47 @@ export async function POST(request: Request) {
     if (jsonStart === -1 || jsonEnd === -1) {
       throw new Error(`Invalid JSON response from Claude: ${raw.slice(0, 200)}`);
     }
-    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1)) as { wines: ClaudeWine[] };
+    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1)) as ClaudeReply;
 
     const wineMap = new Map(wines.map((w) => [w.wineId, w]));
-    const suggestions: WineSuggestion[] = parsed.wines.map((cw) => {
-      const w = wineMap.get(cw.wineId);
-      if (!w) {
-        throw new Error(`Claude returned unknown wineId: ${cw.wineId}`);
+    const proposed: ProposedWine[] = [];
+    if (Array.isArray(parsed.proposedWines)) {
+      for (const cw of parsed.proposedWines) {
+        const w = wineMap.get(cw.wineId);
+        if (!w) {
+          console.warn('[SOMMELIER] Unknown wineId from Claude, skipping:', cw.wineId);
+          continue;
+        }
+        proposed.push({
+          wineId: w.wineId,
+          name: w.name,
+          producer: w.producer,
+          region: w.region,
+          vintage: w.vintage,
+          tier: cw.tier ?? w.fascia,
+          price_glass_chf: w.price_glass_chf,
+          price_bottle_chf: w.price_bottle_chf,
+          reason: cw.reason ?? '',
+        });
       }
-      return {
-        tier: cw.tier,
-        wineId: w.wineId,
-        name: w.name,
-        producer: w.producer,
-        region: w.region,
-        vintage: w.vintage,
-        price_glass_chf: w.price_glass_chf,
-        price_bottle_chf: w.price_bottle_chf,
-        reason: cw.reason,
-        story_short: cw.story_short,
-        tasting_notes: cw.tasting_notes,
-        service_temp_c: cw.service_temp_c,
-        confidence: cw.confidence,
-      };
-    });
+    }
 
-    const suggestionId = randomUUID();
+    const messageId = randomUUID();
+    const intent: Intent = parsed.intent ?? (proposed.length ? 'propose' : 'other');
 
-    console.log('[SOMMELIER] Suggested:', suggestionId, suggestions.map((s) => `${s.tier}:${s.wineId}`));
+    console.log(
+      '[SOMMELIER] Reply:',
+      messageId,
+      'intent=' + intent,
+      'wines=' + proposed.map((p) => p.wineId).join(',')
+    );
 
-    // TODO: salvare suggestionId + payload su DB Prisma (tabella wine_suggestion).
-    const response: SommelierResponse = { suggestionId, wines: suggestions };
+    const response: SommelierResponse = {
+      reply: parsed.reply,
+      intent,
+      messageId,
+      ...(proposed.length ? { proposedWines: proposed } : {}),
+    };
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

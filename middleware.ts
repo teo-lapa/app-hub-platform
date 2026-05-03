@@ -14,6 +14,7 @@ const publicRoutes = [
   '/api/auth/me',  // Necessario per checkAuth
   '/w',  // LAPA WINE - cliente al tavolo via QR (route pubblica /w/[slug]/[tavolo])
   '/api/wine/sommelier',  // LAPA WINE - endpoint AI sommelier (chiamato dalla web app cliente)
+  '/api/wine/catalog',  // LAPA WINE - carta vini del ristorante
   '/api/wine/order',  // LAPA WINE - invio comanda al ristoratore
   '/api/wine/auth/google',  // LAPA WINE - login Google opt-in cliente al tavolo
 ];
