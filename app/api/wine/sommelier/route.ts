@@ -26,6 +26,7 @@ interface SommelierRequest {
   language: Language;
   customerEmail?: string | null;
   messages: ChatMessage[];
+  image?: { base64: string; mimeType: string };
 }
 
 interface CatalogWine {
@@ -227,7 +228,7 @@ interface ClaudeReply {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as SommelierRequest;
-    const { restaurantSlug, tableCode, language, customerEmail, messages } = body;
+    const { restaurantSlug, tableCode, language, customerEmail, messages, image } = body;
 
     if (!restaurantSlug || !language || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -255,11 +256,31 @@ export async function POST(request: Request) {
     const wines = loadCatalog();
     const systemPrompt = buildSommelierPrompt(restaurantSlug, language, wines);
 
+    // Costruisce i messages per Anthropic. Se è stata inviata un'immagine, la
+    // attacchiamo all'ULTIMO messaggio user come content multimodale (vision).
+    type AnthropicMsg = { role: 'user' | 'assistant'; content: any };
+    const claudeMessages: AnthropicMsg[] = messages.map((m, idx) => {
+      const isLastUser = idx === messages.length - 1 && m.role === 'user';
+      if (isLastUser && image && image.base64) {
+        return {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: image.mimeType || 'image/jpeg', data: image.base64 },
+            },
+            { type: 'text', text: m.content || 'Ecco la foto del piatto al tavolo. Cosa mi consigli?' },
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     const completion = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 1500,
       system: systemPrompt,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: claudeMessages,
     });
 
     const textBlock = completion.content.find((c) => c.type === 'text');

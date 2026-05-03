@@ -64,7 +64,73 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [imageMap, setImageMap] = useState<Map<string, string>>(new Map());
+  const [recording, setRecording] = useState(false);
+  const [pendingImage, setPendingImage] = useState<{ dataUrl: string; mimeType: string; base64: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  }, [input]);
+
+  // Web Speech API setup (browser native, no costo)
+  const startRecording = () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SR) {
+        alert('Il dettato vocale non è supportato su questo browser. Usa Chrome o Safari.');
+        return;
+      }
+      const rec = new SR();
+      rec.lang = 'it-IT';
+      rec.interimResults = true;
+      rec.continuous = false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onresult = (event: any) => {
+        let txt = '';
+        for (let i = 0; i < event.results.length; i++) txt += event.results[i][0].transcript;
+        setInput(txt);
+      };
+      rec.onerror = () => setRecording(false);
+      rec.onend = () => setRecording(false);
+      rec.start();
+      recognitionRef.current = rec;
+      setRecording(true);
+    } catch (e) {
+      console.error('[chat] speech recognition error', e);
+      setRecording(false);
+    }
+  };
+  const stopRecording = () => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+    setRecording(false);
+  };
+
+  const onPickImage = async (file: File) => {
+    if (!file) return;
+    // Limita a 5 MB
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Foto troppo grande (max 5MB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1] || '';
+      setPendingImage({ dataUrl, mimeType: file.type || 'image/jpeg', base64 });
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Prefetch wineId → image_url mapping (così le mini-card hanno la thumbnail)
   useEffect(() => {
@@ -118,16 +184,20 @@ export default function ChatPage() {
 
   const send = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    const hasImage = !!pendingImage;
+    if ((!trimmed && !hasImage) || busy) return;
+    if (recording) stopRecording();
     setInput('');
+    const imageToSend = pendingImage;
+    setPendingImage(null);
 
-    const userMsg: ChatMessage = { role: 'user', content: trimmed };
+    const userContent = trimmed || (hasImage ? '📷 (foto del piatto)' : '');
+    const userMsg: ChatMessage = { role: 'user', content: userContent };
     const next = [...messages, userMsg];
     setMessages(next);
     setBusy(true);
 
     try {
-      // Convert chat history to API format (only role+content)
       const apiMessages = next.map((m) => ({ role: m.role, content: m.content }));
       const res = await fetch('/api/wine/sommelier', {
         method: 'POST',
@@ -137,6 +207,7 @@ export default function ChatPage() {
           tableCode: params.tavolo,
           language: 'it',
           messages: apiMessages,
+          image: imageToSend ? { base64: imageToSend.base64, mimeType: imageToSend.mimeType } : undefined,
         }),
       });
       if (!res.ok) {
@@ -343,67 +414,156 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* INPUT BAR */}
+      {/* INPUT BAR — sticky bottom, safe-area aware */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void send(input);
         }}
         style={{
-          padding: '12px 14px 18px',
+          padding: '10px 12px calc(14px + env(safe-area-inset-bottom, 0px))',
           background: tenant.cream,
           borderTop: `1px solid ${line}`,
+          position: 'sticky',
+          bottom: 0,
         }}
       >
+        {/* Foto preview pill */}
+        {pendingImage && (
+          <div
+            style={{
+              marginBottom: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 10px 6px 6px',
+              background: '#fbf8f1',
+              border: `1px solid ${line}`,
+              borderRadius: 12,
+              maxWidth: 'fit-content',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pendingImage.dataUrl}
+              alt="anteprima foto piatto"
+              style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
+            />
+            <span style={{ fontFamily: 'Fraunces, serif', fontSize: 12.5, fontStyle: 'italic', color: sub }}>
+              foto del piatto pronta
+            </span>
+            <button
+              type="button"
+              onClick={() => setPendingImage(null)}
+              aria-label="Rimuovi foto"
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                padding: 4, color: sub, display: 'flex',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 10px 8px 14px',
+            alignItems: 'flex-end',
+            gap: 6,
+            padding: '8px 8px 8px 14px',
             background: '#fbf8f1',
-            border: `1px solid ${line}`,
-            borderRadius: 24,
+            border: `1px solid ${recording ? tenant.accent : line}`,
+            borderRadius: 22,
+            transition: 'border-color 120ms ease',
           }}
         >
-          <input
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={busy ? 'Sto pensando…' : 'Scrivi al sommelier…'}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send(input);
+              }
+            }}
+            placeholder={busy ? 'Sto pensando…' : recording ? 'Ti ascolto…' : 'Scrivi o detta al sommelier'}
             aria-label="Messaggio per il sommelier"
             disabled={busy}
+            rows={1}
             style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontFamily: 'Inter, sans-serif', fontSize: 14, color: ink,
+              flex: 1, minWidth: 0,
+              background: 'transparent', border: 'none', outline: 'none',
+              resize: 'none', overflow: 'auto',
+              fontFamily: 'Inter, sans-serif', fontSize: 15, color: ink,
+              lineHeight: 1.4,
+              padding: '8px 4px',
+              maxHeight: 140,
             }}
           />
-          {/* TODO: vocale → Web Speech API / Whisper */}
-          <button type="button" aria-label="Registra audio" disabled style={iconBtn}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={sub} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="3" width="6" height="11" rx="3" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-            </svg>
-          </button>
-          {/* TODO: foto piatto → vision */}
-          <button type="button" aria-label="Scatta foto del piatto" disabled style={iconBtn}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={sub} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+
+          {/* hidden file input per camera */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onPickImage(f);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
+          />
+          {/* Camera */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+            aria-label="Scatta foto del piatto"
+            title="Foto del piatto"
+            style={iconBtnActive(busy)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
               <circle cx="12" cy="13" r="3.5" />
             </svg>
           </button>
+          {/* Mic */}
+          <button
+            type="button"
+            onClick={recording ? stopRecording : startRecording}
+            disabled={busy}
+            aria-label={recording ? 'Ferma registrazione' : 'Detta vocale'}
+            title="Detta vocale"
+            style={{
+              ...iconBtnActive(busy),
+              background: recording ? tenant.accent : 'transparent',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={recording ? '#fbf8f1' : ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          </button>
+          {/* Send */}
           <button
             type="submit"
-            disabled={busy || !input.trim()}
+            disabled={busy || (!input.trim() && !pendingImage)}
             aria-label="Invia"
             style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: busy || !input.trim() ? sub : tenant.accent,
+              flexShrink: 0,
+              width: 40, height: 40, borderRadius: '50%',
+              background: busy || (!input.trim() && !pendingImage) ? sub : tenant.accent,
               border: 'none',
-              cursor: busy || !input.trim() ? 'not-allowed' : 'pointer',
+              cursor: busy || (!input.trim() && !pendingImage) ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbf8f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbf8f1" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
             </svg>
           </button>
@@ -413,10 +573,19 @@ export default function ChatPage() {
   );
 }
 
-const iconBtn: React.CSSProperties = {
-  background: 'transparent', border: 'none', cursor: 'not-allowed', opacity: 0.4,
-  width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-};
+function iconBtnActive(busy: boolean): React.CSSProperties {
+  return {
+    flexShrink: 0,
+    background: 'transparent',
+    border: 'none',
+    cursor: busy ? 'not-allowed' : 'pointer',
+    width: 40, height: 40,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0,
+    borderRadius: '50%',
+    opacity: busy ? 0.4 : 1,
+  };
+}
 
 function WineCardInline({ wine, imageUrl, onTake }: { wine: WineProposal; imageUrl: string | null; onTake: () => void }) {
   const ink = '#1c1815';
