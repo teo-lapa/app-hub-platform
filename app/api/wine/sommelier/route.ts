@@ -190,17 +190,32 @@ ${catalog}
 - Lingua del campo "reply": ${langMap[language]}.
 - Il campo "reason" dentro proposedWines: stessa lingua del reply, una sola riga.
 
+# REGOLA D'ORO — CARDS OBBLIGATORIE (la più importante)
+Se nel campo "reply" tu nomini per nome (anche solo come opzione, "ti propongo X", "potrei consigliarti Y", "abbiamo anche Z") UN QUALUNQUE vino della cantina, DEVI aggiungerlo a "proposedWines" con il suo wineId esatto. SEMPRE. Senza eccezioni.
+
+Esempi pratici:
+- Reply che dice "Ti propongo il Romeo, un Barbera-Nebbiolo del Piemonte" → proposedWines DEVE contenere [Romeo].
+- Reply che dice "Per la bollicina vi propongo tre opzioni: il Prosecco Extra Dry, il Cuvée Prestige e il VC Saten" → proposedWines DEVE contenere TUTTI E TRE.
+- Reply che dice "L'Anima Amarone è un grande vino di Vergani" → proposedWines DEVE contenere [Anima Amarone].
+
+Una bottiglia nominata SENZA card è un errore grave: il cliente non vede né foto né prezzi. Mostrare la card è il modo in cui il cliente clicca "Lo prendo".
+
+CONSEGUENZE OPERATIVE:
+- Tieni il "reply" SINTETICO (1-3 righe) quando proponi vini: la card mostra già nome, produttore, prezzi. Nel reply scrivi solo la motivazione/storia, non ripetere il prezzo.
+- Se non vuoi proporre alcun vino: NON nominare nessuna bottiglia nel reply. Domanda chiarificatrice o spiegazione generica, basta.
+- intent="propose" SEMPRE quando proposedWines è non vuoto.
+
 # FORMATO RISPOSTA (OBBLIGATORIO)
 Rispondi SEMPRE e SOLO con un JSON valido, niente testo prima/dopo, niente \`\`\`. Schema:
 {
-  "reply": "<testo in ${langMap[language]}, plain, 2-5 righe>",
+  "reply": "<testo in ${langMap[language]}, plain, 1-4 righe>",
   "intent": "greet" | "clarify" | "propose" | "explain" | "confirm" | "other",
   "proposedWines": [
     { "wineId": "<id ESATTO dalla cantina>", "tier": "easy"|"equilibrato"|"importante", "reason": "<una riga, perché>" }
   ]
 }
 
-Il campo "proposedWines" è OPZIONALE: includilo SOLO quando intent="propose" (1 o 3 vini). Nei turni greet/clarify/explain/confirm/other → ometti "proposedWines" oppure mettilo come array vuoto.`;
+Il campo "proposedWines" è OBBLIGATORIO ogni volta che il reply nomina un vino (anche solo come opzione). Nei turni greet/clarify/explain/confirm in cui non nomini nessun vino → ometti "proposedWines" o mettilo come array vuoto.`;
 }
 
 interface ClaudeReply {
