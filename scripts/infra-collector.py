@@ -17,7 +17,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- Configuration ---
@@ -56,7 +56,8 @@ def ssh_cmd(host, cmd, timeout=SSH_TIMEOUT):
             ssh_args[4] = "C:/Users/lapa/.ssh/id_rsa"
         env = {**os.environ, "HOME": "C:\\Users\\lapa", "USERPROFILE": "C:\\Users\\lapa"}
         result = subprocess.run(
-            ssh_args, capture_output=True, text=True, timeout=timeout, env=env
+            ssh_args, capture_output=True, text=True, timeout=timeout, env=env,
+            encoding='utf-8', errors='replace',
         )
         return result.stdout.strip(), result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -339,17 +340,15 @@ def check_lapa_sales_services(host, device):
     if not has_pythonw:
         device['errors'].append('Sergio Bot non attivo!')
 
-    ps_out, ps_ok = ssh_cmd(host, 'wsl -d Ubuntu-22.04 -u lapa -- ps aux')
-    has_openclaw = 'openclaw' in ps_out if ps_ok else False
-    port_out, _ = ssh_cmd(host, 'netstat -an | findstr 18791')
-    port_listening = 'LISTENING' in port_out
-    vanessa_ok = has_openclaw and port_listening
+    pid_out, pid_ok = ssh_cmd(host, 'wsl pgrep -f "node bot.js"')
+    vanessa_ok = pid_ok and pid_out.strip() != ''
     device['services'].append({
-        'name': 'Vanessa', 'type': 'openclaw', 'status': 'ok' if vanessa_ok else 'ko',
-        'port': 18791, 'details': 'OpenClaw + Gateway attivi' if vanessa_ok else 'Processo mancante o porta non attiva',
+        'name': 'Vanessa', 'type': 'whatsapp-bot', 'status': 'ok' if vanessa_ok else 'ko',
+        'details': f'bot.js PID {pid_out.strip()}' if vanessa_ok else 'Processo node bot.js non trovato',
     })
     if not vanessa_ok:
-        device['errors'].append('Vanessa OpenClaw non attiva!')
+        device['errors'].append('Vanessa WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Vanessa', host, '/home/lapa/vanessa-whatsapp-bot/bot.log')
 
 
 def collect_powershell_pc(host, device_id, name, ip, processor, services_check=None):
@@ -446,32 +445,95 @@ def collect_powershell_pc(host, device_id, name, ip, processor, services_check=N
     return device
 
 
+# --- WhatsApp bot.log message counter (real msg counts via SSH+WSL) ---
+
+def count_bot_msgs_24h(host, log_path):
+    """Conta msg inbound/outbound nelle ultime 24h dal bot.log via SSH+WSL.
+    Ritorna (inbound, outbound, last_msg_iso). Se SSH fallisce -> (0,0,None)."""
+    out, ok = ssh_cmd(host, f'wsl tail -n 5000 {log_path}', timeout=20)
+    if not ok or not out:
+        return 0, 0, None
+    cutoff = (datetime.utcnow() - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%S')
+    inbound = 0
+    outbound = 0
+    last_msg = None
+    for line in out.split('\n'):
+        if len(line) < 23 or line[4] != '-' or line[10] != 'T':
+            continue
+        ts = line[:19]
+        if ts < cutoff:
+            continue
+        is_in = 'OWNER:' in line or '- FROM ' in line or 'Processing text:' in line
+        is_out = 'Outbox:' in line or 'sent to' in line.lower()
+        if is_in:
+            inbound += 1
+            last_msg = ts
+        if is_out:
+            outbound += 1
+            last_msg = ts
+    return inbound, outbound, last_msg
+
+
+def attach_msg_stats(device, agent_service_name, host, log_path):
+    """Aggiunge total24h, in24h, out24h, lastMsgTs al service dell'agente."""
+    inb, outb, last_ts = count_bot_msgs_24h(host, log_path)
+    for svc in device.get('services', []):
+        if svc['name'] == agent_service_name:
+            svc['in24h'] = inb
+            svc['out24h'] = outb
+            svc['total24h'] = inb + outb
+            svc['lastMsgTs'] = last_ts
+            break
+
+
 def check_stella_services(host, device):
-    ps_out, ps_ok = ssh_cmd(host, 'powershell -Command "Get-Process wsl -ErrorAction SilentlyContinue | Select-Object ProcessName,Id"')
-    has_wsl = 'wsl' in ps_out.lower() if ps_ok else False
-    port_raw, _ = ssh_cmd(host, 'netstat -an | findstr 18790')
-    port_listening = 'LISTENING' in port_raw
-    stella_ok = has_wsl and port_listening
+    pid_out, pid_ok = ssh_cmd(host, 'wsl pgrep -f "node bot.js"')
+    stella_ok = pid_ok and pid_out.strip() != ''
     device['services'].append({
-        'name': 'Stella', 'type': 'openclaw', 'status': 'ok' if stella_ok else 'ko',
-        'port': 18790, 'details': 'WSL + Gateway attivi' if stella_ok else 'WSL o porta non attiva',
+        'name': 'Stella', 'type': 'whatsapp-bot', 'status': 'ok' if stella_ok else 'ko',
+        'details': f'bot.js PID {pid_out.strip()}' if stella_ok else 'Processo node bot.js non trovato',
     })
     if not stella_ok:
-        device['errors'].append('Stella OpenClaw non attiva!')
+        device['errors'].append('Stella WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Stella', host, '/home/lapa/stella-whatsapp-bot/bot.log')
+
+    # Aurora Telegram bot (pythonw.exe con "aurora" nella commandline)
+    task_out, _ = ssh_cmd(host, 'tasklist /fi "imagename eq pythonw.exe"')
+    has_pythonw = 'pythonw.exe' in task_out
+    aurora_ok = False
+    if has_pythonw:
+        cmd_out, _ = ssh_cmd(host, 'wmic process where "name=\'pythonw.exe\'" get commandline')
+        aurora_ok = 'aurora' in cmd_out.lower()
+    device['services'].append({
+        'name': 'Aurora', 'type': 'telegram-bot', 'status': 'ok' if aurora_ok else 'ko',
+        'details': 'pythonw aurora attivo' if aurora_ok else 'Processo aurora non trovato',
+    })
+    if not aurora_ok:
+        device['errors'].append('Aurora Telegram bot non attivo!')
 
 
 def check_romeo_services(host, device):
-    ps_out, ps_ok = ssh_cmd(host, 'powershell -Command "Get-Process wsl -ErrorAction SilentlyContinue | Select-Object ProcessName,Id"')
-    has_wsl = 'wsl' in ps_out.lower() if ps_ok else False
-    port_raw, _ = ssh_cmd(host, 'netstat -an | findstr 18790')
-    port_listening = 'LISTENING' in port_raw
-    romeo_ok = has_wsl and port_listening
+    pid_out, pid_ok = ssh_cmd(host, 'wsl pgrep -f "node bot.js"')
+    romeo_ok = pid_ok and pid_out.strip() != ''
     device['services'].append({
-        'name': 'Romeo', 'type': 'openclaw', 'status': 'ok' if romeo_ok else 'ko',
-        'port': 18790, 'details': 'WSL + Gateway attivi' if romeo_ok else 'WSL o porta non attiva',
+        'name': 'Romeo', 'type': 'whatsapp-bot', 'status': 'ok' if romeo_ok else 'ko',
+        'details': f'bot.js PID {pid_out.strip()}' if romeo_ok else 'Processo node bot.js non trovato',
     })
     if not romeo_ok:
-        device['errors'].append('Romeo OpenClaw non attivo!')
+        device['errors'].append('Romeo WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Romeo', host, '/home/lapa/romeo-whatsapp-bot/bot.log')
+
+
+def check_diana_services(host, device):
+    pid_out, pid_ok = ssh_cmd(host, 'wsl pgrep -f "node bot.js"')
+    diana_ok = pid_ok and pid_out.strip() != ''
+    device['services'].append({
+        'name': 'Diana', 'type': 'whatsapp-bot', 'status': 'ok' if diana_ok else 'ko',
+        'details': f'bot.js PID {pid_out.strip()}' if diana_ok else 'Processo node bot.js non trovato',
+    })
+    if not diana_ok:
+        device['errors'].append('Diana WhatsApp bot non attivo!')
+    attach_msg_stats(device, 'Diana', host, '/home/lapa/diana-whatsapp-bot/bot.log')
 
 
 def collect_jetson():
@@ -551,15 +613,16 @@ def collect_paul_local():
     if not boot_out:
         boot_out, _ = local_cmd('systeminfo | findstr /C:"System Boot Time"')
     device['uptime'] = parse_boot_time(boot_out) if boot_out else None
-    # Paul Bot
-    task_out, _ = local_cmd('tasklist')
-    has_pythonw = 'pythonw' in task_out.lower()
+    # Paul Bot (match specifico su commandline pythonw)
+    cmd_out, _ = local_cmd('wmic process where "name=\'pythonw.exe\'" get commandline')
+    cmd_low = cmd_out.lower()
+    paul_ok = 'paul_bot' in cmd_low or 'paul-bot' in cmd_low or 'paulbot' in cmd_low
     device['services'].append({
         'name': 'Paul Bot', 'type': 'bot',
-        'status': 'ok' if has_pythonw else 'ko',
-        'details': 'pythonw attivo' if has_pythonw else 'Processo non trovato',
+        'status': 'ok' if paul_ok else 'ko',
+        'details': 'pythonw paul_bot attivo' if paul_ok else 'Processo paul_bot non trovato',
     })
-    if not has_pythonw:
+    if not paul_ok:
         device['errors'].append('Paul Bot non attivo!')
     return device
 
@@ -569,7 +632,9 @@ def build_agents_summary(devices):
     agent_map = {
         'Giulio': {'emoji': '\U0001F91E', 'device': 'LAPA10'},
         'Stella': {'emoji': '\u2B50', 'device': 'STELLA'},
+        'Aurora': {'emoji': '\U0001F305', 'device': 'STELLA'},
         'Romeo': {'emoji': '\U0001F3F9', 'device': 'ROMEO'},
+        'Diana': {'emoji': '\U0001F469', 'device': 'DIANA'},
         'Vanessa': {'emoji': '\U0001F483', 'device': 'LAPA-SALES'},
         'Sergio Bot': {'emoji': '\U0001F4BC', 'device': 'LAPA-SALES'},
         'Magazzino Bot': {'emoji': '\U0001F4E6', 'device': 'LAPA10'},
@@ -584,6 +649,10 @@ def build_agents_summary(devices):
                     'device': info['device'], 'status': svc['status'],
                     'port': svc.get('port'), 'details': svc.get('details'),
                     'emoji': info['emoji'],
+                    'total24h': svc.get('total24h', 0),
+                    'in24h': svc.get('in24h', 0),
+                    'out24h': svc.get('out24h', 0),
+                    'lastMsgTs': svc.get('lastMsgTs'),
                 })
     return agents
 
@@ -613,6 +682,7 @@ def main():
         ('LAPA-SALES', lambda: collect_windows_pc('lapa-sales', 'lapa-sales', 'LAPA-SALES', '192.168.1.58', 'i5-1135G7', check_lapa_sales_services)),
         ('STELLA', lambda: collect_powershell_pc('stella', 'stella', 'STELLA', '192.168.1.157', 'i7-12700T', check_stella_services)),
         ('ROMEO', lambda: collect_powershell_pc('romeo', 'romeo', 'ROMEO', '192.168.1.237', 'Ryzen 5 5500U', check_romeo_services)),
+        ('DIANA', lambda: collect_powershell_pc('diana', 'diana', 'DIANA', '192.168.1.33', 'i5-AIO', check_diana_services)),
         ('BOOK-PAUL', lambda: collect_powershell_pc('book-paul', 'book-paul', 'BOOK-PAUL', '192.168.1.55', 'Snapdragon X Elite')),
         ('JETSON', collect_jetson),
         ('LAURA-PC', lambda: collect_simple_ping('laura-pc', 'LAURA-PC', '192.168.1.21', 'PC spento (normale)')),
@@ -643,27 +713,58 @@ def main():
     agents = build_agents_summary(devices)
     summary = build_summary(devices)
 
-    # Check Odoo production (Odoo.sh)
+    # Check Odoo production: vera query JSON-RPC autenticata + count ordini oggi
     odoo = {'connected': False, 'ordersToday': 0}
+    odoo_url = os.environ.get('ODOO_URL', 'https://lapadevadmin-lapa-v2.odoo.com').rstrip('/')
+    odoo_db = os.environ.get('ODOO_DB', 'lapadevadmin-lapa-v2-main-7268478')
+    odoo_user = os.environ.get('ODOO_USERNAME', 'paul@lapa.ch')
+    odoo_pass = os.environ.get('ODOO_PASSWORD', 'lapa201180')
     try:
-        odoo_req = urllib.request.Request(
-            'https://lapadevadmin-lapa-v2.odoo.com/web/login',
-            headers={'User-Agent': 'LAPA-InfraCollector/1.0'},
+        # 1) authenticate
+        auth_payload = {
+            'jsonrpc': '2.0', 'method': 'call',
+            'params': {
+                'service': 'common', 'method': 'authenticate',
+                'args': [odoo_db, odoo_user, odoo_pass, {}],
+            },
+        }
+        req = urllib.request.Request(
+            f'{odoo_url}/jsonrpc',
+            data=json.dumps(auth_payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST',
         )
-        with urllib.request.urlopen(odoo_req, timeout=10) as resp:
-            odoo['connected'] = resp.status == 200
-            odoo['details'] = 'Odoo.sh raggiungibile'
-    except urllib.error.HTTPError as e:
-        # Even 303/302 redirects mean server is alive
-        if e.code in (301, 302, 303):
-            odoo['connected'] = True
-            odoo['details'] = 'Odoo.sh raggiungibile (redirect)'
-        else:
-            odoo['connected'] = False
-            odoo['details'] = f'HTTP {e.code}'
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            auth_res = json.loads(resp.read().decode('utf-8'))
+        uid = auth_res.get('result')
+        if not uid:
+            raise RuntimeError('Auth fallita')
+        # 2) search_count ordini creati oggi (UTC 00:00)
+        today_utc = datetime.now(timezone.utc).strftime('%Y-%m-%d 00:00:00')
+        count_payload = {
+            'jsonrpc': '2.0', 'method': 'call',
+            'params': {
+                'service': 'object', 'method': 'execute_kw',
+                'args': [odoo_db, uid, odoo_pass, 'sale.order', 'search_count',
+                         [[['create_date', '>=', today_utc]]]],
+            },
+        }
+        req = urllib.request.Request(
+            f'{odoo_url}/jsonrpc',
+            data=json.dumps(count_payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            count_res = json.loads(resp.read().decode('utf-8'))
+        if 'error' in count_res:
+            raise RuntimeError(count_res['error'].get('data', {}).get('message', 'query error'))
+        odoo['connected'] = True
+        odoo['ordersToday'] = int(count_res.get('result', 0))
+        odoo['details'] = f'Odoo OK, {odoo["ordersToday"]} ordini oggi'
     except Exception as e:
         odoo['connected'] = False
-        odoo['details'] = f'Non raggiungibile: {str(e)[:50]}'
+        odoo['details'] = f'Errore: {str(e)[:100]}'
 
     payload = {
         'timestamp': datetime.now().isoformat(),

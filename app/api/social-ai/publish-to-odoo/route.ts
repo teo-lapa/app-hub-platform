@@ -30,11 +30,12 @@ async function convertToJpeg(buffer: Buffer): Promise<{ buffer: Buffer; mimetype
     const { Jimp } = await import('jimp');
     const image = await Jimp.read(buffer);
     const jpegBuffer = await image.getBuffer('image/jpeg', { quality: 90 });
-    console.log(`✅ [PUBLISH-ODOO] Convertito: ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
+    console.log(`✅ [PUBLISH-ODOO] Convertito (jimp): ${image.width}x${image.height} (${Math.round(jpegBuffer.length / 1024)}KB)`);
     return { buffer: Buffer.from(jpegBuffer), mimetype: 'image/jpeg', extension: 'jpg' };
   } catch (e: any) {
-    console.error('⚠️ [PUBLISH-ODOO] Errore conversione jimp:', e.message);
-    return { buffer, mimetype: 'image/jpeg', extension: 'jpg' };
+    console.error('❌ [PUBLISH-ODOO] Conversione jimp FALLITA:', e.message);
+    // Non ritornare piu' il buffer originale come "JPEG" - Instagram rifiuta
+    throw new Error(`Conversione JPEG fallita: ${e.message}. Instagram rifiuta formato ${format}.`);
   }
 }
 

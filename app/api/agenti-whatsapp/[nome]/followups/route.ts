@@ -4,7 +4,9 @@ import { proxyGet } from '@/lib/agents/whatsapp-api-proxy';
 
 export async function GET(req: Request, { params }: { params: { nome: string } }) {
   const { nome } = params;
-  if (!getAgent(nome)) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  const agent = getAgent(nome);
+  if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  if (agent.apiAvailable === false) return NextResponse.json({ followups: [], apiAvailable: false });
 
   const url = new URL(req.url);
   const status = url.searchParams.get('status') || '';
@@ -12,6 +14,6 @@ export async function GET(req: Request, { params }: { params: { nome: string } }
   try {
     return NextResponse.json(await proxyGet(nome, 'followups', status ? { status } : {}));
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ followups: [], error: err.message });
   }
 }

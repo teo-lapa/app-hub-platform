@@ -80,11 +80,26 @@ interface GenerateMarketingRequest {
   videoStyle?: 'default' | 'zoom' | 'rotate' | 'dynamic' | 'cinematic' | 'explosion' | 'orbital' | 'reassembly';
   videoDuration?: 4 | 6 | 8;  // Durata video in secondi - Veo 3.1 supporta solo 4, 6, 8s (default: 6)
   videoPrompt?: string;
+  videoModel?: 'veo-3.1' | 'veo-3.1-fast';  // veo-3.1-fast = ~2x più veloce, qualità leggermente inferiore (default: veo-3.1)
+
+  // MODELLO IMMAGINE (ibrido)
+  // - 'nano-banana' (default): Gemini 3.1 Flash Image Preview — usa foto prodotto come reference, fedeltà 100%
+  // - 'imagen-4-ultra': Imagen 4 Ultra — qualità cinematografica ma NON copia la foto (prodotto "interpretato")
+  imageModel?: 'nano-banana' | 'imagen-4-ultra';
+
+  // COPY PRE-GENERATO (opzionale)
+  // Se fornito, salta Gemini Copywriting Agent e usa questo (es. Aurora bot scrive copy via Claude+NotebookLM)
+  preGeneratedCopy?: {
+    caption: string;
+    hashtags: string[];
+    cta: string;
+  };
 
   // Branding
   includeLogo?: boolean;     // Se true, include logo e motto nell'immagine/video
   logoImage?: string;        // Logo aziendale (base64) - opzionale
   companyMotto?: string;      // Slogan/Motto aziendale - opzionale
+  enforceBrandPalette?: boolean; // Se true, forza palette LAPA (#FF6B35 arancio + bianco) nell'immagine (default: true)
 
   // Geo-Targeting & RAG
   productCategory?: string;  // Categoria prodotto per RAG matching (es: 'Food', 'Gastro', 'Beverage')
@@ -133,9 +148,13 @@ export async function POST(request: NextRequest) {
       videoStyle = 'default',
       videoDuration = 6,    // Default: 6 secondi (Veo 3.1: solo 4, 6, 8s supportati)
       videoPrompt,
+      videoModel = 'veo-3.1',
+      imageModel = 'nano-banana',
+      preGeneratedCopy,
       includeLogo = false,
       logoImage,        // Logo aziendale (base64) - opzionale
       companyMotto,     // Slogan/Motto aziendale - opzionale
+      enforceBrandPalette = true,
       // Geo-Targeting & RAG
       productCategory,
       targetCanton,
@@ -205,21 +224,30 @@ export async function POST(request: NextRequest) {
 
     const agents = [];
 
-    // AGENT 1: Copywriting (sempre attivo) - con RAG
-    agents.push(
-      generateCopywriting(ai, {
-        productName: cleanedName,
-        productDescription: cleanedDescription,
-        platform: socialPlatform,
-        tone,
-        targetAudience,
-        productImageBase64: cleanBase64,
-        productCategory,
-        targetCanton
-      })
-    );
+    // AGENT 1: Copywriting — skippato se preGeneratedCopy fornito (Aurora/Claude+NotebookLM)
+    if (preGeneratedCopy && preGeneratedCopy.caption) {
+      console.log('[GENERATE-MARKETING] ✨ Usando copy pre-generato (Aurora/Claude) — skip Gemini copywriting');
+      agents.push(Promise.resolve({
+        caption: preGeneratedCopy.caption,
+        hashtags: preGeneratedCopy.hashtags || [],
+        cta: preGeneratedCopy.cta || ''
+      }));
+    } else {
+      agents.push(
+        generateCopywriting(ai, {
+          productName: cleanedName,
+          productDescription: cleanedDescription,
+          platform: socialPlatform,
+          tone,
+          targetAudience,
+          productImageBase64: cleanBase64,
+          productCategory,
+          targetCanton
+        })
+      );
+    }
 
-    // AGENT 2: Image Generation (se richiesto)
+    // AGENT 2: Image Generation (se richiesto) — ibrido Nano Banana / Imagen 4 Ultra
     if (contentType === 'image' || contentType === 'both') {
       agents.push(
         generateMarketingImage(ai, {
@@ -231,7 +259,9 @@ export async function POST(request: NextRequest) {
           productImageBase64: cleanBase64,
           includeLogo,
           logoImage,
-          companyMotto
+          companyMotto,
+          imageModel,
+          enforceBrandPalette
         })
       );
     } else {
@@ -250,6 +280,7 @@ export async function POST(request: NextRequest) {
           videoStyle,
           videoDuration,
           videoPrompt,
+          videoModel,
           includeLogo,
           logoImage,
           companyMotto
@@ -575,6 +606,8 @@ async function generateMarketingImage(
     includeLogo: boolean;
     logoImage?: string;
     companyMotto?: string;
+    imageModel?: 'nano-banana' | 'imagen-4-ultra';
+    enforceBrandPalette?: boolean;
   }
 ): Promise<{ data: string; mimeType: string; dataUrl: string } | null> {
 
@@ -716,8 +749,21 @@ TECHNICAL:
 
   const basePrompt = tonePrompts[params.tone as keyof typeof tonePrompts] || tonePrompts.professional;
 
+  // BRAND CONSISTENCY ENFORCER — palette LAPA (arancio #FF6B35 + bianco)
+  let brandPaletteInstruction = '';
+  if (params.enforceBrandPalette !== false) {
+    brandPaletteInstruction = `
+
+🎨 BRAND CONSISTENCY (LAPA - finest italian food):
+- PRIMARY ACCENT COLOR: Warm orange #FF6B35 (use subtly: in background accents, props, or lighting — NEVER overpower the product)
+- SECONDARY: Clean white #FFFFFF, warm cream tones, natural wood, terracotta
+- AVOID: Cold blues, neon greens, purples (clash with brand)
+- FONT (if any text appears): Clean modern sans-serif (Inter/Helvetica style) for casual/fun, elegant serif (Playfair Display style) for luxury
+- Italian gastronomic heritage aesthetic: warm, inviting, authentic — not sterile or overly industrial`;
+  }
+
   // Aggiungi logo e motto se richiesti (ENGLISH)
-  let brandingInstruction = '';
+  let brandingInstruction = brandPaletteInstruction;
 
   if (params.includeLogo && params.logoImage) {
     brandingInstruction += '\n\nLOGO: Add the provided company logo as a small, elegant watermark in the bottom right corner. The logo should be subtle but visible, maintaining professional quality.';
@@ -732,8 +778,55 @@ TECHNICAL:
   }
 
   const fullPrompt = basePrompt + brandingInstruction;
+  const modelChoice = params.imageModel || 'nano-banana';
 
   try {
+    // ==========================================
+    // 🎨 IMAGEN 4 ULTRA — text-to-image, no reference photo
+    // Qualità cinematografica ma prodotto interpretato (non copiato dalla foto)
+    // ==========================================
+    if (modelChoice === 'imagen-4-ultra') {
+      console.log('[AGENT-IMAGE] 🎨 Using Imagen 4 Ultra (text-to-image, no reference)');
+
+      // Aspect ratio per Imagen: accetta 1:1, 3:4, 4:3, 9:16, 16:9
+      const imagenAspect = params.aspectRatio === '4:3' ? '4:3'
+        : params.aspectRatio === '9:16' ? '9:16'
+        : params.aspectRatio === '16:9' ? '16:9'
+        : '1:1';
+
+      const imagenResponse: any = await (ai.models as any).generateImages({
+        model: 'imagen-4.0-ultra-generate-001',
+        prompt: `Photorealistic product photography of ${params.productName}. ${fullPrompt}`,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: imagenAspect,
+          personGeneration: 'allow_adult'
+        }
+      });
+
+      const generatedImages = imagenResponse?.generatedImages || [];
+      if (generatedImages.length > 0 && generatedImages[0].image?.imageBytes) {
+        const imageData = generatedImages[0].image.imageBytes;
+        const mimeType = generatedImages[0].image.mimeType || 'image/png';
+
+        if (isDev) {
+          console.log('[AGENT-IMAGE] ✓ Imagen 4 Ultra image generated, size:', imageData.length, 'bytes');
+        }
+
+        return {
+          data: imageData,
+          mimeType,
+          dataUrl: `data:${mimeType};base64,${imageData}`
+        };
+      }
+
+      console.error('[AGENT-IMAGE] Imagen 4 Ultra returned no image, falling back to Nano Banana');
+      // fallthrough a Nano Banana
+    }
+
+    // ==========================================
+    // 🍌 NANO BANANA (default) — image-to-image, fedeltà 100%
+    // ==========================================
     // Prepara i contenuti per Gemini
     const contents: any[] = [
       {
@@ -842,6 +935,7 @@ async function generateMarketingVideo(
     videoStyle?: string;
     videoDuration?: number;
     videoPrompt?: string;
+    videoModel?: 'veo-3.1' | 'veo-3.1-fast';
     includeLogo: boolean;
     logoImage?: string;
     companyMotto?: string;
@@ -904,8 +998,14 @@ async function generateMarketingVideo(
 
     // NUOVO SDK - usa generateVideos() esattamente come da documentazione ufficiale
     // https://ai.google.dev/gemini-api/docs/video
+    const veoModelId = params.videoModel === 'veo-3.1-fast'
+      ? 'veo-3.1-fast-generate-preview'
+      : 'veo-3.1-generate-preview';
+
+    console.log('[AGENT-VIDEO] Veo model:', veoModelId);
+
     const operation = await ai.models.generateVideos({
-      model: 'veo-3.1-generate-preview',
+      model: veoModelId,
       prompt: fullPrompt,  // Direct parameter (not wrapped in "source")
       image: {             // Direct parameter (not wrapped in "source")
         imageBytes: params.productImageBase64,

@@ -9,6 +9,7 @@ import {
   CheckCircle2, XCircle, MinusCircle, Monitor, Smartphone, Database,
   Radio, ChevronDown, ChevronUp, Settings, Zap, Globe, MessageSquare,
 } from 'lucide-react';
+import { WHATSAPP_AGENTS, type WhatsAppAgentConfig } from '@/lib/agents/whatsapp-agents';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -130,10 +131,11 @@ function MetricBar({ label, value, max, unit, icon: Icon, thresholdWarn, thresho
 
 // ─── Device Card ───────────────────────────────────────────────────
 
-function DeviceCard({ device }: { device: DeviceStatus }) {
+function DeviceCard({ device, isStale, ageMinutes }: { device: DeviceStatus; isStale?: boolean; ageMinutes?: number }) {
   const [expanded, setExpanded] = useState(false);
 
-  const overallStatus = !device.online ? 'offline'
+  const overallStatus = isStale ? 'offline'
+    : !device.online ? 'offline'
     : device.errors && device.errors.length > 0 ? 'ko'
     : device.warnings && device.warnings.length > 0 ? 'warning'
     : 'ok';
@@ -178,7 +180,14 @@ function DeviceCard({ device }: { device: DeviceStatus }) {
               <TypeIcon className={`w-5 h-5 ${device.online ? 'text-blue-400' : 'text-slate-600'}`} />
             </div>
             <div>
-              <h3 className="font-semibold text-white text-sm">{device.name}</h3>
+              <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+                {device.name}
+                {isStale && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-600/40 text-slate-300 border border-slate-500/40">
+                    STALE {ageMinutes}min
+                  </span>
+                )}
+              </h3>
               <p className="text-xs text-slate-500">{device.ip}{device.processor ? ` \u2022 ${device.processor}` : ''}</p>
             </div>
           </div>
@@ -327,27 +336,56 @@ function DeviceCard({ device }: { device: DeviceStatus }) {
   );
 }
 
-// ─── Agent Row ─────────────────────────────────────────────────────
+// ─── Live Agent Row ────────────────────────────────────────────────
 
-function AgentRow({ agent }: { agent: AgentInfo }) {
+interface LiveAgentState {
+  slug: string;
+  agent: WhatsAppAgentConfig;
+  online: boolean | null;
+  processRunning: boolean | null;
+  sshReachable: boolean | null;
+  pid: string | null;
+  total24h: number;
+  errors24h: number;
+  lastMsgMinutesAgo: number | null;
+}
+
+function LiveAgentRow({ state }: { state: LiveAgentState }) {
+  const { agent, slug } = state;
+  const status: 'ok' | 'warning' | 'ko' | 'offline' =
+    state.online === null ? 'offline'
+    : state.errors24h > 0 ? 'warning'
+    : state.online ? 'ok'
+    : 'ko';
+
+  const platformLabel = agent.platforms.join(' + ');
+  const modelLabel = agent.model;
+
   return (
-    <div className="flex items-center justify-between py-3 px-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
-      <div className="flex items-center gap-3">
-        <span className="text-xl">{agent.emoji || (agent.type === 'openclaw' ? '\uD83E\uDD16' : '\uD83D\uDCE6')}</span>
-        <div>
-          <p className="text-sm font-semibold text-white">{agent.name}</p>
-          <p className="text-xs text-slate-500">
-            {agent.device}
-            {agent.port ? ` \u2022 porta ${agent.port}` : ''}
-            {agent.type === 'openclaw' ? ' \u2022 OpenClaw' : ' \u2022 Python Bot'}
+    <Link
+      href={`/agenti-whatsapp/${slug}`}
+      className="flex items-center justify-between py-3 px-4 bg-slate-800/30 hover:bg-slate-800/60 rounded-xl border border-slate-700/30 hover:border-cyan-500/40 transition-all"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-xl shrink-0">{agent.emoji}</span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{agent.name}</p>
+          <p className="text-xs text-slate-500 truncate">
+            {agent.pc.ssh.toUpperCase()} · {platformLabel} · {modelLabel}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {agent.details && <span className="text-xs text-slate-400 hidden sm:block">{agent.details}</span>}
-        <StatusBadge status={agent.status} />
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right hidden sm:block">
+          <div className="text-[10px] text-slate-500 uppercase tracking-wide">24h</div>
+          <div className="text-xs text-slate-300 font-mono">
+            {state.total24h}
+            {state.errors24h > 0 && <span className="text-red-400"> · {state.errors24h} err</span>}
+          </div>
+        </div>
+        <StatusBadge status={status} />
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -391,6 +429,7 @@ export default function InfraMonitorPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [ageMinutes, setAgeMinutes] = useState(0);
   const [isStale, setIsStale] = useState(false);
+  const [liveAgents, setLiveAgents] = useState<LiveAgentState[]>([]);
 
   const fetchStatus = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
@@ -403,7 +442,8 @@ export default function InfraMonitorPage() {
         setIsStale(json.meta?.isStale || false);
         setError(null);
       } else if (json.success && !json.data) {
-        setError('Nessun dato disponibile. Il collector non sta girando.');
+        // No infra KV data yet — that's OK, we still show live agents
+        setError(null);
       } else {
         setError(json.error || 'Errore nel caricamento');
       }
@@ -416,16 +456,48 @@ export default function InfraMonitorPage() {
     }
   }, []);
 
+  const fetchLiveAgents = useCallback(async () => {
+    const entries = Object.entries(WHATSAPP_AGENTS);
+    const results = await Promise.allSettled(
+      entries.map(async ([slug, agent]) => {
+        const [statusRes, statsRes] = await Promise.allSettled([
+          fetch(`/api/agenti-whatsapp/${slug}/status`).then(r => r.json()),
+          fetch(`/api/agenti-whatsapp/${slug}/stats`).then(r => r.json()),
+        ]);
+        const st = statusRes.status === 'fulfilled' ? statusRes.value : {};
+        const stats = statsRes.status === 'fulfilled' ? statsRes.value : {};
+        return {
+          slug,
+          agent,
+          online: st.online ?? null,
+          processRunning: st.processRunning ?? null,
+          sshReachable: st.sshReachable ?? null,
+          pid: st.pid ?? null,
+          total24h: stats.total24h || 0,
+          errors24h: stats.errors24h || 0,
+          lastMsgMinutesAgo: stats.lastMsgMinutesAgo ?? null,
+        } as LiveAgentState;
+      })
+    );
+    const list: LiveAgentState[] = [];
+    for (const r of results) if (r.status === 'fulfilled') list.push(r.value);
+    setLiveAgents(list);
+  }, []);
+
   useEffect(() => {
     fetchStatus(true);
-  }, [fetchStatus]);
+    fetchLiveAgents();
+  }, [fetchStatus, fetchLiveAgents]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(() => fetchStatus(false), 30000);
+    const interval = setInterval(() => {
+      fetchStatus(false);
+      fetchLiveAgents();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [autoRefresh, fetchStatus]);
+  }, [autoRefresh, fetchStatus, fetchLiveAgents]);
 
   // ─── Loading State ────────────────────────────────────────
 
@@ -449,37 +521,29 @@ export default function InfraMonitorPage() {
     );
   }
 
-  // ─── Error / No Data ──────────────────────────────────────
-
-  if (error && !data) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-slate-800/50 rounded-2xl border border-slate-700/50 p-8 max-w-md"
-        >
-          <Server className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Nessun Dato</h2>
-          <p className="text-slate-400 mb-4">{error}</p>
-          <p className="text-xs text-slate-500 mb-6">
-            Assicurati che il collector sia in esecuzione sul PC PAUL.
-          </p>
-          <button
-            onClick={() => { setLoading(true); fetchStatus(true); }}
-            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-          >
-            Riprova
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
   const summary = data?.summary;
   const devices = data?.devices || [];
-  const agents = data?.agents || [];
   const odoo = data?.odoo;
+  const collectorAgents = data?.agents || [];
+
+  // Helper: per slug agente prendi msg counts dal collector (vero) se disponibili,
+  // altrimenti fallback a liveAgents (tunnel — può essere sballato)
+  const msgCountsFor = (slug: string, fallback: number) => {
+    const fromCollector = collectorAgents.find(
+      a => a.name.toLowerCase().replace(/\s+bot$/, '') === slug.toLowerCase()
+    );
+    const total = (fromCollector as any)?.total24h;
+    return typeof total === 'number' ? total : fallback;
+  };
+
+  // Live agents summary — msg counts preferibilmente dal collector (vero)
+  const agentsOnlineCount = liveAgents.filter(a => a.online).length;
+  const agentsTotalCount = liveAgents.length;
+  const agentsWarningCount = liveAgents.filter(a => a.errors24h > 0).length;
+  const agentsMsgTotal = liveAgents.reduce(
+    (acc, a) => acc + msgCountsFor(a.slug, a.total24h), 0
+  );
+  const agentsErrorsTotal = liveAgents.reduce((acc, a) => acc + a.errors24h, 0);
 
   // ─── Main Render ──────────────────────────────────────────
 
@@ -509,9 +573,9 @@ export default function InfraMonitorPage() {
                 <h1 className="text-lg sm:text-xl font-bold text-white">Infra Monitor</h1>
               </div>
               <div className="hidden sm:flex items-center gap-2">
-                <PulseDot color={isStale ? 'bg-amber-500' : 'bg-emerald-500'} />
+                <PulseDot color={liveAgents.length > 0 ? 'bg-emerald-500' : 'bg-amber-500'} />
                 <span className="text-xs text-slate-400">
-                  {isStale ? `Dati vecchi (${ageMinutes} min fa)` : `Aggiornato ${ageMinutes} min fa`}
+                  Agenti live · aggiornato {lastRefresh.toLocaleTimeString('it-CH')}
                 </span>
               </div>
             </div>
@@ -542,23 +606,68 @@ export default function InfraMonitorPage() {
         </div>
       </motion.div>
 
+      {/* ─── Stale Data Banner ──────────────────────────── */}
+      {isStale && (
+        <div
+          className={`w-full border-b-2 ${
+            ageMinutes >= 1440
+              ? 'bg-red-900/80 border-red-500 animate-pulse'
+              : ageMinutes >= 30
+              ? 'bg-red-900/60 border-red-500/70'
+              : 'bg-amber-900/60 border-amber-500/70'
+          }`}
+        >
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
+            <p className={`text-sm sm:text-base font-semibold ${
+              ageMinutes >= 30 ? 'text-red-100' : 'text-amber-100'
+            }`}>
+              {ageMinutes < 30 && (
+                <>⚠️ Dati in ritardo: ultima raccolta {ageMinutes} min fa. I valori potrebbero non essere aggiornati.</>
+              )}
+              {ageMinutes >= 30 && ageMinutes < 1440 && (
+                <>🚨 Collector fermo da {ageMinutes} min. Dati DISPOSITIVI/SERVIZI/ODOO non affidabili.</>
+              )}
+              {ageMinutes >= 1440 && (
+                <>🚨🚨 COLLECTOR MORTO da {Math.floor(ageMinutes / 1440)} giorni. I dati Dispositivi/Servizi/Odoo sotto sono FOTOGRAFIE OBSOLETE — NON RIFLETTONO LA REALTÀ. Riavvia LAPA-InfraCollector su PAUL.</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ─── Summary Cards ─────────────────────────────── */}
-        {summary && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
-          >
-            <SummaryCard label="Dispositivi" value={summary.totalDevices} icon={Server} color="bg-blue-600" />
-            <SummaryCard label="Online" value={summary.online} icon={Wifi} color="bg-emerald-600" />
-            <SummaryCard label="Offline" value={summary.offline} icon={WifiOff} color="bg-slate-600" />
-            <SummaryCard label="Servizi OK" value={summary.servicesOk} icon={CheckCircle2} color="bg-emerald-600" />
-            <SummaryCard label="Warning" value={summary.servicesWarning} icon={AlertTriangle} color="bg-amber-600" />
-            <SummaryCard label="KO" value={summary.servicesKo} icon={XCircle} color="bg-red-600" />
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+        >
+          <SummaryCard label="Agenti" value={`${agentsOnlineCount}/${agentsTotalCount}`} icon={Bot} color="bg-cyan-600" />
+          <SummaryCard label="Msg 24h" value={agentsMsgTotal} icon={MessageSquare} color="bg-blue-600" />
+          <SummaryCard label="Errori 24h" value={agentsErrorsTotal} icon={AlertTriangle} color={agentsErrorsTotal > 0 ? 'bg-red-600' : 'bg-slate-600'} />
+          {summary ? (
+            isStale ? (
+              <>
+                <SummaryCard label="Dispositivi · stale" value={'—'} icon={Server} color="bg-slate-700" />
+                <SummaryCard label="Servizi · stale" value={'—'} icon={CheckCircle2} color="bg-slate-700" />
+                <SummaryCard label="Warning/KO · stale" value={'—'} icon={XCircle} color="bg-slate-700" />
+              </>
+            ) : (
+              <>
+                <SummaryCard label="Dispositivi" value={`${summary.online}/${summary.totalDevices}`} icon={Server} color="bg-emerald-600" />
+                <SummaryCard label="Servizi OK" value={summary.servicesOk} icon={CheckCircle2} color="bg-emerald-600" />
+                <SummaryCard label="Warning/KO" value={summary.servicesWarning + summary.servicesKo} icon={XCircle} color={(summary.servicesKo > 0) ? 'bg-red-600' : summary.servicesWarning > 0 ? 'bg-amber-600' : 'bg-slate-600'} />
+              </>
+            )
+          ) : (
+            <>
+              <SummaryCard label="Dispositivi" value={'—'} icon={Server} color="bg-slate-700" />
+              <SummaryCard label="Servizi" value={'—'} icon={CheckCircle2} color="bg-slate-700" />
+              <SummaryCard label="Collector" value={'OFF'} icon={XCircle} color="bg-red-600" />
+            </>
+          )}
+        </motion.div>
 
         {/* ─── Odoo Status ───────────────────────────────── */}
         {odoo && (
@@ -566,79 +675,122 @@ export default function InfraMonitorPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/30 p-4"
+            className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border p-4 ${
+              isStale ? 'border-slate-600/50' : 'border-slate-700/30'
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-purple-400" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isStale ? 'bg-slate-600/20' : 'bg-purple-600/20'
+                }`}>
+                  <Globe className={`w-5 h-5 ${isStale ? 'text-slate-400' : 'text-purple-400'}`} />
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Odoo Produzione</h3>
-                  <p className="text-xs text-slate-500">ERP LAPA</p>
+                  <p className="text-xs text-slate-500">
+                    {isStale ? 'dato non aggiornato' : 'ERP LAPA'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">{odoo.ordersToday}</p>
+                  <p className={`text-lg font-bold ${isStale ? 'text-slate-500' : 'text-white'}`}>
+                    {isStale ? '—' : odoo.ordersToday}
+                  </p>
                   <p className="text-xs text-slate-500">Ordini oggi</p>
                 </div>
-                <StatusBadge status={odoo.connected ? 'ok' : 'ko'} />
+                <StatusBadge status={isStale ? 'offline' : odoo.connected ? 'ok' : 'ko'} />
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ─── Agents Section ────────────────────────────── */}
-        {agents.length > 0 && (
+        {/* ─── Agents Section (LIVE) ─────────────────────── */}
+        {liveAgents.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-              <Bot className="w-5 h-5 text-cyan-400" />
-              Agenti AI & Bot
-              <span className="text-xs text-slate-500 font-normal ml-2">
-                {agents.filter(a => a.status === 'ok').length}/{agents.length} attivi
-              </span>
-            </h2>
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Bot className="w-5 h-5 text-cyan-400" />
+                Agenti AI & Bot
+                <span className="text-xs text-slate-500 font-normal ml-2">
+                  {agentsOnlineCount}/{agentsTotalCount} online · {agentsMsgTotal} msg 24h
+                  {agentsErrorsTotal > 0 && <span className="text-red-400"> · {agentsErrorsTotal} err</span>}
+                </span>
+              </h2>
+              <Link
+                href="/agenti-whatsapp/alerts"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 border border-orange-500/20 transition-colors"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> Centro alert
+              </Link>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {agents.map((agent, i) => (
-                <AgentRow key={i} agent={agent} />
-              ))}
+              {liveAgents
+                .sort((a, b) => {
+                  // errors first, then offline, then by name
+                  if (a.errors24h !== b.errors24h) return b.errors24h - a.errors24h;
+                  if (a.online !== b.online) return a.online ? 1 : -1;
+                  return a.agent.name.localeCompare(b.agent.name);
+                })
+                .map(state => (
+                  <LiveAgentRow
+                    key={state.slug}
+                    state={{ ...state, total24h: msgCountsFor(state.slug, state.total24h) }}
+                  />
+                ))}
             </div>
           </motion.div>
         )}
 
         {/* ─── Devices Grid ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-            <Monitor className="w-5 h-5 text-cyan-400" />
-            Dispositivi
-            <span className="text-xs text-slate-500 font-normal ml-2">
-              {devices.filter(d => d.online).length}/{devices.length} online
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {devices
-              .sort((a, b) => {
-                // Online first, then by errors, then by name
-                if (a.online !== b.online) return a.online ? -1 : 1;
-                const aErr = (a.errors?.length || 0) + (a.services?.filter(s => s.status === 'ko').length || 0);
-                const bErr = (b.errors?.length || 0) + (b.services?.filter(s => s.status === 'ko').length || 0);
-                if (aErr !== bErr) return bErr - aErr;
-                return a.name.localeCompare(b.name);
-              })
-              .map((device) => (
-                <DeviceCard key={device.id} device={device} />
-              ))}
-          </div>
-        </motion.div>
+        {devices.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+              <Monitor className="w-5 h-5 text-cyan-400" />
+              Dispositivi
+              <span className="text-xs text-slate-500 font-normal ml-2">
+                {devices.filter(d => d.online).length}/{devices.length} online
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {devices
+                .sort((a, b) => {
+                  if (a.online !== b.online) return a.online ? -1 : 1;
+                  const aErr = (a.errors?.length || 0) + (a.services?.filter(s => s.status === 'ko').length || 0);
+                  const bErr = (b.errors?.length || 0) + (b.services?.filter(s => s.status === 'ko').length || 0);
+                  if (aErr !== bErr) return bErr - aErr;
+                  return a.name.localeCompare(b.name);
+                })
+                .map((device) => (
+                  <DeviceCard key={device.id} device={device} isStale={isStale} ageMinutes={ageMinutes} />
+                ))}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 flex items-center gap-3"
+          >
+            <Monitor className="w-5 h-5 text-slate-500 shrink-0" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-slate-300">Dispositivi · collector non attivo</div>
+              <div className="text-xs text-slate-500">
+                Il collector infra non sta pubblicando dati. Avvialo sul PC PAUL per vedere CPU/RAM/disco dei device.
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ─── Footer ────────────────────────────────────── */}
         <div className="text-center py-4 text-xs text-slate-600">

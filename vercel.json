@@ -17,6 +17,14 @@
     {
       "path": "/api/cron/sync-products-rag",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/agents-healthcheck",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/ocr-attachments",
+      "schedule": "*/5 * * * *"
     }
   ],
   "devCommand": "npm run dev",
