@@ -1,0 +1,279 @@
+/*
+ * LAPA WINE — design tokens
+ * Generato dal prototipo Claude Design (LAPA-WINE-APP/_prototype)
+ * Importato in app/w/* (route cliente al tavolo) e app/lapa-wine* (route ristoratore/admin)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
+
+:root {
+  /* ---------- Brand: Red / Bordeaux ---------- */
+  --lapa-red-50:  #fdf2f2;
+  --lapa-red-100: #fbe5e5;
+  --lapa-red-200: #f7c8c8;
+  --lapa-red-300: #f09a9a;
+  --lapa-red-400: #e35d5d;
+  --lapa-red-500: #d12d2d;
+  --lapa-red-600: #b81e1e;
+  --lapa-red-700: #951616;
+  --lapa-red-800: #7a1414;
+  --lapa-red-900: #5a1010;
+
+  --lapa-primary:        var(--lapa-red-600);
+  --lapa-primary-hover:  var(--lapa-red-700);
+  --lapa-primary-active: var(--lapa-red-800);
+  --lapa-primary-fg:     #ffffff;
+  --lapa-primary-soft:   var(--lapa-red-50);
+  --lapa-primary-border: var(--lapa-red-200);
+
+  /* ---------- Neutrals (slate) ---------- */
+  --neutral-0:   #ffffff;
+  --neutral-25:  #fafbfc;
+  --neutral-50:  #f4f6f8;
+  --neutral-100: #e9ecef;
+  --neutral-200: #dde1e6;
+  --neutral-300: #c4cad1;
+  --neutral-400: #9aa2ac;
+  --neutral-500: #6b7280;
+  --neutral-600: #4b5563;
+  --neutral-700: #374151;
+  --neutral-800: #1f2937;
+  --neutral-900: #111827;
+  --neutral-950: #0a0e16;
+
+  /* ---------- Semantic / status ---------- */
+  --success-50:  #ecfdf3;
+  --success-100: #d1fadf;
+  --success-500: #12b76a;
+  --success-600: #039855;
+  --success-700: #027a48;
+
+  --warning-50:  #fffaeb;
+  --warning-100: #fef0c7;
+  --warning-500: #f79009;
+  --warning-600: #dc6803;
+  --warning-700: #b54708;
+
+  --danger-50:  #fef3f2;
+  --danger-100: #fee4e2;
+  --danger-500: #f04438;
+  --danger-600: #d92d20;
+  --danger-700: #b42318;
+
+  --info-50:  #eff8ff;
+  --info-100: #d1e9ff;
+  --info-500: #2e90fa;
+  --info-600: #1570ef;
+  --info-700: #175cd3;
+
+  /* Italian flag accent */
+  --italy-green: #009246;
+  --italy-white: #ffffff;
+  --italy-red:   #ce2b37;
+
+  /* ---------- Surfaces ---------- */
+  --bg-app:       var(--neutral-50);
+  --bg-surface:   var(--neutral-0);
+  --bg-surface-2: var(--neutral-25);
+  --bg-muted:     var(--neutral-100);
+  --bg-hover:     var(--neutral-50);
+  --bg-selected:  var(--lapa-red-50);
+
+  /* ---------- Foreground / text ---------- */
+  --fg-1:        var(--neutral-900);
+  --fg-2:        var(--neutral-700);
+  --fg-3:        var(--neutral-500);
+  --fg-4:        var(--neutral-400);
+  --fg-on-brand: #ffffff;
+  --fg-link:     var(--lapa-red-700);
+  --fg-link-hover: var(--lapa-red-800);
+
+  /* ---------- Borders ---------- */
+  --border-subtle: var(--neutral-100);
+  --border:        var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --border-focus:  var(--lapa-red-500);
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius:    6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  /* ---------- Elevation ---------- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow:    0 2px 4px rgba(16, 24, 40, 0.06), 0 4px 8px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 8px rgba(16, 24, 40, 0.08), 0 8px 16px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 24px rgba(16, 24, 40, 0.10), 0 4px 6px rgba(16, 24, 40, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(209, 45, 45, 0.18);
+
+  /* ---------- Spacing scale ---------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- Type ---------- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-serif: 'Fraunces', 'GT Sectra', Georgia, 'Times New Roman', serif;
+
+  --text-display:   700 32px/1.2  var(--font-sans);
+  --text-h1:        700 24px/1.25 var(--font-sans);
+  --text-h2:        600 20px/1.3  var(--font-sans);
+  --text-h3:        600 16px/1.4  var(--font-sans);
+  --text-h4:        600 14px/1.4  var(--font-sans);
+
+  --text-body:      400 14px/1.55 var(--font-sans);
+  --text-body-lg:   400 16px/1.55 var(--font-sans);
+  --text-body-sm:   400 13px/1.5  var(--font-sans);
+  --text-caption:   500 12px/1.4  var(--font-sans);
+  --text-label:     500 13px/1.3  var(--font-sans);
+  --text-eyebrow:   600 11px/1.3  var(--font-sans);
+  --text-button:    600 14px/1    var(--font-sans);
+  --text-button-sm: 600 13px/1    var(--font-sans);
+  --text-mono:      500 13px/1.45 var(--font-mono);
+
+  --text-display-serif: 400 56px/1.05 var(--font-serif);
+  --text-h1-serif:      400 36px/1.1  var(--font-serif);
+  --text-h2-serif:      400 28px/1.15 var(--font-serif);
+  --text-h3-serif:      500 22px/1.2  var(--font-serif);
+  --text-quote-serif:   300 20px/1.4  var(--font-serif);
+
+  /* Tracking */
+  --tracking-tight:  -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-eyebrow: 0.08em;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur:      180ms;
+  --dur-slow: 280ms;
+
+  /* ---------- Wine editorial palette ---------- */
+  --wine-cream:        #f6f1e8;
+  --wine-cream-2:      #ede5d6;
+  --wine-paper:        #fbf8f1;
+  --wine-ink:          #1c1815;
+  --wine-ink-2:        #3a322b;
+  --wine-ink-3:        #6b5f52;
+  --wine-ink-4:        #9a8e7e;
+
+  --wine-bordeaux:     #5a1a1f;
+  --wine-bordeaux-2:   #3d1115;
+  --wine-burgundy:     #7a2530;
+  --wine-rose:         #c98a8e;
+  --wine-olive:        #6f6b3c;
+  --wine-terra:        #b8694a;
+  --wine-amber:        #c89456;
+  --wine-gold:         #b69558;
+  --wine-line:         #d9cdb8;
+  --wine-line-2:       #c2b59c;
+
+  /* Dark mode (sera) */
+  --wine-dark-bg:      #14110d;
+  --wine-dark-paper:   #1d1814;
+  --wine-dark-line:    #2e2722;
+  --wine-dark-fg:      #f0e9db;
+  --wine-dark-meta:    #9a8e7e;
+}
+
+/* ----------- Dark surface variant ---- */
+.theme-dark {
+  --bg-app:       var(--neutral-950);
+  --bg-surface:   var(--neutral-900);
+  --bg-surface-2: #161c26;
+  --bg-muted:     var(--neutral-800);
+  --bg-hover:     #1c2330;
+  --bg-selected:  rgba(209, 45, 45, 0.15);
+  --fg-1: #f3f4f6;
+  --fg-2: #d1d5db;
+  --fg-3: #9ca3af;
+  --fg-4: #6b7280;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border:        rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.18);
+}
+
+/* =====================================================================
+   LAPA prose semantic styles
+   ===================================================================== */
+.lapa-prose h1, h1.lapa { font: var(--text-h1); letter-spacing: var(--tracking-tight); color: var(--fg-1); margin: 0 0 var(--space-4); }
+.lapa-prose h2, h2.lapa { font: var(--text-h2); letter-spacing: var(--tracking-tight); color: var(--fg-1); margin: 0 0 var(--space-3); }
+.lapa-prose h3, h3.lapa { font: var(--text-h3); color: var(--fg-1); margin: 0 0 var(--space-2); }
+.lapa-prose h4, h4.lapa { font: var(--text-h4); color: var(--fg-1); margin: 0 0 var(--space-2); }
+.lapa-prose p,  p.lapa  { font: var(--text-body); color: var(--fg-2); margin: 0 0 var(--space-3); }
+.lapa-prose small, small.lapa { font: var(--text-body-sm); color: var(--fg-3); }
+.lapa-prose code, code.lapa { font: var(--text-mono); background: var(--bg-muted); border: 1px solid var(--border); padding: 1px 5px; border-radius: var(--radius-sm); }
+
+.eyebrow { font: var(--text-eyebrow); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--fg-3); }
+.label   { font: var(--text-label); color: var(--fg-2); }
+.caption { font: var(--text-caption); color: var(--fg-3); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   Wine surfaces — opt-in scope
+   ===================================================================== */
+.wine-surface {
+  background: var(--wine-cream);
+  color: var(--wine-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.wine-surface.dark {
+  background: var(--wine-dark-bg);
+  color: var(--wine-dark-fg);
+  --wine-cream: var(--wine-dark-bg);
+  --wine-cream-2: #1a1612;
+  --wine-paper: var(--wine-dark-paper);
+  --wine-ink: var(--wine-dark-fg);
+  --wine-ink-2: #d8cebd;
+  --wine-ink-3: var(--wine-dark-meta);
+  --wine-ink-4: #6f6557;
+  --wine-line: var(--wine-dark-line);
+  --wine-line-2: #3a322b;
+}
+
+.wine-surface .serif { font-family: var(--font-serif); font-weight: 400; }
+.wine-surface .eyebrow-wine {
+  font: 600 10px/1.2 var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wine-ink-3);
+}
+
+/* Hairline divider */
+.wine-rule { height: 1px; background: var(--wine-line); border: 0; }
+.wine-rule-strong { height: 1px; background: var(--wine-line-2); border: 0; }
+
+/* Editorial number / drop-cap */
+.wine-num {
+  font: 400 11px/1 var(--font-serif);
+  font-style: italic;
+  color: var(--wine-ink-3);
+  letter-spacing: 0.04em;
+}
+
+/* Restrained focus ring on wine surfaces */
+.wine-surface :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--wine-bordeaux);
+  border-radius: 4px;
+}
+
+/* Tabular numerics shortcut */
+.tnum { font-variant-numeric: tabular-nums; letter-spacing: 0; }

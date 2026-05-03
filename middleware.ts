@@ -11,7 +11,11 @@ const publicRoutes = [
   '/api/auth/login-cliente',  // Customer login endpoint
   '/api/auth/register',
   '/api/auth/logout',
-  '/api/auth/me'  // Necessario per checkAuth
+  '/api/auth/me',  // Necessario per checkAuth
+  '/w',  // LAPA WINE - cliente al tavolo via QR (route pubblica /w/[slug]/[tavolo])
+  '/api/wine/sommelier',  // LAPA WINE - endpoint AI sommelier (chiamato dalla web app cliente)
+  '/api/wine/order',  // LAPA WINE - invio comanda al ristoratore
+  '/api/wine/auth/google',  // LAPA WINE - login Google opt-in cliente al tavolo
 ];
 
 // Routes escluse dal controllo app (admin, dashboard, profile, ecc.)
@@ -23,6 +27,7 @@ const excludedAppRoutes = [
   '/gestione-visibilita-app',
   '/email-ai-monitor',  // Email AI Monitor - has internal OAuth
   '/silvano',  // Area Agente Commerciale - protetta da JWT
+  '/w',  // LAPA WINE cliente al tavolo - già whitelisted come pubblico, escluso da app check
   '/api',
   '/_next'
 ];
