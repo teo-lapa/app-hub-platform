@@ -93,15 +93,37 @@ export default function ChatPage() {
       const rec = new SR();
       rec.lang = 'it-IT';
       rec.interimResults = true;
-      rec.continuous = false;
+      rec.continuous = true;
+      rec.maxAlternatives = 1;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
         let txt = '';
         for (let i = 0; i < event.results.length; i++) txt += event.results[i][0].transcript;
         setInput(txt);
       };
-      rec.onerror = () => setRecording(false);
-      rec.onend = () => setRecording(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onerror = (e: any) => {
+        // 'no-speech' è il classico falso allarme: l'utente sta pensando.
+        // 'aborted' è quando chiamiamo stop noi. Ignoriamoli.
+        if (e?.error === 'no-speech' || e?.error === 'aborted') return;
+        console.warn('[chat] speech recognition error:', e?.error);
+        setRecording(false);
+      };
+      rec.onend = () => {
+        // Quando il browser termina automaticamente (timeout silenzio),
+        // se l'utente NON ha premuto stop, riavviamo per non interrompere il dettato.
+        if (recognitionRef.current === rec) {
+          try {
+            rec.start();
+          } catch {
+            // già partito o non riavviabile → segna stop
+            recognitionRef.current = null;
+            setRecording(false);
+          }
+        } else {
+          setRecording(false);
+        }
+      };
       rec.start();
       recognitionRef.current = rec;
       setRecording(true);
@@ -111,8 +133,11 @@ export default function ChatPage() {
     }
   };
   const stopRecording = () => {
+    // Azzero il ref PRIMA di stop() così onend non auto-riavvia
+    const rec = recognitionRef.current;
+    recognitionRef.current = null;
     try {
-      recognitionRef.current?.stop();
+      rec?.stop();
     } catch {}
     setRecording(false);
   };
