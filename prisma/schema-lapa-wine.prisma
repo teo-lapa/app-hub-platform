@@ -1,0 +1,233 @@
+// LAPA Wine - Database Schema (DOCUMENTATION ONLY)
+//
+// La piattaforma usa @vercel/postgres con SQL puro, non Prisma.
+// L'effettiva migrazione vive in: migrations/lapa-wine.sql
+// Il seed in: scripts/seed-lapa-wine.ts
+//
+// Questo file è mantenuto come schema di riferimento human-readable.
+//
+// Catalogo vini Vergani + ristoranti partner + AI sommelier
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-lapa-wine"
+}
+
+enum WineOpzioneCommerciale {
+  A // acquisto sconto
+  B // conto vendita
+  C // ibrido
+}
+
+enum WineOrderStatus {
+  pending
+  confirmed
+  served
+  cancelled
+}
+
+model WineRestaurant {
+  id                            String   @id @default(cuid())
+  slug                          String   @unique
+  name                          String
+  owner_email                   String
+  logo_url                      String?
+  address                       String?
+  accent_color                  String?
+  monogram                      String?
+  language_default              String   @default("it")
+
+  opzione_commerciale           WineOpzioneCommerciale
+  sconto_acquisto_pct           Decimal? @db.Decimal(5, 2)
+  target_rotazione_min_chf_mese Decimal? @db.Decimal(10, 2)
+
+  active                        Boolean  @default(true)
+  created_at                    DateTime @default(now())
+  updated_at                    DateTime @updatedAt
+
+  stocks       WineRestaurantStock[]
+  menu_items   WineMenuItem[]
+  suggestions  WineSuggestion[]
+  orders       WineOrder[]
+  sales        WineSale[]
+
+  @@index([owner_email])
+  @@map("wine_restaurants")
+}
+
+model WineProduct {
+  id                          String   @id @default(cuid())
+  vergani_sku                 String   @unique
+  name                        String
+  producer                    String
+  region                      String
+  subregion                   String?
+  denomination                String?
+
+  grape_varieties             String[]
+  vintage                     Int?
+  format_cl                   Int
+  wine_type                   String
+
+  price_vergani_to_lapa_chf   Decimal  @db.Decimal(10, 2)
+  price_carta_suggested_chf   Decimal  @db.Decimal(10, 2)
+
+  fascia                      String
+
+  story_short                 String   @db.Text
+  tasting_notes               String[]
+  food_pairings               String[]
+
+  service_temp_c              Int?
+  decantation_minutes         Int?
+
+  image_url                   String?
+
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+
+  stocks  WineRestaurantStock[]
+  orders  WineOrder[]
+  sales   WineSale[]
+
+  @@index([wine_type])
+  @@index([region])
+  @@map("wine_products")
+}
+
+model WineRestaurantStock {
+  id                String   @id @default(cuid())
+  restaurant_id     String
+  wine_id           String
+
+  qty_in_stock      Int
+  qty_threshold_min Int      @default(2)
+  price_carta_chf   Decimal? @db.Decimal(10, 2)
+
+  is_active         Boolean  @default(true)
+  added_at          DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  restaurant WineRestaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  wine       WineProduct    @relation(fields: [wine_id], references: [id], onDelete: Cascade)
+
+  @@unique([restaurant_id, wine_id])
+  @@index([restaurant_id])
+  @@index([wine_id])
+  @@map("wine_restaurant_stocks")
+}
+
+model WineMenuItem {
+  id            String   @id @default(cuid())
+  restaurant_id String
+  name          String
+  category      String
+  description   String?
+  ingredients   String[]
+
+  active        Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  restaurant WineRestaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+
+  @@index([restaurant_id])
+  @@index([category])
+  @@map("wine_menu_items")
+}
+
+model WineSuggestion {
+  id              String   @id @default(cuid())
+  restaurant_id   String
+  table_code      String
+
+  dishes_input    String   @db.Text
+  wines_proposed  Json
+  wine_chosen_id  String?
+
+  customer_email  String?
+  session_id      String
+  language        String   @default("it")
+
+  created_at      DateTime @default(now())
+
+  restaurant WineRestaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  orders     WineOrder[]
+
+  @@index([restaurant_id])
+  @@index([customer_email])
+  @@index([session_id])
+  @@map("wine_suggestions")
+}
+
+model WineCustomer {
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  name                 String
+  picture_url          String?
+  restaurants_visited  String[]
+  preferences          Json     @default("{}")
+
+  created_at           DateTime @default(now())
+  last_seen_at         DateTime @default(now())
+
+  @@map("wine_customers")
+}
+
+model WineOrder {
+  id              String          @id @default(cuid())
+  restaurant_id   String
+  table_code      String
+  wine_id         String
+
+  qty             Int             @default(1)
+  price_carta_chf Decimal         @db.Decimal(10, 2)
+  status          WineOrderStatus @default(pending)
+
+  customer_email  String?
+  suggestion_id   String?
+
+  created_at      DateTime  @default(now())
+  confirmed_at    DateTime?
+
+  restaurant WineRestaurant  @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  wine       WineProduct     @relation(fields: [wine_id], references: [id])
+  suggestion WineSuggestion? @relation(fields: [suggestion_id], references: [id])
+
+  @@index([restaurant_id])
+  @@index([wine_id])
+  @@index([customer_email])
+  @@index([status])
+  @@map("wine_orders")
+}
+
+model WineSale {
+  id                              String   @id @default(cuid())
+  restaurant_id                   String
+  wine_id                         String
+  qty                             Int
+
+  price_carta_chf                 Decimal  @db.Decimal(10, 2)
+  price_lapa_to_restaurant_chf    Decimal  @db.Decimal(10, 2)
+  price_vergani_to_lapa_chf       Decimal  @db.Decimal(10, 2)
+
+  sold_at                         DateTime
+  invoiced_to_restaurant_at       DateTime?
+  paid_by_restaurant_at           DateTime?
+  paid_to_vergani_at              DateTime?
+
+  created_at                      DateTime @default(now())
+
+  restaurant WineRestaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  wine       WineProduct    @relation(fields: [wine_id], references: [id])
+
+  @@index([restaurant_id])
+  @@index([wine_id])
+  @@index([sold_at])
+  @@map("wine_sales")
+}
