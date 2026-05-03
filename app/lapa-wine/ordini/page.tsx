@@ -11,13 +11,14 @@ interface ReorderItem {
   maker: string;
   qty: number;
   price: number;
+  image?: string;
 }
 
 const REORDER: ReorderItem[] = [
-  { name: 'Romeo', maker: 'Mura Mura · Barbera/Nebbiolo', qty: 6, price: 28 },
-  { name: "L'Anima Amarone", maker: 'Vergani · Valpolicella', qty: 4, price: 64 },
-  { name: "L'Anima Bianco", maker: 'Vergani · Bordeaux Blanc', qty: 6, price: 22 },
-  { name: 'Berta Bric del Gaian', maker: 'Grappa di Moscato', qty: 3, price: 78 },
+  { name: 'Romeo', maker: 'Mura Mura · Barbera/Nebbiolo', qty: 6, price: 28, image: '/wines/mura-mura-romeo.png' },
+  { name: 'Anima Amarone', maker: "L'Anima di Vergani · Valpolicella", qty: 4, price: 64, image: '/wines/lanima-di-vergani-anima-amarone.png' },
+  { name: 'Anima Prosecco Extra Dry', maker: "L'Anima di Vergani · Prosecco DOC", qty: 6, price: 22, image: '/wines/lanima-di-vergani-anima-prosecco-extra-dry.png' },
+  { name: 'Tra Noi Nebbiolo Barolo', maker: 'Berta · Grappa Invecchiata', qty: 3, price: 78, image: '/wines/berta-tra-noi-nebbiolo-barolo.png' },
 ];
 
 interface Comanda {
@@ -27,11 +28,12 @@ interface Comanda {
   maker: string;
   price: number;
   customer: string;
+  image?: string;
 }
 
 const COMANDE: Comanda[] = [
-  { table: 'Tavolo 7', time: '20:24', wine: 'Romeo, Mura Mura', maker: 'Bottiglia · carta', price: 56, customer: 'Paolo M. · 4ª visita' },
-  { table: 'Tavolo 3', time: '20:18', wine: "L'Anima Bianco", maker: 'Calice · carta', price: 12, customer: 'Walk-in' },
+  { table: 'Tavolo 7', time: '20:24', wine: 'Romeo, Mura Mura', maker: 'Bottiglia · carta', price: 56, customer: 'Paolo M. · 4ª visita', image: '/wines/mura-mura-romeo.png' },
+  { table: 'Tavolo 3', time: '20:18', wine: 'Anima Prosecco Extra Dry', maker: 'Calice · carta', price: 12, customer: 'Walk-in', image: '/wines/lanima-di-vergani-anima-prosecco-extra-dry.png' },
 ];
 
 export default function OrdiniPage() {
@@ -103,25 +105,22 @@ export default function OrdiniPage() {
           >
             <div
               style={{
-                width: 36,
-                height: 48,
-                background: '#efe6d6',
-                borderRadius: 3,
+                width: 40,
+                height: 56,
                 flexShrink: 0,
-                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 3,
-                  transform: 'translateX(-50%)',
-                  width: 8,
-                  height: 12,
-                  background: '#1c1815',
-                }}
-              />
+              {it.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.image} alt={it.name} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                <div style={{ width: 32, height: 44, background: '#efe6d6', borderRadius: 3, position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '50%', top: 3, transform: 'translateX(-50%)', width: 7, height: 11, background: '#1c1815' }} />
+                </div>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{it.name}</div>
@@ -238,17 +237,20 @@ export default function OrdiniPage() {
               </div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>CHF {c.price}</div>
             </div>
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: 'Fraunces, Georgia, serif',
-                fontSize: 18,
-                fontWeight: 500,
-              }}
-            >
-              {c.wine}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
+              {c.image && (
+                <div style={{ width: 36, height: 56, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.image} alt={c.wine} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 18, fontWeight: 500 }}>
+                  {c.wine}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--fg-3, #6b5f52)', marginTop: 2 }}>{c.maker}</div>
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--fg-3, #6b5f52)', marginTop: 2 }}>{c.maker}</div>
             <div style={{ fontSize: 11, color: 'var(--fg-3, #6b5f52)', marginTop: 6 }}>{c.customer}</div>
           </div>
         ))}

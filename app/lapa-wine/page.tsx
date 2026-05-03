@@ -13,9 +13,9 @@ const MOCK = {
     bottiglie: 18,
     weather: '14° pioggia',
     top: [
-      { name: 'Romeo', maker: 'Mura Mura', qty: 4 },
-      { name: "L'Anima Bianco", maker: 'Vergani', qty: 3 },
-      { name: "L'Anima Rosé", maker: 'Vergani', qty: 2 },
+      { name: 'Romeo', maker: 'Mura Mura', qty: 4, image: '/wines/mura-mura-romeo.png', tone: 'red' as const },
+      { name: 'Anima Prosecco Extra Dry', maker: "L'Anima di Vergani", qty: 3, image: '/wines/lanima-di-vergani-anima-prosecco-extra-dry.png', tone: 'white' as const },
+      { name: 'Anima Prosecco Rosé Brut', maker: "L'Anima di Vergani", qty: 2, image: '/wines/lanima-di-vergani-anima-prosecco-rose-brut.png', tone: 'rose' as const },
     ],
   },
   inventoryAlert: { count: 3, label: 'etichette sotto soglia', sub: 'Riordino consigliato — consegna domani 11:00' },
@@ -74,7 +74,7 @@ export default function LapaWineHomePage() {
           <div style={{ ...eyebrow, marginBottom: 8 }}>Top vendite oggi</div>
           {m.tonight.top.map((w) => (
             <div key={w.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13 }}>
-              <BottleThumb tone="red" />
+              <BottleImage src={w.image} alt={w.name} fallbackTone={w.tone} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {w.name}
@@ -214,6 +214,16 @@ function BottleThumb({ tone }: { tone: 'red' | 'white' | 'rose' }) {
           background: '#1c1815',
         }}
       />
+    </div>
+  );
+}
+
+function BottleImage({ src, alt, fallbackTone }: { src?: string; alt: string; fallbackTone: 'red' | 'white' | 'rose' }) {
+  if (!src) return <BottleThumb tone={fallbackTone} />;
+  return (
+    <div style={{ width: 32, height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
     </div>
   );
 }

@@ -13,19 +13,21 @@ interface Wine {
   qty: number;
   min: number;
   tone: Tone;
+  image?: string;
   low?: boolean;
   bestseller?: boolean;
   openedToday?: boolean;
 }
 
 const STOCK: Wine[] = [
-  { name: 'Romeo', maker: 'Mura Mura · Langhe DOC', qty: 4, min: 6, tone: 'red', low: true, bestseller: true, openedToday: true },
-  { name: "L'Anima Bianco", maker: 'Vergani · Bordeaux Blanc', qty: 12, min: 6, tone: 'white', openedToday: true },
-  { name: "L'Anima Rosé", maker: 'Vergani · Provence', qty: 8, min: 6, tone: 'rose' },
-  { name: "L'Anima Amarone", maker: 'Vergani · Valpolicella', qty: 2, min: 4, tone: 'red', low: true },
-  { name: 'Prosecco Brut', maker: 'Vergani · DOCG', qty: 16, min: 8, tone: 'bubbles', bestseller: true },
-  { name: 'Berta Bric del Gaian', maker: 'Grappa di Moscato', qty: 3, min: 4, tone: 'grappa', low: true },
-  { name: 'Gavi del Comune', maker: 'La Scolca · Cortese', qty: 9, min: 6, tone: 'white' },
+  { name: 'Romeo', maker: 'Mura Mura · Piemonte DOC', qty: 4, min: 6, tone: 'red', image: '/wines/mura-mura-romeo.png', low: true, bestseller: true, openedToday: true },
+  { name: "Anima Amarone", maker: "L'Anima di Vergani · Valpolicella", qty: 2, min: 4, tone: 'red', image: '/wines/lanima-di-vergani-anima-amarone.png', low: true },
+  { name: 'Anima Toscana', maker: "L'Anima di Vergani · Toscana IGT", qty: 8, min: 6, tone: 'red', image: '/wines/lanima-di-vergani-anima-toscana.png' },
+  { name: 'Anima Prosecco Extra Dry', maker: "L'Anima di Vergani · Prosecco DOC", qty: 12, min: 8, tone: 'bubbles', image: '/wines/lanima-di-vergani-anima-prosecco-extra-dry.png', bestseller: true, openedToday: true },
+  { name: 'Anima Prosecco Rosé Brut', maker: "L'Anima di Vergani · Prosecco DOC Rosé", qty: 5, min: 4, tone: 'rose', image: '/wines/lanima-di-vergani-anima-prosecco-rose-brut.png' },
+  { name: 'Cuvée Prestige Edizione 47', maker: "Ca' del Bosco · Franciacorta DOCG", qty: 6, min: 4, tone: 'bubbles', image: '/wines/ca-del-bosco-cuvee-prestige-edizione-47-extra-brut.png', openedToday: true },
+  { name: 'Soave Tessari', maker: 'Tessari Gianni · Soave DOC', qty: 9, min: 6, tone: 'white', image: '/wines/tessari-gianni-soave-tessari.png' },
+  { name: 'Tra Noi Nebbiolo Barolo', maker: 'Berta · Grappa Invecchiata', qty: 3, min: 4, tone: 'grappa', image: '/wines/berta-tra-noi-nebbiolo-barolo.png', low: true },
 ];
 
 const FILTERS = ['Tutti', 'Sotto soglia', 'Aperti oggi', 'Bestseller'] as const;
@@ -99,7 +101,7 @@ export default function CantinaPage() {
               gap: 12,
             }}
           >
-            <BottleCard tone={w.tone} />
+            <BottleCard tone={w.tone} image={w.image} alt={w.name} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <div
@@ -210,7 +212,25 @@ export default function CantinaPage() {
   );
 }
 
-function BottleCard({ tone }: { tone: Tone }) {
+function BottleCard({ tone, image, alt }: { tone: Tone; image?: string; alt?: string }) {
+  if (image) {
+    return (
+      <div
+        style={{
+          width: 36, height: 54, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image}
+          alt={alt || 'bottiglia'}
+          loading="lazy"
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+        />
+      </div>
+    );
+  }
   const tones: Record<Tone, string> = {
     red: '#efe6d6',
     white: '#f0ead8',
