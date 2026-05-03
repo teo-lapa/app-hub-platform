@@ -14,7 +14,8 @@ const nextConfig = {
     // serverless, altrimenti `readFileSync('prisma/seed-data/lapa-wine-vini.json')` fallisce su Vercel.
     outputFileTracingIncludes: {
       '/api/wine/sommelier': ['./prisma/seed-data/lapa-wine-vini.json'],
-      '/api/wine/catalog': ['./prisma/seed-data/lapa-wine-vini.json'],
+      // catalog endpoint legge sia il JSON che la cartella public/wines per controllare le immagini esistenti
+      '/api/wine/catalog': ['./prisma/seed-data/lapa-wine-vini.json', './public/wines/**'],
     },
   },
   async rewrites() {

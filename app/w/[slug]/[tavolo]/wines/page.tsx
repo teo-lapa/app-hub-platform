@@ -19,6 +19,7 @@ type WineRow = {
   pairings: string[];
   temp: number;
   decant: number;
+  imageUrl: string | null;
 };
 
 type RawWine = {
@@ -35,6 +36,7 @@ type RawWine = {
   food_pairings: string[];
   service_temp_c?: number;
   decantation_minutes?: number;
+  image_url?: string | null;
 };
 
 const TIER_COLORS = { easy: '#a85565', equilibrato: '#5a1a1f', importante: '#3a0e12' } as const;
@@ -88,6 +90,7 @@ export default function WinesPage() {
             pairings: w.food_pairings || [],
             temp: w.service_temp_c || 16,
             decant: w.decantation_minutes || 0,
+            imageUrl: w.image_url || null,
           };
         });
         setAllWines(rows);
@@ -211,9 +214,39 @@ export default function WinesPage() {
                       borderTop: i === 0 ? `1px solid ${line}` : 'none',
                       borderBottom: `1px solid ${line}`,
                       cursor: 'pointer',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12,
+                      display: 'flex', alignItems: 'center', gap: 14,
                     }}
                   >
+                    {/* Thumbnail bottiglia */}
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        width: 48,
+                        height: 72,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: w.imageUrl ? 'transparent' : '#fbf8f1',
+                      }}
+                    >
+                      {w.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={w.imageUrl}
+                          alt={w.name}
+                          loading="lazy"
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 14, height: 56, background: TIER_COLORS[w.fascia], opacity: 0.6,
+                            borderRadius: '3px 3px 1px 1px',
+                          }}
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontStyle: 'italic', color: ink, fontWeight: 400, lineHeight: 1.2 }}>
                         {w.name}{w.vintage && ` · ${w.vintage}`}
@@ -278,6 +311,16 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
           <div style={{ width: 38, height: 3, background: line, borderRadius: 2 }} />
         </div>
 
+        {wine.imageUrl && (
+          <div style={{ padding: '0 28px 4px', display: 'flex', justifyContent: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={wine.imageUrl}
+              alt={wine.name}
+              style={{ maxHeight: 280, maxWidth: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        )}
         <div style={{ padding: '0 28px 4px', textAlign: 'center' }}>
           <div className="eyebrow-wine" style={{ color: accent }}>{wine.producer}</div>
           <h2 style={{ marginTop: 4, font: 'var(--text-h1-serif)', fontSize: 26, fontStyle: 'italic', fontWeight: 400, color: ink }}>

@@ -63,7 +63,29 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [imageMap, setImageMap] = useState<Map<string, string>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Prefetch wineId → image_url mapping (così le mini-card hanno la thumbnail)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/wine/catalog?slug=${encodeURIComponent(params.slug)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { wines: { vergani_sku: string; image_url: string | null }[] };
+        if (cancelled) return;
+        const m = new Map<string, string>();
+        for (const w of data.wines) {
+          if (w.image_url) m.set(w.vergani_sku, w.image_url);
+        }
+        setImageMap(m);
+      } catch (e) {
+        console.warn('[chat] image map prefetch failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [params.slug]);
 
   // Hydrate from sessionStorage + greet first time
   useEffect(() => {
@@ -265,7 +287,12 @@ export default function ChatPage() {
             {m.role === 'assistant' && m.proposedWines && m.proposedWines.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {m.proposedWines.map((w) => (
-                  <WineCardInline key={w.wineId} wine={w} onTake={() => takeWine(w)} />
+                  <WineCardInline
+                    key={w.wineId}
+                    wine={w}
+                    imageUrl={imageMap.get(w.wineId) || null}
+                    onTake={() => takeWine(w)}
+                  />
                 ))}
               </div>
             )}
@@ -391,7 +418,7 @@ const iconBtn: React.CSSProperties = {
   width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
 };
 
-function WineCardInline({ wine, onTake }: { wine: WineProposal; onTake: () => void }) {
+function WineCardInline({ wine, imageUrl, onTake }: { wine: WineProposal; imageUrl: string | null; onTake: () => void }) {
   const ink = '#1c1815';
   const sub = '#6b5f52';
   const accent = TIER_COLORS[wine.tier];
@@ -407,6 +434,12 @@ function WineCardInline({ wine, onTake }: { wine: WineProposal; onTake: () => vo
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        {imageUrl && (
+          <div style={{ flexShrink: 0, width: 56, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt={wine.name} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent }}>
             {TIER_LABELS[wine.tier]}
