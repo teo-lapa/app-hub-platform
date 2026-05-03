@@ -222,8 +222,10 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     const stack = err instanceof Error ? err.stack : undefined;
-    // @ts-expect-error - Anthropic SDK errors expose .status
-    const apiStatus = err && typeof err === 'object' && 'status' in err ? err.status : undefined;
+    const apiStatus =
+      err && typeof err === 'object' && 'status' in err
+        ? (err as { status?: number }).status
+        : undefined;
     console.error('[SOMMELIER] Error:', message, { apiStatus, stack });
     return NextResponse.json(
       { error: `Sommelier failed: ${message}`, apiStatus },
