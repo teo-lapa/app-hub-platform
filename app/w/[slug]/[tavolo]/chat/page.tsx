@@ -35,20 +35,121 @@ const TIER_COLORS: Record<WineProposal['tier'], string> = {
   importante: '#3a0e12',
 };
 
-// Quick replies — comparsi solo all'inizio della conversazione
-const QUICK_REPLIES = [
-  '🥩 Carne',
-  '🐟 Pesce',
-  '🍝 Pasta o risotto',
-  '🍕 Pizza',
-  '🥗 Vegetariano',
-  '🧀 Salumi e formaggi',
-  '🍰 Dessert',
-  '🍷 Solo un calice',
-  '🥃 Una grappa per chiudere',
-];
+type Lang = 'it' | 'de' | 'en' | 'fr';
+const LANG_CYCLE: Lang[] = ['it', 'de', 'en', 'fr'];
+
+// Quick replies + UI strings per lingua
+const I18N: Record<Lang, {
+  sommelier: string;
+  tableLabel: (n: string) => string;
+  cartaVini: string;
+  greet: (name: string) => string;
+  thinking: string;
+  online: string;
+  placeholderWrite: string;
+  placeholderListening: string;
+  errorOffline: (e: string) => string;
+  photoReady: string;
+  photoRemove: string;
+  photoFallbackUserText: string;
+  speechNotSupported: string;
+  back: string;
+  audioRecord: string;
+  audioStop: string;
+  cameraTake: string;
+  send: string;
+  quickReplies: string[];
+}> = {
+  it: {
+    sommelier: 'Sommelier',
+    tableLabel: (n) => `Tavolo ${n}`,
+    cartaVini: 'Carta vini',
+    greet: (name) => `Buonasera, sono il sommelier di ${name}. Cosa stai mangiando stasera? Te lo abbino al vino giusto.`,
+    thinking: 'Sto pensando…',
+    online: 'In linea',
+    placeholderWrite: 'Scrivi o detta al sommelier',
+    placeholderListening: 'Ti ascolto…',
+    errorOffline: (e) => `Mi spiace, sono momentaneamente offline (${e}). Riprova tra un secondo.`,
+    photoReady: 'foto del piatto pronta',
+    photoRemove: 'Rimuovi foto',
+    photoFallbackUserText: 'Ecco la foto del piatto al tavolo. Cosa mi consigli?',
+    speechNotSupported: 'Il dettato vocale non è supportato su questo browser. Usa Chrome o Safari.',
+    back: 'Indietro',
+    audioRecord: 'Detta vocale',
+    audioStop: 'Ferma registrazione',
+    cameraTake: 'Foto del piatto',
+    send: 'Invia',
+    quickReplies: ['🥩 Carne', '🐟 Pesce', '🍝 Pasta o risotto', '🍕 Pizza', '🥗 Vegetariano', '🧀 Salumi e formaggi', '🍰 Dessert', '🍷 Solo un calice', '🥃 Una grappa per chiudere'],
+  },
+  de: {
+    sommelier: 'Sommelier',
+    tableLabel: (n) => `Tisch ${n}`,
+    cartaVini: 'Weinkarte',
+    greet: (name) => `Guten Abend, ich bin der Sommelier von ${name}. Was essen Sie heute Abend? Ich finde Ihnen den passenden Wein.`,
+    thinking: 'Ich überlege…',
+    online: 'Online',
+    placeholderWrite: 'Schreiben oder diktieren',
+    placeholderListening: 'Ich höre zu…',
+    errorOffline: (e) => `Entschuldigung, ich bin gerade offline (${e}). Versuchen Sie es gleich nochmal.`,
+    photoReady: 'Foto bereit',
+    photoRemove: 'Foto entfernen',
+    photoFallbackUserText: 'Hier ist das Foto des Gerichts. Was empfehlen Sie?',
+    speechNotSupported: 'Spracheingabe wird in diesem Browser nicht unterstützt. Verwenden Sie Chrome oder Safari.',
+    back: 'Zurück',
+    audioRecord: 'Sprachaufnahme',
+    audioStop: 'Aufnahme beenden',
+    cameraTake: 'Foto des Gerichts',
+    send: 'Senden',
+    quickReplies: ['🥩 Fleisch', '🐟 Fisch', '🍝 Pasta oder Risotto', '🍕 Pizza', '🥗 Vegetarisch', '🧀 Wurst und Käse', '🍰 Dessert', '🍷 Nur ein Glas', '🥃 Ein Grappa zum Abschluss'],
+  },
+  en: {
+    sommelier: 'Sommelier',
+    tableLabel: (n) => `Table ${n}`,
+    cartaVini: 'Wine list',
+    greet: (name) => `Good evening, I'm ${name}'s sommelier. What are you eating tonight? I'll match it with the right wine.`,
+    thinking: 'Thinking…',
+    online: 'Online',
+    placeholderWrite: 'Type or dictate to the sommelier',
+    placeholderListening: 'Listening…',
+    errorOffline: (e) => `Sorry, I'm momentarily offline (${e}). Try again in a second.`,
+    photoReady: 'photo ready',
+    photoRemove: 'Remove photo',
+    photoFallbackUserText: "Here's the photo of the dish at the table. What do you suggest?",
+    speechNotSupported: 'Voice dictation is not supported on this browser. Use Chrome or Safari.',
+    back: 'Back',
+    audioRecord: 'Voice dictation',
+    audioStop: 'Stop recording',
+    cameraTake: 'Photo of the dish',
+    send: 'Send',
+    quickReplies: ['🥩 Meat', '🐟 Fish', '🍝 Pasta or risotto', '🍕 Pizza', '🥗 Vegetarian', '🧀 Cured meats & cheese', '🍰 Dessert', '🍷 Just a glass', '🥃 A grappa to close'],
+  },
+  fr: {
+    sommelier: 'Sommelier',
+    tableLabel: (n) => `Table ${n}`,
+    cartaVini: 'Carte des vins',
+    greet: (name) => `Bonsoir, je suis le sommelier de ${name}. Que mangez-vous ce soir ? Je vous trouve le vin qu'il faut.`,
+    thinking: 'Je réfléchis…',
+    online: 'En ligne',
+    placeholderWrite: 'Écrivez ou dictez au sommelier',
+    placeholderListening: 'Je vous écoute…',
+    errorOffline: (e) => `Désolé, je suis momentanément hors ligne (${e}). Réessayez dans un instant.`,
+    photoReady: 'photo prête',
+    photoRemove: 'Retirer la photo',
+    photoFallbackUserText: 'Voici la photo du plat à table. Que conseillez-vous ?',
+    speechNotSupported: "La dictée vocale n'est pas supportée sur ce navigateur. Utilisez Chrome ou Safari.",
+    back: 'Retour',
+    audioRecord: 'Dictée vocale',
+    audioStop: "Arrêter l'enregistrement",
+    cameraTake: 'Photo du plat',
+    send: 'Envoyer',
+    quickReplies: ['🥩 Viande', '🐟 Poisson', '🍝 Pâtes ou risotto', '🍕 Pizza', '🥗 Végétarien', '🧀 Charcuterie et fromages', '🍰 Dessert', '🍷 Juste un verre', '🥃 Une grappa pour finir'],
+  },
+};
+
+const SR_LOCALE: Record<Lang, string> = { it: 'it-IT', de: 'de-DE', en: 'en-US', fr: 'fr-FR' };
 
 const STORAGE_KEY_BASE = 'lapa-wine-chat';
+const LANG_KEY_BASE = 'lapa-wine-lang';
 
 export default function ChatPage() {
   const router = useRouter();
@@ -67,6 +168,8 @@ export default function ChatPage() {
   const [imageMap, setImageMap] = useState<Map<string, string>>(new Map());
   const [recording, setRecording] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ dataUrl: string; mimeType: string; base64: string } | null>(null);
+  const [lang, setLang] = useState<Lang>('it');
+  const t = I18N[lang];
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,11 +190,11 @@ export default function ChatPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SR) {
-        alert('Il dettato vocale non è supportato su questo browser. Usa Chrome o Safari.');
+        alert(t.speechNotSupported);
         return;
       }
       const rec = new SR();
-      rec.lang = 'it-IT';
+      rec.lang = SR_LOCALE[lang];
       rec.interimResults = true;
       rec.continuous = true;
       rec.maxAlternatives = 1;
@@ -181,6 +284,14 @@ export default function ChatPage() {
 
   // Hydrate from sessionStorage + greet first time
   useEffect(() => {
+    // Recover language preference
+    let savedLang: Lang = 'it';
+    try {
+      const rawLang = sessionStorage.getItem(`${LANG_KEY_BASE}-${params.slug}-${params.tavolo}`);
+      if (rawLang && LANG_CYCLE.includes(rawLang as Lang)) savedLang = rawLang as Lang;
+    } catch {}
+    setLang(savedLang);
+
     let initial: ChatMessage[] = [];
     try {
       const raw = sessionStorage.getItem(storageKey);
@@ -190,23 +301,74 @@ export default function ChatPage() {
       initial = [
         {
           role: 'assistant',
-          content: `Buonasera, sono il sommelier di ${tenant.name}. Cosa stai mangiando stasera? Te lo abbino al vino giusto.`,
+          content: I18N[savedLang].greet(tenant.name),
           intent: 'greet',
         },
       ];
     }
     setMessages(initial);
     setHydrated(true);
-  }, [storageKey, tenant.name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey, tenant.name, params.slug, params.tavolo]);
 
-  // Persist + auto-scroll
+  // Cycle lingua: it → de → en → fr → it
+  const cycleLang = () => {
+    const i = LANG_CYCLE.indexOf(lang);
+    const next = LANG_CYCLE[(i + 1) % LANG_CYCLE.length];
+    setLang(next);
+    try {
+      sessionStorage.setItem(`${LANG_KEY_BASE}-${params.slug}-${params.tavolo}`, next);
+    } catch {}
+    // Reset chat al saluto nella nuova lingua
+    setMessages([
+      {
+        role: 'assistant',
+        content: I18N[next].greet(tenant.name),
+        intent: 'greet',
+      },
+    ]);
+    setInput('');
+    if (recording) stopRecording();
+    setPendingImage(null);
+  };
+
+  // Persist
   useEffect(() => {
     if (!hydrated) return;
     try {
       sessionStorage.setItem(storageKey, JSON.stringify(messages));
     } catch {}
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, hydrated, storageKey]);
+
+  // Auto-scroll robusto al fondo: due frame per essere sicuri che il DOM
+  // sia stato dipinto, poi un'altra passata dopo 250ms per le immagini bottiglia
+  // che caricano async dentro le card vino.
+  const scrollToBottom = (smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  useEffect(() => {
+    if (!hydrated) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom(true)));
+    const t = setTimeout(() => scrollToBottom(true), 280);
+    return () => clearTimeout(t);
+  }, [messages, busy, hydrated]);
+
+  // Al primo mount (post hydration) scrolla giù SUBITO senza animazione
+  useEffect(() => {
+    if (!hydrated) return;
+    scrollToBottom(false);
+    // ulteriore tentativo dopo che le immagini cards possono essere caricate
+    const t1 = setTimeout(() => scrollToBottom(false), 100);
+    const t2 = setTimeout(() => scrollToBottom(false), 600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // intenzionalmente solo su hydrated → al primo passaggio
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -217,7 +379,7 @@ export default function ChatPage() {
     const imageToSend = pendingImage;
     setPendingImage(null);
 
-    const userContent = trimmed || (hasImage ? '📷 (foto del piatto)' : '');
+    const userContent = trimmed || (hasImage ? '📷 ' + t.cameraTake : '');
     const userMsg: ChatMessage = { role: 'user', content: userContent };
     const next = [...messages, userMsg];
     setMessages(next);
@@ -231,7 +393,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           restaurantSlug: params.slug,
           tableCode: params.tavolo,
-          language: 'it',
+          language: lang,
           messages: apiMessages,
           image: imageToSend ? { base64: imageToSend.base64, mimeType: imageToSend.mimeType } : undefined,
         }),
@@ -255,13 +417,13 @@ export default function ChatPage() {
         },
       ]);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Errore imprevisto';
+      const msg = e instanceof Error ? e.message : 'Unknown error';
       console.error('[chat] sommelier error:', msg);
       setMessages((m) => [
         ...m,
         {
           role: 'assistant',
-          content: `Mi spiace, sono momentaneamente offline (${msg}). Riprova tra un secondo.`,
+          content: t.errorOffline(msg),
         },
       ]);
     } finally {
@@ -322,31 +484,53 @@ export default function ChatPage() {
           </div>
           <div>
             <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontStyle: 'italic', color: ink, lineHeight: 1.1 }}>
-              Sommelier
+              {t.sommelier}
             </div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: sub, marginTop: 2 }}>
-              {tenant.name} · Tavolo {params.tavolo}
+              {tenant.name} · {t.tableLabel(params.tavolo)}
             </div>
           </div>
         </div>
-        <Link
-          href={`/w/${params.slug}/${params.tavolo}/wines`}
-          style={{
-            fontFamily: 'Fraunces, serif',
-            fontSize: 13,
-            fontStyle: 'italic',
-            color: tenant.accent,
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          Carta vini
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <Link
+            href={`/w/${params.slug}/${params.tavolo}/wines`}
+            style={{
+              fontFamily: 'Fraunces, serif',
+              fontSize: 13,
+              fontStyle: 'italic',
+              color: tenant.accent,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {t.cartaVini}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <button
+            type="button"
+            onClick={cycleLang}
+            aria-label="Cambia lingua"
+            title="Cambia lingua / Change language / Sprache wechseln / Changer de langue"
+            style={{
+              background: 'transparent',
+              border: `1px solid ${sub}`,
+              color: ink,
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.18em',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              minWidth: 36,
+            }}
+          >
+            {lang.toUpperCase()}
+          </button>
+        </div>
       </header>
 
       {/* MESSAGES — scroll area */}
@@ -397,6 +581,7 @@ export default function ChatPage() {
                     wine={w}
                     imageUrl={imageMap.get(w.wineId) || null}
                     onTake={() => takeWine(w)}
+                    onImgLoad={() => scrollToBottom(true)}
                   />
                 ))}
               </div>
@@ -407,7 +592,7 @@ export default function ChatPage() {
         {busy && (
           <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, color: sub, fontFamily: 'Fraunces, serif', fontSize: 13, fontStyle: 'italic' }}>
             <Dots />
-            sto pensando…
+            {t.thinking}
           </div>
         )}
       </div>
@@ -423,7 +608,7 @@ export default function ChatPage() {
             scrollbarWidth: 'none',
           }}
         >
-          {QUICK_REPLIES.map((q) => (
+          {t.quickReplies.map((q) => (
             <button
               key={q}
               type="button"
@@ -484,12 +669,12 @@ export default function ChatPage() {
               style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
             />
             <span style={{ fontFamily: 'Fraunces, serif', fontSize: 12.5, fontStyle: 'italic', color: sub }}>
-              foto del piatto pronta
+              {t.photoReady}
             </span>
             <button
               type="button"
               onClick={() => setPendingImage(null)}
-              aria-label="Rimuovi foto"
+              aria-label={t.photoRemove}
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
                 padding: 4, color: sub, display: 'flex',
@@ -524,8 +709,8 @@ export default function ChatPage() {
                 void send(input);
               }
             }}
-            placeholder={busy ? 'Sto pensando…' : recording ? 'Ti ascolto…' : 'Scrivi o detta al sommelier'}
-            aria-label="Messaggio per il sommelier"
+            placeholder={busy ? t.thinking : recording ? t.placeholderListening : t.placeholderWrite}
+            aria-label={t.placeholderWrite}
             disabled={busy}
             rows={1}
             style={{
@@ -557,8 +742,8 @@ export default function ChatPage() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={busy}
-            aria-label="Scatta foto del piatto"
-            title="Foto del piatto"
+            aria-label={t.cameraTake}
+            title={t.cameraTake}
             style={iconBtnActive(busy)}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -571,8 +756,8 @@ export default function ChatPage() {
             type="button"
             onClick={recording ? stopRecording : startRecording}
             disabled={busy}
-            aria-label={recording ? 'Ferma registrazione' : 'Detta vocale'}
-            title="Detta vocale"
+            aria-label={recording ? t.audioStop : t.audioRecord}
+            title={t.audioRecord}
             style={{
               ...iconBtnActive(busy),
               background: recording ? tenant.accent : 'transparent',
@@ -587,7 +772,7 @@ export default function ChatPage() {
           <button
             type="submit"
             disabled={busy || (!input.trim() && !pendingImage)}
-            aria-label="Invia"
+            aria-label={t.send}
             style={{
               flexShrink: 0,
               width: 40, height: 40, borderRadius: '50%',
@@ -621,7 +806,7 @@ function iconBtnActive(busy: boolean): React.CSSProperties {
   };
 }
 
-function WineCardInline({ wine, imageUrl, onTake }: { wine: WineProposal; imageUrl: string | null; onTake: () => void }) {
+function WineCardInline({ wine, imageUrl, onTake, onImgLoad }: { wine: WineProposal; imageUrl: string | null; onTake: () => void; onImgLoad?: () => void }) {
   const ink = '#1c1815';
   const sub = '#6b5f52';
   const accent = TIER_COLORS[wine.tier];
@@ -640,7 +825,7 @@ function WineCardInline({ wine, imageUrl, onTake }: { wine: WineProposal; imageU
         {imageUrl && (
           <div style={{ flexShrink: 0, width: 56, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt={wine.name} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            <img src={imageUrl} alt={wine.name} loading="lazy" onLoad={onImgLoad} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
