@@ -122,9 +122,16 @@ export default function WinesPage() {
   }, [filtered]);
 
   const take = (w: WineRow) => {
-    router.push(
-      `/w/${params.slug}/${params.tavolo}/confirm?wine=${encodeURIComponent(w.name)}&price=${w.bottle}&sub=${encodeURIComponent(w.producer)}&accent=${encodeURIComponent(TIER_COLORS[w.fascia])}`,
-    );
+    const qs = new URLSearchParams({
+      wineId: w.wineId,
+      wine: w.name,
+      sub: w.producer,
+      price: String(w.bottle),
+      glass: String(w.glass),
+      accent: TIER_COLORS[w.fascia],
+      image: w.imageUrl || '',
+    });
+    router.push(`/w/${params.slug}/${params.tavolo}/confirm?${qs.toString()}`);
   };
 
   return (

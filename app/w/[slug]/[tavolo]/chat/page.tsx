@@ -270,9 +270,17 @@ export default function ChatPage() {
   };
 
   const takeWine = (w: WineProposal) => {
-    router.push(
-      `/w/${params.slug}/${params.tavolo}/confirm?wine=${encodeURIComponent(w.name)}&price=${w.price_bottle_chf}&sub=${encodeURIComponent(w.producer)}&accent=${encodeURIComponent(TIER_COLORS[w.tier])}`,
-    );
+    const img = imageMap.get(w.wineId) || '';
+    const qs = new URLSearchParams({
+      wineId: w.wineId,
+      wine: w.name,
+      sub: w.producer,
+      price: String(w.price_bottle_chf),
+      glass: String(w.price_glass_chf),
+      accent: TIER_COLORS[w.tier],
+      image: img,
+    });
+    router.push(`/w/${params.slug}/${params.tavolo}/confirm?${qs.toString()}`);
   };
 
   const showQuickReplies = hydrated && messages.length === 1 && messages[0].role === 'assistant';
