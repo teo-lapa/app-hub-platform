@@ -75,8 +75,13 @@ interface SommelierResponse {
   messageId: string;
 }
 
-// SKU selezionati per il ristorante demo "trattoria-da-mario".
-// 5 easy + 17 equilibrato + 8 importante (vini) + 7 grappe/distillati Berta = 37 referenze in stock.
+// Approccio: il sommelier conosce L'INTERO catalogo Vergani (108 SKU = ~60 unique products in
+// vari formati: 75cl, 150cl magnum, 300cl/600cl/12L jeroboam-cassa-legno, grappe 70cl, passito 37.5cl).
+// Per il demo Mario consideriamo TUTTO disponibile. Quando ci sarà il DB, filtreremo per stock
+// reale del ristoratore. Ma il sommelier deve poter parlare di formati grandi (magnum per tavolata,
+// jeroboam per evento) anche se va richiesto in anticipo.
+// Manteniamo la lista DEMO_STOCK_SKUS solo come elenco "in cantina stasera" (consegna immediata).
+// Il prompt contiene comunque l'INTERO catalogo Vergani.
 // TODO: sostituire con query Prisma su tabella restaurant_wine_stock per restaurantSlug.
 const DEMO_STOCK_SKUS = new Set<string>([
   // easy (5 disponibili 75cl)
@@ -131,19 +136,18 @@ function loadCatalog(): StockWine[] {
   const filePath = path.join(process.cwd(), 'prisma', 'seed-data', 'lapa-wine-vini.json');
   const raw = readFileSync(filePath, 'utf-8');
   const all = JSON.parse(raw) as CatalogWine[];
-  const stock: StockWine[] = all
-    .filter((w) => DEMO_STOCK_SKUS.has(w.vergani_sku))
-    .map((w) => {
-      const bottle = Math.round(w.price_carta_suggested_chf);
-      // calice indicativo: ~1/5 bottiglia, arrotondato a CHF intero, min 7
-      const glass = Math.max(7, Math.round(bottle / 5));
-      return {
-        ...w,
-        wineId: w.vergani_sku,
-        price_glass_chf: glass,
-        price_bottle_chf: bottle,
-      };
-    });
+  // Carico TUTTI i 108 SKU (non filtro per DEMO_STOCK_SKUS).
+  // Il sommelier deve conoscere l'intera carta inclusi magnum, jeroboam, formati legno.
+  const stock: StockWine[] = all.map((w) => {
+    const bottle = Math.round(w.price_carta_suggested_chf);
+    const glass = Math.max(7, Math.round(bottle / 5));
+    return {
+      ...w,
+      wineId: w.vergani_sku,
+      price_glass_chf: glass,
+      price_bottle_chf: bottle,
+    };
+  });
   _catalogCache = stock;
   return stock;
 }
@@ -156,30 +160,69 @@ function buildSommelierPrompt(slug: string, language: Language, wines: StockWine
     fr: 'francese',
   };
 
-  const byTier: Record<Tier, StockWine[]> = { easy: [], equilibrato: [], importante: [] };
-  wines.forEach((w) => byTier[w.fascia].push(w));
+  // Raggruppo per (producer, name) per mostrare TUTTI i formati di una stessa bottiglia
+  // sotto un solo blocco. Il sommelier vede ogni bottiglia con tutte le sue varianti.
+  type GroupKey = string;
+  const groupKey = (w: StockWine): GroupKey => `${w.producer}__${w.name.replace(/\s+(Magnum|Jeroboam|Mezza Bottiglia|Cassa Legno|Edizione Speciale|6 Litri|12 Litri|18 Litri).*$/i, '').trim()}`;
+  const groups = new Map<GroupKey, StockWine[]>();
+  for (const w of wines) {
+    const k = groupKey(w);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(w);
+  }
 
-  const renderWine = (w: StockWine) =>
-    `  - [${w.wineId}] ${w.name} ${w.vintage} — ${w.producer} (${w.region}${w.subregion ? ', ' + w.subregion : ''}) | ${w.denomination} | ${w.wine_type} | vitigni: ${w.grape_varieties.join(', ')} | calice CHF ${w.price_glass_chf} · bottiglia CHF ${w.price_bottle_chf} | servire a ${w.service_temp_c}°C${w.decantation_minutes ? ` · decantare ${w.decantation_minutes}min` : ''}\n    storia: ${w.story_short}\n    note: ${w.tasting_notes.join(', ')}\n    abbinamenti: ${w.food_pairings.join(', ')}`;
+  const formatLabel = (cl: number): string => {
+    if (cl === 37.5) return '37.5cl mezza';
+    if (cl === 75) return '75cl bottiglia';
+    if (cl === 70) return '70cl';
+    if (cl === 150) return '150cl magnum';
+    if (cl === 300) return '300cl jeroboam';
+    if (cl === 600) return '600cl (6L)';
+    if (cl === 1200) return '12L';
+    if (cl === 1800) return '18L';
+    return `${cl}cl`;
+  };
 
-  // Separa vini fermi/spumanti, dolci/passiti, e distillati per chiarezza nel prompt
+  const renderGroup = (gk: GroupKey, items: StockWine[]): string => {
+    items.sort((a, b) => a.format_cl - b.format_cl);
+    const head = items[0];
+    const baseName = head.name.replace(/\s+(Magnum|Jeroboam|Mezza Bottiglia|Cassa Legno|Edizione Speciale|6 Litri|12 Litri|18 Litri).*$/i, '').trim();
+    const grappe = head.grape_varieties?.join(', ') || '—';
+    const formatLines = items
+      .map(
+        (w) =>
+          `    • [${w.wineId}] ${w.vintage || 'NV'} · ${formatLabel(w.format_cl)} — bottiglia CHF ${w.price_bottle_chf}${w.format_cl === 75 ? ` · calice CHF ${w.price_glass_chf}` : ''}`,
+      )
+      .join('\n');
+    return `▸ ${baseName} — ${head.producer} (${head.region}${head.subregion ? ', ' + head.subregion : ''}) | ${head.denomination} | ${head.wine_type} | vitigni: ${grappe} | servire ${head.service_temp_c}°C${head.decantation_minutes ? ` · decantare ${head.decantation_minutes}min` : ''}\n  storia: ${head.story_short}\n  note: ${head.tasting_notes.join(', ')}\n  abbinamenti: ${head.food_pairings.join(', ')}\n  formati disponibili:\n${formatLines}`;
+  };
+
+  // Separa per categoria: vini fermi/spumanti (per fascia easy/eq/imp), dolci, distillati
   const isDistillato = (w: StockWine) => w.wine_type === 'grappa' || w.wine_type === 'distillato';
   const isDolce = (w: StockWine) => w.wine_type === 'passito' || w.wine_type === 'dolce';
-  const wineFermi = wines.filter((w) => !isDistillato(w) && !isDolce(w));
-  const dolci = wines.filter(isDolce);
-  const distillati = wines.filter(isDistillato);
-  const wineByTier: Record<Tier, StockWine[]> = { easy: [], equilibrato: [], importante: [] };
-  wineFermi.forEach((w) => wineByTier[w.fascia].push(w));
+
+  const groupKeys = Array.from(groups.keys());
+  const wineGroups: Record<Tier, GroupKey[]> = { easy: [], equilibrato: [], importante: [] };
+  const dolceGroups: GroupKey[] = [];
+  const distillatoGroups: GroupKey[] = [];
+  for (const gk of groupKeys) {
+    const head = groups.get(gk)![0];
+    if (isDistillato(head)) distillatoGroups.push(gk);
+    else if (isDolce(head)) dolceGroups.push(gk);
+    else wineGroups[head.fascia].push(gk);
+  }
+
+  const renderSection = (gks: GroupKey[]) => gks.map((gk) => renderGroup(gk, groups.get(gk)!)).join('\n\n');
 
   const catalog =
     `## VINI\n` +
-    `=== EASY (pronta beva, accessibile) ===\n${wineByTier.easy.map(renderWine).join('\n')}\n\n` +
-    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${wineByTier.equilibrato.map(renderWine).join('\n')}\n\n` +
-    `=== IMPORTANTE (premium, serata speciale) ===\n${wineByTier.importante.map(renderWine).join('\n')}\n\n` +
-    (dolci.length
-      ? `## VINI DOLCI / PASSITI (da meditazione, pasticceria, formaggi erborinati)\n${dolci.map(renderWine).join('\n')}\n\n`
+    `=== EASY (pronta beva, accessibile) ===\n${renderSection(wineGroups.easy)}\n\n` +
+    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${renderSection(wineGroups.equilibrato)}\n\n` +
+    `=== IMPORTANTE (premium, serata speciale) ===\n${renderSection(wineGroups.importante)}\n\n` +
+    (dolceGroups.length
+      ? `## VINI DOLCI / PASSITI (da meditazione, pasticceria, formaggi erborinati)\n${renderSection(dolceGroups)}\n\n`
       : '') +
-    `## GRAPPE & DISTILLATI (fine pasto / digestivo — tutte da Distillerie Berta, Mombaruzzo Piemonte)\n${distillati.map(renderWine).join('\n')}`;
+    `## GRAPPE & DISTILLATI (Distillerie Berta, Mombaruzzo Piemonte — fine pasto / digestivo)\n${renderSection(distillatoGroups)}`;
 
   return `Sei il sommelier digitale del ristorante "${slug}", presente al tavolo via web app. Il cliente ti parla in chat dal proprio telefono.
 
@@ -197,8 +240,26 @@ Hai un **Moscato Passito Ofelia** di Mura Mura (Piemonte): uve di Moscato bianco
 # LUNGHEZZA
 2-5 righe per messaggio. Mai monologhi. Se il cliente chiede esplicitamente la storia di un produttore o del vino, puoi espandere fino a 8 righe ma non oltre. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole.
 
-# CANTINA DI QUESTA SERA
-Hai a disposizione SOLO i vini sotto. Non inventare nomi, non proporre vini fuori da questa lista. Usa esattamente il wineId riportato tra parentesi quadre.
+# CANTINA & FORMATI
+Hai a disposizione l'INTERA carta del ristorante (vini Vergani importatore). Non inventare nomi, non proporre vini fuori da questa lista. Usa esattamente il wineId riportato tra parentesi quadre.
+
+Ogni bottiglia ha **uno o più formati** disponibili. La struttura è "▸ Nome bottiglia → tutti i formati elencati":
+- **75cl bottiglia** = formato standard, sempre disponibile, buono per 2-4 persone
+- **37.5cl mezza** (passiti, distillati) = bottiglia piccola, ideale per fine pasto
+- **70cl** (grappe / distillati Berta) = formato standard digestivi
+- **150cl magnum** = bottiglia doppia, perfetta per tavolata 5-8 persone, miglior invecchiamento, scenografia importante
+- **300cl jeroboam** = 4 bottiglie, evento / tavolata 10+ persone, molto scenografico
+- **600cl (6L)**, **12L**, **18L** = formati cassa legno, eventi speciali, regali importanti
+
+Quando il cliente chiede un magnum o un formato grande:
+1. Se quel vino esiste in magnum → proponilo subito con prezzo magnum.
+2. Se NON esiste in magnum → di' subito quale ALTRO vino simile è disponibile in magnum (NON dire "non ho magnum").
+3. I magnum sono sempre più cari di 2× la bottiglia (per via della miglior conservazione e dell'effetto scenografico).
+4. Per i jeroboam/12L: avvisa che vanno preordinati (consegna 24-48h) ma sono possibili.
+
+Quando il cliente chiede di un vino specifico per nome, cita TUTTI i formati e annate disponibili in carta. Es: "Romeo lo abbiamo nelle annate 2022 in 75cl, 2019/20 in magnum, 2020 in jeroboam... quale formato preferisci?"
+
+Le annate diverse della stessa etichetta sono variazioni naturali: nelle annate più mature (es. 2018 vs 2022) i tannini sono più morbidi, il frutto evolve verso note terziarie. Sai distinguere e raccontare.
 
 ${catalog}
 
