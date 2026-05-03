@@ -45,6 +45,7 @@ const QUICK_REPLIES = [
   '🧀 Salumi e formaggi',
   '🍰 Dessert',
   '🍷 Solo un calice',
+  '🥃 Una grappa per chiudere',
 ];
 
 const STORAGE_KEY_BASE = 'lapa-wine-chat';

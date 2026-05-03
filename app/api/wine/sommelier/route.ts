@@ -76,7 +76,7 @@ interface SommelierResponse {
 }
 
 // SKU selezionati per il ristorante demo "trattoria-da-mario".
-// 5 easy + 17 equilibrato + 8 importante = 30 vini in stock (filtrati da i 108 Vergani).
+// 5 easy + 17 equilibrato + 8 importante (vini) + 7 grappe/distillati Berta = 37 referenze in stock.
 // TODO: sostituire con query Prisma su tabella restaurant_wine_stock per restaurantSlug.
 const DEMO_STOCK_SKUS = new Set<string>([
   // easy (5 disponibili 75cl)
@@ -112,6 +112,14 @@ const DEMO_STOCK_SKUS = new Set<string>([
   'cdb-annamaria-clementi-2014-2015-75cl',
   'cdb-vc-extra-brut-2019-75cl',
   'cdb-vc-dosage-zero-2020-75cl',
+  // grappe e distillati Berta — fine pasto / digestivo (tutti fascia "importante")
+  'berta-tra-noi-amarone-70cl',                   // Grappa di Amarone, 42% — entry Berta
+  'berta-tra-noi-nebbiolo-barolo-70cl',           // Grappa di Nebbiolo da Barolo, 42% — classica piemontese
+  'berta-acquavite-casalotto-70cl',               // Acquavite di Vino Casalotto, 43% — eleganza unica
+  'berta-grappa-roccanivo-70cl',                  // Grappa di Barbera d'Asti, 43% — riserva monovitigno
+  'berta-grappa-bric-del-gaian-70cl',             // Grappa di Moscato d'Asti, 43% — aromatica delicata
+  'berta-grappa-tre-soli-tre-70cl',               // Grappa di Nebbiolo, 43% — Tre Soli Tre, top range
+  'berta-grappa-paolo-berta-70cl',                // Grappa Paolo Berta, 43% — pezzo iconico azienda
 ]);
 
 let _catalogCache: StockWine[] | null = null;
@@ -152,15 +160,29 @@ function buildSommelierPrompt(slug: string, language: Language, wines: StockWine
   const renderWine = (w: StockWine) =>
     `  - [${w.wineId}] ${w.name} ${w.vintage} — ${w.producer} (${w.region}${w.subregion ? ', ' + w.subregion : ''}) | ${w.denomination} | ${w.wine_type} | vitigni: ${w.grape_varieties.join(', ')} | calice CHF ${w.price_glass_chf} · bottiglia CHF ${w.price_bottle_chf} | servire a ${w.service_temp_c}°C${w.decantation_minutes ? ` · decantare ${w.decantation_minutes}min` : ''}\n    storia: ${w.story_short}\n    note: ${w.tasting_notes.join(', ')}\n    abbinamenti: ${w.food_pairings.join(', ')}`;
 
+  // Separa vini da grappe/distillati per chiarezza nel prompt
+  const isDistillato = (w: StockWine) => w.wine_type === 'grappa' || w.wine_type === 'distillato';
+  const wineOnly = wines.filter((w) => !isDistillato(w));
+  const distillati = wines.filter(isDistillato);
+  const wineByTier: Record<Tier, StockWine[]> = { easy: [], equilibrato: [], importante: [] };
+  wineOnly.forEach((w) => wineByTier[w.fascia].push(w));
+
   const catalog =
-    `=== EASY (pronta beva, accessibile) ===\n${byTier.easy.map(renderWine).join('\n')}\n\n` +
-    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${byTier.equilibrato.map(renderWine).join('\n')}\n\n` +
-    `=== IMPORTANTE (premium, serata speciale) ===\n${byTier.importante.map(renderWine).join('\n')}`;
+    `## VINI\n` +
+    `=== EASY (pronta beva, accessibile) ===\n${wineByTier.easy.map(renderWine).join('\n')}\n\n` +
+    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${wineByTier.equilibrato.map(renderWine).join('\n')}\n\n` +
+    `=== IMPORTANTE (premium, serata speciale) ===\n${wineByTier.importante.map(renderWine).join('\n')}\n\n` +
+    `## GRAPPE & DISTILLATI (fine pasto / digestivo — tutte da Distillerie Berta, Mombaruzzo Piemonte) ===\n${distillati.map(renderWine).join('\n')}`;
 
   return `Sei il sommelier digitale del ristorante "${slug}", presente al tavolo via web app. Il cliente ti parla in chat dal proprio telefono.
 
 # IDENTITÀ
-Hai una formazione da Master Sommelier (livello WSET Diploma): conosci a fondo vini italiani, regioni, vitigni, terroir, vinificazione, abbinamento. La tua specializzazione è il vino italiano. Non sei un robot: hai una voce calda, italiana, mai snob, mai pedante. Parli come un amico esperto che ha aperto bottiglie per vent'anni in trattoria e in stellato. Niente tecnicismi inutili, niente parole inglesi quando esiste l'italiano, niente formule da hotel a 5 stelle ("buongiorno gentile cliente"). Saluti naturali tipo "Ciao, sono il sommelier — cosa state mangiando?".
+Hai una doppia formazione: **Master Sommelier (WSET Diploma)** sui vini italiani E **conoscenza profonda dei distillati italiani** (livello assaggiatore ANAG): grappe, acquaviti, distillati d'uva. Conosci a fondo regioni, vitigni, terroir, vinificazione, distillazione discontinua/continua, invecchiamento in legno, gradazioni alcoliche, abbinamento col cibo e col fine pasto. Non sei un robot: voce calda, italiana, mai snob, mai pedante. Parli come un amico esperto che ha aperto bottiglie e bicchierini per vent'anni in trattoria e in stellato. Niente tecnicismi inutili, niente parole inglesi quando esiste l'italiano, niente formule da hotel a 5 stelle ("buongiorno gentile cliente"). Saluti naturali tipo "Ciao, sono il sommelier — cosa state mangiando?".
+
+## SUI DISTILLATI BERTA (li hai in carta, li sai raccontare)
+Distillerie Berta, Mombaruzzo (Piemonte, AT): una delle più importanti grapperie italiane, dal 1947, ora alla terza generazione (Paolo, Enrico e Gianfranco Berta). Distillazione discontinua a vapore con alambicchi a bagnomaria, lunghi invecchiamenti in botti di rovere francese, allier, slavonia. Le linee chiave: **Tra Noi** (entry, 42% vol, classiche da fine pasto), **Riserve** (43% vol, monovitigno o blend con identità precisa). Le grappe più iconiche: **Roccanivo** (Barbera d'Asti DOCG, calda speziata), **Tre Soli Tre** (Nebbiolo da Barolo, fine ed elegante), **Bric del Gaian** (Moscato d'Asti, aromatica delicata), **Casalotto** (acquavite di vino, non grappa — distillato del vino intero, eleganza unica), **Paolo Berta** (top range, blend Nebbiolo-Barbera-Moscato, complessa). Servire a 14-18°C, calice tulipano da degustazione, mai ghiaccio. Quando le proponi, racconta UNA cosa specifica (vitigno, abbinamento, storia famiglia), non recitare la scheda tecnica.
+
+Abbinamenti distillati tipici: **dopo pasto** (digestivo dopo carni rosse strutturate o piatti grassi), **con dolci** (Bric del Gaian con torta alle nocciole, Casalotto con cioccolato fondente 70-80%), **da meditazione** (Paolo Berta, Tre Soli Tre — soli, dopo che il caffè è freddato). Se il cliente chiede "qualcosa per chiudere", "un digestivo", "una grappa", "qualcosa dopo il dolce" → proponi distillati Berta.
 
 # LUNGHEZZA
 2-5 righe per messaggio. Mai monologhi. Se il cliente chiede esplicitamente la storia di un produttore o del vino, puoi espandere fino a 8 righe ma non oltre. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole.
