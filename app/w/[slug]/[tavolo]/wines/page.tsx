@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MOCK_TENANT } from '../../../_data';
+import { I18N, type Lang, readSavedLang, writeSavedLang, nextLang } from '../../../_i18n';
 
 type WineRow = {
   wineId: string;
@@ -41,13 +42,13 @@ type RawWine = {
 
 const TIER_COLORS = { easy: '#a85565', equilibrato: '#5a1a1f', importante: '#3a0e12' } as const;
 
-const CATEGORY_FILTERS: { id: string; label: string; types: string[] }[] = [
-  { id: 'all', label: 'Tutti', types: [] },
-  { id: 'spumante', label: 'Bollicine', types: ['spumante'] },
-  { id: 'bianco', label: 'Bianchi', types: ['bianco'] },
-  { id: 'rosso', label: 'Rossi', types: ['rosso', 'rosé'] },
-  { id: 'dolce', label: 'Dolci', types: ['dolce', 'passito'] },
-  { id: 'grappa', label: 'Grappe', types: ['grappa', 'distillato'] },
+const buildCategoryFilters = (t: typeof I18N['it']): { id: string; label: string; types: string[] }[] => [
+  { id: 'all', label: t.filterAll, types: [] },
+  { id: 'spumante', label: t.filterBollicine, types: ['spumante'] },
+  { id: 'bianco', label: t.filterBianchi, types: ['bianco'] },
+  { id: 'rosso', label: t.filterRossi, types: ['rosso', 'rosé'] },
+  { id: 'dolce', label: t.filterDolci, types: ['dolce', 'passito'] },
+  { id: 'grappa', label: t.filterGrappe, types: ['grappa', 'distillato'] },
 ];
 
 export default function WinesPage() {
@@ -59,10 +60,20 @@ export default function WinesPage() {
   const sub = '#6b5f52';
   const line = '#d6cdb8';
 
+  const [lang, setLang] = useState<Lang>('it');
+  useEffect(() => { setLang(readSavedLang(params.slug, params.tavolo)); }, [params.slug, params.tavolo]);
+  const t = I18N[lang];
+  const cycleLang = () => {
+    const n = nextLang(lang);
+    setLang(n);
+    writeSavedLang(params.slug, params.tavolo, n);
+  };
+
   const [allWines, setAllWines] = useState<WineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [storyWine, setStoryWine] = useState<WineRow | null>(null);
+  const CATEGORY_FILTERS = buildCategoryFilters(t);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,7 +160,7 @@ export default function WinesPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          aria-label="Torna al sommelier"
+          aria-label={t.sommelier}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: sub, fontFamily: 'Fraunces, serif', fontSize: 13, fontStyle: 'italic',
@@ -159,15 +170,26 @@ export default function WinesPage() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M11 5l-7 7 7 7" />
           </svg>
-          Sommelier
+          {t.sommelier}
         </button>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontStyle: 'italic', color: ink }}>Carta vini</div>
+          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontStyle: 'italic', color: ink }}>{t.winesTitle}</div>
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: sub, marginTop: 2 }}>
             {tenant.name}
           </div>
         </div>
-        <div style={{ width: 40 }} />
+        <button
+          type="button"
+          onClick={cycleLang}
+          aria-label="Cambia lingua / Change language"
+          style={{
+            background: 'transparent', border: `1px solid ${sub}`, color: ink,
+            fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, letterSpacing: '0.18em',
+            padding: '4px 8px', cursor: 'pointer', minWidth: 36,
+          }}
+        >
+          {lang.toUpperCase()}
+        </button>
       </header>
 
       <div style={{ padding: '14px 14px 8px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -196,18 +218,18 @@ export default function WinesPage() {
       <div style={{ padding: '12px 18px 32px', flex: 1 }}>
         {loading && (
           <p style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontStyle: 'italic', color: sub, textAlign: 'center', marginTop: 40 }}>
-            Carico la carta…
+            {t.loadingCarta}
           </p>
         )}
         {!loading && filtered.length === 0 && (
           <p style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontStyle: 'italic', color: sub, textAlign: 'center', marginTop: 40 }}>
-            Nessun vino in questa categoria.
+            {t.noWinesInCategory}
           </p>
         )}
         {grouped.map(([category, list]) => (
           <section key={category} style={{ marginTop: 20 }}>
             <h2 className="eyebrow-wine" style={{ color: tenant.accent, marginBottom: 10 }}>
-              {prettyCategory(category)} · {list.length}
+              {prettyCategory(category, t)} · {list.length}
             </h2>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column' }}>
               {list.map((w, i) => (
@@ -268,7 +290,7 @@ export default function WinesPage() {
                         <span className="tnum">{w.bottle}</span>
                       </div>
                       <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 8.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: sub, marginTop: 1 }}>
-                        bottiglia
+                        {t.bottleUnit}
                       </div>
                     </div>
                   </button>
@@ -279,26 +301,26 @@ export default function WinesPage() {
         ))}
       </div>
 
-      {storyWine && <StorySheet wine={storyWine} onClose={() => setStoryWine(null)} onTake={take} />}
+      {storyWine && <StorySheet wine={storyWine} onClose={() => setStoryWine(null)} onTake={take} t={t} />}
     </main>
   );
 }
 
-function prettyCategory(c: string): string {
+function prettyCategory(c: string, t: typeof I18N['it']): string {
   switch (c) {
-    case 'spumante': return 'Bollicine';
-    case 'bianco': return 'Bianchi';
-    case 'rosé': return 'Rosati';
-    case 'rosso': return 'Rossi';
-    case 'dolce': return 'Dolci';
-    case 'passito': return 'Passiti';
-    case 'grappa': return 'Grappe';
-    case 'distillato': return 'Distillati';
-    default: return 'Altro';
+    case 'spumante': return t.groupBollicine;
+    case 'bianco': return t.groupBianchi;
+    case 'rosé': return t.groupRosati;
+    case 'rosso': return t.groupRossi;
+    case 'dolce': return t.groupDolci;
+    case 'passito': return t.groupPassiti;
+    case 'grappa': return t.groupGrappe;
+    case 'distillato': return t.groupDistillati;
+    default: return t.groupAltro;
   }
 }
 
-function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => void; onTake: (w: WineRow) => void }) {
+function StorySheet({ wine, onClose, onTake, t }: { wine: WineRow; onClose: () => void; onTake: (w: WineRow) => void; t: typeof I18N['it'] }) {
   const ink = '#1c1815';
   const sub = '#6b5f52';
   const line = '#d6cdb8';
@@ -345,7 +367,7 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
               <span className="tnum">{wine.glass}</span>
             </div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 8.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: sub, marginTop: 1 }}>
-              al bicchiere
+              {t.glassUnit}
             </div>
           </div>
           <div style={{ width: 1, background: line }} />
@@ -355,13 +377,13 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
               <span className="tnum">{wine.bottle}</span>
             </div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 8.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: sub, marginTop: 1 }}>
-              bottiglia
+              {t.bottleUnit}
             </div>
           </div>
         </div>
 
         <div style={{ padding: '20px 28px 0' }}>
-          <div className="eyebrow-wine" style={{ color: accent, marginBottom: 8 }}>Storia</div>
+          <div className="eyebrow-wine" style={{ color: accent, marginBottom: 8 }}>{t.storyHeader}</div>
           <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: 14, lineHeight: 1.55, color: ink, fontWeight: 300 }}>
             {wine.story}
           </p>
@@ -369,7 +391,7 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
 
         {wine.notes.length > 0 && (
           <div style={{ padding: '18px 28px 0' }}>
-            <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>Note</div>
+            <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>{t.notesHeader}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {wine.notes.map((n) => (
                 <span
@@ -389,7 +411,7 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
 
         {wine.pairings.length > 0 && (
           <div style={{ padding: '18px 28px 0' }}>
-            <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>Si abbina con</div>
+            <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>{t.pairingsHeader}</div>
             <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: 13, fontStyle: 'italic', color: ink, fontWeight: 300, lineHeight: 1.5 }}>
               {wine.pairings.join(' · ')}
             </p>
@@ -397,9 +419,9 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
         )}
 
         <div style={{ padding: '18px 28px 0' }}>
-          <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>Servizio</div>
+          <div className="eyebrow-wine" style={{ color: sub, marginBottom: 10 }}>{t.serviceHeader}</div>
           <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: sub }}>
-            Temperatura {wine.temp}°C{wine.decant > 0 && ` · decantazione ${wine.decant} min`}
+            {t.serviceTemp(wine.temp)}{wine.decant > 0 && t.serviceDecant(wine.decant)}
           </p>
         </div>
 
@@ -412,7 +434,7 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
               fontSize: 12, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase',
             }}
           >
-            Lo prendo
+            {t.loPrendo}
           </button>
           <button
             type="button" onClick={onClose}
@@ -421,7 +443,7 @@ function StorySheet({ wine, onClose, onTake }: { wine: WineRow; onClose: () => v
               fontFamily: 'Fraunces, serif', fontSize: 12, fontStyle: 'italic', color: sub, fontWeight: 300,
             }}
           >
-            Chiudi
+            {t.chiudi}
           </button>
         </div>
       </div>

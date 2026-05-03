@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { MOCK_TENANT, TIER_WINES } from '../../../_data';
+import { I18N, type Lang, readSavedLang, writeSavedLang, nextLang } from '../../../_i18n';
 
 type CatalogWine = {
   vergani_sku: string;
@@ -52,6 +53,16 @@ export default function ConfirmPage() {
     };
   }, [wineIdFromUrl, imageUrl, params.slug]);
 
+  // Lingua
+  const [lang, setLang] = useState<Lang>('it');
+  useEffect(() => { setLang(readSavedLang(params.slug, params.tavolo)); }, [params.slug, params.tavolo]);
+  const t = I18N[lang];
+  const cycleLang = () => {
+    const n = nextLang(lang);
+    setLang(n);
+    writeSavedLang(params.slug, params.tavolo, n);
+  };
+
   // Quantità selezionabili
   const [glasses, setGlasses] = useState(0);
   const [bottles, setBottles] = useState(1); // di default 1 bottiglia
@@ -94,7 +105,7 @@ export default function ConfirmPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          aria-label="Indietro"
+          aria-label={t.back}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: subColor, fontFamily: 'Fraunces, serif', fontSize: 13, fontStyle: 'italic',
@@ -104,7 +115,7 @@ export default function ConfirmPage() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M11 5l-7 7 7 7" />
           </svg>
-          Indietro
+          {t.back}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div
@@ -121,7 +132,18 @@ export default function ConfirmPage() {
             {tenant.eyebrow}
           </span>
         </div>
-        <span style={{ fontSize: 11, color: subColor }}>IT</span>
+        <button
+          type="button"
+          onClick={cycleLang}
+          aria-label="Cambia lingua / Change language"
+          style={{
+            background: 'transparent', border: `1px solid ${subColor}`, color: ink,
+            fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, letterSpacing: '0.18em',
+            padding: '4px 8px', cursor: 'pointer', minWidth: 36,
+          }}
+        >
+          {lang.toUpperCase()}
+        </button>
       </header>
 
       {confirmed ? (
@@ -138,6 +160,7 @@ export default function ConfirmPage() {
           ink={ink}
           subColor={subColor}
           line={line}
+          t={t}
         />
       ) : (
         <SelectionView
@@ -157,6 +180,7 @@ export default function ConfirmPage() {
           ink={ink}
           subColor={subColor}
           line={line}
+          t={t}
         />
       )}
     </main>
@@ -181,8 +205,9 @@ function SelectionView(props: {
   ink: string;
   subColor: string;
   line: string;
+  t: typeof I18N['it'];
 }) {
-  const { wineName, producer, imageUrl, accent, glasses, bottles, glassPrice, bottlePrice, total, totalItems, onSetGlasses, onSetBottles, onConfirm, ink, subColor, line } = props;
+  const { wineName, producer, imageUrl, accent, glasses, bottles, glassPrice, bottlePrice, total, totalItems, onSetGlasses, onSetBottles, onConfirm, ink, subColor, line, t } = props;
 
   return (
     <>
@@ -217,13 +242,13 @@ function SelectionView(props: {
             color: subColor, fontWeight: 300, lineHeight: 1.5,
           }}
         >
-          Quanti calici e quante bottiglie volete al tavolo?
+          {t.selectionPrompt}
         </p>
       </section>
 
       <section style={{ padding: '28px 22px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <QtyRow
-          label="Al bicchiere"
+          label={t.glassRowLabel}
           unitPrice={glassPrice}
           value={glasses}
           onChange={onSetGlasses}
@@ -231,9 +256,10 @@ function SelectionView(props: {
           ink={ink}
           subColor={subColor}
           line={line}
+          t={t}
         />
         <QtyRow
-          label="Bottiglia"
+          label={t.bottleRowLabel}
           unitPrice={bottlePrice}
           value={bottles}
           onChange={onSetBottles}
@@ -241,6 +267,7 @@ function SelectionView(props: {
           ink={ink}
           subColor={subColor}
           line={line}
+          t={t}
         />
       </section>
 
@@ -256,7 +283,7 @@ function SelectionView(props: {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: subColor }}>
-            Totale
+            {t.totalLabel}
           </span>
           <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, color: ink }}>
             <span style={{ fontSize: 12 }}>CHF </span>
@@ -276,7 +303,7 @@ function SelectionView(props: {
             letterSpacing: '0.18em', textTransform: 'uppercase',
           }}
         >
-          {totalItems === 0 ? 'Aggiungi almeno un calice' : `Manda al cameriere · ${totalItems} pz`}
+          {totalItems === 0 ? t.sendToWaiterEmpty : t.sendToWaiterCount(totalItems)}
         </button>
       </div>
     </>
@@ -299,12 +326,13 @@ function ConfirmedView(props: {
   ink: string;
   subColor: string;
   line: string;
+  t: typeof I18N['it'];
 }) {
-  const { wineName, producer, imageUrl, accent, glasses, bottles, total, phase, backHref, ink, subColor, line } = props;
+  const { wineName, producer, imageUrl, accent, glasses, bottles, total, phase, backHref, ink, subColor, line, t } = props;
 
   const summary: string[] = [];
-  if (glasses > 0) summary.push(`${glasses} ${glasses === 1 ? 'calice' : 'calici'}`);
-  if (bottles > 0) summary.push(`${bottles} ${bottles === 1 ? 'bottiglia' : 'bottiglie'}`);
+  if (glasses > 0) summary.push(`${glasses} ${t.glassRowLabel.toLowerCase()}`);
+  if (bottles > 0) summary.push(`${bottles} ${t.bottleRowLabel.toLowerCase()}`);
 
   return (
     <>
@@ -327,7 +355,7 @@ function ConfirmedView(props: {
         `}</style>
 
         <div className="eyebrow-wine" style={{ color: subColor, marginTop: 22 }}>
-          Comanda inviata
+          {t.orderSent}
         </div>
         <h2
           style={{
@@ -362,10 +390,10 @@ function ConfirmedView(props: {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#6f6b3c' }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.18em', color: subColor, textTransform: 'uppercase' }}>
-                fase 1
+                {t.phase1}
               </div>
               <div style={{ marginTop: 2, fontFamily: 'Fraunces, serif', fontSize: 16, fontStyle: 'italic', color: ink }}>
-                Aperto
+                {t.phase1Label}
               </div>
             </div>
           </div>
@@ -373,10 +401,10 @@ function ConfirmedView(props: {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: phase >= 1 ? accent : line }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.18em', color: subColor, textTransform: 'uppercase' }}>
-                fase 2
+                {t.phase2}
               </div>
               <div style={{ marginTop: 2, fontFamily: 'Fraunces, serif', fontSize: 16, fontStyle: 'italic', color: ink }}>
-                In arrivo
+                {t.phase2Label}
               </div>
             </div>
           </div>
@@ -396,10 +424,10 @@ function ConfirmedView(props: {
             letterSpacing: '0.18em', textTransform: 'uppercase', textDecoration: 'none',
           }}
         >
-          + Aggiungi altri calici o vini
+          {t.addAnother}
         </Link>
         <div style={{ marginTop: 14, fontFamily: 'Fraunces, serif', fontSize: 12, fontStyle: 'italic', color: subColor, fontWeight: 300 }}>
-          Buona cena.
+          {t.goodMeal}
         </div>
       </div>
     </>
@@ -416,6 +444,7 @@ function QtyRow({
   ink,
   subColor,
   line,
+  t,
 }: {
   label: string;
   unitPrice: number;
@@ -425,6 +454,7 @@ function QtyRow({
   ink: string;
   subColor: string;
   line: string;
+  t: typeof I18N['it'];
 }) {
   return (
     <div
@@ -440,7 +470,7 @@ function QtyRow({
           {label}
         </div>
         <div style={{ marginTop: 2, fontFamily: 'Inter, sans-serif', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: subColor }}>
-          CHF {unitPrice} cad.
+          {t.glassPriceCad(unitPrice)}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -448,7 +478,7 @@ function QtyRow({
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={value === 0}
-          aria-label={`Rimuovi un ${label.toLowerCase()}`}
+          aria-label={t.qtyRemove(label)}
           style={qtyBtnStyle(value === 0, accent, line, ink)}
         >
           −
@@ -468,7 +498,7 @@ function QtyRow({
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          aria-label={`Aggiungi un ${label.toLowerCase()}`}
+          aria-label={t.qtyAdd(label)}
           style={qtyBtnStyle(false, accent, line, ink)}
         >
           +

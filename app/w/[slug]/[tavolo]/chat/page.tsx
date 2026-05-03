@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { MOCK_TENANT } from '../../../_data';
+import { I18N as I18N_SHARED, type Lang as Lang_, LANG_CYCLE as LANG_CYCLE_, SR_LOCALE as SR_LOCALE_, LANG_KEY_BASE as LANG_KEY_BASE_, readSavedLang as readSavedLang_, writeSavedLang as writeSavedLang_, nextLang as nextLang_ } from '../../../_i18n';
 
 // ── Types che combaciano col contratto API /api/wine/sommelier ───────────
 type WineProposal = {
@@ -35,121 +36,15 @@ const TIER_COLORS: Record<WineProposal['tier'], string> = {
   importante: '#3a0e12',
 };
 
-type Lang = 'it' | 'de' | 'en' | 'fr';
-const LANG_CYCLE: Lang[] = ['it', 'de', 'en', 'fr'];
-
-// Quick replies + UI strings per lingua
-const I18N: Record<Lang, {
-  sommelier: string;
-  tableLabel: (n: string) => string;
-  cartaVini: string;
-  greet: (name: string) => string;
-  thinking: string;
-  online: string;
-  placeholderWrite: string;
-  placeholderListening: string;
-  errorOffline: (e: string) => string;
-  photoReady: string;
-  photoRemove: string;
-  photoFallbackUserText: string;
-  speechNotSupported: string;
-  back: string;
-  audioRecord: string;
-  audioStop: string;
-  cameraTake: string;
-  send: string;
-  quickReplies: string[];
-}> = {
-  it: {
-    sommelier: 'Sommelier',
-    tableLabel: (n) => `Tavolo ${n}`,
-    cartaVini: 'Carta vini',
-    greet: (name) => `Buonasera, sono il sommelier di ${name}. Cosa stai mangiando stasera? Te lo abbino al vino giusto.`,
-    thinking: 'Sto pensando…',
-    online: 'In linea',
-    placeholderWrite: 'Scrivi o detta al sommelier',
-    placeholderListening: 'Ti ascolto…',
-    errorOffline: (e) => `Mi spiace, sono momentaneamente offline (${e}). Riprova tra un secondo.`,
-    photoReady: 'foto del piatto pronta',
-    photoRemove: 'Rimuovi foto',
-    photoFallbackUserText: 'Ecco la foto del piatto al tavolo. Cosa mi consigli?',
-    speechNotSupported: 'Il dettato vocale non è supportato su questo browser. Usa Chrome o Safari.',
-    back: 'Indietro',
-    audioRecord: 'Detta vocale',
-    audioStop: 'Ferma registrazione',
-    cameraTake: 'Foto del piatto',
-    send: 'Invia',
-    quickReplies: ['🥩 Carne', '🐟 Pesce', '🍝 Pasta o risotto', '🍕 Pizza', '🥗 Vegetariano', '🧀 Salumi e formaggi', '🍰 Dessert', '🍷 Solo un calice', '🥃 Una grappa per chiudere'],
-  },
-  de: {
-    sommelier: 'Sommelier',
-    tableLabel: (n) => `Tisch ${n}`,
-    cartaVini: 'Weinkarte',
-    greet: (name) => `Guten Abend, ich bin der Sommelier von ${name}. Was essen Sie heute Abend? Ich finde Ihnen den passenden Wein.`,
-    thinking: 'Ich überlege…',
-    online: 'Online',
-    placeholderWrite: 'Schreiben oder diktieren',
-    placeholderListening: 'Ich höre zu…',
-    errorOffline: (e) => `Entschuldigung, ich bin gerade offline (${e}). Versuchen Sie es gleich nochmal.`,
-    photoReady: 'Foto bereit',
-    photoRemove: 'Foto entfernen',
-    photoFallbackUserText: 'Hier ist das Foto des Gerichts. Was empfehlen Sie?',
-    speechNotSupported: 'Spracheingabe wird in diesem Browser nicht unterstützt. Verwenden Sie Chrome oder Safari.',
-    back: 'Zurück',
-    audioRecord: 'Sprachaufnahme',
-    audioStop: 'Aufnahme beenden',
-    cameraTake: 'Foto des Gerichts',
-    send: 'Senden',
-    quickReplies: ['🥩 Fleisch', '🐟 Fisch', '🍝 Pasta oder Risotto', '🍕 Pizza', '🥗 Vegetarisch', '🧀 Wurst und Käse', '🍰 Dessert', '🍷 Nur ein Glas', '🥃 Ein Grappa zum Abschluss'],
-  },
-  en: {
-    sommelier: 'Sommelier',
-    tableLabel: (n) => `Table ${n}`,
-    cartaVini: 'Wine list',
-    greet: (name) => `Good evening, I'm ${name}'s sommelier. What are you eating tonight? I'll match it with the right wine.`,
-    thinking: 'Thinking…',
-    online: 'Online',
-    placeholderWrite: 'Type or dictate to the sommelier',
-    placeholderListening: 'Listening…',
-    errorOffline: (e) => `Sorry, I'm momentarily offline (${e}). Try again in a second.`,
-    photoReady: 'photo ready',
-    photoRemove: 'Remove photo',
-    photoFallbackUserText: "Here's the photo of the dish at the table. What do you suggest?",
-    speechNotSupported: 'Voice dictation is not supported on this browser. Use Chrome or Safari.',
-    back: 'Back',
-    audioRecord: 'Voice dictation',
-    audioStop: 'Stop recording',
-    cameraTake: 'Photo of the dish',
-    send: 'Send',
-    quickReplies: ['🥩 Meat', '🐟 Fish', '🍝 Pasta or risotto', '🍕 Pizza', '🥗 Vegetarian', '🧀 Cured meats & cheese', '🍰 Dessert', '🍷 Just a glass', '🥃 A grappa to close'],
-  },
-  fr: {
-    sommelier: 'Sommelier',
-    tableLabel: (n) => `Table ${n}`,
-    cartaVini: 'Carte des vins',
-    greet: (name) => `Bonsoir, je suis le sommelier de ${name}. Que mangez-vous ce soir ? Je vous trouve le vin qu'il faut.`,
-    thinking: 'Je réfléchis…',
-    online: 'En ligne',
-    placeholderWrite: 'Écrivez ou dictez au sommelier',
-    placeholderListening: 'Je vous écoute…',
-    errorOffline: (e) => `Désolé, je suis momentanément hors ligne (${e}). Réessayez dans un instant.`,
-    photoReady: 'photo prête',
-    photoRemove: 'Retirer la photo',
-    photoFallbackUserText: 'Voici la photo du plat à table. Que conseillez-vous ?',
-    speechNotSupported: "La dictée vocale n'est pas supportée sur ce navigateur. Utilisez Chrome ou Safari.",
-    back: 'Retour',
-    audioRecord: 'Dictée vocale',
-    audioStop: "Arrêter l'enregistrement",
-    cameraTake: 'Photo du plat',
-    send: 'Envoyer',
-    quickReplies: ['🥩 Viande', '🐟 Poisson', '🍝 Pâtes ou risotto', '🍕 Pizza', '🥗 Végétarien', '🧀 Charcuterie et fromages', '🍰 Dessert', '🍷 Juste un verre', '🥃 Une grappa pour finir'],
-  },
-};
-
-const SR_LOCALE: Record<Lang, string> = { it: 'it-IT', de: 'de-DE', en: 'en-US', fr: 'fr-FR' };
-
+// Lang/I18N condiviso da ../../../_i18n
+type Lang = Lang_;
+const LANG_CYCLE = LANG_CYCLE_;
+const SR_LOCALE = SR_LOCALE_;
+const LANG_KEY_BASE = LANG_KEY_BASE_;
+const I18N = I18N_SHARED;
 const STORAGE_KEY_BASE = 'lapa-wine-chat';
-const LANG_KEY_BASE = 'lapa-wine-lang';
+
+// (vecchie definizioni inline rimosse — sono in _i18n.ts)
 
 export default function ChatPage() {
   const router = useRouter();
@@ -346,24 +241,17 @@ export default function ChatPage() {
   }, [storageKey, tenant.name, params.slug, params.tavolo]);
 
   // Cycle lingua: it → de → en → fr → it
+  // NON resetta la chat — i messaggi precedenti restano nella loro lingua originale,
+  // le NUOVE risposte del sommelier arrivano nella nuova lingua (passiamo `lang` all'API).
+  // L'unica cosa che riavviamo è il dettato vocale (per cambiare locale di Web Speech).
   const cycleLang = () => {
-    const i = LANG_CYCLE.indexOf(lang);
-    const next = LANG_CYCLE[(i + 1) % LANG_CYCLE.length];
+    const next = nextLang_(lang);
     setLang(next);
-    try {
-      sessionStorage.setItem(`${LANG_KEY_BASE}-${params.slug}-${params.tavolo}`, next);
-    } catch {}
-    // Reset chat al saluto nella nuova lingua
-    setMessages([
-      {
-        role: 'assistant',
-        content: I18N[next].greet(tenant.name),
-        intent: 'greet',
-      },
-    ]);
-    setInput('');
-    if (recording) stopRecording();
-    setPendingImage(null);
+    writeSavedLang_(params.slug, params.tavolo, next);
+    // Riavvia il dettato sul nuovo locale, se attivo
+    if (recording) {
+      stopRecording();
+    }
   };
 
   // Persist
