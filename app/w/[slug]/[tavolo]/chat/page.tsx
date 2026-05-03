@@ -175,6 +175,7 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef<string>('');
 
   // Auto-resize textarea
   useEffect(() => {
@@ -198,11 +199,22 @@ export default function ChatPage() {
       rec.interimResults = true;
       rec.continuous = true;
       rec.maxAlternatives = 1;
+      // Reset accumulator solo all'avvio fresco (non al riavvio onend → onstart automatico)
+      finalTranscriptRef.current = input ? input + ' ' : '';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        let txt = '';
-        for (let i = 0; i < event.results.length; i++) txt += event.results[i][0].transcript;
-        setInput(txt);
+        // Pattern standard: parto da resultIndex (solo i nuovi), separo final da interim
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          const txt = r[0].transcript;
+          if (r.isFinal) {
+            finalTranscriptRef.current += txt;
+          } else {
+            interim += txt;
+          }
+        }
+        setInput((finalTranscriptRef.current + interim).trim());
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onerror = (e: any) => {
@@ -243,6 +255,8 @@ export default function ChatPage() {
       rec?.stop();
     } catch {}
     setRecording(false);
+    // reset accumulator per la prossima registrazione
+    finalTranscriptRef.current = '';
   };
 
   const onPickImage = async (file: File) => {
