@@ -175,7 +175,12 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
-  const finalTranscriptRef = useRef<string>('');
+  // sessionFinal: testo final della sessione corrente del rec (riscritto ad ogni onresult)
+  // cumulativeFinal: testo final consolidato delle sessioni precedenti (consolidato in onend)
+  // basePrefix: testo che era già nel textarea prima di iniziare a registrare
+  const sessionFinalRef = useRef<string>('');
+  const cumulativeFinalRef = useRef<string>('');
+  const basePrefixRef = useRef<string>('');
 
   // Auto-resize textarea
   useEffect(() => {
@@ -199,39 +204,51 @@ export default function ChatPage() {
       rec.interimResults = true;
       rec.continuous = true;
       rec.maxAlternatives = 1;
-      // Reset accumulator solo all'avvio fresco (non al riavvio onend → onstart automatico)
-      finalTranscriptRef.current = input ? input + ' ' : '';
+
+      // Reset all'avvio: prefix = testo già nel textarea + spazio se non vuoto
+      basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
+      cumulativeFinalRef.current = '';
+      sessionFinalRef.current = '';
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        // Pattern standard: parto da resultIndex (solo i nuovi), separo final da interim
+        // Pattern robusto: ricostruisce SEMPRE da zero il sessionFinal scorrendo
+        // l'intero results dell'evento corrente. Questo evita doppia somma quando
+        // il browser auto-restart (continuous=true + silenzio prolungato).
+        let sessionFinal = '';
         let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           const r = event.results[i];
           const txt = r[0].transcript;
           if (r.isFinal) {
-            finalTranscriptRef.current += txt;
+            sessionFinal += txt;
           } else {
             interim += txt;
           }
         }
-        setInput((finalTranscriptRef.current + interim).trim());
+        sessionFinalRef.current = sessionFinal;
+        // Componi: prefix + sessioni passate + sessione attuale + interim
+        setInput((basePrefixRef.current + cumulativeFinalRef.current + sessionFinal + interim).trim());
       };
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onerror = (e: any) => {
-        // 'no-speech' è il classico falso allarme: l'utente sta pensando.
-        // 'aborted' è quando chiamiamo stop noi. Ignoriamoli.
         if (e?.error === 'no-speech' || e?.error === 'aborted') return;
         console.warn('[chat] speech recognition error:', e?.error);
         setRecording(false);
       };
+
       rec.onend = () => {
-        // Quando il browser termina automaticamente (timeout silenzio),
-        // se l'utente NON ha premuto stop, riavviamo per non interrompere il dettato.
+        // Consolida la sessione appena terminata
+        if (sessionFinalRef.current) {
+          cumulativeFinalRef.current += sessionFinalRef.current;
+          sessionFinalRef.current = '';
+        }
+        // Auto-restart se l'utente non ha premuto stop (silenzio Chrome)
         if (recognitionRef.current === rec) {
           try {
             rec.start();
           } catch {
-            // già partito o non riavviabile → segna stop
             recognitionRef.current = null;
             setRecording(false);
           }
@@ -239,6 +256,7 @@ export default function ChatPage() {
           setRecording(false);
         }
       };
+
       rec.start();
       recognitionRef.current = rec;
       setRecording(true);
@@ -255,8 +273,10 @@ export default function ChatPage() {
       rec?.stop();
     } catch {}
     setRecording(false);
-    // reset accumulator per la prossima registrazione
-    finalTranscriptRef.current = '';
+    // reset di tutti gli accumulator per la prossima registrazione
+    sessionFinalRef.current = '';
+    cumulativeFinalRef.current = '';
+    basePrefixRef.current = '';
   };
 
   const onPickImage = async (file: File) => {
