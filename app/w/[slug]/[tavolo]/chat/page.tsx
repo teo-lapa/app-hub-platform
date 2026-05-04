@@ -85,7 +85,12 @@ export default function ChatPage() {
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   }, [input]);
 
-  // Web Speech API setup (browser native, no costo) — pattern di ieri sera (commit b0140bf9).
+  // Web Speech API setup. Due strategie distinte:
+  //   - DESKTOP (Chrome/Safari desktop): continuous=true, pattern di ieri sera (funziona).
+  //   - ANDROID: continuous=false (per ogni frase Chrome chiude la sessione da solo),
+  //     accumulo manuale del SOLO final emesso, auto-restart con NUOVA istanza ad ogni onend.
+  //     Su Android continuous=true causa duplicazione perché event.results viene preservato
+  //     tra sessioni e i finali consolidati vengono ri-letti.
   const startRecording = () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,35 +99,120 @@ export default function ChatPage() {
         alert(t.speechNotSupported);
         return;
       }
+
+      const isAndroid = /Android/i.test(navigator.userAgent);
+
+      basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
+      cumulativeFinalRef.current = '';
+      sessionFinalRef.current = '';
+
+      if (isAndroid) {
+        // ── STRATEGIA ANDROID ───────────────────────────────────────
+        // Una sessione = una frase. continuous=false. event.results contiene SOLO
+        // i risultati di QUESTA frase. Quando onend fa partire una nuova istanza,
+        // event.results parte forzatamente da 0 (istanza nuova).
+        const wantStop = { current: false };
+        const stopFlag = wantStop;
+
+        const spawn = () => {
+          let rec: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          try {
+            rec = new SR();
+          } catch (e) {
+            console.error('[chat] SR construct failed', e);
+            setRecording(false);
+            return;
+          }
+          rec.lang = SR_LOCALE[lang];
+          rec.interimResults = true;
+          rec.continuous = false; // KEY su Android
+          rec.maxAlternatives = 1;
+
+          let lastInterim = '';
+          let utteranceFinal = '';
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rec.onresult = (event: any) => {
+            if (recognitionRef.current !== rec) return;
+            // Su Android in modalità non-continuous, di solito event.results.length = 1
+            // (questa singola utterance). Calcoliamo final e interim correnti.
+            let f = '';
+            let it = '';
+            for (let i = 0; i < event.results.length; i++) {
+              const r = event.results[i];
+              const txt = r[0].transcript;
+              if (r.isFinal) f += txt;
+              else it += txt;
+            }
+            utteranceFinal = f;
+            lastInterim = it;
+            setInput((basePrefixRef.current + cumulativeFinalRef.current + f + it).trim());
+          };
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rec.onerror = (e: any) => {
+            if (e?.error === 'no-speech' || e?.error === 'aborted') return;
+            console.warn('[chat] speech recognition error (Android):', e?.error);
+          };
+
+          rec.onend = () => {
+            if (recognitionRef.current !== rec) return;
+            // Consolida SOLO il final di questa utterance dentro cumulativeFinal,
+            // poi spawna nuova istanza per la prossima frase.
+            if (utteranceFinal) {
+              const sep = cumulativeFinalRef.current && !cumulativeFinalRef.current.endsWith(' ') ? ' ' : '';
+              cumulativeFinalRef.current = cumulativeFinalRef.current + sep + utteranceFinal;
+            }
+            utteranceFinal = '';
+            lastInterim = '';
+            setInput((basePrefixRef.current + cumulativeFinalRef.current).trim());
+
+            if (!stopFlag.current) {
+              // Piccolo delay per dare tempo ad Android di rilasciare il microfono
+              setTimeout(() => {
+                if (!stopFlag.current) spawn();
+              }, 100);
+            } else {
+              recognitionRef.current = null;
+              setRecording(false);
+            }
+          };
+
+          try {
+            rec.start();
+            recognitionRef.current = rec;
+            setRecording(true);
+          } catch (e) {
+            console.error('[chat] rec.start failed (Android)', e);
+            recognitionRef.current = null;
+            setRecording(false);
+          }
+        };
+
+        // Esponi il flag stop a stopRecording via ref
+        (recognitionRef as any).__stopFlag = stopFlag; // eslint-disable-line @typescript-eslint/no-explicit-any
+        spawn();
+        return;
+      }
+
+      // ── STRATEGIA DESKTOP (Chrome/Safari desktop) ────────────────
       const rec = new SR();
       rec.lang = SR_LOCALE[lang];
       rec.interimResults = true;
       rec.continuous = true;
       rec.maxAlternatives = 1;
 
-      // Reset all'avvio: prefix = testo già nel textarea + spazio se non vuoto
-      basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
-      cumulativeFinalRef.current = '';
-      sessionFinalRef.current = '';
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        // Pattern robusto: ricostruisce SEMPRE da zero il sessionFinal scorrendo
-        // l'intero results dell'evento corrente. Questo evita doppia somma quando
-        // il browser auto-restart (continuous=true + silenzio prolungato).
         let sessionFinal = '';
         let interim = '';
         for (let i = 0; i < event.results.length; i++) {
           const r = event.results[i];
           const txt = r[0].transcript;
-          if (r.isFinal) {
-            sessionFinal += txt;
-          } else {
-            interim += txt;
-          }
+          if (r.isFinal) sessionFinal += txt;
+          else interim += txt;
         }
         sessionFinalRef.current = sessionFinal;
-        // Componi: prefix + sessioni passate + sessione attuale + interim
         setInput((basePrefixRef.current + cumulativeFinalRef.current + sessionFinal + interim).trim());
       };
 
@@ -134,12 +224,10 @@ export default function ChatPage() {
       };
 
       rec.onend = () => {
-        // Consolida la sessione appena terminata
         if (sessionFinalRef.current) {
           cumulativeFinalRef.current += sessionFinalRef.current;
           sessionFinalRef.current = '';
         }
-        // Auto-restart se l'utente non ha premuto stop (silenzio Chrome)
         if (recognitionRef.current === rec) {
           try {
             rec.start();
@@ -161,14 +249,19 @@ export default function ChatPage() {
     }
   };
   const stopRecording = () => {
-    // Azzero il ref PRIMA di stop() così onend non auto-riavvia
+    // Su Android: segnala al ciclo di non auto-rispawnare
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stopFlag = (recognitionRef as any).__stopFlag as { current: boolean } | undefined;
+    if (stopFlag) stopFlag.current = true;
+
     const rec = recognitionRef.current;
     recognitionRef.current = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (recognitionRef as any).__stopFlag = undefined;
     try {
       rec?.stop();
     } catch {}
     setRecording(false);
-    // reset di tutti gli accumulator per la prossima registrazione
     sessionFinalRef.current = '';
     cumulativeFinalRef.current = '';
     basePrefixRef.current = '';
