@@ -90,22 +90,26 @@ export async function POST(request: NextRequest) {
     const taggedTemplates = (await taggedResponse.json()).result || [];
     const catalogedTemplateIds = new Set(taggedTemplates.map((t: any) => t.id));
 
-    // 5. Build result - aggregate quantities per product
+    // 5. Build result - aggregate quantities per product.template
+    // IMPORTANTE: aggreghiamo per template_id (non per variant_id) cosi' l'id pubblico
+    // restituito coincide con product.template.id, che e' quello che il flow downstream
+    // (job processor + tag Catalogato App + link "Apri in Odoo") usa.
     const productMap = new Map<number, any>();
     for (const q of quants) {
       const pid = q.product_id[0];
-      if (productMap.has(pid)) {
-        productMap.get(pid).quantity += q.quantity;
+      const prod = products.find((p: any) => p.id === pid);
+      const tmplId = prod?.product_tmpl_id?.[0] || pid;
+      if (productMap.has(tmplId)) {
+        productMap.get(tmplId).quantity += q.quantity;
       } else {
-        const prod = products.find((p: any) => p.id === pid);
-        productMap.set(pid, {
-          id: pid,
+        productMap.set(tmplId, {
+          id: tmplId,
           name: prod?.name || q.product_id[1],
           code: prod?.default_code || '',
           barcode: prod?.barcode || '',
           image: prod?.image_128 ? `data:image/png;base64,${prod.image_128}` : null,
           quantity: q.quantity,
-          catalogato: catalogedTemplateIds.has(prod?.product_tmpl_id?.[0]),
+          catalogato: catalogedTemplateIds.has(tmplId),
         });
       }
     }
