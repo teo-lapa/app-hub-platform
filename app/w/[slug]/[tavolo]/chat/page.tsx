@@ -73,11 +73,9 @@ export default function ChatPage() {
   // sessionFinal: testo final della sessione corrente del rec (riscritto ad ogni onresult)
   // cumulativeFinal: testo final consolidato delle sessioni precedenti (consolidato in onend)
   // basePrefix: testo che era già nel textarea prima di iniziare a registrare
-  // stopFlag: flag condiviso col ciclo auto-restart per fermarlo da stopRecording
   const sessionFinalRef = useRef<string>('');
   const cumulativeFinalRef = useRef<string>('');
   const basePrefixRef = useRef<string>('');
-  const stopFlagRef = useRef<{ current: boolean } | null>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -87,100 +85,90 @@ export default function ChatPage() {
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   }, [input]);
 
-  // Web Speech API setup (browser native, no costo).
-  // Pattern bulletproof:
-  // - basePrefix = testo "congelato" che NON viene toccato (snapshot iniziale + finali consolidati)
-  // - sessionLive = solo il TESTO della sessione SR ATTUALE (final + interim ricomputati ogni onresult dall'event.results corrente)
-  // - input visualizzato = basePrefix + sessionLive
-  // - quando una sessione finisce: basePrefix += sessionLiveFinalOnly, poi spawna nuova sessione (sessionLive riparte da zero)
-  // - ogni sessione è una NUOVA istanza SpeechRecognition (così event.results parte SEMPRE da 0)
+  // Web Speech API setup (browser native, no costo) — pattern di ieri sera (commit b0140bf9).
   const startRecording = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      alert(t.speechNotSupported);
-      return;
-    }
-    // basePrefix = testo già presente nel textarea + spazio se serve
-    basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
-    sessionFinalRef.current = '';
-    cumulativeFinalRef.current = ''; // non più usato, ma reset per pulizia
-
-    const wantStop = { current: false };
-    stopFlagRef.current = wantStop;
-
-    const spawnSession = () => {
-      let rec: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      try {
-        rec = new SR();
-      } catch (e) {
-        console.error('[chat] SR construct failed', e);
-        setRecording(false);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SR) {
+        alert(t.speechNotSupported);
         return;
       }
+      const rec = new SR();
       rec.lang = SR_LOCALE[lang];
       rec.interimResults = true;
       rec.continuous = true;
       rec.maxAlternatives = 1;
 
+      // Reset all'avvio: prefix = testo già nel textarea + spazio se non vuoto
+      basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
+      cumulativeFinalRef.current = '';
+      sessionFinalRef.current = '';
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        if (recognitionRef.current !== rec) return; // ignora eventi orfani
+        // Pattern robusto: ricostruisce SEMPRE da zero il sessionFinal scorrendo
+        // l'intero results dell'evento corrente. Questo evita doppia somma quando
+        // il browser auto-restart (continuous=true + silenzio prolungato).
         let sessionFinal = '';
         let interim = '';
         for (let i = 0; i < event.results.length; i++) {
           const r = event.results[i];
           const txt = r[0].transcript;
-          if (r.isFinal) sessionFinal += txt;
-          else interim += txt;
+          if (r.isFinal) {
+            sessionFinal += txt;
+          } else {
+            interim += txt;
+          }
         }
-        sessionFinalRef.current = sessionFinal; // tracker per onend
-        setInput((basePrefixRef.current + sessionFinal + interim).trim());
+        sessionFinalRef.current = sessionFinal;
+        // Componi: prefix + sessioni passate + sessione attuale + interim
+        setInput((basePrefixRef.current + cumulativeFinalRef.current + sessionFinal + interim).trim());
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onerror = (e: any) => {
         if (e?.error === 'no-speech' || e?.error === 'aborted') return;
         console.warn('[chat] speech recognition error:', e?.error);
+        setRecording(false);
       };
 
       rec.onend = () => {
-        if (recognitionRef.current !== rec) return; // sessione già sostituita
-        // CONGELA il final della sessione appena chiusa dentro basePrefix
+        // Consolida la sessione appena terminata
         if (sessionFinalRef.current) {
-          basePrefixRef.current = (basePrefixRef.current + sessionFinalRef.current).replace(/\s+$/, '') + ' ';
+          cumulativeFinalRef.current += sessionFinalRef.current;
           sessionFinalRef.current = '';
         }
-        if (!wantStop.current) {
-          spawnSession(); // nuova istanza, event.results parte da 0
+        // Auto-restart se l'utente non ha premuto stop (silenzio Chrome)
+        if (recognitionRef.current === rec) {
+          try {
+            rec.start();
+          } catch {
+            recognitionRef.current = null;
+            setRecording(false);
+          }
         } else {
-          recognitionRef.current = null;
           setRecording(false);
         }
       };
 
-      try {
-        rec.start();
-        recognitionRef.current = rec;
-        setRecording(true);
-      } catch (e) {
-        console.error('[chat] rec.start failed', e);
-        recognitionRef.current = null;
-        setRecording(false);
-      }
-    };
-
-    spawnSession();
+      rec.start();
+      recognitionRef.current = rec;
+      setRecording(true);
+    } catch (e) {
+      console.error('[chat] speech recognition error', e);
+      setRecording(false);
+    }
   };
   const stopRecording = () => {
-    // Segnalo al ciclo di non auto-rispawnare nuove sessioni
-    if (stopFlagRef.current) stopFlagRef.current.current = true;
+    // Azzero il ref PRIMA di stop() così onend non auto-riavvia
     const rec = recognitionRef.current;
     recognitionRef.current = null;
     try {
       rec?.stop();
     } catch {}
     setRecording(false);
+    // reset di tutti gli accumulator per la prossima registrazione
     sessionFinalRef.current = '';
     cumulativeFinalRef.current = '';
     basePrefixRef.current = '';
