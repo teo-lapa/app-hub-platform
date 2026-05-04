@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Wine, TrendingUp, BookOpen, Package } from 'lucide-react';
+import { Home, Wine, TrendingUp, BookOpen, Package, MessageCircle } from 'lucide-react';
 
 const items = [
   { href: '/lapa-wine', label: 'Home', icon: Home },
@@ -10,6 +10,7 @@ const items = [
   { href: '/lapa-wine/vendite', label: 'Vendite', icon: TrendingUp },
   { href: '/lapa-wine/carta', label: 'Carta', icon: BookOpen },
   { href: '/lapa-wine/ordini', label: 'Ordini', icon: Package },
+  { href: '/lapa-wine/sommelier', label: 'Sommelier', icon: MessageCircle },
 ];
 
 export default function BottomNav() {
@@ -24,7 +25,7 @@ export default function BottomNav() {
         maxWidth: 480,
         margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
+        gridTemplateColumns: 'repeat(6, 1fr)',
         background: '#fff',
         borderTop: '1px solid var(--border, #e5e2dd)',
         paddingBottom: 12,

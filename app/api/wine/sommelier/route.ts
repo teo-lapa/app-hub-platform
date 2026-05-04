@@ -1,18 +1,23 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'crypto';
-import { readFileSync } from 'fs';
-import path from 'path';
+import {
+  loadCatalog,
+  searchWines,
+  getWineDetails,
+  findWineById,
+  fuzzyFindWine,
+  type SearchCriteria,
+  type Tier,
+} from '@/lib/wine/catalog';
+import { getPersonalityForSlug, PERSONALITY_PRESETS } from '@/lib/wine/sommelier-personality';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 type Language = 'it' | 'de' | 'en' | 'fr';
-type Tier = 'easy' | 'equilibrato' | 'importante';
 type Intent = 'greet' | 'clarify' | 'propose' | 'explain' | 'confirm' | 'other';
 
 interface ChatMessage {
@@ -27,33 +32,6 @@ interface SommelierRequest {
   customerEmail?: string | null;
   messages: ChatMessage[];
   image?: { base64: string; mimeType: string };
-}
-
-interface CatalogWine {
-  vergani_sku: string;
-  name: string;
-  producer: string;
-  region: string;
-  subregion?: string;
-  denomination: string;
-  grape_varieties: string[];
-  vintage: string;
-  format_cl: number;
-  wine_type: string;
-  price_vergani_to_lapa_chf: number;
-  price_carta_suggested_chf: number;
-  fascia: Tier;
-  story_short: string;
-  tasting_notes: string[];
-  food_pairings: string[];
-  service_temp_c: number;
-  decantation_minutes: number;
-}
-
-interface StockWine extends CatalogWine {
-  wineId: string;
-  price_glass_chf: number;
-  price_bottle_chf: number;
 }
 
 interface ProposedWine {
@@ -75,259 +53,162 @@ interface SommelierResponse {
   messageId: string;
 }
 
-// Approccio: il sommelier conosce L'INTERO catalogo Vergani (108 SKU = ~60 unique products in
-// vari formati: 75cl, 150cl magnum, 300cl/600cl/12L jeroboam-cassa-legno, grappe 70cl, passito 37.5cl).
-// Per il demo Mario consideriamo TUTTO disponibile. Quando ci sarà il DB, filtreremo per stock
-// reale del ristoratore. Ma il sommelier deve poter parlare di formati grandi (magnum per tavolata,
-// jeroboam per evento) anche se va richiesto in anticipo.
-// Manteniamo la lista DEMO_STOCK_SKUS solo come elenco "in cantina stasera" (consegna immediata).
-// Il prompt contiene comunque l'INTERO catalogo Vergani.
-// TODO: sostituire con query Prisma su tabella restaurant_wine_stock per restaurantSlug.
-const DEMO_STOCK_SKUS = new Set<string>([
-  // easy (5 disponibili 75cl)
-  'anima-prosecco-extra-dry-2024-75cl',
-  'anima-prosecco-rose-brut-2024-75cl',
-  'tessari-soave-2024-75cl',
-  'tessari-soave-perinotto-2021-75cl',
-  'tessari-due-2022-75cl',
-  // equilibrato (17)
-  'mura-mura-favorita-bianca-2022-75cl',
-  'mura-mura-timorasso-beatrice-2023-75cl',
-  'mura-mura-nebbiolo-mercuzio-2021-75cl',
-  'mura-mura-barbaresco-iago-2022-75cl',
-  'mura-mura-romeo-2022-75cl',
-  'cdb-cuvee-prestige-ed47-extra-brut-75cl',
-  'cdb-corte-del-lupo-bianco-2023-75cl',
-  'cdb-corte-del-lupo-rosso-2022-75cl',
-  'anima-amarone-2019-75cl',
-  'anima-fiano-2021-75cl',
-  'anima-toscana-2020-75cl',
-  'tessari-soloris-rebellis-2022-75cl',
-  'collazzi-fiano-otto-muri-2023-75cl',
-  'collazzi-bianco-2023-75cl',
-  'collazzi-liberta-2022-75cl',
-  'collazzi-collazzi-2021-75cl',
-  'le-sorgenti-scirus-2017-75cl',
-  // importante (8)
-  'mura-mura-barbaresco-faset-2019-75cl',
-  'mura-mura-barbaresco-serragrilli-2020-75cl',
-  'mura-mura-barbaresco-starderi-2020-75cl',
-  'cdb-cuvee-prestige-rose-ed47-75cl',
-  'cdb-vc-saten-2020-75cl',
-  'cdb-annamaria-clementi-2014-2015-75cl',
-  'cdb-vc-extra-brut-2019-75cl',
-  'cdb-vc-dosage-zero-2020-75cl',
-  // passito / vino dolce da meditazione e pasticceria
-  'mura-mura-moscato-passito-ofelia-2020-37-5cl', // Moscato Passito Ofelia 37.5cl — accompagna dessert
-  // grappe e distillati Berta — fine pasto / digestivo (tutti fascia "importante")
-  'berta-tra-noi-amarone-70cl',                   // Grappa di Amarone, 42% — entry Berta
-  'berta-tra-noi-nebbiolo-barolo-70cl',           // Grappa di Nebbiolo da Barolo, 42% — classica piemontese
-  'berta-acquavite-casalotto-70cl',               // Acquavite di Vino Casalotto, 43% — eleganza unica
-  'berta-grappa-roccanivo-70cl',                  // Grappa di Barbera d'Asti, 43% — riserva monovitigno
-  'berta-grappa-bric-del-gaian-70cl',             // Grappa di Moscato d'Asti, 43% — aromatica delicata
-  'berta-grappa-tre-soli-tre-70cl',               // Grappa di Nebbiolo, 43% — Tre Soli Tre, top range
-  'berta-grappa-paolo-berta-70cl',                // Grappa Paolo Berta, 43% — pezzo iconico azienda
-]);
-
-let _catalogCache: StockWine[] | null = null;
-
-function loadCatalog(): StockWine[] {
-  if (_catalogCache) return _catalogCache;
-  const filePath = path.join(process.cwd(), 'prisma', 'seed-data', 'lapa-wine-vini.json');
-  const raw = readFileSync(filePath, 'utf-8');
-  const all = JSON.parse(raw) as CatalogWine[];
-  // Carico TUTTI i 108 SKU (non filtro per DEMO_STOCK_SKUS).
-  // Il sommelier deve conoscere l'intera carta inclusi magnum, jeroboam, formati legno.
-  const stock: StockWine[] = all.map((w) => {
-    const bottle = Math.round(w.price_carta_suggested_chf);
-    const glass = Math.max(7, Math.round(bottle / 5));
-    return {
-      ...w,
-      wineId: w.vergani_sku,
-      price_glass_chf: glass,
-      price_bottle_chf: bottle,
-    };
-  });
-  _catalogCache = stock;
-  return stock;
-}
-
-function buildSommelierPrompt(slug: string, language: Language, wines: StockWine[]): string {
-  const langMap: Record<Language, string> = {
-    it: 'italiano',
-    de: 'tedesco (Hochdeutsch)',
-    en: 'inglese',
-    fr: 'francese',
-  };
-
-  // Raggruppo per (producer, name) per mostrare TUTTI i formati di una stessa bottiglia
-  // sotto un solo blocco. Il sommelier vede ogni bottiglia con tutte le sue varianti.
-  type GroupKey = string;
-  const groupKey = (w: StockWine): GroupKey => `${w.producer}__${w.name.replace(/\s+(Magnum|Jeroboam|Mezza Bottiglia|Cassa Legno|Edizione Speciale|6 Litri|12 Litri|18 Litri).*$/i, '').trim()}`;
-  const groups = new Map<GroupKey, StockWine[]>();
-  for (const w of wines) {
-    const k = groupKey(w);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(w);
-  }
-
-  const formatLabel = (cl: number): string => {
-    if (cl === 37.5) return '37.5cl mezza';
-    if (cl === 75) return '75cl bottiglia';
-    if (cl === 70) return '70cl';
-    if (cl === 150) return '150cl magnum';
-    if (cl === 300) return '300cl jeroboam';
-    if (cl === 600) return '600cl (6L)';
-    if (cl === 1200) return '12L';
-    if (cl === 1800) return '18L';
-    return `${cl}cl`;
-  };
-
-  const renderGroup = (gk: GroupKey, items: StockWine[]): string => {
-    items.sort((a, b) => a.format_cl - b.format_cl);
-    const head = items[0];
-    const baseName = head.name.replace(/\s+(Magnum|Jeroboam|Mezza Bottiglia|Cassa Legno|Edizione Speciale|6 Litri|12 Litri|18 Litri).*$/i, '').trim();
-    const grappe = head.grape_varieties?.join(', ') || '—';
-    const formatLines = items
-      .map(
-        (w) =>
-          `    • [${w.wineId}] ${w.vintage || 'NV'} · ${formatLabel(w.format_cl)} — bottiglia CHF ${w.price_bottle_chf}${w.format_cl === 75 ? ` · calice CHF ${w.price_glass_chf}` : ''}`,
-      )
-      .join('\n');
-    return `▸ ${baseName} — ${head.producer} (${head.region}${head.subregion ? ', ' + head.subregion : ''}) | ${head.denomination} | ${head.wine_type} | vitigni: ${grappe} | servire ${head.service_temp_c}°C${head.decantation_minutes ? ` · decantare ${head.decantation_minutes}min` : ''}\n  storia: ${head.story_short}\n  note: ${head.tasting_notes.join(', ')}\n  abbinamenti: ${head.food_pairings.join(', ')}\n  formati disponibili:\n${formatLines}`;
-  };
-
-  // Separa per categoria: vini fermi/spumanti (per fascia easy/eq/imp), dolci, distillati
-  const isDistillato = (w: StockWine) => w.wine_type === 'grappa' || w.wine_type === 'distillato';
-  const isDolce = (w: StockWine) => w.wine_type === 'passito' || w.wine_type === 'dolce';
-
-  const groupKeys = Array.from(groups.keys());
-  const wineGroups: Record<Tier, GroupKey[]> = { easy: [], equilibrato: [], importante: [] };
-  const dolceGroups: GroupKey[] = [];
-  const distillatoGroups: GroupKey[] = [];
-  for (const gk of groupKeys) {
-    const head = groups.get(gk)![0];
-    if (isDistillato(head)) distillatoGroups.push(gk);
-    else if (isDolce(head)) dolceGroups.push(gk);
-    else wineGroups[head.fascia].push(gk);
-  }
-
-  const renderSection = (gks: GroupKey[]) => gks.map((gk) => renderGroup(gk, groups.get(gk)!)).join('\n\n');
-
-  const catalog =
-    `## VINI\n` +
-    `=== EASY (pronta beva, accessibile) ===\n${renderSection(wineGroups.easy)}\n\n` +
-    `=== EQUILIBRATO (qualità/prezzo, abbinamento ragionato) ===\n${renderSection(wineGroups.equilibrato)}\n\n` +
-    `=== IMPORTANTE (premium, serata speciale) ===\n${renderSection(wineGroups.importante)}\n\n` +
-    (dolceGroups.length
-      ? `## VINI DOLCI / PASSITI (da meditazione, pasticceria, formaggi erborinati)\n${renderSection(dolceGroups)}\n\n`
-      : '') +
-    `## GRAPPE & DISTILLATI (Distillerie Berta, Mombaruzzo Piemonte — fine pasto / digestivo)\n${renderSection(distillatoGroups)}`;
-
-  return `Sei il sommelier digitale del ristorante "${slug}", presente al tavolo via web app. Il cliente ti parla in chat dal proprio telefono.
+// ── DNA SOMMELIER (cachato — system prompt fisso) ─────────────────────
+// Questo blocco è IDENTICO per ogni ristorante e ogni richiesta. Anthropic
+// può cachare tutto fino al prossimo blocco con cache_control.
+const CORE_DNA = `Sei un sommelier digitale presente al tavolo del cliente via web app.
 
 # IDENTITÀ
-Hai una doppia formazione: **Master Sommelier (WSET Diploma)** sui vini italiani E **conoscenza profonda dei distillati italiani** (livello assaggiatore ANAG): grappe, acquaviti, distillati d'uva. Conosci a fondo regioni, vitigni, terroir, vinificazione, distillazione discontinua/continua, invecchiamento in legno, gradazioni alcoliche, abbinamento col cibo e col fine pasto. Non sei un robot: voce calda, italiana, mai snob, mai pedante. Parli come un amico esperto che ha aperto bottiglie e bicchierini per vent'anni in trattoria e in stellato. Niente tecnicismi inutili, niente parole inglesi quando esiste l'italiano, niente formule da hotel a 5 stelle ("buongiorno gentile cliente"). Saluti naturali tipo "Ciao, sono il sommelier — cosa state mangiando?".
+Hai una doppia formazione: **Master Sommelier (WSET Diploma)** sui vini italiani E **conoscenza profonda dei distillati italiani** (livello assaggiatore ANAG): grappe, acquaviti, distillati d'uva. Conosci a fondo le 20 regioni vitivinicole italiane, vitigni autoctoni, terroir, vinificazione, distillazione discontinua/continua, invecchiamento in legno, gradazioni alcoliche, abbinamento col cibo e col fine pasto. Conosci le classificazioni (DOC, DOCG, IGT, DOP, IGP) e sai quando rilevarle.
 
-## SUI DISTILLATI BERTA (li hai in carta, li sai raccontare)
-Distillerie Berta, Mombaruzzo (Piemonte, AT): una delle più importanti grapperie italiane, dal 1947, ora alla terza generazione (Paolo, Enrico e Gianfranco Berta). Distillazione discontinua a vapore con alambicchi a bagnomaria, lunghi invecchiamenti in botti di rovere francese, allier, slavonia. Le linee chiave: **Tra Noi** (entry, 42% vol, classiche da fine pasto), **Riserve** (43% vol, monovitigno o blend con identità precisa). Le grappe più iconiche: **Roccanivo** (Barbera d'Asti DOCG, calda speziata), **Tre Soli Tre** (Nebbiolo da Barolo, fine ed elegante), **Bric del Gaian** (Moscato d'Asti, aromatica delicata), **Casalotto** (acquavite di vino, non grappa — distillato del vino intero, eleganza unica), **Paolo Berta** (top range, blend Nebbiolo-Barbera-Moscato, complessa). Servire a 14-18°C, calice tulipano da degustazione, mai ghiaccio. Quando le proponi, racconta UNA cosa specifica (vitigno, abbinamento, storia famiglia), non recitare la scheda tecnica.
+# REGOLE D'ABBINAMENTO (usale come griglia mentale)
+- **Concordanza**: dolce con dolce (passito + dessert), aromatico con aromatico.
+- **Contrapposizione**: tannino contro grasso (Nebbiolo + bistecca), acidità contro untuosità (Riesling + fritto), bollicine contro grasso (Franciacorta + salumi).
+- **Tradizione territoriale**: piatto di una regione → vino di quella regione (ossobuco + Nebbiolo, branzino + Vermentino, cassoeula + Valtellina).
+- **Intensità**: piatto delicato → vino delicato; piatto strutturato → vino strutturato. Mai schiacciare il piatto, mai farsi schiacciare dal piatto.
+- **Preparazione**: cottura lunga / brasatura / griglia → rosso strutturato; crudo / vapore → bianco fresco o bollicine.
 
-Abbinamenti distillati tipici: **dopo pasto** (digestivo dopo carni rosse strutturate o piatti grassi), **con dolci** (Bric del Gaian con torta alle nocciole, Casalotto con cioccolato fondente 70-80%), **da meditazione** (Paolo Berta, Tre Soli Tre — soli, dopo che il caffè è freddato). Se il cliente chiede "qualcosa per chiudere", "un digestivo", "una grappa", "qualcosa dopo il dolce" → proponi distillati Berta.
+# SERVIZIO
+Bollicine 6-8°C, bianchi giovani 8-10°C, bianchi strutturati 10-12°C, rosati 10-12°C, rossi giovani 14-16°C, rossi importanti 16-18°C, passiti 8-10°C, grappe 14-18°C in calice tulipano. Decantare i rossi importanti giovani (Barolo, Barbaresco) almeno 30-60min. I bianchi non si decantano. Ordine in un menu degustazione: bolle → bianchi leggeri → bianchi strutturati → rosati → rossi giovani → rossi importanti → dolci → distillati.
 
-## SUI VINI DOLCI E PASSITI (li hai in carta)
-Hai un **Moscato Passito Ofelia** di Mura Mura (Piemonte): uve di Moscato bianco appassite naturalmente sulle stuoie, vendemmia tardiva, fermentazione spontanea, 37.5cl. Un dolce equilibrato — non stucchevole — con note di miele d'acacia, albicocca disidratata, fiori di camomilla, finale lungo agrumato. **Servire a 8-10°C** in calice piccolo. Abbinamenti perfetti: pasticceria secca (cantuccini, biscotti alle mandorle, torta alle nocciole), formaggi erborinati (gorgonzola dolce, roquefort), foie gras, fine pasto da meditazione. Se il cliente chiede "qualcosa di dolce", "un vino col dessert", "qualcosa dopo il dolce", "passito", "moscato" → proponilo. È un vino da fine cena, perfetto come alternativa al digestivo per chi non beve grappa.
+# GESTIONE CLIENTE
+- Cliente vago → UNA domanda chiarificatrice mirata (bianco/rosso, piatto guida, calice/bottiglia).
+- Cliente che chiede "il più caro" → proponi fascia importante con motivazione, non per vanità.
+- Cliente con budget basso → fascia easy, mai farglielo pesare.
+- Cliente che propone abbinamento "sbagliato" (es. rosso col pesce) → MAI correggerlo seccamente. Conferma se ha senso o suggerisci alternativa con garbo.
+- Allergia solfiti / gravidanza / astemio / guida → proponi acqua/analcolico, mai insistere.
+- Tavolo indeciso → 3 vini uno per fascia (easy/equilibrato/importante), così sceglie il livello.
 
-# LUNGHEZZA
-2-5 righe per messaggio. Mai monologhi. Se il cliente chiede esplicitamente la storia di un produttore o del vino, puoi espandere fino a 8 righe ma non oltre. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole.
+# LUNGHEZZA E STILE
+2-5 righe per messaggio (mai monologhi). Solo se il cliente chiede esplicitamente la storia di un produttore, puoi espandere fino a 8 righe. Niente markdown, niente bullet, niente grassetti: solo testo plain. Puoi usare il trattino lungo "—" e virgole. MAI inglesismi se esiste l'italiano. MAI frasi da brochure ("grande sinergia organolettica"): sempre concreto e fisico.
 
-# CANTINA & FORMATI
-Hai a disposizione l'INTERA carta del ristorante (vini Vergani importatore). Non inventare nomi, non proporre vini fuori da questa lista. Usa esattamente il wineId riportato tra parentesi quadre.
+# COME LAVORI CON LA CANTINA — STRUMENTI
+Hai 3 strumenti per accedere alla cantina del ristorante. NON conosci a memoria il catalogo: lo cerchi quando serve.
 
-Ogni bottiglia ha **uno o più formati** disponibili. La struttura è "▸ Nome bottiglia → tutti i formati elencati":
-- **75cl bottiglia** = formato standard, sempre disponibile, buono per 2-4 persone
-- **37.5cl mezza** (passiti, distillati) = bottiglia piccola, ideale per fine pasto
-- **70cl** (grappe / distillati Berta) = formato standard digestivi
-- **150cl magnum** = bottiglia doppia, perfetta per tavolata 5-8 persone, miglior invecchiamento, scenografia importante
-- **300cl jeroboam** = 4 bottiglie, evento / tavolata 10+ persone, molto scenografico
-- **600cl (6L)**, **12L**, **18L** = formati cassa legno, eventi speciali, regali importanti
+1. **search_wines(criteri)** — cerca vini per tipo, fascia, regione, vitigno, abbinamento, range prezzo. Ritorna max 8 candidati. USA SEMPRE QUESTO prima di proporre.
+2. **get_wine_details(wineId)** — scheda completa di un vino: storia, note, abbinamenti, formati alternativi (magnum/jeroboam), temperatura, decantazione. Usalo se il cliente chiede dettagli su una bottiglia specifica o se devi raccontare una storia approfondita.
+3. **propose_wines(wines)** — output finale: lista di vini da mostrare come card al cliente. SEMPRE l'ultimo strumento del turno quando vuoi proporre. NON nominare vini nel reply senza chiamare propose_wines.
 
-# REGOLA DEI FORMATI (DURA — NON VIOLARE MAI)
-Il **default è SEMPRE bottiglia 75cl** (oppure il formato standard del prodotto: 70cl per grappe, 37.5cl per il passito). Una bottiglia 75cl serve 2-4 persone, una persona può prendere un calice.
+## REGOLA DURA
+Se nel "reply" nomini per nome anche solo come opzione UN QUALUNQUE vino, DEVI chiamare propose_wines con quel vino (wineId esatto preso dal risultato di search_wines). Una bottiglia nominata senza card è un errore grave: il cliente non vede né foto né prezzi.
 
-**NON proporre MAI di tua iniziativa** magnum (150cl), jeroboam (300cl), 6L, 12L, 18L o formati cassa legno. Sono formati eccezionali.
-
-Proponi formati grandi SOLO se vale UNA di queste condizioni:
-1. Il cliente li ha **chiesti esplicitamente** ("avete un magnum?", "cosa avete in formato grande?", "una bottiglia da regalare").
-2. Hai **capito con certezza** che il tavolo è composto da **almeno 4-5 persone** (es. il cliente ha detto "siamo in sei", "festeggiamo un compleanno con 8 amici", "tavolata di famiglia"). Anche allora, prima di proporre un magnum CHIEDI conferma: "siete una bella tavolata, vi servo un magnum o due bottiglie standard?". Lascia decidere al cliente.
-3. È un **evento dichiarato** (matrimonio, anniversario importante, cena aziendale 10+) → puoi proporre magnum o jeroboam, ma sempre con preorder 24-48h chiarito.
-
-In tutti gli altri casi: proponi e cita SOLO il formato 75cl. NON nominare i formati grandi nel reply, NON includerli in proposedWines. Anche se il catalogo te ne mostra uno per quel vino, ignoralo.
-
-Quando il cliente chiede un magnum o un formato grande:
-- Se quel vino esiste in magnum → proponilo con prezzo magnum.
-- Se NON esiste in magnum → suggerisci ALTRO vino simile disponibile in magnum (NON dire "non ho magnum").
-- I magnum costano ~2× la bottiglia 75cl (miglior invecchiamento + scenografia).
-- Per jeroboam/6L/12L: avvisa preorder 24-48h.
-
-Quando il cliente chiede di un vino specifico per nome, di default cita il **75cl** disponibile e l'annata. Solo se chiede esplicitamente "altri formati" o "magnum" elenca anche quelli più grandi.
-
-Le annate diverse della stessa etichetta sono variazioni naturali: nelle annate più mature i tannini sono più morbidi, il frutto evolve verso note terziarie. Sai distinguere e raccontare se richiesto.
-
-${catalog}
-
-# COME LAVORI
-1. Al primo messaggio, saluta in modo naturale e chiedi cosa stanno mangiando o cosa preferiscono. Niente formule fredde.
-2. Se il cliente è vago ("un vino buono"), fai UNA domanda chiarificatrice mirata: bianco o rosso, leggero o importante, calice o bottiglia, c'è un piatto guida.
-3. Proponi vini SOLO quando hai capito abbastanza. Non sparare bottiglie a caso al primo turno.
-4. Quando proponi:
-   - se la richiesta è specifica (un piatto preciso, un gusto preciso) → 1 solo vino, il migliore per il caso;
-   - se la richiesta è generica ("consigliami qualcosa") → 3 vini, uno per fascia (easy / equilibrato / importante), così il cliente sceglie il livello.
-5. Quando proponi, racconta in 1-2 righe la storia del produttore se è rilevante o curiosa: Federico Grom (sì, il gelato Grom) di Mura Mura in Piemonte, Annamaria Clementi e Maurizio Zanella di Ca' del Bosco in Franciacorta, la famiglia Tessari nel Soave, ecc. Se la storia è banale, salta.
-6. Spiega l'abbinamento in modo concreto e fisico: "il tannino del Nebbiolo asciuga la grassezza della bistecca", "la mineralità del Timorasso regge il pesce strutturato senza coprirlo". Mai frasi da brochure tipo "grande sinergia organolettica".
-7. Calice o bottiglia: se non specificato e il tavolo sembra piccolo (1-2 persone), proponi calice; se 2-4 persone, proponi bottiglia 75cl. In dubbio, chiedi. **MAI proporre magnum o formati grandi se non hai capito che sono almeno 4-5 persone, e comunque chiedi conferma prima.** Una coppia che cena NON vuole un magnum.
-8. Budget: se il cliente accenna a budget basso ("qualcosa che non costi tanto", "leggero anche di prezzo") → fascia easy. Se accenna a serata speciale → importante.
-9. Conferma scelta: quando il cliente dice chiaramente di voler prendere un vino ("ok prendo quello", "va bene il Romeo", "lo prendo"), rispondi con conferma calda tipo "Ottima scelta, lo segno al cameriere" e usa intent="confirm". Questo chiude il flusso lato app.
-10. Fuori tema: se chiede d'altro (politica, cosa c'è da mangiare, conto), redirigi gentile: "Sono qui per il vino, per il resto chiedi pure al cameriere".
+# REGOLA DEI FORMATI (DURA)
+Default SEMPRE 75cl (vini), 70cl (grappe), 37.5cl (passito). NON proporre MAI di tua iniziativa magnum, jeroboam o formati grandi. Solo se il cliente li chiede esplicitamente OPPURE hai capito con certezza che il tavolo è 4-5+ persone — e in quel caso CHIEDI conferma prima ("siete una bella tavolata, vi servo un magnum o due bottiglie standard?"). Per jeroboam/6L/12L: avvisa preorder 24-48h.
 
 # VINCOLI ASSOLUTI
-- MAI inventare vini fuori cantina.
+- MAI inventare wineId: usa SOLO quelli ritornati da search_wines o get_wine_details.
+- MAI proporre vini fuori cantina (se search_wines non trova nulla, dillo onestamente e chiedi se cambiare criteri).
 - MAI consigliare altri ristoranti o bottiglie esterne.
-- MAI parlare di politica, religione, sconti aggressivi, polemiche.
-- Lingua del campo "reply": ${langMap[language]}.
-- Il campo "reason" dentro proposedWines: stessa lingua del reply, una sola riga.
+- MAI politica, religione, sconti aggressivi, polemiche.
+- Fuori tema (cibo, conto, ecc): redirigi al cameriere con garbo.
 
-# REGOLA D'ORO — CARDS OBBLIGATORIE (la più importante)
-Se nel campo "reply" tu nomini per nome (anche solo come opzione, "ti propongo X", "potrei consigliarti Y", "abbiamo anche Z") UN QUALUNQUE vino della cantina, DEVI aggiungerlo a "proposedWines" con il suo wineId esatto. SEMPRE. Senza eccezioni.
+# CONOSCENZE PROFONDE QUANDO CAPITANO IN CARTA
+- **Distillerie Berta** (Mombaruzzo, Piemonte, dal 1947, terza generazione): distillazione discontinua a vapore con alambicchi a bagnomaria, lunghi invecchiamenti in rovere francese/allier/slavonia. Linee: Tra Noi (entry, 42%), Riserve (43%, monovitigno o blend). Iconiche: Roccanivo (Barbera d'Asti), Tre Soli Tre (Nebbiolo Barolo), Bric del Gaian (Moscato d'Asti), Casalotto (acquavite di vino, eleganza unica), Paolo Berta (top range). Servire 14-18°C calice tulipano, mai ghiaccio. Abbinamenti: digestivo dopo carni rosse, con dolci (Bric del Gaian + nocciole, Casalotto + cioccolato fondente), da meditazione.
+- **Mura Mura** (Piemonte): progetto di Federico Grom (sì, il gelato Grom). Vini di territorio piemontese, etichette con nomi shakespeariani (Romeo, Mercuzio, Iago, Beatrice).
+- **Ca' del Bosco** (Franciacorta): Annamaria Clementi e Maurizio Zanella, riferimento assoluto del metodo classico italiano.
+- **L'Anima di Vergani**: linea proprietaria dell'importatore, taglio prezzo-qualità.
+- **Tessari** (Soave, Veneto): famiglia storica, riferimento per il Soave Classico.
+- **Moscato Passito Ofelia** di Mura Mura: Moscato bianco appassito sulle stuoie, vendemmia tardiva, fermentazione spontanea, 37.5cl. Note miele d'acacia, albicocca, camomilla, finale agrumato. 8-10°C calice piccolo. Perfetto con pasticceria secca, formaggi erborinati, foie gras, fine pasto.
 
-Esempi pratici:
-- Reply che dice "Ti propongo il Romeo, un Barbera-Nebbiolo del Piemonte" → proposedWines DEVE contenere [Romeo].
-- Reply che dice "Per la bollicina vi propongo tre opzioni: il Prosecco Extra Dry, il Cuvée Prestige e il VC Saten" → proposedWines DEVE contenere TUTTI E TRE.
-- Reply che dice "L'Anima Amarone è un grande vino di Vergani" → proposedWines DEVE contenere [Anima Amarone].
+# CONFERMA SCELTA
+Quando il cliente sceglie chiaramente un vino ("ok lo prendo", "va bene quello", "sì il Romeo"), rispondi con conferma calda ("Ottima scelta, lo segno al cameriere") e setta intent="confirm". NON serve richiamare propose_wines in questa fase: la card è già stata mostrata.`;
 
-Una bottiglia nominata SENZA card è un errore grave: il cliente non vede né foto né prezzi. Mostrare la card è il modo in cui il cliente clicca "Lo prendo".
+// ── DEFINIZIONE TOOLS ─────────────────────────────────────────────────
+const TOOLS = [
+  {
+    name: 'search_wines',
+    description:
+      'Cerca vini nella cantina del ristorante. Ritorna max 8 candidati che matchano i criteri (vuoti = top vini di tutte le fasce). Default solo formati standard 75/70/37.5cl. Usa questo PRIMA di proporre qualsiasi vino al cliente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        wine_type: {
+          oneOf: [
+            { type: 'string', enum: ['spumante', 'bianco', 'rosato', 'rosso', 'passito', 'dolce', 'grappa', 'distillato'] },
+            { type: 'array', items: { type: 'string', enum: ['spumante', 'bianco', 'rosato', 'rosso', 'passito', 'dolce', 'grappa', 'distillato'] } },
+          ],
+          description: 'Tipologia. Una stringa o array.',
+        },
+        fascia: {
+          oneOf: [
+            { type: 'string', enum: ['easy', 'equilibrato', 'importante'] },
+            { type: 'array', items: { type: 'string', enum: ['easy', 'equilibrato', 'importante'] } },
+          ],
+          description: 'Fascia prezzo/qualità.',
+        },
+        region: { type: 'string', description: 'Regione italiana (es. "Piemonte", "Veneto", "Toscana").' },
+        grape: { type: 'string', description: 'Vitigno (es. "Nebbiolo", "Vermentino").' },
+        pairing_keyword: { type: 'string', description: 'Keyword di abbinamento (es. "carne rossa", "pesce", "formaggi", "dessert").' },
+        max_price_bottle_chf: { type: 'number', description: 'Prezzo max bottiglia 75cl in CHF.' },
+        min_price_bottle_chf: { type: 'number', description: 'Prezzo min bottiglia 75cl in CHF.' },
+        query: { type: 'string', description: 'Testo libero, cerca in nome/produttore/regione/denominazione.' },
+        limit: { type: 'number', description: 'Max risultati (default 8, max 12).' },
+      },
+    },
+  },
+  {
+    name: 'get_wine_details',
+    description: 'Scheda completa di un vino specifico (storia, note, abbinamenti, formati alternativi, temperatura, decantazione). Usalo per raccontare in profondità o per scoprire formati grandi disponibili.',
+    input_schema: {
+      type: 'object',
+      properties: { wineId: { type: 'string', description: 'ID esatto del vino da search_wines.' } },
+      required: ['wineId'],
+    },
+  },
+  {
+    name: 'propose_wines',
+    description:
+      "STRUMENTO FINALE del turno quando vuoi proporre vini al cliente. Genera le card visuali. SEMPRE chiamato se nomini un vino nel reply. Il 'reply' resta sintetico (1-3 righe) — la card mostra già nome/prezzi/foto.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        reply: { type: 'string', description: 'Messaggio testuale al cliente, 1-3 righe, nella lingua richiesta. Spiega motivazione/storia, NON ripetere il prezzo.' },
+        wines: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 4,
+          items: {
+            type: 'object',
+            properties: {
+              wineId: { type: 'string', description: 'wineId esatto da search_wines.' },
+              tier: { type: 'string', enum: ['easy', 'equilibrato', 'importante'] },
+              reason: { type: 'string', description: 'Una riga, perché questo vino, nella lingua del reply.' },
+            },
+            required: ['wineId', 'tier', 'reason'],
+          },
+        },
+      },
+      required: ['reply', 'wines'],
+    },
+  },
+  {
+    name: 'final_reply',
+    description: "Output finale del turno SENZA proporre vini (saluto, domanda chiarificatrice, spiegazione, conferma scelta). Usa questo quando il reply NON nomina alcun vino.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        reply: { type: 'string', description: 'Messaggio al cliente, 1-4 righe, lingua richiesta.' },
+        intent: { type: 'string', enum: ['greet', 'clarify', 'explain', 'confirm', 'other'] },
+      },
+      required: ['reply', 'intent'],
+    },
+  },
+];
 
-CONSEGUENZE OPERATIVE:
-- Tieni il "reply" SINTETICO (1-3 righe) quando proponi vini: la card mostra già nome, produttore, prezzi. Nel reply scrivi solo la motivazione/storia, non ripetere il prezzo.
-- Se non vuoi proporre alcun vino: NON nominare nessuna bottiglia nel reply. Domanda chiarificatrice o spiegazione generica, basta.
-- intent="propose" SEMPRE quando proposedWines è non vuoto.
-
-# FORMATO RISPOSTA (OBBLIGATORIO)
-Rispondi SEMPRE e SOLO con un JSON valido, niente testo prima/dopo, niente \`\`\`. Schema:
-{
-  "reply": "<testo in ${langMap[language]}, plain, 1-4 righe>",
-  "intent": "greet" | "clarify" | "propose" | "explain" | "confirm" | "other",
-  "proposedWines": [
-    { "wineId": "<id ESATTO dalla cantina>", "tier": "easy"|"equilibrato"|"importante", "reason": "<una riga, perché>" }
-  ]
+interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  id: string;
 }
 
-Il campo "proposedWines" è OBBLIGATORIO ogni volta che il reply nomina un vino (anche solo come opzione). Nei turni greet/clarify/explain/confirm in cui non nomini nessun vino → ometti "proposedWines" o mettilo come array vuoto.`;
-}
+function buildContextBlock(slug: string, table: string, language: Language, personalityStyle: string): string {
+  const langMap: Record<Language, string> = { it: 'italiano', de: 'tedesco (Hochdeutsch)', en: 'inglese', fr: 'francese' };
+  return `${personalityStyle}
 
-interface ClaudeReply {
-  reply: string;
-  intent?: Intent;
-  proposedWines?: { wineId: string; tier: Tier; reason: string }[];
+# CONTESTO DEL TURNO
+- Ristorante: "${slug}"
+- Tavolo: ${table}
+- Lingua del cliente (per "reply" e "reason"): ${langMap[language]}`;
 }
 
 export async function POST(request: Request) {
@@ -336,33 +217,28 @@ export async function POST(request: Request) {
     const { restaurantSlug, tableCode, language, customerEmail, messages, image } = body;
 
     if (!restaurantSlug || !language || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json(
-        { error: 'Missing required fields: restaurantSlug, language, messages[]' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields: restaurantSlug, language, messages[]' }, { status: 400 });
     }
-
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('[SOMMELIER] ANTHROPIC_API_KEY missing');
-      return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY missing on this environment' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY missing on this environment' }, { status: 500 });
     }
 
-    console.log('[SOMMELIER] Request:', {
-      restaurantSlug,
-      tableCode,
-      language,
-      customerEmail,
-      turns: messages.length,
-    });
+    // Pre-load catalogo (warmup cache modulo)
+    loadCatalog();
 
-    const wines = loadCatalog();
-    const systemPrompt = buildSommelierPrompt(restaurantSlug, language, wines);
+    const personalityId = await getPersonalityForSlug(restaurantSlug);
+    const personality = PERSONALITY_PRESETS[personalityId];
 
-    // Costruisce i messages per Anthropic. Se è stata inviata un'immagine, la
-    // attacchiamo all'ULTIMO messaggio user come content multimodale (vision).
+    console.log('[SOMMELIER] Request:', { restaurantSlug, tableCode, language, customerEmail, turns: messages.length, personality: personalityId });
+
+    // System prompt = [CORE_DNA cachato] + [contesto variabile non cachato]
+    const systemBlocks = [
+      { type: 'text' as const, text: CORE_DNA, cache_control: { type: 'ephemeral' as const } },
+      { type: 'text' as const, text: buildContextBlock(restaurantSlug, tableCode, language, personality.styleBlock) },
+    ];
+
+    // Costruisci messages per Anthropic. Eventuale immagine attaccata all'ultimo user.
     type AnthropicMsg = { role: 'user' | 'assistant'; content: any };
     const claudeMessages: AnthropicMsg[] = messages.map((m, idx) => {
       const isLastUser = idx === messages.length - 1 && m.role === 'user';
@@ -370,10 +246,7 @@ export async function POST(request: Request) {
         return {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: image.mimeType || 'image/jpeg', data: image.base64 },
-            },
+            { type: 'image', source: { type: 'base64', media_type: image.mimeType || 'image/jpeg', data: image.base64 } },
             { type: 'text', text: m.content || 'Ecco la foto del piatto al tavolo. Cosa mi consigli?' },
           ],
         };
@@ -381,77 +254,154 @@ export async function POST(request: Request) {
       return { role: m.role, content: m.content };
     });
 
-    const completion = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1500,
-      system: systemPrompt,
-      messages: claudeMessages,
-    });
+    // ── Loop agentic: chiama Claude, esegui tool, ripeti finché propose_wines/final_reply ──
+    const MAX_ITER = 6;
+    let finalReply: string | null = null;
+    let finalIntent: Intent = 'other';
+    let finalProposed: ProposedWine[] = [];
+    const toolCallsLog: { name: string; input: Record<string, unknown> }[] = [];
 
-    const textBlock = completion.content.find((c) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      throw new Error('No text response from Claude');
-    }
+    for (let iter = 0; iter < MAX_ITER; iter++) {
+      const completion = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 1500,
+        system: systemBlocks,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tools: TOOLS as any,
+        tool_choice: { type: 'auto' },
+        messages: claudeMessages,
+      });
 
-    const raw = textBlock.text.trim();
-    const jsonStart = raw.indexOf('{');
-    const jsonEnd = raw.lastIndexOf('}');
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error(`Invalid JSON response from Claude: ${raw.slice(0, 200)}`);
-    }
-    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1)) as ClaudeReply;
-
-    const wineMap = new Map(wines.map((w) => [w.wineId, w]));
-    const proposed: ProposedWine[] = [];
-    if (Array.isArray(parsed.proposedWines)) {
-      for (const cw of parsed.proposedWines) {
-        const w = wineMap.get(cw.wineId);
-        if (!w) {
-          console.warn('[SOMMELIER] Unknown wineId from Claude, skipping:', cw.wineId);
-          continue;
-        }
-        proposed.push({
-          wineId: w.wineId,
-          name: w.name,
-          producer: w.producer,
-          region: w.region,
-          vintage: w.vintage,
-          tier: cw.tier ?? w.fascia,
-          price_glass_chf: w.price_glass_chf,
-          price_bottle_chf: w.price_bottle_chf,
-          reason: cw.reason ?? '',
+      // Log cache usage al primo giro
+      if (iter === 0) {
+        const u = completion.usage as unknown as Record<string, number | undefined>;
+        console.log('[SOMMELIER] Usage iter0:', {
+          input: u.input_tokens,
+          cache_create: u.cache_creation_input_tokens,
+          cache_read: u.cache_read_input_tokens,
+          output: u.output_tokens,
         });
       }
+
+      // Estrai tool_use blocks
+      const toolUses = completion.content.filter((c) => c.type === 'tool_use') as Array<{
+        type: 'tool_use';
+        id: string;
+        name: string;
+        input: Record<string, unknown>;
+      }>;
+
+      if (toolUses.length === 0) {
+        // Modello ha risposto solo testo — fallback: usa il testo come reply
+        const textBlock = completion.content.find((c) => c.type === 'text');
+        if (textBlock && textBlock.type === 'text') {
+          finalReply = textBlock.text.trim();
+          finalIntent = 'other';
+        }
+        break;
+      }
+
+      // Aggiungi assistant message con tool_use al thread
+      claudeMessages.push({ role: 'assistant', content: completion.content });
+
+      const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> = [];
+      let stopLoop = false;
+
+      for (const tu of toolUses) {
+        toolCallsLog.push({ name: tu.name, input: tu.input });
+
+        if (tu.name === 'search_wines') {
+          const criteria = tu.input as SearchCriteria;
+          const results = searchWines(criteria);
+          toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ count: results.length, wines: results }) });
+        } else if (tu.name === 'get_wine_details') {
+          const wineId = String(tu.input.wineId || '');
+          let det = getWineDetails(wineId);
+          if (!det) {
+            const fuzzy = fuzzyFindWine(wineId);
+            if (fuzzy) det = getWineDetails(fuzzy.wineId);
+          }
+          if (!det) {
+            toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ error: 'wine_not_found', wineId }), is_error: true });
+          } else {
+            toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(det) });
+          }
+        } else if (tu.name === 'propose_wines') {
+          const input = tu.input as { reply: string; wines: { wineId: string; tier: Tier; reason: string }[] };
+          const proposed: ProposedWine[] = [];
+          const skipped: string[] = [];
+          for (const cw of input.wines || []) {
+            let w = findWineById(cw.wineId);
+            if (!w) {
+              const fuzzy = fuzzyFindWine(cw.wineId);
+              if (fuzzy) w = fuzzy;
+            }
+            if (!w) {
+              skipped.push(cw.wineId);
+              continue;
+            }
+            proposed.push({
+              wineId: w.wineId,
+              name: w.name,
+              producer: w.producer,
+              region: w.region,
+              vintage: w.vintage,
+              tier: cw.tier ?? w.fascia,
+              price_glass_chf: w.price_glass_chf,
+              price_bottle_chf: w.price_bottle_chf,
+              reason: cw.reason ?? '',
+            });
+          }
+          if (proposed.length === 0 && (input.wines || []).length > 0) {
+            // Tutti scartati — chiedi al modello di ricercare e riprovare
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: tu.id,
+              content: JSON.stringify({ error: 'no_valid_wines', skipped, hint: 'Usa search_wines per trovare wineId validi.' }),
+              is_error: true,
+            });
+          } else {
+            finalReply = input.reply;
+            finalIntent = 'propose';
+            finalProposed = proposed;
+            toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ ok: true, count: proposed.length }) });
+            stopLoop = true;
+          }
+        } else if (tu.name === 'final_reply') {
+          const input = tu.input as { reply: string; intent: Intent };
+          finalReply = input.reply;
+          finalIntent = input.intent || 'other';
+          toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ ok: true }) });
+          stopLoop = true;
+        } else {
+          toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ error: 'unknown_tool' }), is_error: true });
+        }
+      }
+
+      claudeMessages.push({ role: 'user', content: toolResults });
+
+      if (stopLoop) break;
+    }
+
+    if (!finalReply) {
+      throw new Error('Sommelier did not produce a final reply within iteration budget');
     }
 
     const messageId = randomUUID();
-    const intent: Intent = parsed.intent ?? (proposed.length ? 'propose' : 'other');
-
-    console.log(
-      '[SOMMELIER] Reply:',
-      messageId,
-      'intent=' + intent,
-      'wines=' + proposed.map((p) => p.wineId).join(',')
-    );
+    console.log('[SOMMELIER] Reply:', messageId, 'intent=' + finalIntent, 'wines=' + finalProposed.map((p) => p.wineId).join(','), 'tools=' + toolCallsLog.map((t) => t.name).join('>'));
 
     const response: SommelierResponse = {
-      reply: parsed.reply,
-      intent,
+      reply: finalReply,
+      intent: finalIntent,
       messageId,
-      ...(proposed.length ? { proposedWines: proposed } : {}),
+      ...(finalProposed.length ? { proposedWines: finalProposed } : {}),
     };
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     const stack = err instanceof Error ? err.stack : undefined;
-    const apiStatus =
-      err && typeof err === 'object' && 'status' in err
-        ? (err as { status?: number }).status
-        : undefined;
+    const apiStatus = err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
     console.error('[SOMMELIER] Error:', message, { apiStatus, stack });
-    return NextResponse.json(
-      { error: `Sommelier failed: ${message}`, apiStatus },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Sommelier failed: ${message}`, apiStatus }, { status: 500 });
   }
 }

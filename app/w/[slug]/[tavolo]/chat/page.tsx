@@ -309,17 +309,41 @@ export default function ChatPage() {
 
     try {
       const apiMessages = next.map((m) => ({ role: m.role, content: m.content }));
-      const res = await fetch('/api/wine/sommelier', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurantSlug: params.slug,
-          tableCode: params.tavolo,
-          language: lang,
-          messages: apiMessages,
-          image: imageToSend ? { base64: imageToSend.base64, mimeType: imageToSend.mimeType } : undefined,
-        }),
+      const payload = JSON.stringify({
+        restaurantSlug: params.slug,
+        tableCode: params.tavolo,
+        language: lang,
+        messages: apiMessages,
+        image: imageToSend ? { base64: imageToSend.base64, mimeType: imageToSend.mimeType } : undefined,
       });
+      // Retry: 1 ritento su errore rete o 5xx (gestisce hiccup wifi mobile / cold start Vercel).
+      const fetchWithRetry = async (): Promise<Response> => {
+        let lastErr: unknown = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const r = await fetch('/api/wine/sommelier', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+            });
+            if (r.ok) return r;
+            if (r.status >= 500 && attempt === 0) {
+              await new Promise((res) => setTimeout(res, 800));
+              continue;
+            }
+            return r;
+          } catch (e) {
+            lastErr = e;
+            if (attempt === 0) {
+              await new Promise((res) => setTimeout(res, 800));
+              continue;
+            }
+            throw e;
+          }
+        }
+        throw lastErr ?? new Error('Network error');
+      };
+      const res = await fetchWithRetry();
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
