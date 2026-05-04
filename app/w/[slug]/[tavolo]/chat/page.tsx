@@ -88,9 +88,12 @@ export default function ChatPage() {
   }, [input]);
 
   // Web Speech API setup (browser native, no costo).
-  // Pattern: ad ogni auto-restart creiamo una NUOVA istanza SpeechRecognition.
-  // Riusare la stessa istanza causa duplicazione su Chrome perché event.results
-  // a volte conserva i finali della sessione precedente.
+  // Pattern bulletproof:
+  // - basePrefix = testo "congelato" che NON viene toccato (snapshot iniziale + finali consolidati)
+  // - sessionLive = solo il TESTO della sessione SR ATTUALE (final + interim ricomputati ogni onresult dall'event.results corrente)
+  // - input visualizzato = basePrefix + sessionLive
+  // - quando una sessione finisce: basePrefix += sessionLiveFinalOnly, poi spawna nuova sessione (sessionLive riparte da zero)
+  // - ogni sessione è una NUOVA istanza SpeechRecognition (così event.results parte SEMPRE da 0)
   const startRecording = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -98,12 +101,13 @@ export default function ChatPage() {
       alert(t.speechNotSupported);
       return;
     }
-    // Reset all'avvio: prefix = testo già nel textarea + spazio se non vuoto
+    // basePrefix = testo già presente nel textarea + spazio se serve
     basePrefixRef.current = input ? input.replace(/\s+$/, '') + ' ' : '';
-    cumulativeFinalRef.current = '';
     sessionFinalRef.current = '';
+    cumulativeFinalRef.current = ''; // non più usato, ma reset per pulizia
 
     const wantStop = { current: false };
+    stopFlagRef.current = wantStop;
 
     const spawnSession = () => {
       let rec: any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -121,8 +125,7 @@ export default function ChatPage() {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        // Ignora eventi orfani da istanze non più attive
-        if (recognitionRef.current !== rec) return;
+        if (recognitionRef.current !== rec) return; // ignora eventi orfani
         let sessionFinal = '';
         let interim = '';
         for (let i = 0; i < event.results.length; i++) {
@@ -131,8 +134,8 @@ export default function ChatPage() {
           if (r.isFinal) sessionFinal += txt;
           else interim += txt;
         }
-        sessionFinalRef.current = sessionFinal;
-        setInput((basePrefixRef.current + cumulativeFinalRef.current + sessionFinal + interim).trim());
+        sessionFinalRef.current = sessionFinal; // tracker per onend
+        setInput((basePrefixRef.current + sessionFinal + interim).trim());
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,15 +145,15 @@ export default function ChatPage() {
       };
 
       rec.onend = () => {
-        // Consolida i final della sessione appena terminata
+        if (recognitionRef.current !== rec) return; // sessione già sostituita
+        // CONGELA il final della sessione appena chiusa dentro basePrefix
         if (sessionFinalRef.current) {
-          cumulativeFinalRef.current += sessionFinalRef.current;
+          basePrefixRef.current = (basePrefixRef.current + sessionFinalRef.current).replace(/\s+$/, '') + ' ';
           sessionFinalRef.current = '';
         }
-        // Se l'utente non ha premuto stop, spawna una NUOVA istanza
-        if (!wantStop.current && recognitionRef.current === rec) {
-          spawnSession();
-        } else if (recognitionRef.current === rec) {
+        if (!wantStop.current) {
+          spawnSession(); // nuova istanza, event.results parte da 0
+        } else {
           recognitionRef.current = null;
           setRecording(false);
         }
@@ -167,8 +170,6 @@ export default function ChatPage() {
       }
     };
 
-    // Salva il flag di stop sull'istanza ref del componente (closure)
-    stopFlagRef.current = wantStop;
     spawnSession();
   };
   const stopRecording = () => {
