@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         'product.template',
         [['product_tag_ids', 'in', [TAG_CATALOGATO]]],
         ['id', 'name', 'write_date', 'image_128'],
-        { limit: 500, order: 'write_date desc' }
+        { limit: 500, order: 'write_date desc', context: { lang: 'it_IT' } } as any
       );
       legacy = (products || [])
         .filter((p: any) => !existingTmplIds.has(p.id))

@@ -19,6 +19,7 @@ import {
   Filter,
   MapPin,
   Send,
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
@@ -78,6 +79,7 @@ export default function CatalogoFotoPage() {
   const [filter, setFilter] = useState<FilterType>('tutti');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [reprocessingJobs, setReprocessingJobs] = useState<Set<string>>(new Set());
+  const [dismissingJobs, setDismissingJobs] = useState<Set<string>>(new Set());
 
   // Photo capture
   const handlePhotos = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,6 +227,22 @@ export default function CatalogoFotoPage() {
       toast.error('Errore nel riprocessamento');
     } finally {
       setReprocessingJobs(prev => { const n = new Set(prev); n.delete(jobId); return n; });
+    }
+  };
+
+  // Dismiss (gia' fatto / ignora) un job failed/review
+  const handleDismiss = async (jobId: string) => {
+    if (!confirm('Confermi di rimuovere questo job dalla lista? (il prodotto in Odoo non viene toccato)')) return;
+    setDismissingJobs(prev => new Set(prev).add(jobId));
+    try {
+      const res = await fetch(`/api/catalogo-foto/jobs/${jobId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Errore');
+      setJobs(prev => prev.filter(j => j.id !== jobId));
+      toast.success('Rimosso');
+    } catch {
+      toast.error('Errore rimozione');
+    } finally {
+      setDismissingJobs(prev => { const n = new Set(prev); n.delete(jobId); return n; });
     }
   };
 
@@ -711,14 +729,25 @@ export default function CatalogoFotoPage() {
                                 rows={2}
                                 className="w-full rounded-lg bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none resize-none"
                               />
-                              <button
-                                onClick={() => handleReprocess(job.id)}
-                                disabled={reprocessingJobs.has(job.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
-                              >
-                                {reprocessingJobs.has(job.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                                Riprocessa
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleReprocess(job.id)}
+                                  disabled={reprocessingJobs.has(job.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                                >
+                                  {reprocessingJobs.has(job.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                  Riprocessa
+                                </button>
+                                <button
+                                  onClick={() => handleDismiss(job.id)}
+                                  disabled={dismissingJobs.has(job.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-50"
+                                  title="Il prodotto e' gia' a posto in Odoo, rimuovi dalla lista"
+                                >
+                                  {dismissingJobs.has(job.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                  Gia' fatto
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

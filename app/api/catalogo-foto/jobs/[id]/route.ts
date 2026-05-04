@@ -62,6 +62,25 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const recordId = parseInt(id);
+    if (isNaN(recordId)) {
+      return NextResponse.json({ success: false, error: 'ID non valido' }, { status: 400 });
+    }
+    const client = await getOdooClient();
+    await client.unlink(MODEL, [recordId]);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('catalogo-foto jobs/[id] DELETE error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
