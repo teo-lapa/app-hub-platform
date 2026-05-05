@@ -247,8 +247,8 @@ export default function ConvalidaResiduiPage() {
   // Filtro per tipo: 'tutti' | 'residui' | 'attesa'
   const [typeFilter, setTypeFilter] = useState<'tutti' | 'residui' | 'attesa'>('tutti');
 
-  // Vista: 'home' (2 card), 'zona' (lista zone), 'autista' (lista autisti), 'zona-detail' / 'autista-detail' (dettaglio)
-  const [viewMode, setViewMode] = useState<'home' | 'zona' | 'autista' | 'zona-detail' | 'autista-detail'>('home');
+  // Vista: 'home' (3 card), 'zona' (lista zone), 'autista' (lista autisti), 'zona-detail' / 'autista-detail' (dettaglio), 'prenotazioni' (residui di oggi -> PO fornitore)
+  const [viewMode, setViewMode] = useState<'home' | 'zona' | 'autista' | 'zona-detail' | 'autista-detail' | 'prenotazioni'>('home');
   const [selectedZone, setSelectedZone] = useState<ZoneType | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
 
@@ -293,6 +293,28 @@ export default function ConvalidaResiduiPage() {
 
   // Convalida Picking
   const [convalidaLoading, setConvalidaLoading] = useState<number | null>(null);
+
+  // Prenotazioni — residui di oggi -> PO fornitore + lapa.po.reservation
+  const [prenotazioniLines, setPrenotazioniLines] = useState<Array<{
+    key: string;
+    moveId: number;
+    pickId: number;
+    pickName: string;
+    productId: number;
+    productName: string;
+    qty: number;
+    uom: string;
+    partnerId: number;
+    partnerName: string;
+    saleOrderId: number | null;
+    saleOrderName: string;
+    supplierId: number | null;
+    supplierName: string;
+  }>>([]);
+  const [prenotazioniSelected, setPrenotazioniSelected] = useState<Set<string>>(new Set());
+  const [prenotazioniLoading, setPrenotazioniLoading] = useState(false);
+  const [prenotazioniSubmitting, setPrenotazioniSubmitting] = useState(false);
+  const [prenotazioniMessage, setPrenotazioniMessage] = useState('');
 
   // UI: righe espanse (per nascondere/mostrare dettagli)
   const [expandedMoves, setExpandedMoves] = useState<Set<number>>(new Set());
@@ -570,6 +592,303 @@ export default function ConvalidaResiduiPage() {
       showToastMessage(`Errore: ${error.message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // PRENOTAZIONI: residui di oggi -> PO fornitore + lapa.po.reservation
+  // --------------------------------------------------------------------------
+
+  const loadPrenotazioni = async () => {
+    setPrenotazioniLoading(true);
+    setPrenotazioniMessage('Carico residui di oggi…');
+    try {
+      const today = getDateRange('oggi');
+      if (!today) throw new Error('Range date non disponibile');
+
+      const picksData = await searchReadConvalida<any>(
+        'stock.picking',
+        [
+          ['picking_type_id.code', '=', 'outgoing'],
+          ['backorder_id', '!=', false],
+          ['state', 'not in', ['done', 'cancel']],
+          ['scheduled_date', '>=', today.start],
+          ['scheduled_date', '<=', today.end],
+        ],
+        ['id', 'name', 'partner_id', 'sale_id', 'scheduled_date'],
+        0,
+        'scheduled_date asc, name asc'
+      );
+
+      if (!picksData.length) {
+        setPrenotazioniLines([]);
+        setPrenotazioniSelected(new Set());
+        setPrenotazioniMessage('Nessun residuo trovato per oggi.');
+        return;
+      }
+
+      const pickIds = picksData.map((p: any) => p.id);
+      const picksById: Record<number, any> = {};
+      picksData.forEach((p: any) => { picksById[p.id] = p; });
+
+      const movesData = await searchReadConvalida<any>(
+        'stock.move',
+        [
+          ['picking_id', 'in', pickIds],
+          ['product_uom_qty', '>', 0],
+          ['state', 'not in', ['done', 'cancel']],
+        ],
+        ['id', 'picking_id', 'product_id', 'product_uom_qty', 'product_uom'],
+        0,
+        'picking_id, id'
+      );
+
+      if (!movesData.length) {
+        setPrenotazioniLines([]);
+        setPrenotazioniSelected(new Set());
+        setPrenotazioniMessage('Nessun residuo trovato per oggi.');
+        return;
+      }
+
+      const moveIds = movesData.map((m: any) => m.id);
+      const linesData = await searchReadConvalida<any>(
+        'stock.move.line',
+        [['move_id', 'in', moveIds]],
+        ['id', 'move_id', 'qty_done'],
+        0
+      );
+      const doneByMoveLocal: Record<number, number> = {};
+      linesData.forEach((l: any) => {
+        const mid = l.move_id?.[0];
+        if (mid) doneByMoveLocal[mid] = (doneByMoveLocal[mid] || 0) + Number(l.qty_done || 0);
+      });
+
+      const productIds = Array.from(new Set(movesData.map((m: any) => m.product_id[0]))) as number[];
+      const productsData = await searchReadConvalida<any>(
+        'product.product',
+        [['id', 'in', productIds]],
+        ['id', 'seller_ids'],
+        0
+      );
+      const firstSellerByProduct: Record<number, number> = {};
+      const sellerIdSet = new Set<number>();
+      productsData.forEach((p: any) => {
+        if (p.seller_ids && p.seller_ids.length > 0) {
+          firstSellerByProduct[p.id] = p.seller_ids[0];
+          sellerIdSet.add(p.seller_ids[0]);
+        }
+      });
+      const sellersData = sellerIdSet.size > 0 ? await searchReadConvalida<any>(
+        'product.supplierinfo',
+        [['id', 'in', Array.from(sellerIdSet)]],
+        ['id', 'partner_id'],
+        0
+      ) : [];
+      const sellerById: Record<number, any> = {};
+      sellersData.forEach((s: any) => { sellerById[s.id] = s; });
+      const supplierByProduct: Record<number, { id: number; name: string } | null> = {};
+      productIds.forEach((pid) => {
+        const sellerId = firstSellerByProduct[pid];
+        const seller = sellerId ? sellerById[sellerId] : null;
+        if (seller && seller.partner_id) {
+          supplierByProduct[pid] = { id: seller.partner_id[0], name: seller.partner_id[1] };
+        } else {
+          supplierByProduct[pid] = null;
+        }
+      });
+
+      const lines: typeof prenotazioniLines = [];
+      movesData.forEach((m: any) => {
+        const qtyTot = Number(m.product_uom_qty || 0);
+        const qtyDone = Number(doneByMoveLocal[m.id] || 0);
+        const qtyResidua = qtyTot - qtyDone;
+        if (qtyResidua <= 0.0001) return;
+        const pick = picksById[m.picking_id[0]];
+        if (!pick) return;
+        const supplier = supplierByProduct[m.product_id[0]] || null;
+        lines.push({
+          key: `${m.id}`,
+          moveId: m.id,
+          pickId: pick.id,
+          pickName: pick.name,
+          productId: m.product_id[0],
+          productName: m.product_id[1],
+          qty: qtyResidua,
+          uom: m.product_uom?.[1] || '',
+          partnerId: pick.partner_id ? pick.partner_id[0] : 0,
+          partnerName: pick.partner_id ? pick.partner_id[1] : '-',
+          saleOrderId: pick.sale_id ? pick.sale_id[0] : null,
+          saleOrderName: pick.sale_id ? pick.sale_id[1] : '',
+          supplierId: supplier ? supplier.id : null,
+          supplierName: supplier ? supplier.name : '⚠ Nessun fornitore',
+        });
+      });
+
+      setPrenotazioniLines(lines);
+      setPrenotazioniSelected(new Set());
+      setPrenotazioniMessage(`Trovati ${lines.length} prodotti residui di oggi.`);
+    } catch (e: any) {
+      setPrenotazioniMessage(`Errore: ${e.message}`);
+      showToastMessage(`Errore: ${e.message}`);
+    } finally {
+      setPrenotazioniLoading(false);
+    }
+  };
+
+  const togglePrenotazioneSelection = (key: string) => {
+    setPrenotazioniSelected(prev => {
+      const s = new Set(prev);
+      if (s.has(key)) s.delete(key); else s.add(key);
+      return s;
+    });
+  };
+
+  const togglePrenotazioniSelectAll = () => {
+    const eligible = prenotazioniLines.filter(l => l.supplierId);
+    const allSelected = eligible.length > 0 && eligible.every(l => prenotazioniSelected.has(l.key));
+    if (allSelected) {
+      setPrenotazioniSelected(new Set());
+    } else {
+      setPrenotazioniSelected(new Set(eligible.map(l => l.key)));
+    }
+  };
+
+  const handleCreatePrenotazioni = async () => {
+    const selected = prenotazioniLines.filter(l => prenotazioniSelected.has(l.key));
+    if (!selected.length) return;
+    const noSupplier = selected.filter(l => !l.supplierId);
+    if (noSupplier.length) {
+      showToastMessage(`${noSupplier.length} prodotti senza fornitore: deselezionali`);
+      return;
+    }
+    setPrenotazioniSubmitting(true);
+    try {
+      // Raggruppa righe selezionate per fornitore
+      const groupsBySupplier = new Map<number, typeof selected>();
+      for (const line of selected) {
+        const arr = groupsBySupplier.get(line.supplierId!) || [];
+        arr.push(line);
+        groupsBySupplier.set(line.supplierId!, arr);
+      }
+
+      let poCreated = 0;
+      let poUpdated = 0;
+      let reservationsCreated = 0;
+
+      for (const [supplierId, lines] of Array.from(groupsBySupplier.entries())) {
+        // 1. Cerca PO bozza esistente del fornitore
+        const existingPos = await searchReadConvalida<any>(
+          'purchase.order',
+          [['partner_id', '=', supplierId], ['state', '=', 'draft']],
+          ['id', 'name'],
+          1,
+          'create_date desc'
+        );
+
+        let poId: number;
+        if (existingPos.length) {
+          poId = existingPos[0].id;
+          poUpdated++;
+        } else {
+          poId = await callKwConvalida<number>(
+            'purchase.order',
+            'create',
+            [{ partner_id: supplierId, origin: 'Convalida Residui - Prenotazioni' }],
+            {}
+          );
+          poCreated++;
+        }
+
+        // 2. Cache righe PO esistenti per questo PO (per somma qty)
+        const existingPolines = await searchReadConvalida<any>(
+          'purchase.order.line',
+          [['order_id', '=', poId]],
+          ['id', 'product_id', 'product_qty'],
+          0
+        );
+        const polineByProduct: Record<number, { id: number; product_qty: number }> = {};
+        existingPolines.forEach((pl: any) => {
+          if (pl.product_id) polineByProduct[pl.product_id[0]] = { id: pl.id, product_qty: pl.product_qty };
+        });
+
+        // 3. Per ogni prodotto: aggiungi/somma riga PO + crea reservation
+        for (const line of lines) {
+          const existing = polineByProduct[line.productId];
+          if (existing) {
+            const newQty = existing.product_qty + line.qty;
+            await callKwConvalida(
+              'purchase.order.line',
+              'write',
+              [[existing.id], { product_qty: newQty }],
+              {}
+            );
+            polineByProduct[line.productId] = { id: existing.id, product_qty: newQty };
+          } else {
+            const newPolId = await callKwConvalida<number>(
+              'purchase.order.line',
+              'create',
+              [{
+                order_id: poId,
+                product_id: line.productId,
+                product_qty: line.qty,
+                name: line.productName,
+              }],
+              {}
+            );
+            polineByProduct[line.productId] = { id: newPolId, product_qty: line.qty };
+          }
+
+          const note = line.saleOrderName ? `Da residuo ${line.saleOrderName}` : 'Da residuo';
+          await callKwConvalida<number>(
+            'lapa.po.reservation',
+            'create',
+            [{
+              po_id: poId,
+              partner_id: line.partnerId,
+              product_id: line.productId,
+              product_qty: line.qty,
+              note,
+              state: 'pending',
+            }],
+            {}
+          );
+          reservationsCreated++;
+
+          // Chatter sul PO: traccia da dove arriva la prenotazione
+          const poBody = `Aggiunta prenotazione: <b>${line.productName}</b> x${line.qty} per <b>${line.partnerName}</b>` +
+            (line.saleOrderName ? ` (residuo da <a href=# data-oe-model=sale.order data-oe-id=${line.saleOrderId}>${line.saleOrderName}</a> - pick ${line.pickName})` : ` (da pick ${line.pickName})`);
+          await callKwConvalida(
+            'purchase.order',
+            'message_post',
+            [[poId]],
+            { body: poBody }
+          );
+
+          // Chatter sul SO origine: il prodotto mancante e' stato prenotato sul PO
+          if (line.saleOrderId) {
+            const soBody = `Prodotto mancante <b>${line.productName}</b> x${line.qty} prenotato sul PO ` +
+              `<a href=# data-oe-model=purchase.order data-oe-id=${poId}>fornitore</a>. ` +
+              `Verra' agganciato automaticamente all'arrivo della merce.`;
+            await callKwConvalida(
+              'sale.order',
+              'message_post',
+              [[line.saleOrderId]],
+              { body: soBody }
+            );
+          }
+        }
+      }
+
+      const msg = `${reservationsCreated} prenotazioni create — ${poCreated} PO nuovo/i, ${poUpdated} PO bozza aggiornato/i.`;
+      setPrenotazioniMessage(msg);
+      showToastMessage(msg);
+      setPrenotazioniLines(prev => prev.filter(l => !prenotazioniSelected.has(l.key)));
+      setPrenotazioniSelected(new Set());
+    } catch (e: any) {
+      setPrenotazioniMessage(`Errore: ${e.message}`);
+      showToastMessage(`Errore: ${e.message}`);
+    } finally {
+      setPrenotazioniSubmitting(false);
     }
   };
 
@@ -1531,7 +1850,7 @@ export default function ConvalidaResiduiPage() {
   // --------------------------------------------------------------------------
 
   const renderHome = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
       <button
         onClick={() => { setViewMode('zona'); handleLoad(); }}
         style={{
@@ -1582,6 +1901,32 @@ export default function ConvalidaResiduiPage() {
         <div>
           <div style={{ fontSize: '24px', fontWeight: '800', marginBottom: '8px' }}>Per Autista</div>
           <div style={{ fontSize: '15px', opacity: 0.85 }}>Raggruppa per driver — distribuisci i prodotti</div>
+        </div>
+      </button>
+      <button
+        onClick={() => { setViewMode('prenotazioni'); loadPrenotazioni(); }}
+        style={{
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          border: 'none',
+          borderRadius: '20px',
+          padding: '40px 30px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          color: '#fff',
+          minHeight: '200px',
+          display: 'flex',
+          flexDirection: 'column' as const,
+          justifyContent: 'space-between',
+          boxShadow: '0 8px 32px rgba(16, 185, 129, 0.3)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(16, 185, 129, 0.4)'; }}
+        onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 32px rgba(16, 185, 129, 0.3)'; }}
+      >
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
+        <div>
+          <div style={{ fontSize: '24px', fontWeight: '800', marginBottom: '8px' }}>Prenotazioni</div>
+          <div style={{ fontSize: '15px', opacity: 0.85 }}>Ordina al fornitore i residui di oggi con prenotazione cliente</div>
         </div>
       </button>
     </div>
@@ -1738,12 +2083,136 @@ export default function ConvalidaResiduiPage() {
     );
   };
 
+  const renderPrenotazioni = () => {
+    const eligible = prenotazioniLines.filter(l => l.supplierId);
+    const allSelected = eligible.length > 0 && eligible.every(l => prenotazioniSelected.has(l.key));
+    const selectedCount = prenotazioniSelected.size;
+    return (
+      <>
+        <div style={{ margin: '16px 0 12px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button className="btn ghost" onClick={() => setViewMode('home')}>← Home</button>
+          <span className="pill strong" style={{ background: '#10b981', color: '#fff', borderColor: '#10b981', fontSize: '16px', padding: '10px 20px' }}>
+            🛒 Prenotazioni
+          </span>
+          <span className="info">{prenotazioniMessage}</span>
+          <button className="btn ghost" onClick={loadPrenotazioni} disabled={prenotazioniLoading}>
+            {prenotazioniLoading ? '…' : '↻ Ricarica'}
+          </button>
+          {eligible.length > 0 && (
+            <button className="btn ghost" onClick={togglePrenotazioniSelectAll}>
+              {allSelected ? '☐ Deseleziona tutti' : '☑ Seleziona tutti'}
+            </button>
+          )}
+        </div>
+
+        {prenotazioniLines.length === 0 && !prenotazioniLoading && (
+          <div className="card"><p style={{ color: 'var(--muted)' }}>Nessun residuo trovato per oggi.</p></div>
+        )}
+
+        {prenotazioniLines.length > 0 && (
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="list">
+              {prenotazioniLines.map(line => {
+                const checked = prenotazioniSelected.has(line.key);
+                const disabled = !line.supplierId;
+                return (
+                  <div
+                    key={line.key}
+                    className="row"
+                    style={{
+                      gridTemplateColumns: '40px minmax(220px, 2fr) minmax(180px, 1.4fr) minmax(140px, 1fr) 100px',
+                      borderLeftColor: disabled ? '#dc2626' : (checked ? '#10b981' : 'var(--accent)'),
+                      opacity: disabled ? 0.6 : 1,
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      background: checked ? 'rgba(16, 185, 129, 0.08)' : undefined,
+                    }}
+                    onClick={() => !disabled && togglePrenotazioneSelection(line.key)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={() => togglePrenotazioneSelection(line.key)}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: '20px', height: '20px', cursor: disabled ? 'not-allowed' : 'pointer' }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '15px' }}>{line.productName}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                        {line.pickName}
+                        {line.saleOrderName && ` • ${line.saleOrderName}`}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{line.partnerName}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Cliente</div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: disabled ? '#dc2626' : 'inherit' }}>{line.supplierName}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Fornitore</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, fontSize: '17px' }}>{line.qty.toFixed(2)}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{line.uom}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {selectedCount > 0 && (
+          <div style={{
+            position: 'sticky',
+            bottom: '16px',
+            marginTop: '16px',
+            padding: '14px 20px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            color: '#fff',
+            zIndex: 10,
+          }}>
+            <div style={{ fontWeight: 700 }}>
+              {selectedCount} {selectedCount === 1 ? 'prodotto selezionato' : 'prodotti selezionati'}
+            </div>
+            <button
+              onClick={handleCreatePrenotazioni}
+              disabled={prenotazioniSubmitting}
+              style={{
+                background: '#fff',
+                color: '#059669',
+                border: 'none',
+                padding: '10px 22px',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: 800,
+                cursor: prenotazioniSubmitting ? 'wait' : 'pointer',
+                opacity: prenotazioniSubmitting ? 0.7 : 1,
+              }}
+            >
+              {prenotazioniSubmitting ? 'Creo…' : `Crea Prenotazioni (${selectedCount})`}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const renderGroups = () => {
     if (viewMode === 'home') return renderHome();
     if (viewMode === 'zona') return renderGroupsByZone();
     if (viewMode === 'zona-detail') return renderZoneDetail();
     if (viewMode === 'autista') return renderGroupsByDriver();
     if (viewMode === 'autista-detail') return renderDriverDetail();
+    if (viewMode === 'prenotazioni') return renderPrenotazioni();
     return null;
   };
 
@@ -3304,15 +3773,17 @@ export default function ConvalidaResiduiPage() {
                 }}>
                   ← Indietro
                 </button>
-                <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
-                  {isLoading ? <span className="loading"></span> : 'CERCA'}
-                </button>
+                {viewMode !== 'prenotazioni' && (
+                  <button className="btn green" type="button" onClick={handleLoad} disabled={isLoading}>
+                    {isLoading ? <span className="loading"></span> : 'CERCA'}
+                  </button>
+                )}
               </>
             )}
           </div>
 
-          {/* Filtri per data e tipo - solo quando non in home */}
-          {viewMode !== 'home' && <div className="filters-bar">
+          {/* Filtri per data e tipo - solo quando non in home e non in prenotazioni */}
+          {viewMode !== 'home' && viewMode !== 'prenotazioni' && <div className="filters-bar">
             <div className="filter-group">
               <span className="filter-label">📅 Data:</span>
               <button
