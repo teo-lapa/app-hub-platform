@@ -1,305 +1,185 @@
-# Architettura Deployment: Sistema OCR + Classificazione Documenti
+# Architettura Deployment: Sistema OCR Jetson
 
-## Panoramica
+## Stato attuale (aggiornato 2026-05-08)
 
-Sistema ibrido per classificazione automatica documenti PDF con:
-- **OCR su Jetson Nano** (GPU-accelerated, locale)
-- **Classificazione AI con Kimi K2** (cloud, via OpenRouter)
-- **Integrazione Odoo** (webhook-based)
+Sistema OCR locale GPU-accelerato per estrazione testo da PDF e immagini, integrato col cron Vercel `/api/cron/ocr-attachments` di hub.lapa.ch.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        FLUSSO DOCUMENTI                         │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                         FLUSSO COMPLETO                            │
+└────────────────────────────────────────────────────────────────────┘
 
-1. UPLOAD DOCUMENTO
+1. Email arriva → Odoo crea project.task in [EMAIL] Paul/Laura/Gregorio/Mihai/Alessandro/LAPA
+   con allegati PDF/JPG/PNG
    ↓
-2. ODOO → Webhook → Jetson OCR Server (http://jetson-nano.local:3100)
+2. Cron Vercel (ogni 5 min) → cerca task senza tag OCR_done/OCR_failed
    ↓
-3. Jetson: PDF → Tesseract OCR → Testo estratto
+3. Per ogni allegato candidato:
+   - Se ha già MD compagno → skip
+   - Se è "junk" (loghi, banner < 30KB, dimensioni minime) → skip
+   - Altrimenti POST /jobs/start a Jetson, salva job_id in description "OCR_JOB:<id>:<ts>"
    ↓
-4. Jetson → Kimi K2 API (OpenRouter) → Classificazione
+4. Run successivo: GET /jobs/<id> → se done, scarica markdown, allega .md compagno,
+   rinomina PDF con header pulito, posta nel chatter risultato
    ↓
-5. Jetson → Odoo Webhook Response → Risultato
-   ↓
-6. ODOO: Documento classificato + dati estratti
+5. Quando tutti gli allegati di un task sono done/failed → tag OCR_done o OCR_failed
 ```
 
 ---
 
-## Componenti Sistema
+## Hardware Jetson
 
-### 1. JETSON NANO (OCR Server)
-
-**Hardware:**
-- NVIDIA Jetson Orin Nano Developer Kit
-- 2TB storage
-- GPU per accelerazione Tesseract OCR
-
-**Software Stack:**
-- Ubuntu 20.04 (JetPack)
-- Docker + Docker Compose
-- Node.js 20 LTS
-- Tesseract OCR 5.x (con supporto GPU)
-- nginx (reverse proxy)
-
-**Servizi:**
-```
-jetson-ocr-server/
-├── Dockerfile                 # Container per OCR service
-├── docker-compose.yml         # Orchestrazione servizi
-├── server/
-│   ├── index.js              # Express API server
-│   ├── ocr.js                # Tesseract OCR wrapper
-│   ├── classifier.js         # Kimi K2 integration
-│   └── queue.js              # Job queue per batch
-├── config/
-│   ├── tesseract.conf        # Configurazione OCR
-│   └── nginx.conf            # Reverse proxy config
-└── storage/
-    ├── uploads/              # PDF temporanei
-    ├── processed/            # Documenti processati
-    └── cache/                # Cache risultati (Redis)
-```
-
-**Endpoints API:**
-```
-POST /api/v1/ocr/analyze           # Singolo documento
-POST /api/v1/ocr/batch             # Batch documenti (5-10)
-GET  /api/v1/ocr/status/:jobId     # Status job
-GET  /api/v1/health                # Health check
-GET  /api/v1/metrics               # Metriche performance
-```
+- **NVIDIA Jetson Orin Nano Super Developer Kit** (versione overclockata, ~67 TOPS INT8)
+- 1024 CUDA cores + 32 Tensor cores (Ampere)
+- 8GB RAM unificata CPU+GPU
+- 6 core ARM Cortex
+- SSD NVMe 2TB (~1.6TB liberi)
+- Eth: `eno1` con **IP statico 192.168.1.171/24** via NetworkManager (no DHCP)
+- WiFi: `wlP1p1s0` su DHCP (.35) come backup
+- Power mode: nvpmodel default
+- Hostname: `ubuntu`, utente `lapap`, password `lapa201180`
 
 ---
 
-### 2. KIMI K2 CLOUD API
+## Software Stack
 
-**Provider:** OpenRouter (https://openrouter.ai)
-**Modello:** `moonshotai/kimi-k2` (paid, no privacy issues)
-**Funzione:** Classificazione documenti + estrazione dati strutturati
-
-**Costo stimato:**
-- ~$0.50 per 1000 documenti
-- Con 2TB storage, puoi processare milioni di documenti
-
----
-
-### 3. ODOO INTEGRATION
-
-**Architettura:**
-```python
-# Odoo Custom Module: document_classifier
-
-class DocumentClassifier(models.Model):
-    _name = 'document.classifier'
-
-    def classify_attachment(self, attachment_id):
-        """Invia PDF a Jetson OCR Server per classificazione"""
-
-        attachment = self.env['ir.attachment'].browse(attachment_id)
-        pdf_data = base64.b64decode(attachment.datas)
-
-        # Call Jetson API
-        response = requests.post(
-            'http://jetson-nano.local:3100/api/v1/ocr/analyze',
-            files={'file': pdf_data},
-            json={'extract_details': True}
-        )
-
-        result = response.json()
-
-        # Update Odoo record con classificazione
-        return {
-            'document_type': result['type'],
-            'supplier': result['details'].get('supplier'),
-            'invoice_number': result['details'].get('number'),
-            'date': result['details'].get('date'),
-            'amount': result['details'].get('amount'),
-            'currency': result['details'].get('currency'),
-            'line_items': result['details'].get('items', [])
-        }
+```
+Ubuntu 22.04 ARM64 + JetPack 6 (CUDA 12.6)
+├── Ollama (host, porta 11434) — motore inferenza GPU
+│   ├── glm-ocr:latest (1.1B params, F16, ~4.6GB VRAM) — modello OCR principale
+│   └── qwen2.5vl:3b (3.8B params, Q4_K_M, ~3.2GB) — VLM generalista fallback
+├── Docker
+│   ├── ocr-service (FastAPI, porta 8500) — API OCR
+│   ├── ocr-redis (porta 127.0.0.1:6380→6379) — cache risultati + job queue
+│   └── jetson-redis (porta 6379) — coda jobs
+├── ocr-port-bridge.service (systemd) — bridge porta 3100 → 8500 per cloudflared tunnel
+└── cloudflared tunnel — espone OCR all'esterno
 ```
 
-**Workflow Odoo:**
-
-1. **Upload documento** → Trigger classificazione automatica
-2. **Arrivi merce** → OCR estrae numero ordine fornitore
-3. **Fatture** → Estrae importo, IVA, scadenza per controllo
-4. **Ordini clienti** → Estrae prodotti ordinati
+Tutti i container hanno `restart=unless-stopped`.
 
 ---
 
-## Setup Jetson Nano
+## API OCR (porta 8500 / bridge 3100)
 
-### Step 1: Preparazione Hardware
+```
+GET  /health                   # health check
+GET  /info                     # modelli caricati, dimensioni
+POST /ocr-image                # OCR singola immagine, sincrono
+POST /ocr-pdf                  # OCR PDF, sincrono
+POST /ocr-pdf-stream           # OCR PDF con streaming
+POST /ocr-auto                 # rileva tipo file e usa endpoint adatto
+POST /ocr-classify             # classifica tipo documento
+POST /ocr-batch                # batch
+POST /jobs/start               # avvio job async (ritorna job_id)
+GET  /jobs/{job_id}            # status + risultato (TTL Redis ~24h)
+DELETE /jobs/{job_id}          # cancella job
+```
+
+Cache Redis su hash file → richieste duplicate ritornano in 0.04s.
+
+---
+
+## Performance reali
+
+| Caso | Tempo | Note |
+|---|---|---|
+| Cold start (1ª richiesta dopo riavvio) | 75-90s | carica modello in VRAM |
+| Immagine warm (testo nitido) | ~3.7s | regime normale |
+| PDF 3 pagine fattura italiana | ~30-40s | warm |
+| File già OCRizzato (cache hit) | 0.04s | no-op |
+
+Throughput steady state: **~15-20 immagini/min**, **~5-8 pagine PDF/min**.
+
+Precisione: **95-98%** su PDF nativi e foto pulite, ~80-90% su foto storte/sgranate, 60-70% su manoscritto.
+
+---
+
+## Bug noti & recovery
+
+### 1. IP cambia dopo reboot (RISOLTO 2026-05-08)
+**Sintomo**: HTTP 502 da chi chiama l'OCR. Jetson non risponde su .171.
+**Causa**: prima dell'8 maggio l'eth era in DHCP → reboot = nuovo lease.
+**Fix permanente**: IP statico `192.168.1.171/24` su connessione `Wired connection 1` (NetworkManager). Configurato manualmente con `nmcli`.
+
+### 2. Container Docker bloccati con `AlreadyExists: task ... already exists`
+**Sintomo**: dopo reboot non pulito (power-cut, kernel panic), `docker start` fallisce su tutti i container OCR.
+**Causa**: containerd lascia task fantasma da processi morti.
+**Recovery**:
+```bash
+sudo systemctl stop docker docker.socket containerd
+sudo pkill -9 -f containerd-shim
+sudo pkill -9 dockerd
+sudo systemctl start containerd
+sudo systemctl start docker.socket
+sudo systemctl start docker
+docker start ocr-redis ocr-service jetson-redis
+```
+Attenzione: `pkill -9 -f containerd-shim` può troncare la sessione SSH se il container ospita la shell — eseguire da macchina separata o in nohup.
+
+### 3. Job-id Redis scaduti → orfani in Odoo (RISOLTO 2026-05-08)
+**Sintomo**: attachment Odoo restano con `description = OCR_JOB:xxx:yyy` per giorni, MD non si crea mai. Cron logs mostrano `JOB STATUS ERR ... HTTP 404 job not found (forse scaduto)`.
+**Causa**: Redis Jetson ha TTL ~24h sui job. Se il cron interroga dopo la scadenza, riceve 404 ma non resettava la description → loop infinito.
+**Fix permanente**: in `app/api/cron/ocr-attachments/route.ts` il catch su `jetsonJobStatus` adesso rileva `HTTP 404|not found|scaduto` e azzera la description, così al prossimo run il sistema sottomette un nuovo job.
+**Cleanup retroattivo eseguito**: 133 attachment con OCR_JOB orfani azzerati l'8 maggio.
+
+---
+
+## Modello Odoo
+
+Progetti email (modello `project.task`):
+| ID | Nome |
+|---|---|
+| 109 | [EMAIL] Paul Teodorescu |
+| 110 | [EMAIL] Laura Teodorescu |
+| 111 | [EMAIL] Gregorio |
+| 112 | [EMAIL] Mihai |
+| 113 | [EMAIL] Alessandro |
+| 114 | [EMAIL] LAPA |
+
+Tag finali: `OCR_done` (id 146), `OCR_failed` (id 147).
+
+Quando un task ha tutti gli allegati processati, riceve uno dei due tag e viene escluso dalle scansioni successive.
+
+---
+
+## Cron Vercel
+
+Definito in `vercel.json`:
+```json
+{ "path": "/api/cron/ocr-attachments", "schedule": "*/5 * * * *" }
+```
+
+Configurazione runtime (`route.ts`):
+- `OCR_CRON_LOOKBACK_DAYS = 30` (cerca task creati ultimi N giorni)
+- `OCR_CRON_MAX_TASKS = 50` (max task per singolo run)
+- `SOFT_DEADLINE_MS = 240_000` (4 min, sotto i 5 min Vercel max)
+- `maxDuration = 300` (limite Vercel function)
+
+Auth: header `Authorization: Bearer ${CRON_SECRET}` richiesto.
+
+---
+
+## Costi operativi
+
+Mensili:
+- Elettricità Jetson: ~€2-3 (~10W)
+- Cloudflare tunnel: gratis
+- Vercel function: incluso nel piano hub.lapa.ch
+- **Totale: ~€3/mese** (zero costi cloud OCR)
+
+---
+
+## Endpoint pubblici
+
+Backend OCR raggiungibile via:
+- LAN diretta: `http://192.168.1.171:3100` (porta bridge) o `:8500` (porta backend)
+- Tunnel cloudflared (URL configurato in `.env` di hub-lapa-platform come `JETSON_OCR_URL`)
+
+---
+
+## SSH
 
 ```bash
-# SSH nel Jetson Nano
-ssh jetson@jetson-nano.local
-
-# Update sistema
-sudo apt update && sudo apt upgrade -y
-
-# Installa Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-
-# Installa Docker Compose
-sudo apt install docker-compose -y
-
-# Verifica GPU
-sudo nvidia-smi
+ssh jetson    # alias configurato in ~/.ssh/config -> lapap@192.168.1.171
 ```
-
-### Step 2: Installazione Tesseract con GPU
-
-```bash
-# Installa Tesseract da source con CUDA support
-sudo apt install -y automake ca-certificates \
-    g++ git libtool libleptonica-dev make pkg-config
-
-git clone https://github.com/tesseract-ocr/tesseract.git
-cd tesseract
-./autogen.sh
-./configure --with-extra-includes=/usr/local/cuda/include \
-            --with-extra-libraries=/usr/local/cuda/lib64
-make -j4
-sudo make install
-sudo ldconfig
-
-# Download language data (Italiano + Inglese)
-cd /usr/local/share/tessdata
-sudo wget https://github.com/tesseract-ocr/tessdata/raw/main/ita.traineddata
-sudo wget https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
-```
-
-### Step 3: Deploy OCR Service
-
-```bash
-# Clone repository
-git clone https://github.com/your-repo/app-hub-platform.git
-cd app-hub-platform/jetson-deployment
-
-# Configurazione
-cp .env.example .env
-nano .env
-# KIMI_K2_API_KEY=sk-or-v1-...
-# ODOO_WEBHOOK_SECRET=your-secret-key
-# MAX_CONCURRENT_JOBS=4
-
-# Build & Run
-docker-compose up -d
-
-# Verifica logs
-docker-compose logs -f ocr-server
-```
-
----
-
-## Performance & Scalabilità
-
-### Benchmark Attesi (Jetson Orin Nano)
-
-- **Tesseract OCR**: ~2-3 secondi/pagina (con GPU)
-- **Kimi K2 API**: ~1-2 secondi/documento
-- **Totale**: ~5 secondi per fattura 1-2 pagine
-
-**Throughput:**
-- Singolo documento: 5 sec
-- Batch 10 documenti: ~30 sec (parallelizzazione)
-- **Capacità giornaliera**: ~10.000 documenti/giorno (con queue)
-
-### Storage (2TB disponibili)
-
-```
-├── PDF originali:        ~500GB (1M documenti @ 500KB avg)
-├── Cache OCR:            ~100GB (testi estratti)
-├── Database risultati:   ~50GB (classificazioni + metadati)
-├── Logs & monitoring:    ~10GB
-└── Spazio libero:        ~1.3TB
-```
-
----
-
-## Sicurezza
-
-1. **Network:** Jetson in LAN privata, esposto solo a Odoo server
-2. **Authentication:** Webhook secret key per validare richieste Odoo
-3. **Encryption:** HTTPS con certificato self-signed per LAN
-4. **Data retention:** Auto-cleanup PDF dopo 30 giorni (configurable)
-
----
-
-## Monitoring
-
-### Grafana Dashboard
-
-Metriche da monitorare:
-- Documenti processati/ora
-- Tempo medio OCR
-- Accuracy classificazione (%)
-- GPU usage
-- Storage usage
-- Error rate
-
-### Alerts
-
-- GPU temperature > 80°C
-- Storage > 80%
-- Error rate > 5%
-- Queue backlog > 100 documenti
-
----
-
-## Backup & Disaster Recovery
-
-```bash
-# Backup automatico giornaliero (cron job)
-0 2 * * * /home/jetson/backup-ocr-data.sh
-
-# Script backup
-#!/bin/bash
-tar czf /mnt/backup/ocr-$(date +%Y%m%d).tar.gz \
-    /opt/ocr-server/storage/processed \
-    /opt/ocr-server/database
-```
-
----
-
-## Costi Operativi
-
-### One-time:
-- Jetson Orin Nano: €499 (già acquistato ✓)
-- 2TB SSD: (già disponibile ✓)
-- Setup & development: 0€ (fatto da noi!)
-
-### Mensili:
-- Kimi K2 API: ~€5-20/mese (dipende da volume)
-- Elettricità Jetson: ~€2-3/mese (~10W)
-- **Totale: ~€10-25/mese**
-
-**ROI:** Con 1 ora risparmiata/giorno = ~€400/mese di valore
-→ Ritorno investimento in < 2 mesi!
-
----
-
-## Next Steps
-
-1. ✅ Setup Jetson Nano con Docker
-2. ✅ Deploy OCR Server
-3. ✅ Test con PDF reali (tamburro1241lapa.pdf)
-4. ✅ Creare modulo Odoo custom
-5. ✅ Test integration Odoo → Jetson → Odoo
-6. ✅ Deploy in produzione
-7. ✅ Training team su utilizzo
-
----
-
-## Support & Maintenance
-
-- **Aggiornamenti:** Mensili (Docker pull + restart)
-- **Monitoring:** Dashboard Grafana
-- **Logs:** Retention 90 giorni
-- **Support:** documentazione + runbook operativo

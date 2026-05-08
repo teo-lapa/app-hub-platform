@@ -168,7 +168,13 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
         states.push({ ...baseState, outcome: 'done', detail: `OK ${att.name} -> ${newName} (${result.num_pages}p, ${Math.round(status.wall_time_s || 0)}s)` });
       } catch (err: any) {
         const errMsg = err?.message || String(err);
-        states.push({ ...baseState, outcome: 'pending', detail: `JOB STATUS ERR ${att.name}: ${errMsg.slice(0, 200)}` });
+        const isExpired = /HTTP 404|not found|scaduto/i.test(errMsg);
+        if (isExpired) {
+          await callOdoo(null, 'ir.attachment', 'write', [[att.id], { description: '' }]);
+          states.push({ ...baseState, outcome: 'pending', detail: `RESET ${att.name} job=${jobId} expired, requeued` });
+        } else {
+          states.push({ ...baseState, outcome: 'pending', detail: `JOB STATUS ERR ${att.name}: ${errMsg.slice(0, 200)}` });
+        }
       }
       continue;
     }
