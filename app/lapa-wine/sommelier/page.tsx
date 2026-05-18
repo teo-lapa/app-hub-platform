@@ -23,6 +23,11 @@ export default function SommelierSettingsPage() {
   const [current, setCurrent] = useState<PersonalityId | null>(null);
   const [saving, setSaving] = useState<PersonalityId | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [customInstructions, setCustomInstructions] = useState('');
+  const [customSaved, setCustomSaved] = useState('');
+  const [savingCustom, setSavingCustom] = useState(false);
+  const [customOk, setCustomOk] = useState(false);
+  const [maxCustom, setMaxCustom] = useState(1500);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,10 +35,18 @@ export default function SommelierSettingsPage() {
       try {
         const res = await fetch(`/api/wine/sommelier-personality?slug=${encodeURIComponent(DEMO_SLUG)}`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = (await res.json()) as { current: PersonalityId; presets: Preset[] };
+        const data = (await res.json()) as {
+          current: PersonalityId;
+          presets: Preset[];
+          customInstructions?: string;
+          maxCustomInstructions?: number;
+        };
         if (cancelled) return;
         setPresets(data.presets);
         setCurrent(data.current);
+        setCustomInstructions(data.customInstructions ?? '');
+        setCustomSaved(data.customInstructions ?? '');
+        if (typeof data.maxCustomInstructions === 'number') setMaxCustom(data.maxCustomInstructions);
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : 'Errore');
@@ -65,6 +78,36 @@ export default function SommelierSettingsPage() {
       setSaving(null);
     }
   };
+
+  const saveCustom = async () => {
+    if (savingCustom) return;
+    setSavingCustom(true);
+    setCustomOk(false);
+    setError(null);
+    try {
+      const res = await fetch('/api/wine/sommelier-personality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: DEMO_SLUG, customInstructions }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'HTTP ' + res.status);
+      }
+      const data = (await res.json()) as { customInstructions?: string };
+      const saved = data.customInstructions ?? customInstructions;
+      setCustomSaved(saved);
+      setCustomInstructions(saved);
+      setCustomOk(true);
+      setTimeout(() => setCustomOk(false), 2200);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore salvataggio istruzioni');
+    } finally {
+      setSavingCustom(false);
+    }
+  };
+
+  const customDirty = customInstructions !== customSaved;
 
   return (
     <>
@@ -147,6 +190,82 @@ export default function SommelierSettingsPage() {
             </button>
           );
         })}
+
+        {/* Istruzioni personalizzate */}
+        <section
+          style={{
+            background: '#ffffff',
+            border: '1.5px solid var(--border, #e5e2dd)',
+            padding: '16px 16px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            marginTop: 4,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontStyle: 'italic', color: 'var(--fg-1, #1c1815)' }}>
+              Istruzioni personalizzate
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--fg-3, #6b5f52)' }}>
+              Opzionale
+            </div>
+          </div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: 'var(--fg-3, #6b5f52)', lineHeight: 1.5 }}>
+            Aggiungi indicazioni specifiche per il tuo sommelier: cosa spingere stasera, vini da evitare, abbinamenti tipici della casa, tono particolare. Si sommano allo stile scelto sopra.
+          </div>
+
+          <textarea
+            value={customInstructions}
+            onChange={(e) => setCustomInstructions(e.target.value.slice(0, maxCustom))}
+            placeholder={`Esempi:\n• Stasera spingi il Romeo di Mura Mura, ne abbiamo 12 bottiglie.\n• Non proporre mai il Prosecco al posto del Franciacorta.\n• Se il cliente chiede un rosso importante sotto i 60 CHF, suggerisci il Chianti Riserva.\n• Quando descrivi i piatti di pesce, ricorda che la nostra specialità è il branzino al sale.`}
+            rows={8}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '12px 14px',
+              background: '#fbf8f1',
+              border: '1px solid var(--border-subtle, #ece8e1)',
+              borderRadius: 4,
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: 'var(--fg-1, #1c1815)',
+              resize: 'vertical',
+              minHeight: 140,
+              outline: 'none',
+            }}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'var(--fg-3, #6b5f52)' }}>
+              {customInstructions.length} / {maxCustom}
+              {customOk && (
+                <span style={{ marginLeft: 10, color: '#027a48', fontWeight: 600 }}>Salvato ✓</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={saveCustom}
+              disabled={savingCustom || !customDirty}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                padding: '10px 18px',
+                background: customDirty ? 'var(--lapa-red-700, #951616)' : '#d6d2cb',
+                color: '#fff',
+                border: 'none',
+                cursor: savingCustom ? 'wait' : customDirty ? 'pointer' : 'default',
+                opacity: savingCustom ? 0.7 : 1,
+              }}
+            >
+              {savingCustom ? 'Salvataggio…' : customDirty ? 'Salva istruzioni' : 'Salvate'}
+            </button>
+          </div>
+        </section>
       </div>
 
       <BottomNav />

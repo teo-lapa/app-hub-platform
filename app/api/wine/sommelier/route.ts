@@ -10,7 +10,12 @@ import {
   type SearchCriteria,
   type Tier,
 } from '@/lib/wine/catalog';
-import { getPersonalityForSlug, PERSONALITY_PRESETS } from '@/lib/wine/sommelier-personality';
+import {
+  getPersonalityForSlug,
+  getCustomInstructionsForSlug,
+  buildStyleBlock,
+  PERSONALITY_PRESETS,
+} from '@/lib/wine/sommelier-personality';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -228,14 +233,15 @@ export async function POST(request: Request) {
     loadCatalog();
 
     const personalityId = await getPersonalityForSlug(restaurantSlug);
-    const personality = PERSONALITY_PRESETS[personalityId];
+    const customInstructions = await getCustomInstructionsForSlug(restaurantSlug);
+    const styleBlock = buildStyleBlock(personalityId, customInstructions);
 
-    console.log('[SOMMELIER] Request:', { restaurantSlug, tableCode, language, customerEmail, turns: messages.length, personality: personalityId });
+    console.log('[SOMMELIER] Request:', { restaurantSlug, tableCode, language, customerEmail, turns: messages.length, personality: personalityId, customLen: customInstructions.length });
 
     // System prompt = [CORE_DNA cachato] + [contesto variabile non cachato]
     const systemBlocks = [
       { type: 'text' as const, text: CORE_DNA, cache_control: { type: 'ephemeral' as const } },
-      { type: 'text' as const, text: buildContextBlock(restaurantSlug, tableCode, language, personality.styleBlock) },
+      { type: 'text' as const, text: buildContextBlock(restaurantSlug, tableCode, language, styleBlock) },
     ];
 
     // Costruisci messages per Anthropic. Eventuale immagine attaccata all'ultimo user.
