@@ -1289,6 +1289,21 @@ export const standaloneApps: App[] = [
     createdAt: new Date('2026-05-03'),
     updatedAt: new Date('2026-05-03'),
   },
+  {
+    id: 'ferie',
+    name: 'Ferie',
+    description: 'Richiedi i tuoi giorni di ferie cliccando sul calendario. Vedi a colpo d\'occhio quando sei in ferie e lo stato delle richieste. Paul e Laura approvano dalla stessa app.',
+    icon: '🏖️',
+    badge: 'AZIENDALE' as const,
+    category: 'HR',
+    url: '/ferie',
+    requiredRole: 'dipendente' as const,
+    isNew: true,
+    isPopular: true,
+    controlStatus: 'approved' as const,
+    createdAt: new Date('2026-05-25'),
+    updatedAt: new Date('2026-05-25'),
+  },
 ];
 
 // Combina tutte le app
