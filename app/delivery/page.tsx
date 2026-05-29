@@ -31,6 +31,13 @@ class DeliveryDatabase extends Dexie {
 
 const db = new DeliveryDatabase();
 
+const MIN_SIGNATURE_STROKES = 10;
+
+// Fetch con timeout: evita che l'app resti appesa su rete lenta/assente
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+}
+
 // ==================== MAIN COMPONENT ====================
 export default function DeliveryPage() {
   // Estados principales
@@ -75,6 +82,9 @@ export default function DeliveryPage() {
   const [signatureNote, setSignatureNote] = useState('');
   const isDrawingRef = useRef(false);
   const [strokeCount, setStrokeCount] = useState(0);
+  const strokeCountRef = useRef(0);
+  const isSubmittingRef = useRef(false);
+  const signatureHandlersRef = useRef<{ start?: (e: any) => void; draw?: (e: any) => void; stop?: () => void }>({});
 
   // Estados calcolatrice
   const [calcValue, setCalcValue] = useState('0');
@@ -159,6 +169,10 @@ export default function DeliveryPage() {
 
     return () => {
       delete (window as any).navigateToDelivery;
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
     };
   }, []);
 
@@ -441,6 +455,15 @@ export default function DeliveryPage() {
         // Esegui azione
         if (action.action_type === 'validate') {
           await validateDeliveryOnServer(action.payload);
+          // foto/ricevuta di completamento già caricate inline dalla route: evita doppio upload
+          if (action.payload?.photo) {
+            await db.attachments.where({ picking_id: action.payload.picking_id, context: 'photo' })
+              .filter((a: any) => a.data === action.payload.photo).modify({ uploaded: true });
+          }
+          if (action.payload?.payment_data?.receipt_photo) {
+            await db.attachments.where({ picking_id: action.payload.picking_id, context: 'payment' })
+              .filter((a: any) => a.data === action.payload.payment_data.receipt_photo).modify({ uploaded: true });
+          }
         } else if (action.action_type === 'payment') {
           await processPaymentOnServer(action.payload);
         } else if (action.action_type === 'reso') {
@@ -449,12 +472,29 @@ export default function DeliveryPage() {
 
         // Segna come sincronizzata
         await db.offline_actions.update(action.id!, { synced: true });
+
+        // Carica gli allegati legati a questo picking (firma/foto rimaste offline)
+        if (action.payload?.picking_id) {
+          await uploadAllAttachments(action.payload.picking_id);
+        }
       } catch (err) {
         console.error('Sync failed for action:', action, err);
       }
     }
 
+    // Sweep finale: carica TUTTI gli allegati ancora non caricati, anche senza azione associata
+    await syncPendingAttachments();
+
     showToast('Sincronizzazione completata', 'success');
+  }
+
+  // Carica su Odoo tutti gli allegati locali rimasti (uploaded:false), raggruppati per picking
+  async function syncPendingAttachments() {
+    const pending = await db.attachments.where({ uploaded: false }).toArray();
+    const pickingIds = Array.from(new Set(pending.map(a => a.picking_id)));
+    for (const pid of pickingIds) {
+      await uploadAllAttachments(pid as number);
+    }
   }
 
   // ==================== DELIVERIES LOGIC ====================
@@ -540,7 +580,7 @@ export default function DeliveryPage() {
 
     setIsConfirmingPickup(true);
     try {
-      const response = await fetch('/api/delivery/confirm-pickup', {
+      const response = await fetchWithTimeout('/api/delivery/confirm-pickup', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -549,7 +589,7 @@ export default function DeliveryPage() {
           note: pickupNote || null,
           photo: pickupPhoto || null
         })
-      });
+      }, 45000);
 
       const data = await response.json();
 
@@ -557,7 +597,11 @@ export default function DeliveryPage() {
         throw new Error(data.error || 'Errore conferma ritiro');
       }
 
-      showToast('✅ Ritiro confermato!', 'success');
+      if (data.validated === false) {
+        showToast('⚠️ Ritiro registrato ma picking non validato: verifica in Odoo', 'warning');
+      } else {
+        showToast('✅ Ritiro confermato!', 'success');
+      }
       closePickupConfirmModal();
       closePickupView();
 
@@ -891,8 +935,8 @@ export default function DeliveryPage() {
   function updateProductDelivered(productId: number, qty: number) {
     setScaricoProducts(prev => prev.map(p => {
       if (p.id === productId) {
-        // Permetti qualsiasi quantità (anche maggiore della richiesta)
-        const newQty = Math.max(0, qty);
+        // Permetti qualsiasi quantità (anche maggiore della richiesta); guardia contro NaN
+        const newQty = Number.isFinite(qty) ? Math.max(0, qty) : 0;
         return { ...p, delivered: newQty, picked: newQty > 0, completed: newQty > 0 };
       }
       return p;
@@ -991,7 +1035,9 @@ export default function DeliveryPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear previous canvas
+    // Reset contatore tratti + canvas
+    strokeCountRef.current = 0;
+    setStrokeCount(0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
@@ -1006,10 +1052,12 @@ export default function DeliveryPage() {
       isDrawingRef.current = true;
 
       const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
       const touch = 'touches' in e ? e.touches[0] : e;
 
-      lastX = touch.clientX - rect.left;
-      lastY = touch.clientY - rect.top;
+      lastX = (touch.clientX - rect.left) * scaleX;
+      lastY = (touch.clientY - rect.top) * scaleY;
 
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
@@ -1020,17 +1068,21 @@ export default function DeliveryPage() {
       e.preventDefault();
 
       const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
       const touch = 'touches' in e ? e.touches[0] : e;
 
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
+      const x = (touch.clientX - rect.left) * scaleX;
+      const y = (touch.clientY - rect.top) * scaleY;
 
       ctx.lineTo(x, y);
       ctx.stroke();
 
       lastX = x;
       lastY = y;
-      setStrokeCount(prev => prev + 1);
+      strokeCountRef.current += 1;
+      // Aggiorna lo stato solo ogni 8 tratti per non ri-renderizzare ad ogni movimento del dito
+      if (strokeCountRef.current % 8 === 0) setStrokeCount(strokeCountRef.current);
     };
 
     const stopDrawing = () => {
@@ -1039,16 +1091,24 @@ export default function DeliveryPage() {
       ctx.closePath();
     };
 
-    // Remove old listeners
-    canvas.removeEventListener('touchstart', startDrawing as any);
-    canvas.removeEventListener('touchmove', draw as any);
-    canvas.removeEventListener('touchend', stopDrawing);
-    canvas.removeEventListener('mousedown', startDrawing as any);
-    canvas.removeEventListener('mousemove', draw as any);
-    canvas.removeEventListener('mouseup', stopDrawing);
-    canvas.removeEventListener('mouseleave', stopDrawing);
+    // Rimuovi i listener PRECEDENTI (riferimenti reali salvati nel ref) per evitare accumuli/leak
+    const prevH = signatureHandlersRef.current;
+    if (prevH.start) {
+      canvas.removeEventListener('touchstart', prevH.start as any);
+      canvas.removeEventListener('mousedown', prevH.start as any);
+    }
+    if (prevH.draw) {
+      canvas.removeEventListener('touchmove', prevH.draw as any);
+      canvas.removeEventListener('mousemove', prevH.draw as any);
+    }
+    if (prevH.stop) {
+      canvas.removeEventListener('touchend', prevH.stop as any);
+      canvas.removeEventListener('mouseup', prevH.stop as any);
+      canvas.removeEventListener('mouseleave', prevH.stop as any);
+    }
 
-    // Add new listeners
+    // Salva i nuovi handler (per poterli rimuovere davvero) e aggiungili
+    signatureHandlersRef.current = { start: startDrawing, draw, stop: stopDrawing };
     canvas.addEventListener('touchstart', startDrawing as any);
     canvas.addEventListener('touchmove', draw as any);
     canvas.addEventListener('touchend', stopDrawing);
@@ -1066,12 +1126,13 @@ export default function DeliveryPage() {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokeCountRef.current = 0;
     setStrokeCount(0);
     setSignatureData(null);
   }
 
   async function saveSignature() {
-    if (strokeCount < 10) {
+    if (strokeCountRef.current < MIN_SIGNATURE_STROKES) {
       showToast('Firma troppo breve, riprovare', 'error');
       return null;
     }
@@ -1152,24 +1213,18 @@ export default function DeliveryPage() {
       return;
     }
 
-    // Previeni chiamate multiple
-    if (isValidating) {
-      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+    // Previeni chiamate multiple (lock SINCRONO: setState è async e non blocca i doppi tap rapidi)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Operazione già in corso, ignoro chiamata duplicata');
       return;
     }
+    isSubmittingRef.current = true;
 
     setIsValidating(true);
     setLoading(true);
 
     try {
-      // Salva foto in attachments
-      await db.attachments.add({
-        picking_id: currentDelivery.id,
-        context: 'photo',
-        data: photoData,
-        timestamp: new Date(),
-        uploaded: false
-      });
+      // NB: la foto è già stata salvata in db.attachments in handlePhotoModalCapture (niente doppio salvataggio → niente upload duplicato)
 
       // Prepara payload
       const payload = {
@@ -1191,6 +1246,10 @@ export default function DeliveryPage() {
 
       if (isOnline) {
         await validateDeliveryOnServer(payload);
+        // La route validate ha già caricato la foto inline (nel chatter): marca la copia locale
+        // come caricata per evitare un secondo upload tramite uploadAllAttachments (no duplicati).
+        await db.attachments.where({ picking_id: currentDelivery.id, context: 'photo' })
+          .filter(a => a.data === photoData).modify({ uploaded: true });
         showToast('✅ Consegna completata con foto!', 'success');
       } else {
         await db.offline_actions.add({
@@ -1218,6 +1277,7 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
       setIsValidating(false);
+      isSubmittingRef.current = false;
     }
   }
 
@@ -1283,55 +1343,70 @@ export default function DeliveryPage() {
     showToast('Allegato eliminato', 'success');
   }
 
-  async function uploadAllAttachments() {
-    if (!currentDelivery) return;
+  async function uploadAllAttachments(pickingId?: number): Promise<{ failed: number }> {
+    const targetId = pickingId ?? currentDelivery?.id;
+    if (!targetId) return { failed: 0 };
 
     const toUpload = await db.attachments
-      .where({ picking_id: currentDelivery.id, uploaded: false })
+      .where({ picking_id: targetId, uploaded: false })
       .toArray();
 
+    if (toUpload.length === 0) return { failed: 0 };
+
     setLoading(true);
+    let failed = 0;
     try {
       for (const att of toUpload) {
-        const response = await fetch('/api/delivery/upload-attachment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            picking_id: att.picking_id,
-            context: att.context,
-            data: att.data.split(',')[1],
-            timestamp: att.timestamp
-          })
-        });
+        try {
+          const response = await fetchWithTimeout('/api/delivery/upload-attachment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              picking_id: att.picking_id,
+              context: att.context,
+              data: att.data.split(',')[1],
+              timestamp: att.timestamp
+            })
+          }, 45000);
 
-        if (response.ok) {
-          const result = await response.json();
-          await db.attachments.update(att.id!, {
-            uploaded: true,
-            odoo_attachment_id: result.attachment_id
-          });
+          if (response.ok) {
+            const result = await response.json();
+            await db.attachments.update(att.id!, {
+              uploaded: true,
+              odoo_attachment_id: result.attachment_id
+            });
+          } else {
+            failed++;
+          }
+        } catch {
+          // Rete/timeout: l'allegato resta uploaded:false e verrà ritentato al ritorno online
+          failed++;
         }
       }
 
-      showToast('Allegati caricati su Odoo', 'success');
-      await loadAttachmentCounts(currentDelivery.id);
-    } catch (err) {
-      showToast('Errore upload allegati', 'error');
+      if (failed > 0) {
+        showToast(`⚠️ ${failed} allegato/i non caricati: verranno ritentati`, 'warning');
+      } else {
+        showToast('Allegati caricati su Odoo', 'success');
+      }
+      await loadAttachmentCounts(targetId);
     } finally {
       setLoading(false);
     }
+    return { failed };
   }
 
   // ==================== VALIDATION ====================
   async function completeScarico(signatureDataParam?: string | null) {
     if (!currentDelivery) return;
 
-    // Previeni chiamate multiple
-    if (isValidating) {
-      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+    // Previeni chiamate multiple (lock SINCRONO: setState è async e non blocca i doppi tap rapidi)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Operazione già in corso, ignoro chiamata duplicata');
       return;
     }
+    isSubmittingRef.current = true;
 
     setIsValidating(true);
     setLoading(true);
@@ -1384,6 +1459,7 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
       setIsValidating(false);
+      isSubmittingRef.current = false;
     }
   }
 
@@ -1514,11 +1590,11 @@ export default function DeliveryPage() {
       formData.append('products', JSON.stringify(productsData));
 
       // Salva nel chatter via API
-      const response = await fetch('/api/delivery/save-partial-justification', {
+      const response = await fetchWithTimeout('/api/delivery/save-partial-justification', {
         method: 'POST',
         credentials: 'include',
         body: formData
-      });
+      }, 60000);
 
       if (!response.ok) {
         throw new Error('Errore salvataggio giustificazione');
@@ -1542,12 +1618,12 @@ export default function DeliveryPage() {
   }
 
   async function validateDeliveryOnServer(payload: any) {
-    const response = await fetch('/api/delivery/validate', {
+    const response = await fetchWithTimeout('/api/delivery/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // IMPORTANTE: Invia cookie utente per autenticazione
       body: JSON.stringify(payload)
-    });
+    }, 60000);
 
     if (!response.ok) {
       throw new Error('Errore validazione consegna');
@@ -1596,11 +1672,12 @@ export default function DeliveryPage() {
       return;
     }
 
-    // Previeni chiamate multiple
-    if (isValidating) {
-      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+    // Previeni chiamate multiple (lock SINCRONO: setState è async e non blocca i doppi tap rapidi)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Operazione già in corso, ignoro chiamata duplicata');
       return;
     }
+    isSubmittingRef.current = true;
 
     setIsValidating(true);
     setLoading(true);
@@ -1639,6 +1716,9 @@ export default function DeliveryPage() {
 
       if (isOnline) {
         await validateDeliveryOnServer(payload);
+        // La route validate ha già caricato la ricevuta inline: marca la copia locale come caricata (no duplicati)
+        await db.attachments.where({ picking_id: currentDelivery.id, context: 'payment' })
+          .filter(a => a.data === paymentReceiptPhoto).modify({ uploaded: true });
         showToast('✅ Incasso registrato e consegna completata!', 'success');
       } else {
         await db.offline_actions.add({
@@ -1667,16 +1747,17 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
       setIsValidating(false);
+      isSubmittingRef.current = false;
     }
   }
 
   async function processPaymentOnServer(payload: any) {
-    const response = await fetch('/api/delivery/payment', {
+    const response = await fetchWithTimeout('/api/delivery/payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(payload)
-    });
+    }, 60000);
 
     if (!response.ok) {
       throw new Error('Errore registrazione pagamento');
@@ -1692,11 +1773,12 @@ export default function DeliveryPage() {
       return;
     }
 
-    // Previeni chiamate multiple
-    if (isValidating) {
-      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+    // Previeni chiamate multiple (lock SINCRONO: setState è async e non blocca i doppi tap rapidi)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Operazione già in corso, ignoro chiamata duplicata');
       return;
     }
+    isSubmittingRef.current = true;
 
     setIsValidating(true);
     setLoading(true);
@@ -1726,6 +1808,7 @@ export default function DeliveryPage() {
         showToast('Devi essere online per registrare un pagamento', 'error');
         setLoading(false);
         setIsValidating(false);
+        isSubmittingRef.current = false;
         return;
       }
 
@@ -1753,6 +1836,7 @@ export default function DeliveryPage() {
     } finally {
       setLoading(false);
       setIsValidating(false);
+      isSubmittingRef.current = false;
     }
   }
 
@@ -1797,11 +1881,12 @@ export default function DeliveryPage() {
       return;
     }
 
-    // Previeni chiamate multiple
-    if (isValidating) {
-      console.log('⚠️ Validazione già in corso, ignoro chiamata duplicata');
+    // Previeni chiamate multiple (lock SINCRONO: setState è async e non blocca i doppi tap rapidi)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Operazione già in corso, ignoro chiamata duplicata');
       return;
     }
+    isSubmittingRef.current = true;
 
     setIsValidating(true);
 
@@ -1850,16 +1935,17 @@ export default function DeliveryPage() {
       showToast('Errore durante il salvataggio del reso', 'error');
     } finally {
       setIsValidating(false);
+      isSubmittingRef.current = false;
     }
   }
 
   async function createResoOnServer(payload: any) {
-    const response = await fetch('/api/delivery/reso', {
+    const response = await fetchWithTimeout('/api/delivery/reso', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(payload)
-    });
+    }, 60000);
 
     if (!response.ok) {
       throw new Error('Errore creazione reso');
@@ -2202,6 +2288,7 @@ export default function DeliveryPage() {
 
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
+      img.onerror = () => resolve(base64); // se l'immagine non si carica, usa l'originale invece di restare appesi
       img.src = base64;
     });
   }
@@ -3526,7 +3613,14 @@ export default function DeliveryPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowSignatureModal(false)}
+            onClick={() => {
+              // Evita la chiusura accidentale (dito fuori dal riquadro) se c'è già una firma
+              if (strokeCountRef.current > 0) {
+                if (confirm('Hai già iniziato a firmare. Chiudere e perdere la firma?')) setShowSignatureModal(false);
+              } else {
+                setShowSignatureModal(false);
+              }
+            }}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -3558,7 +3652,7 @@ export default function DeliveryPage() {
 
               <div className="flex gap-3 mt-4">
                 <button
-                  onClick={clearSignature}
+                  onClick={() => { if (strokeCountRef.current === 0 || confirm('Cancellare la firma?')) clearSignature(); }}
                   disabled={isValidating}
                   className={`flex-1 py-3 rounded-lg font-semibold ${
                     isValidating
@@ -4028,7 +4122,7 @@ export default function DeliveryPage() {
 
                 {attachments.filter(a => !a.uploaded).length > 0 && (
                   <button
-                    onClick={uploadAllAttachments}
+                    onClick={() => uploadAllAttachments()}
                     className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
                   >
                     📤 Upload Tutti ({attachments.filter(a => !a.uploaded).length})
@@ -4104,7 +4198,7 @@ export default function DeliveryPage() {
                       type="radio"
                       value="cash"
                       checked={paymentMethod === 'cash'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'bank_transfer')}
                     />
                     <span>💵 Contanti</span>
                   </label>
@@ -4113,7 +4207,7 @@ export default function DeliveryPage() {
                       type="radio"
                       value="card"
                       checked={paymentMethod === 'card'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'bank_transfer')}
                     />
                     <span>💳 Carta</span>
                   </label>
@@ -4122,7 +4216,7 @@ export default function DeliveryPage() {
                       type="radio"
                       value="bank_transfer"
                       checked={paymentMethod === 'bank_transfer'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'bank_transfer')}
                     />
                     <span>🏦 Bonifico</span>
                   </label>

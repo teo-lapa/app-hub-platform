@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size } from '@/lib/delivery-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +36,12 @@ export async function POST(request: NextRequest) {
       console.log('❌ RESO API: Foto danno mancante');
       return NextResponse.json({ error: 'Foto del danno obbligatoria' }, { status: 400 });
     }
+
+    const ownership = await checkPickingOwnership(cookies, userCookies, uid, original_picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+    assertBase64Size(photo);
 
     // Leggi il picking originale
     const pickings = await callOdoo(

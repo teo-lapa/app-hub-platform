@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOdooSession } from '@/lib/odoo-auth';
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
+    const { uid } = await getOdooSession(request.headers.get('cookie') || undefined);
+    if (!uid) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { origin, destination } = body;
 

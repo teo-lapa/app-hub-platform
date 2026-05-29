@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size, stripBase64Prefix } from '@/lib/delivery-auth';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     // Get user cookies to use their Odoo session
@@ -18,6 +20,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'picking_id mancante' }, { status: 400 });
     }
 
+    // Autorizzazione: il picking deve appartenere all'autista loggato
+    const ownership = await checkPickingOwnership(cookies, cookieHeader, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+
+    // Limiti dimensione allegati (anti-DoS / timeout Odoo)
+    assertBase64Size(signature);
+    assertBase64Size(photo);
+    assertBase64Size(payment_data?.receipt_photo);
+
     console.log('✅ VALIDATE picking_id:', picking_id, 'type:', completion_type, 'notes:', notes);
     console.log('📦 VALIDATE products:', products?.length || 0, 'prodotti');
 
@@ -30,8 +43,8 @@ export async function POST(request: NextRequest) {
       if (productsToUpdate.length > 0) {
         console.log(`📝 Aggiornamento ${productsToUpdate.length} prodotti con quantità modificate...`);
 
-        // Aggiorna tutti i move_line IN PARALLELO (veloce!)
-        await Promise.all(productsToUpdate.map((product: any) =>
+        // Aggiorna tutti i move_line IN PARALLELO (veloce!) - allSettled per non lasciare update parziali silenziosi
+        const updateResults = await Promise.allSettled(productsToUpdate.map((product: any) =>
           callOdoo(cookies, 'stock.move.line', 'write', [
             [product.move_line_id],
             { qty_done: product.delivered }
@@ -39,6 +52,10 @@ export async function POST(request: NextRequest) {
             console.log(`✅ ${product.name}: ${product.delivered} (move_line_id: ${product.move_line_id})`);
           })
         ));
+        const failedUpdates = updateResults.filter(r => r.status === 'rejected').length;
+        if (failedUpdates > 0) {
+          throw new Error(`Aggiornamento quantità fallito per ${failedUpdates}/${productsToUpdate.length} prodotti: validazione annullata per evitare dati parziali.`);
+        }
       }
     }
 
@@ -79,10 +96,17 @@ ${prodottiNonConsegnati}
       console.log('✅ [VALIDATE] Campo note del picking aggiornato');
     }
 
-    // Valida il picking
-    const validateResult = await callOdoo(cookies, 'stock.picking', 'button_validate', [[picking_id]]);
+    // Idempotenza: se il picking è già 'done' (es. retry dopo timeout di rete), non rivalidare
+    const pickingStateRead = await callOdoo(cookies, 'stock.picking', 'read', [[picking_id]], { fields: ['state'] });
+    const alreadyValidated = pickingStateRead?.[0]?.state === 'done';
 
+    let validateResult: any = false;
     let backorder_created = false;
+    if (alreadyValidated) {
+      console.warn('⚠️ [VALIDATE] Picking già in stato "done": salto button_validate (idempotenza retry)');
+    } else {
+      validateResult = await callOdoo(cookies, 'stock.picking', 'button_validate', [[picking_id]]);
+    }
     if (validateResult && typeof validateResult === 'object' && validateResult.res_model) {
       const wizardId = validateResult.res_id;
       if (validateResult.res_model === 'stock.backorder.confirmation') {
@@ -123,7 +147,7 @@ ${prodottiNonConsegnati}
 
     if (signature) {
       // Extract base64 data from signature (remove data:image/png;base64, prefix)
-      const signatureBase64 = signature.split(',')[1];
+      const signatureBase64 = stripBase64Prefix(signature);
 
       // Write signature to stock.picking record's signature field
       await callOdoo(cookies, 'stock.picking', 'write', [[picking_id], {
@@ -139,7 +163,7 @@ ${prodottiNonConsegnati}
       console.log('📸 [VALIDATE] Caricamento foto come allegato...');
 
       // Extract base64 data from photo (remove data:image/jpeg;base64, prefix)
-      const photoBase64 = photo.split(',')[1];
+      const photoBase64 = stripBase64Prefix(photo);
 
       // Create ir.attachment
       const attachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
@@ -161,7 +185,7 @@ ${prodottiNonConsegnati}
       console.log('💰 [VALIDATE] Caricamento ricevuta pagamento come allegato...');
 
       // Extract base64 data from receipt photo (remove data:image/jpeg;base64, prefix)
-      const receiptBase64 = payment_data.receipt_photo.split(',')[1];
+      const receiptBase64 = stripBase64Prefix(payment_data.receipt_photo);
 
       // Create ir.attachment
       const receiptAttachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
@@ -178,16 +202,20 @@ ${prodottiNonConsegnati}
       console.log('✅ Ricevuta pagamento caricata come allegato ID:', receiptAttachmentId);
     }
 
-    const messageId = await callOdoo(cookies, 'mail.message', 'create', [{
-      body: messageHtml,
-      model: 'stock.picking',
-      res_id: picking_id,
-      message_type: 'comment',
-      subtype_id: 1,
-      attachment_ids: attachmentIds.length > 0 ? [[6, false, attachmentIds]] : false
-    }]);
-
-    console.log('Messaggio chatter creato ID:', messageId);
+    // Per 'validate_only' (flusso incasso alla consegna) NON creare il messaggio generico:
+    // il messaggio con i dati dell'incasso sarà creato dalla chiamata finale (evita doppio chatter).
+    let messageId: any = null;
+    if (completion_type !== 'validate_only') {
+      messageId = await callOdoo(cookies, 'mail.message', 'create', [{
+        body: messageHtml,
+        model: 'stock.picking',
+        res_id: picking_id,
+        message_type: 'comment',
+        subtype_id: 1,
+        attachment_ids: attachmentIds.length > 0 ? [[6, false, attachmentIds]] : false
+      }]);
+      console.log('Messaggio chatter creato ID:', messageId);
+    }
 
     // 🚀 SE È UNO SCARICO PARZIALE, INVIA WHATSAPP AL VENDITORE
     // Questo avviene DOPO la validazione, così il PDF ha i dati corretti
@@ -269,11 +297,8 @@ ${prodottiNonConsegnati}
   } catch (error: any) {
     console.error('❌ ERRORE VALIDATE:', error);
     console.error('❌ Stack trace:', error.stack);
-    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json({
-      error: error.message || 'Errore validazione',
-      details: error.toString(),
-      stack: error.stack
+      error: error.message || 'Errore validazione'
     }, { status: 500 });
   }
 }

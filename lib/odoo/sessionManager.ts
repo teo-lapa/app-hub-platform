@@ -85,6 +85,7 @@ class OdooSessionManager {
     try {
       const response = await fetch(`${this.credentials.url}/web/session/authenticate`, {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -188,6 +189,7 @@ class OdooSessionManager {
 
         const response = await fetch(`${this.credentials.url}/web/dataset/call_kw`, {
           method: 'POST',
+          signal: AbortSignal.timeout(30000),
           headers: {
             'Content-Type': 'application/json',
             'Cookie': `session_id=${session.sessionId}`

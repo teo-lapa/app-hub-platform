@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size, stripBase64Prefix } from '@/lib/delivery-auth';
 
 export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
@@ -18,7 +19,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dati pagamento non validi' }, { status: 400 });
     }
 
-    console.log('💰 [PAYMENT] Registrazione incasso per picking:', picking_id, 'Importo:', amount);
+    const ownership = await checkPickingOwnership(cookies, cookieHeader, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+    assertBase64Size(receipt_photo);
+
+    console.log('💰 [PAYMENT] Registrazione incasso per picking:', picking_id);
 
     // Upload receipt photo as attachment if present
     let attachmentId = null;
@@ -26,7 +33,7 @@ export async function POST(request: NextRequest) {
       console.log('💰 [PAYMENT] Caricamento ricevuta pagamento come allegato...');
 
       // Extract base64 data from photo (remove data:image/jpeg;base64, prefix)
-      const photoBase64 = receipt_photo.split(',')[1];
+      const photoBase64 = stripBase64Prefix(receipt_photo);
 
       // Create ir.attachment for stock.picking
       attachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{

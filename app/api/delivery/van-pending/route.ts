@@ -62,7 +62,8 @@ export async function GET(request: NextRequest) {
         ['state', '=', 'assigned']
       ],
       fields: ['id', 'name', 'partner_id', 'scheduled_date', 'origin', 'move_ids_without_package', 'batch_id', 'location_id'],
-      order: 'scheduled_date desc'
+      order: 'scheduled_date desc',
+      limit: 500
     });
 
     const pickingsValidi = pickingsResidui.filter((p: any) => p.origin);

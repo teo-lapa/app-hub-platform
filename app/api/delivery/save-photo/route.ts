@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size, stripBase64Prefix } from '@/lib/delivery-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,12 +18,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
     }
 
+    const ownership = await checkPickingOwnership(cookies, userCookies, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+    assertBase64Size(photo);
+
     console.log('📸 Salvataggio IMMEDIATO foto per picking:', picking_id);
 
     // Carica foto come ir.attachment
     const attachmentId = await callOdoo(cookies, 'ir.attachment', 'create', [{
       name: `Foto_Consegna_${picking_id}_${Date.now()}.jpg`,
-      datas: photo,
+      datas: stripBase64Prefix(photo),
       res_model: 'stock.picking',
       res_id: picking_id,
       mimetype: 'image/jpeg',

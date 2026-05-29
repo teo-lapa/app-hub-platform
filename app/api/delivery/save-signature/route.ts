@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size, stripBase64Prefix } from '@/lib/delivery-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,11 +18,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
     }
 
+    const ownership = await checkPickingOwnership(cookies, userCookies, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+    assertBase64Size(signature);
+
     console.log('🖊️ Salvataggio IMMEDIATO firma per picking:', picking_id);
 
-    // 1. Salva firma nel campo signature del picking
+    // 1. Salva firma nel campo signature del picking (base64 nudo, senza prefisso data URL)
     await callOdoo(cookies, 'stock.picking', 'write', [[picking_id], {
-      signature: signature
+      signature: stripBase64Prefix(signature)
     }]);
 
     console.log('✅ Firma salvata nel campo signature');
