@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership, assertBase64Size } from '@/lib/delivery-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +19,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
     }
 
-    // Determine file extension based on context
-    const extension = data.startsWith('data:image/png') ? 'png' : 'jpg';
+    const ownership = await checkPickingOwnership(cookies, userCookies, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+    assertBase64Size(data);
+
+    // Estensione in base al contesto (i dati arrivano già come base64 nudo: la firma è PNG, le foto JPG)
+    const extension = context === 'signature' ? 'png' : 'jpg';
     const contextLabel = context === 'signature' ? 'Firma Cliente' :
                         context === 'photo' ? 'Foto Consegna' :
                         context === 'payment' ? 'Ricevuta Pagamento' :

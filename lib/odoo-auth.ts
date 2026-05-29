@@ -73,6 +73,7 @@ export async function getOdooSession(userCookies?: string) {
       try {
         const sessionInfoResponse = await fetch(`${ODOO_URL}/web/session/get_session_info`, {
           method: 'POST',
+          signal: AbortSignal.timeout(15000),
           headers: {
             'Content-Type': 'application/json',
             'Cookie': odooCookie
@@ -146,6 +147,7 @@ export async function getOdooSession(userCookies?: string) {
   try {
     const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
       method: 'POST',
+      signal: AbortSignal.timeout(20000),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -234,6 +236,7 @@ export async function callOdoo(
 
   const response = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
     method: 'POST',
+    signal: AbortSignal.timeout(30000),
     headers: {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
@@ -272,6 +275,7 @@ export async function callOdoo(
           // Autentica con credenziali
           const authResponse = await fetch(`${ODOO_URL}/web/session/authenticate`, {
             method: 'POST',
+            signal: AbortSignal.timeout(20000),
             headers: {
               'Content-Type': 'application/json',
             },

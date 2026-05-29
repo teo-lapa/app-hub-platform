@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership } from '@/lib/delivery-auth';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
@@ -46,6 +47,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'ID picking mancante'
       }, { status: 400 });
+    }
+
+    const ownership = await checkPickingOwnership(cookies, userCookies, uid, picking_id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
 
     console.log('📥 [CONFIRM-PICKUP] Confermando ritiro:', picking_id);
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Valida il picking (button_validate)
+    let validated = true;
     try {
       await callOdoo(
         cookies,
@@ -137,7 +144,8 @@ export async function POST(request: NextRequest) {
           [[picking_id]]
         );
       } catch (e) {
-        console.log('⚠️ [CONFIRM-PICKUP] Fallback fallito, continuo comunque');
+        validated = false;
+        console.log('⚠️ [CONFIRM-PICKUP] Fallback validazione fallito: il ritiro viene registrato ma il picking NON è validato');
       }
     }
 
@@ -201,7 +209,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Ritiro confermato'
+      validated,
+      message: validated
+        ? 'Ritiro confermato'
+        : 'Ritiro registrato, ma la validazione del picking non è riuscita: verifica in Odoo'
     });
 
   } catch (error: any) {

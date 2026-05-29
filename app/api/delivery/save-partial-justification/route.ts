@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
+import { checkPickingOwnership } from '@/lib/delivery-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -10,7 +11,6 @@ export const maxDuration = 60;
 async function transcribeAudioWithWhisper(audioBuffer: ArrayBuffer, mimeType: string): Promise<string> {
   try {
     console.log(`🎤 [WHISPER] Inizio trascrizione audio`);
-    console.log(`🔍 [WHISPER] API Key configured: ${!!process.env.OPENAI_API_KEY}`);
 
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY not configured');
@@ -26,6 +26,7 @@ async function transcribeAudioWithWhisper(audioBuffer: ArrayBuffer, mimeType: st
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
+      signal: AbortSignal.timeout(45000),
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
@@ -75,6 +76,11 @@ export async function POST(request: NextRequest) {
 
     if (!pickingId) {
       return NextResponse.json({ error: 'picking_id mancante' }, { status: 400 });
+    }
+
+    const ownership = await checkPickingOwnership(cookies, cookieHeader, uid, pickingId as string);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
 
     // Parse lista prodotti problematici dal frontend
