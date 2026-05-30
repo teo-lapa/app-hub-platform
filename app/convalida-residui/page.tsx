@@ -319,6 +319,9 @@ export default function ConvalidaResiduiPage() {
   // UI: righe espanse (per nascondere/mostrare dettagli)
   const [expandedMoves, setExpandedMoves] = useState<Set<number>>(new Set());
 
+  // Move per cui l'utente ha scelto esplicitamente l'ubicazione in "Preleva da"
+  const [locationChosen, setLocationChosen] = useState<Set<number>>(new Set());
+
   // Refs
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sostituzioneInputRef = useRef<HTMLInputElement>(null);
@@ -1042,7 +1045,20 @@ export default function ConvalidaResiduiPage() {
 
       let lineIds = linesByMove[moveId] || [];
       if (lineIds.length) {
-        await callKwConvalida('stock.move.line', 'write', [[lineIds[0]], { qty_done: value }]);
+        // Consolida su una sola riga: tieni la prima (quella del menu "Preleva da"),
+        // elimina le altre move.line (es. quella riservata dal Deposito) e scrivi
+        // tutta la quantita' sulla riga rimasta. Cosi' la convalida non si blocca.
+        const keepId = lineIds[0];
+        const extraIds = lineIds.slice(1);
+        if (extraIds.length) {
+          await callKwConvalida('stock.move.line', 'unlink', [extraIds]);
+          setLinesByMove((prev) => ({ ...prev, [moveId]: [keepId] }));
+          setLineInfoByMove((prev) => ({
+            ...prev,
+            [moveId]: (prev[moveId] || []).filter((li) => li.id === keepId),
+          }));
+        }
+        await callKwConvalida('stock.move.line', 'write', [[keepId], { qty_done: value }]);
       } else {
         const vals = {
           move_id: moveId,
@@ -1090,6 +1106,18 @@ export default function ConvalidaResiduiPage() {
     const input = document.getElementById(`convalida_done_${moveId}`) as HTMLInputElement;
     if (!input) return;
     const value = Number(input.value || 0);
+
+    // Ubicazione obbligatoria se il prodotto ha stock libero in piu' ubicazioni
+    const m = metaByMove[moveId];
+    if (m && value > 0) {
+      const stock = productStock[m.product_id[0]] || [];
+      const selectable = stock.filter((s) => (s.qty - s.reserved) > 0);
+      if (selectable.length >= 2 && !locationChosen.has(moveId)) {
+        showToastMessage('Scegli prima l\'ubicazione in "Preleva da"');
+        return;
+      }
+    }
+
     await updateOne(moveId, value);
     showToastMessage('Riga aggiornata');
   };
@@ -2534,6 +2562,7 @@ export default function ConvalidaResiduiPage() {
                     if (!newLocId) return;
                     const selectedStock = stock.find(s => s.locationId === newLocId);
                     if (!selectedStock) return;
+                    setLocationChosen(prev => { const n = new Set(prev); n.add(move.id); return n; });
 
                     if (lineInfos.length > 0) {
                       // Esiste gia una move.line, aggiorna l'ubicazione E il lotto
