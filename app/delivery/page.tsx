@@ -93,7 +93,7 @@ export default function DeliveryPage() {
   const [calcMaxQty, setCalcMaxQty] = useState(0);
 
   // Estados allegati
-  const [attachmentContext, setAttachmentContext] = useState<'signature' | 'photo' | 'payment' | 'reso'>('photo');
+  const [attachmentContext, setAttachmentContext] = useState<'signature' | 'photo' | 'payment' | 'reso' | 'note'>('photo');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentCounts, setAttachmentCounts] = useState<Record<string, number>>({});
 
@@ -102,6 +102,13 @@ export default function DeliveryPage() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
+  const [paymentPostConsegna, setPaymentPostConsegna] = useState(false);
+
+  // Estados nota autista (post-consegna)
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [notePhoto, setNotePhoto] = useState<string | null>(null);
+  const [noteType, setNoteType] = useState<'extra' | 'generica'>('generica');
 
   // Estados foto (cliente assente)
   const [photoData, setPhotoData] = useState<string | null>(null);
@@ -468,6 +475,8 @@ export default function DeliveryPage() {
           await processPaymentOnServer(action.payload);
         } else if (action.action_type === 'reso') {
           await createResoOnServer(action.payload);
+        } else if (action.action_type === 'note') {
+          await saveNoteOnServer(action.payload);
         }
 
         // Segna come sincronizzata
@@ -1282,7 +1291,7 @@ export default function DeliveryPage() {
   }
 
   // ==================== ATTACHMENTS ====================
-  async function openAttachmentModal(context: 'signature' | 'photo' | 'payment' | 'reso') {
+  async function openAttachmentModal(context: 'signature' | 'photo' | 'payment' | 'reso' | 'note') {
     if (!currentDelivery) return;
 
     setAttachmentContext(context);
@@ -1312,6 +1321,11 @@ export default function DeliveryPage() {
       // Se è una foto RESO, salva anche nello stato
       if (attachmentContext === 'reso') {
         setResoPhoto(compressed);
+      }
+
+      // Se è una foto NOTA AUTISTA, salva anche nello stato
+      if (attachmentContext === 'note') {
+        setNotePhoto(compressed);
       }
 
       // Ricarica attachments
@@ -1635,8 +1649,77 @@ export default function DeliveryPage() {
   // ==================== PAYMENT ====================
   function openPaymentModal() {
     if (!currentDelivery) return;
+    setPaymentPostConsegna(false);
     setPaymentAmount(currentDelivery.amount_total?.toString() || '');
     setShowPaymentModal(true);
+  }
+
+  // Incasso su consegna GIÀ completata: importo vuoto (l'autista mette la cifra reale),
+  // registra via /api/delivery/payment SENZA rivalidare il picking.
+  function openPaymentModalPostConsegna() {
+    if (!currentDelivery) return;
+    setPaymentPostConsegna(true);
+    setPaymentAmount('');
+    setPaymentNote('');
+    setPaymentReceiptPhoto(null);
+    setShowPaymentModal(true);
+  }
+
+  async function processPaymentPostConsegna() {
+    if (!currentDelivery) return;
+
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      showToast('Inserire importo valido', 'error');
+      return;
+    }
+    if (!paymentNote || !paymentNote.trim()) {
+      showToast('Inserire una nota per il pagamento', 'error');
+      return;
+    }
+    if (!paymentReceiptPhoto) {
+      showToast('Scatta una foto della ricevuta', 'error');
+      return;
+    }
+
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsValidating(true);
+    setLoading(true);
+
+    try {
+      const payload = {
+        picking_id: currentDelivery.id,
+        amount,
+        payment_method: paymentMethod,
+        note: paymentNote,
+        receipt_photo: paymentReceiptPhoto
+      };
+
+      if (isOnline) {
+        await processPaymentOnServer(payload);
+        showToast('✅ Incasso registrato!', 'success');
+      } else {
+        await db.offline_actions.add({
+          action_type: 'payment',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        showToast('💾 Pagamento salvato per sincronizzazione', 'info');
+      }
+
+      setPaymentReceiptPhoto(null);
+      setPaymentNote('');
+      setShowPaymentModal(false);
+      setPaymentPostConsegna(false);
+    } catch (error: any) {
+      showToast('Errore: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+      setIsValidating(false);
+      isSubmittingRef.current = false;
+    }
   }
 
   async function handlePaymentReceiptCapture(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1937,6 +2020,75 @@ export default function DeliveryPage() {
       setIsValidating(false);
       isSubmittingRef.current = false;
     }
+  }
+
+  // ==================== NOTA AUTISTA (post-consegna) ====================
+  function openNoteModal() {
+    if (!currentDelivery) return;
+    setNoteText('');
+    setNotePhoto(null);
+    setNoteType('generica');
+    setShowNoteModal(true);
+  }
+
+  async function saveNote() {
+    if (!currentDelivery) return;
+
+    if (!noteText.trim()) {
+      showToast('Scrivi la nota', 'error');
+      return;
+    }
+
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsValidating(true);
+
+    try {
+      const payload = {
+        picking_id: currentDelivery.id,
+        note_type: noteType,
+        note: noteText,
+        photo: notePhoto
+      };
+
+      if (isOnline) {
+        await saveNoteOnServer(payload);
+        showToast('📝 Nota registrata', 'success');
+      } else {
+        await db.offline_actions.add({
+          action_type: 'note',
+          payload,
+          timestamp: new Date(),
+          synced: false
+        });
+        showToast('💾 Nota salvata per sincronizzazione', 'info');
+      }
+
+      setShowNoteModal(false);
+      setNoteText('');
+      setNotePhoto(null);
+      setNoteType('generica');
+    } catch (error: any) {
+      showToast('Errore salvataggio nota: ' + error.message, 'error');
+    } finally {
+      setIsValidating(false);
+      isSubmittingRef.current = false;
+    }
+  }
+
+  async function saveNoteOnServer(payload: any) {
+    const response = await fetchWithTimeout('/api/delivery/note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    }, 60000);
+
+    if (!response.ok) {
+      throw new Error('Errore salvataggio nota');
+    }
+
+    return response.json();
   }
 
   async function createResoOnServer(payload: any) {
@@ -3465,6 +3617,24 @@ export default function DeliveryPage() {
                       </button>
                       <button
                         onClick={() => {
+                          openPaymentModalPostConsegna(); // riusa il modal pagamento esistente
+                          setShowDetailModal(false); // chiudi il dettaglio SENZA azzerare currentDelivery
+                        }}
+                        className="w-full bg-amber-600 text-white py-3 rounded-lg font-semibold hover:bg-amber-700"
+                      >
+                        💰 INCASSA PAGAMENTO
+                      </button>
+                      <button
+                        onClick={() => {
+                          openNoteModal(); // modal nota libera + foto
+                          setShowDetailModal(false);
+                        }}
+                        className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700"
+                      >
+                        📝 NOTA IMPORTANTE
+                      </button>
+                      <button
+                        onClick={() => {
                           printDelivery(currentDelivery.id);
                         }}
                         className="w-full bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 flex items-center justify-center gap-2"
@@ -4280,7 +4450,7 @@ export default function DeliveryPage() {
 
               {/* Solo pulsante Conferma - OBBLIGATORIO */}
               <button
-                onClick={processPayment}
+                onClick={paymentPostConsegna ? processPaymentPostConsegna : processPayment}
                 disabled={!paymentReceiptPhoto || !paymentNote.trim() || isValidating}
                 className={`w-full py-4 rounded-lg font-semibold text-lg flex items-center justify-center gap-2 ${
                   isValidating
@@ -4384,6 +4554,127 @@ export default function DeliveryPage() {
                     </>
                   ) : (
                     '✓ Conferma Reso'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Nota Importante (autista, post-consegna) */}
+      <AnimatePresence>
+        {showNoteModal && currentDelivery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowNoteModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+            >
+              <h2 className="text-xl font-bold mb-4">📝 Nota Importante</h2>
+
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Tipo nota</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      value="generica"
+                      checked={noteType === 'generica'}
+                      onChange={(e) => setNoteType(e.target.value as 'extra' | 'generica')}
+                    />
+                    <span>📝 Nota generica</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      value="extra"
+                      checked={noteType === 'extra'}
+                      onChange={(e) => setNoteType(e.target.value as 'extra' | 'generica')}
+                    />
+                    <span>📦 Prodotto extra lasciato (da fatturare)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Nota *</label>
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  rows={4}
+                  placeholder="Es: lasciati 2 X a questo cliente, da fatturare..."
+                  required
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  setAttachmentContext('note');
+                  photoInputRef.current?.click();
+                }}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4"
+              >
+                📸 Aggiungi Foto (opzionale)
+              </button>
+
+              {notePhoto && (
+                <div className="relative mb-4">
+                  <img
+                    src={notePhoto}
+                    alt="Foto nota"
+                    className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
+                  />
+                  <button
+                    onClick={() => setNotePhoto(null)}
+                    className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-red-600"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowNoteModal(false)}
+                  disabled={isValidating}
+                  className={`flex-1 py-3 rounded-lg font-semibold ${
+                    isValidating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={saveNote}
+                  disabled={isValidating || !noteText.trim()}
+                  className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                    isValidating || !noteText.trim()
+                      ? 'bg-indigo-300 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  } text-white`}
+                >
+                  {isValidating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    '✓ Salva Nota'
                   )}
                 </button>
               </div>
