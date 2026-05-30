@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minimize2, Maximize2, Video, VideoOff } from 'lucide-react';
 
@@ -27,38 +27,29 @@ export function VideoPreviewPiP({
   onMinimize,
   minimized = false
 }: VideoPreviewPiPProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !stream) {
+  // Callback ref: aggancia lo stream nell'ISTANTE in cui il <video> viene
+  // montato nel DOM. Cosi' non dipende dai tempi tra setPreviewStream e
+  // isRecording: il video si vede subito, senza dover minimizzare/riaprire.
+  const setVideoNode = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node || !stream) {
       setIsVideoReady(false);
       return;
     }
-    video.srcObject = stream;
+    node.srcObject = stream;
     const markReady = () => {
       setIsVideoReady(true);
-      video.play().catch(err => {
-        console.warn('[VideoPreviewPiP] Could not autoplay video:', err);
-      });
+      node.play().catch(() => {});
     };
-    video.addEventListener('loadedmetadata', markReady);
-    video.addEventListener('playing', markReady);
-    // Se i metadati sono gia' pronti (stream getUserMedia), l'evento puo' essere
-    // gia' scattato: forziamo subito lo stato per non lasciare l'overlay nero.
-    if (video.readyState >= 1) markReady();
-    video.play().catch(() => {
-      // Ignore - will play after metadata loads
-    });
-    return () => {
-      video.removeEventListener('loadedmetadata', markReady);
-      video.removeEventListener('playing', markReady);
-      video.srcObject = null;
-    };
-    // minimized incluso: quando si riapre il PiP il <video> viene rimontato
-    // e va riassegnato lo stream.
-  }, [stream, minimized]);
+    node.addEventListener('loadedmetadata', markReady);
+    node.addEventListener('playing', markReady);
+    // Se i metadati sono gia' pronti, l'evento puo' essere gia' scattato.
+    if (node.readyState >= 1) markReady();
+    node.play().catch(() => {});
+  }, [stream]);
 
   if (!stream || !isRecording) {
     return null;
