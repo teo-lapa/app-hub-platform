@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Analisi SEO/GEO completa degli articoli blog Odoo
  * Verifica traduzioni, meta tags, struttura contenuti
  */
@@ -8,7 +8,7 @@ import { writeFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -190,7 +190,7 @@ async function analyzeArticle(id: number): Promise<ArticleAnalysis> {
 
   // Menzioni geografiche svizzere
   const swissTerms = ['svizzera', 'suisse', 'schweiz', 'switzerland', 'zurich', 'zurigo', 'berna', 'bern',
-    'ginevra', 'geneva', 'genève', 'lucerna', 'luzern', 'ticino', 'vallese', 'grigioni', 'argovia',
+    'ginevra', 'geneva', 'genÃ¨ve', 'lucerna', 'luzern', 'ticino', 'vallese', 'grigioni', 'argovia',
     'basilea', 'basel', 'canton', 'cantone', 'kanton', 'svizzero', 'svizzeri', 'elvetico'];
   const geoMatches = swissTerms.filter(term => content.includes(term)).length;
   geoScore += Math.min(geoMatches * 15, 50);
@@ -215,15 +215,15 @@ async function analyzeArticle(id: number): Promise<ArticleAnalysis> {
 }
 
 async function main() {
-  console.log('🔍 Analisi SEO/GEO Blog LAPA\n');
+  console.log('ðŸ” Analisi SEO/GEO Blog LAPA\n');
   console.log('='.repeat(60));
 
-  console.log('\n🔐 Autenticazione...');
+  console.log('\nðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ OK\n');
+  console.log('âœ… OK\n');
 
   // Fetch tutti gli articoli
-  console.log('📚 Caricamento lista articoli...');
+  console.log('ðŸ“š Caricamento lista articoli...');
   const articleIds = await callOdoo('blog.post', 'search', [[]], { limit: 500 });
   console.log(`   ${articleIds.length} articoli trovati\n`);
 
@@ -231,13 +231,13 @@ async function main() {
 
   for (let i = 0; i < articleIds.length; i++) {
     const id = articleIds[i];
-    process.stdout.write(`\r📊 Analisi articolo ${i + 1}/${articleIds.length} (ID: ${id})...`);
+    process.stdout.write(`\rðŸ“Š Analisi articolo ${i + 1}/${articleIds.length} (ID: ${id})...`);
 
     try {
       const analysis = await analyzeArticle(id);
       analyses.push(analysis);
     } catch (e: any) {
-      console.log(`\n   ❌ Errore ID ${id}: ${e.message}`);
+      console.log(`\n   âŒ Errore ID ${id}: ${e.message}`);
     }
 
     // Rate limiting
@@ -245,7 +245,7 @@ async function main() {
   }
 
   console.log('\n\n' + '='.repeat(60));
-  console.log('📊 REPORT SEO/GEO');
+  console.log('ðŸ“Š REPORT SEO/GEO');
   console.log('='.repeat(60));
 
   // Statistiche generali
@@ -253,23 +253,23 @@ async function main() {
   const withSeoIssues = analyses.filter(a => a.seoIssues.length > 0);
   const lowGeoScore = analyses.filter(a => a.geoScore < 30);
 
-  console.log(`\n📈 STATISTICHE GENERALI`);
+  console.log(`\nðŸ“ˆ STATISTICHE GENERALI`);
   console.log(`   Totale articoli: ${analyses.length}`);
   console.log(`   Pubblicati: ${published.length}`);
   console.log(`   Con problemi SEO: ${withSeoIssues.length}`);
   console.log(`   GEO score basso (<30): ${lowGeoScore.length}`);
 
   // Stato traduzioni
-  console.log(`\n🌍 STATO TRADUZIONI`);
+  console.log(`\nðŸŒ STATO TRADUZIONI`);
   for (const lang of LANGUAGES.filter(l => l !== 'it_IT')) {
     const complete = analyses.filter(a => a.translationStatus[lang] === 'complete').length;
     const partial = analyses.filter(a => a.translationStatus[lang] === 'partial').length;
     const missing = analyses.filter(a => a.translationStatus[lang] === 'missing').length;
-    console.log(`   ${lang}: ✅ ${complete} complete | ⚠️ ${partial} parziali | ❌ ${missing} mancanti`);
+    console.log(`   ${lang}: âœ… ${complete} complete | âš ï¸ ${partial} parziali | âŒ ${missing} mancanti`);
   }
 
-  // Problemi SEO più comuni
-  console.log(`\n🔧 PROBLEMI SEO PIÙ COMUNI`);
+  // Problemi SEO piÃ¹ comuni
+  console.log(`\nðŸ”§ PROBLEMI SEO PIÃ™ COMUNI`);
   const issueCount: Record<string, number> = {};
   analyses.forEach(a => {
     a.seoIssues.forEach(issue => {
@@ -289,7 +289,7 @@ async function main() {
     .sort((a, b) => b.seoIssues.length - a.seoIssues.length);
 
   if (critical.length > 0) {
-    console.log(`\n🚨 ARTICOLI CRITICI (pubblicati con molti problemi)`);
+    console.log(`\nðŸš¨ ARTICOLI CRITICI (pubblicati con molti problemi)`);
     critical.slice(0, 15).forEach(a => {
       console.log(`   [${a.id}] ${a.name.substring(0, 40)}...`);
       console.log(`      SEO issues: ${a.seoIssues.length} | GEO score: ${a.geoScore}`);
@@ -306,10 +306,10 @@ async function main() {
   );
 
   if (missingTranslations.length > 0) {
-    console.log(`\n❌ ARTICOLI PUBBLICATI CON TRADUZIONI MANCANTI (${missingTranslations.length})`);
+    console.log(`\nâŒ ARTICOLI PUBBLICATI CON TRADUZIONI MANCANTI (${missingTranslations.length})`);
     missingTranslations.slice(0, 20).forEach(a => {
       const missing = LANGUAGES.filter(l => l !== 'it_IT' && a.translationStatus[l] === 'missing');
-      console.log(`   [${a.id}] ${a.name.substring(0, 45)}... → manca: ${missing.join(', ')}`);
+      console.log(`   [${a.id}] ${a.name.substring(0, 45)}... â†’ manca: ${missing.join(', ')}`);
     });
   }
 
@@ -344,9 +344,9 @@ async function main() {
   };
 
   writeFileSync('data/seo-geo-report.json', JSON.stringify(report, null, 2));
-  console.log(`\n💾 Report completo salvato in: data/seo-geo-report.json`);
+  console.log(`\nðŸ’¾ Report completo salvato in: data/seo-geo-report.json`);
 
-  console.log('\n✅ Analisi completata!');
+  console.log('\nâœ… Analisi completata!');
 }
 
 main().catch(console.error);

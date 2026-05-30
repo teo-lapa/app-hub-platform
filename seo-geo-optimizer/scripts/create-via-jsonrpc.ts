@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Crea articolo usando JSON-RPC come fa l'interfaccia web di Odoo
  */
 
@@ -9,7 +9,7 @@ const article = JSON.parse(readFileSync('data/new-articles/article-01-zurich.jso
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -52,16 +52,16 @@ async function call(model: string, method: string, args: any[], kwargs: any = {}
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Elimina articolo 117
-  console.log('🗑️ Elimino articolo 117...');
+  console.log('ðŸ—‘ï¸ Elimino articolo 117...');
   try { await call('blog.post', 'unlink', [[117]]); } catch (e) {}
 
   // Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo in italiano...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo in italiano...');
   const itData = article.translations.it_IT;
 
   const postId = await call('blog.post', 'create', [{
@@ -78,13 +78,13 @@ async function main() {
   console.log(`   ID: ${postId}`);
 
   // Leggi translations con get_field_translations
-  console.log('\n📖 Leggo blocchi per content...');
+  console.log('\nðŸ“– Leggo blocchi per content...');
   const fieldTrans = await call('blog.post', 'get_field_translations', [[postId], 'content'], {});
   console.log(`   ${fieldTrans[0].length} blocchi`);
 
   // Provo a usare il metodo che usa l'interfaccia web
   // Quando clicchi "Traduci" su un campo, Odoo chiama web_save con context
-  console.log('\n📝 Provo web_save per traduzione DE...');
+  console.log('\nðŸ“ Provo web_save per traduzione DE...');
   const deData = article.translations.de_DE;
 
   try {
@@ -102,7 +102,7 @@ async function main() {
   }
 
   // Verifica
-  console.log('\n🔍 Verifica traduzioni...');
+  console.log('\nðŸ” Verifica traduzioni...');
   for (const lang of ['it_IT', 'de_CH']) {
     const data = await call('blog.post', 'read', [[postId]], {
       fields: ['name', 'content'],
@@ -112,7 +112,7 @@ async function main() {
     console.log(`   ${lang}: name="${data[0]?.name?.substring(0, 40)}" H1="${h1.substring(0, 40)}"`);
   }
 
-  console.log(`\n📌 Articolo: ${postId}`);
+  console.log(`\nðŸ“Œ Articolo: ${postId}`);
 }
 
 main().catch(console.error);

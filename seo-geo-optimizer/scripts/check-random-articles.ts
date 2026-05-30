@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Check random articles for translation issues
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -71,7 +71,7 @@ async function checkArticle(postId: number) {
   }
 
   const uniqueContents = new Set(contents);
-  const status = uniqueContents.size === 1 ? '❌ TUTTE UGUALI' : '✅ DIVERSE';
+  const status = uniqueContents.size === 1 ? 'âŒ TUTTE UGUALI' : 'âœ… DIVERSE';
 
   console.log(`ID ${postId}: ${status} - ${articleName.substring(0, 50)}`);
 
@@ -79,19 +79,19 @@ async function checkArticle(postId: number) {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║         CONTROLLO ARTICOLI PER PROBLEMI TRADUZIONI         ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘         CONTROLLO ARTICOLI PER PROBLEMI TRADUZIONI         â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Check a sample of articles from different ranges
   const testArticles = [
     350, // Guanciale
     355, // Cioccolato (chocolat)
-    360, // Metà
+    360, // MetÃ 
     365, // Burrata
     370, //
     375,
@@ -105,7 +105,7 @@ async function main() {
     421  // Fiordilatte (fixed)
   ];
 
-  console.log('📋 Controllo campione di articoli:\n');
+  console.log('ðŸ“‹ Controllo campione di articoli:\n');
 
   let problemCount = 0;
   let okCount = 0;
@@ -120,22 +120,22 @@ async function main() {
       }
       await new Promise(r => setTimeout(r, 300));
     } catch (e: any) {
-      console.log(`ID ${id}: ⚠️  ERRORE - ${e.message}`);
+      console.log(`ID ${id}: âš ï¸  ERRORE - ${e.message}`);
     }
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('📊 RIEPILOGO:');
-  console.log(`   ❌ Articoli con problema: ${problemCount}`);
-  console.log(`   ✅ Articoli OK: ${okCount}`);
+  console.log('ðŸ“Š RIEPILOGO:');
+  console.log(`   âŒ Articoli con problema: ${problemCount}`);
+  console.log(`   âœ… Articoli OK: ${okCount}`);
   console.log('');
 
   if (problemCount > 0) {
-    console.log('⚠️  PROBLEMA CONFERMATO!');
+    console.log('âš ï¸  PROBLEMA CONFERMATO!');
     console.log('   Gli articoli hanno tutte le lingue con lo stesso contenuto.');
     console.log('   Necessario riprocessare con il metodo di matching strutturale.\n');
   } else {
-    console.log('✅ Tutti gli articoli controllati sono OK!\n');
+    console.log('âœ… Tutti gli articoli controllati sono OK!\n');
   }
 }
 

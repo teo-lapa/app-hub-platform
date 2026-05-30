@@ -1,4 +1,4 @@
-# DELIVERABLE CHIUSURA BILANCIO 2024 - RIEPILOGO FINALE
+﻿# DELIVERABLE CHIUSURA BILANCIO 2024 - RIEPILOGO FINALE
 
 **Data**: 2025-11-15
 **Azienda**: Lapa Delikatessen
@@ -39,7 +39,7 @@
 - **Cover Page** - Intestazione professionale con dati azienda e commercialista
 - **Executive Summary** - Balance Sheet e P&L summary, indicatori chiave
 - **Checklist Validazione** - Tabella conti tecnici con status colorati
-- **Riconciliazioni Bancarie** - Tabella completa con evidenziazione criticità
+- **Riconciliazioni Bancarie** - Tabella completa con evidenziazione criticitÃ 
 - **Riepilogo IVA** - Saldi IVA con note esplicative
 
 **Caratteristiche**:
@@ -64,8 +64,8 @@
 - **Balance Sheet Summary** - Con evidenziazione Balance Check non bilanciato
 - **Profit & Loss Summary** - Con note su segni negativi
 - **Azioni Immediate** - Checklist prioritizzata con timeline 7-11 giorni
-- **Rischi Identificati** - Tabella rischi con gravità
-- **Raccomandazioni** - NON procedere finché errori non risolti
+- **Rischi Identificati** - Tabella rischi con gravitÃ 
+- **Raccomandazioni** - NON procedere finchÃ© errori non risolti
 
 **Caratteristiche**:
 - Formato Markdown leggibile e convertibile
@@ -125,7 +125,7 @@
 Assets:                 CHF  1,793,244.60
 Liabilities:            CHF   -675,706.81
 Equity:                 CHF   -702,779.98
-Balance Check:          CHF  3,171,731.39  ❌ NON BILANCIATO
+Balance Check:          CHF  3,171,731.39  âŒ NON BILANCIATO
 ```
 
 ### Profit & Loss 2024
@@ -147,7 +147,7 @@ Conti economici:        172
 ```
 1. Konto 1022 Outstanding Receipts:      CHF  130,552.85  (deve essere 0.00)
 2. Konto 1023 Outstanding Payments:      CHF -203,476.65  (deve essere 0.00)
-3. Konto 10901 Liquiditätstransfer:      CHF -375,615.65  (deve essere 0.00)
+3. Konto 10901 LiquiditÃ¤tstransfer:      CHF -375,615.65  (deve essere 0.00)
 4. Konto 1099 Transferkonto:             CHF  -60,842.41  (deve essere 0.00)
 
 TOTALE ANOMALIE DA RICONCILIARE:         CHF  769,487.56
@@ -170,8 +170,8 @@ Top 3 conti critici:
 
 ### IVA
 ```
-Konto 1170 Vorsteuer MWST:               CHF  267,853.01  ✓ OK (da verificare con dichiarazioni)
-Konto 2016 Kreditor MWST:                CHF        0.00  ✓ OK
+Konto 1170 Vorsteuer MWST:               CHF  267,853.01  âœ“ OK (da verificare con dichiarazioni)
+Konto 2016 Kreditor MWST:                CHF        0.00  âœ“ OK
 ```
 
 ---
@@ -253,10 +253,10 @@ python genera-pdf-chiusura-2024.py
 URL:      https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 Database: lapadevadmin-lapa-v2-staging-2406-25408900
 User:     paul@lapa.ch
-Password: lapa201180
+Password: __REDACTED__
 ```
 
-**Connessione**: ✓ Testata e funzionante (UID: 7)
+**Connessione**: âœ“ Testata e funzionante (UID: 7)
 
 ---
 
@@ -285,7 +285,7 @@ TOTALE TEMPO: ~30 minuti
 
 ## PROSSIMI PASSI RACCOMANDATI
 
-### IMMEDIATI (Priorità MASSIMA)
+### IMMEDIATI (PrioritÃ  MASSIMA)
 
 1. **Inviare email a commercialista** con allegati:
    - REPORT-CHIUSURA-2024.xlsx
@@ -299,7 +299,7 @@ TOTALE TEMPO: ~30 minuti
 3. **Avviare riconciliazioni**:
    - Konto 1022 Outstanding Receipts
    - Konto 1023 Outstanding Payments
-   - Konto 10901 Liquiditätstransfer
+   - Konto 10901 LiquiditÃ¤tstransfer
    - Konto 1099 Transferkonto
 
 ### BREVE TERMINE (Entro 7 giorni)
@@ -343,7 +343,7 @@ Prima di considerare chiuso il bilancio 2024:
 
 - [ ] **Konto 1022 Outstanding Receipts = CHF 0.00**
 - [ ] **Konto 1023 Outstanding Payments = CHF 0.00**
-- [ ] **Konto 10901 Liquiditätstransfer = CHF 0.00**
+- [ ] **Konto 10901 LiquiditÃ¤tstransfer = CHF 0.00**
 - [ ] **Konto 1099 Transferkonto = CHF 0.00**
 - [ ] **Konto 1001 Cash = valore realistico (< CHF 10K)**
 - [ ] **Balance Sheet bilanciato (differenza < CHF 0.01)**
@@ -362,12 +362,12 @@ Prima di considerare chiuso il bilancio 2024:
 **Commercialista**
 Patrick Angstmann
 PAGG Treuhand AG
-📧 p.angstmann@pagg.ch
+ðŸ“§ p.angstmann@pagg.ch
 
 **Data Analyst**
 Claude Code
 Lapa Delikatessen - Data Analysis Team
-📊 SQL Queries, Dashboards, Reports
+ðŸ“Š SQL Queries, Dashboards, Reports
 
 ---
 
@@ -410,42 +410,42 @@ Gli script sono modulari e facilmente customizzabili:
 
 ```
 app-hub-platform/
-├── scripts/
-│   ├── odoo-chiusura-2024.py                    (Estrazione dati Odoo)
-│   ├── genera-excel-chiusura-2024.py            (Generatore Excel)
-│   ├── genera-pdf-chiusura-2024.py              (Generatore PDF)
-│   ├── report-chiusura-2024.json                (Dati grezzi JSON)
-│   ├── REPORT-CHIUSURA-2024.xlsx                (Excel professionale)
-│   └── REPORT-CHIUSURA-2024.pdf                 (PDF professionale)
-│
-├── REPORT-CHIUSURA-2024-ERRORI-CRITICI.md       (Analisi errori)
-├── EMAIL-DRAFT-COMMERCIALISTA-CHIUSURA-2024.md  (Draft email)
-└── DELIVERABLE-CHIUSURA-2024-RIEPILOGO.md       (Questo documento)
+â”œâ”€â”€ scripts/
+â”‚   â”œâ”€â”€ odoo-chiusura-2024.py                    (Estrazione dati Odoo)
+â”‚   â”œâ”€â”€ genera-excel-chiusura-2024.py            (Generatore Excel)
+â”‚   â”œâ”€â”€ genera-pdf-chiusura-2024.py              (Generatore PDF)
+â”‚   â”œâ”€â”€ report-chiusura-2024.json                (Dati grezzi JSON)
+â”‚   â”œâ”€â”€ REPORT-CHIUSURA-2024.xlsx                (Excel professionale)
+â”‚   â””â”€â”€ REPORT-CHIUSURA-2024.pdf                 (PDF professionale)
+â”‚
+â”œâ”€â”€ REPORT-CHIUSURA-2024-ERRORI-CRITICI.md       (Analisi errori)
+â”œâ”€â”€ EMAIL-DRAFT-COMMERCIALISTA-CHIUSURA-2024.md  (Draft email)
+â””â”€â”€ DELIVERABLE-CHIUSURA-2024-RIEPILOGO.md       (Questo documento)
 ```
 
 ---
 
 ## STATUS FINALE
 
-**✅ TASK COMPLETATO**
+**âœ… TASK COMPLETATO**
 
 Tutti i deliverable richiesti sono stati generati con successo:
 
-- ✅ Bilancio (Balance Sheet) estratto
-- ✅ Conto Economico (P&L) estratto
-- ✅ Piano dei Conti completo
-- ✅ Riconciliazioni bancarie verificate
-- ✅ Checklist validazione completata
-- ✅ Saldi IVA estratti
-- ✅ Report Excel professionale generato
-- ✅ Report PDF professionale generato
-- ✅ Analisi errori critici documentata
-- ✅ Email draft preparato (3 lingue)
-- ✅ Riepilogo finale creato
+- âœ… Bilancio (Balance Sheet) estratto
+- âœ… Conto Economico (P&L) estratto
+- âœ… Piano dei Conti completo
+- âœ… Riconciliazioni bancarie verificate
+- âœ… Checklist validazione completata
+- âœ… Saldi IVA estratti
+- âœ… Report Excel professionale generato
+- âœ… Report PDF professionale generato
+- âœ… Analisi errori critici documentata
+- âœ… Email draft preparato (3 lingue)
+- âœ… Riepilogo finale creato
 
-**⚠️ ATTENZIONE**
+**âš ï¸ ATTENZIONE**
 
-La chiusura bilancio è **BLOCCATA** da 4 errori critici che devono essere risolti prima di procedere.
+La chiusura bilancio Ã¨ **BLOCCATA** da 4 errori critici che devono essere risolti prima di procedere.
 
 Timeline stimata per risoluzione: **7-11 giorni lavorativi**
 

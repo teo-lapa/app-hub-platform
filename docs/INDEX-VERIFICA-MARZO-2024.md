@@ -1,4 +1,4 @@
-# INDEX - VERIFICA MARZO 2024
+﻿# INDEX - VERIFICA MARZO 2024
 
 Documentazione completa verifica movimenti bancari Marzo 2024 vs Odoo
 
@@ -51,27 +51,27 @@ Documentazione completa verifica movimenti bancari Marzo 2024 vs Odoo
 
 ```
 VERIFICA MARZO 2024
-│
-├── INPUT
-│   ├── Odoo (XML-RPC)
-│   │   ├── Konto 1024: 367 movimenti (CHF 98,263.33)
-│   │   ├── Konto 1025: 51 movimenti (EUR 22,417.33)
-│   │   └── Konto 1026: 176 movimenti (CHF -30,950.09)
-│   │
-│   └── Estratti Conto (JSON)
-│       ├── UBS CHF: 0 movimenti (MANCANTE)
-│       ├── UBS EUR: 0 movimenti (MANCANTE)
-│       └── Credit Suisse: 0 movimenti (MANCANTE)
-│
-├── PROCESSING
-│   ├── Match riga per riga (data + importo)
-│   ├── Identifica discrepanze
-│   └── Genera report
-│
-└── OUTPUT
-    ├── REPORT-MARZO-2024.json (dati completi)
-    ├── REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md (analisi)
-    └── MARZO-2024-TODO.md (azioni richieste)
+â”‚
+â”œâ”€â”€ INPUT
+â”‚   â”œâ”€â”€ Odoo (XML-RPC)
+â”‚   â”‚   â”œâ”€â”€ Konto 1024: 367 movimenti (CHF 98,263.33)
+â”‚   â”‚   â”œâ”€â”€ Konto 1025: 51 movimenti (EUR 22,417.33)
+â”‚   â”‚   â””â”€â”€ Konto 1026: 176 movimenti (CHF -30,950.09)
+â”‚   â”‚
+â”‚   â””â”€â”€ Estratti Conto (JSON)
+â”‚       â”œâ”€â”€ UBS CHF: 0 movimenti (MANCANTE)
+â”‚       â”œâ”€â”€ UBS EUR: 0 movimenti (MANCANTE)
+â”‚       â””â”€â”€ Credit Suisse: 0 movimenti (MANCANTE)
+â”‚
+â”œâ”€â”€ PROCESSING
+â”‚   â”œâ”€â”€ Match riga per riga (data + importo)
+â”‚   â”œâ”€â”€ Identifica discrepanze
+â”‚   â””â”€â”€ Genera report
+â”‚
+â””â”€â”€ OUTPUT
+    â”œâ”€â”€ REPORT-MARZO-2024.json (dati completi)
+    â”œâ”€â”€ REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md (analisi)
+    â””â”€â”€ MARZO-2024-TODO.md (azioni richieste)
 ```
 
 ---
@@ -202,7 +202,7 @@ G --> C
    export ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
    export ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
    export ODOO_USERNAME="apphubplatform@lapa.ch"
-   export ODOO_PASSWORD="apphubplatform2025"
+   export ODOO_PASSWORD="__REDACTED__"
 
    python scripts/verifica-marzo-2024.py
    ```

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Analisi SEO completa dei prodotti e-commerce Odoo
  * Verifica indicizzazione, keywords, meta tags, traduzioni
  */
@@ -8,7 +8,7 @@ import { writeFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -277,15 +277,15 @@ async function analyzeProduct(id: number): Promise<ProductAnalysis> {
 }
 
 async function main() {
-  console.log('🔍 Analisi SEO Prodotti E-commerce LAPA\n');
+  console.log('ðŸ” Analisi SEO Prodotti E-commerce LAPA\n');
   console.log('='.repeat(70));
 
-  console.log('\n🔐 Autenticazione...');
+  console.log('\nðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ OK\n');
+  console.log('âœ… OK\n');
 
   // Fetch tutti i prodotti
-  console.log('📦 Caricamento lista prodotti...');
+  console.log('ðŸ“¦ Caricamento lista prodotti...');
   const productIds = await callOdoo('product.template', 'search', [[]], { limit: 2000 });
   console.log(`   ${productIds.length} prodotti trovati\n`);
 
@@ -293,13 +293,13 @@ async function main() {
 
   for (let i = 0; i < productIds.length; i++) {
     const id = productIds[i];
-    process.stdout.write(`\r📊 Analisi prodotto ${i + 1}/${productIds.length} (ID: ${id})...`);
+    process.stdout.write(`\rðŸ“Š Analisi prodotto ${i + 1}/${productIds.length} (ID: ${id})...`);
 
     try {
       const analysis = await analyzeProduct(id);
       analyses.push(analysis);
     } catch (e: any) {
-      console.log(`\n   ❌ Errore ID ${id}: ${e.message}`);
+      console.log(`\n   âŒ Errore ID ${id}: ${e.message}`);
     }
 
     // Rate limiting
@@ -307,7 +307,7 @@ async function main() {
   }
 
   console.log('\n\n' + '='.repeat(70));
-  console.log('📊 REPORT SEO PRODOTTI');
+  console.log('ðŸ“Š REPORT SEO PRODOTTI');
   console.log('='.repeat(70));
 
   // Statistiche generali
@@ -316,7 +316,7 @@ async function main() {
   const lowScore = analyses.filter(a => a.seoScore < 50);
   const noImages = analyses.filter(a => !a.hasImages);
 
-  console.log(`\n📈 STATISTICHE GENERALI`);
+  console.log(`\nðŸ“ˆ STATISTICHE GENERALI`);
   console.log(`   Totale prodotti: ${analyses.length}`);
   console.log(`   Pubblicati: ${published.length}`);
   console.log(`   Con problemi SEO: ${withIssues.length}`);
@@ -328,16 +328,16 @@ async function main() {
   console.log(`   SEO score medio: ${avgScore.toFixed(1)}/100`);
 
   // Stato traduzioni
-  console.log(`\n🌍 STATO TRADUZIONI`);
+  console.log(`\nðŸŒ STATO TRADUZIONI`);
   for (const lang of LANGUAGES.filter(l => l !== 'it_IT')) {
     const complete = analyses.filter(a => a.translationStatus[lang] === 'complete').length;
     const partial = analyses.filter(a => a.translationStatus[lang] === 'partial').length;
     const missing = analyses.filter(a => a.translationStatus[lang] === 'missing').length;
-    console.log(`   ${lang}: ✅ ${complete} complete | ⚠️ ${partial} parziali | ❌ ${missing} mancanti`);
+    console.log(`   ${lang}: âœ… ${complete} complete | âš ï¸ ${partial} parziali | âŒ ${missing} mancanti`);
   }
 
-  // Problemi SEO più comuni
-  console.log(`\n🔧 PROBLEMI SEO PIÙ COMUNI`);
+  // Problemi SEO piÃ¹ comuni
+  console.log(`\nðŸ”§ PROBLEMI SEO PIÃ™ COMUNI`);
   const issueCount: Record<string, number> = {};
   analyses.forEach(a => {
     a.seoIssues.forEach(issue => {
@@ -357,7 +357,7 @@ async function main() {
     .sort((a, b) => a.seoScore - b.seoScore);
 
   if (critical.length > 0) {
-    console.log(`\n🚨 PRODOTTI CRITICI (pubblicati con SEO score basso)`);
+    console.log(`\nðŸš¨ PRODOTTI CRITICI (pubblicati con SEO score basso)`);
     critical.slice(0, 20).forEach(a => {
       console.log(`   [${a.id}] ${a.name.substring(0, 45)}... (${a.defaultCode})`);
       console.log(`      SEO score: ${a.seoScore}/100 | Problemi: ${a.seoIssues.length} | Immagini: ${a.imageCount}`);
@@ -371,7 +371,7 @@ async function main() {
   );
 
   if (noDescription.length > 0) {
-    console.log(`\n📝 PRODOTTI SENZA DESCRIZIONE ADEGUATA (${noDescription.length})`);
+    console.log(`\nðŸ“ PRODOTTI SENZA DESCRIZIONE ADEGUATA (${noDescription.length})`);
     noDescription.slice(0, 15).forEach(a => {
       console.log(`   [${a.id}] ${a.name.substring(0, 50)}... (${a.defaultCode})`);
     });
@@ -383,10 +383,10 @@ async function main() {
   );
 
   if (missingTranslations.length > 0) {
-    console.log(`\n❌ PRODOTTI PUBBLICATI CON TRADUZIONI MANCANTI (${missingTranslations.length})`);
+    console.log(`\nâŒ PRODOTTI PUBBLICATI CON TRADUZIONI MANCANTI (${missingTranslations.length})`);
     missingTranslations.slice(0, 20).forEach(a => {
       const missing = LANGUAGES.filter(l => l !== 'it_IT' && a.translationStatus[l] === 'missing');
-      console.log(`   [${a.id}] ${a.name.substring(0, 45)}... → manca: ${missing.join(', ')}`);
+      console.log(`   [${a.id}] ${a.name.substring(0, 45)}... â†’ manca: ${missing.join(', ')}`);
     });
   }
 
@@ -397,7 +397,7 @@ async function main() {
     .slice(0, 10);
 
   if (topProducts.length > 0) {
-    console.log(`\n✅ TOP 10 PRODOTTI PER SEO (esempi da seguire)`);
+    console.log(`\nâœ… TOP 10 PRODOTTI PER SEO (esempi da seguire)`);
     topProducts.forEach(a => {
       console.log(`   [${a.id}] ${a.name.substring(0, 50)}... - Score: ${a.seoScore}/100`);
     });
@@ -436,9 +436,9 @@ async function main() {
   };
 
   writeFileSync('data/products-seo-report.json', JSON.stringify(report, null, 2));
-  console.log(`\n💾 Report completo salvato in: data/products-seo-report.json`);
+  console.log(`\nðŸ’¾ Report completo salvato in: data/products-seo-report.json`);
 
-  console.log('\n✅ Analisi completata!');
+  console.log('\nâœ… Analisi completata!');
 }
 
 main().catch(console.error);

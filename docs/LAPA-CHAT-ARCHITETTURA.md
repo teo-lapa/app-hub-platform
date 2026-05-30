@@ -1,8 +1,8 @@
-# LAPA AI Chat Widget - Documentazione Architetturale Completa
+﻿# LAPA AI Chat Widget - Documentazione Architetturale Completa
 
 ## IMPORTANTE - LEGGERE PRIMA DI TUTTO
 
-**Il sistema LAPA Chat è diviso in DUE parti completamente separate:**
+**Il sistema LAPA Chat Ã¨ diviso in DUE parti completamente separate:**
 
 1. **ODOO (lapa.ch)** = Gestisce il **PULSANTE** e l'**ASPETTO VISIVO** della chat
 2. **VERCEL (hub.lapa.ch)** = Gestisce gli **AGENTI AI** e la **LOGICA** della chat
@@ -15,7 +15,7 @@
 
 ### Dove si trova il codice
 
-**Posizione:** Backend Odoo → Sito Web → Sito → Editor HTML/CSS → "Modifica codice intestazione e corpo"
+**Posizione:** Backend Odoo â†’ Sito Web â†’ Sito â†’ Editor HTML/CSS â†’ "Modifica codice intestazione e corpo"
 
 **Oppure via API:**
 - URL: `https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com`
@@ -28,20 +28,20 @@
 URL: https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 Database: lapadevadmin-lapa-v2-main-7268478
 Email: paul@lapa.ch
-Password: lapa201180
+Password: __REDACTED__
 ```
 
 ### Cosa controlla Odoo
 
 | Elemento | Controllato da Odoo | File/Campo |
 |----------|---------------------|------------|
-| Posizione pulsante chat (bottom, right) | ✅ SÌ | `custom_code_footer` |
-| Colore pulsante | ✅ SÌ | `custom_code_footer` |
-| Dimensione pulsante | ✅ SÌ | `custom_code_footer` |
-| Animazione pulsante | ✅ SÌ | `custom_code_footer` |
-| Pulsante Shop (rosso a sinistra) | ✅ SÌ | `custom_code_footer` |
-| Script di tracciamento (LinkedIn, TikTok, etc.) | ✅ SÌ | `custom_code_head` / `custom_code_footer` |
-| Cookie consent (Iubenda) | ✅ SÌ | `custom_code_head` |
+| Posizione pulsante chat (bottom, right) | âœ… SÃŒ | `custom_code_footer` |
+| Colore pulsante | âœ… SÃŒ | `custom_code_footer` |
+| Dimensione pulsante | âœ… SÃŒ | `custom_code_footer` |
+| Animazione pulsante | âœ… SÃŒ | `custom_code_footer` |
+| Pulsante Shop (rosso a sinistra) | âœ… SÃŒ | `custom_code_footer` |
+| Script di tracciamento (LinkedIn, TikTok, etc.) | âœ… SÃŒ | `custom_code_head` / `custom_code_footer` |
+| Cookie consent (Iubenda) | âœ… SÃŒ | `custom_code_head` |
 
 ### Codice attuale nel footer di Odoo
 
@@ -88,7 +88,7 @@ Password: lapa201180
 **METODO 1: Via interfaccia Odoo**
 1. Vai su https://www.lapa.ch (loggato come admin)
 2. Clicca "Sito web" nel menu in alto
-3. Clicca "Sito" → "Editor HTML/CSS"
+3. Clicca "Sito" â†’ "Editor HTML/CSS"
 4. Trova la sezione `<!-- LAPA AI Chat Position Fix -->`
 5. Modifica il valore `bottom: 100px` con quello desiderato
 6. Salva
@@ -104,7 +104,7 @@ const authData = JSON.stringify({
   params: {
     db: 'lapadevadmin-lapa-v2-main-7268478',
     login: 'paul@lapa.ch',
-    password: 'lapa201180'
+    password: '__REDACTED__'
   },
   id: 1
 });
@@ -144,64 +144,64 @@ const updateData = JSON.stringify({
 
 | Elemento | Controllato da Vercel | File |
 |----------|----------------------|------|
-| Logica degli Agenti AI | ✅ SÌ | `lib/lapa-agents/*.ts` |
-| Risposte della chat | ✅ SÌ | `lib/lapa-agents/orchestrator.ts` |
-| API endpoint chat | ✅ SÌ | `app/api/lapa-agents/chat/route.ts` |
-| Interfaccia dentro l'iframe | ✅ SÌ | `app/lapa-ai-agents/widget/page.tsx` |
-| Gestione conversazioni | ✅ SÌ | `lib/lapa-agents/conversation-store.ts` |
-| Analisi allegati | ✅ SÌ | `lib/lapa-agents/attachment-analyzer.ts` |
-| Statistiche | ✅ SÌ | `lib/lapa-agents/stats.ts` |
+| Logica degli Agenti AI | âœ… SÃŒ | `lib/lapa-agents/*.ts` |
+| Risposte della chat | âœ… SÃŒ | `lib/lapa-agents/orchestrator.ts` |
+| API endpoint chat | âœ… SÃŒ | `app/api/lapa-agents/chat/route.ts` |
+| Interfaccia dentro l'iframe | âœ… SÃŒ | `app/lapa-ai-agents/widget/page.tsx` |
+| Gestione conversazioni | âœ… SÃŒ | `lib/lapa-agents/conversation-store.ts` |
+| Analisi allegati | âœ… SÃŒ | `lib/lapa-agents/attachment-analyzer.ts` |
+| Statistiche | âœ… SÃŒ | `lib/lapa-agents/stats.ts` |
 
 ### File principali su Vercel
 
 ```
 lib/lapa-agents/
-├── orchestrator.ts          # Router principale - decide quale agente risponde
-├── orders-agent.ts          # Agente Ordini
-├── invoices-agent.ts        # Agente Fatture
-├── shipping-agent.ts        # Agente Spedizioni
-├── products-agent.ts        # Agente Prodotti
-├── helpdesk-agent.ts        # Agente Supporto
-├── conversation-store.ts    # Salvataggio conversazioni (Vercel KV)
-├── attachment-analyzer.ts   # Analisi immagini/PDF (Gemini)
-└── stats.ts                 # Statistiche e analytics
+â”œâ”€â”€ orchestrator.ts          # Router principale - decide quale agente risponde
+â”œâ”€â”€ orders-agent.ts          # Agente Ordini
+â”œâ”€â”€ invoices-agent.ts        # Agente Fatture
+â”œâ”€â”€ shipping-agent.ts        # Agente Spedizioni
+â”œâ”€â”€ products-agent.ts        # Agente Prodotti
+â”œâ”€â”€ helpdesk-agent.ts        # Agente Supporto
+â”œâ”€â”€ conversation-store.ts    # Salvataggio conversazioni (Vercel KV)
+â”œâ”€â”€ attachment-analyzer.ts   # Analisi immagini/PDF (Gemini)
+â””â”€â”€ stats.ts                 # Statistiche e analytics
 
 app/
-├── api/lapa-agents/chat/route.ts    # Endpoint API principale
-└── lapa-ai-agents/widget/page.tsx   # Interfaccia React della chat
+â”œâ”€â”€ api/lapa-agents/chat/route.ts    # Endpoint API principale
+â””â”€â”€ lapa-ai-agents/widget/page.tsx   # Interfaccia React della chat
 
 public/
-├── lapa-chat-embed.js       # Script embed (NON USATO DA ODOO DIRETTAMENTE)
-└── lapa-ai-widget.js        # Widget standalone
+â”œâ”€â”€ lapa-chat-embed.js       # Script embed (NON USATO DA ODOO DIRETTAMENTE)
+â””â”€â”€ lapa-ai-widget.js        # Widget standalone
 ```
 
 ### Come funziona il flusso
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              ODOO (lapa.ch)                              │
-│                                                                          │
-│  1. Utente visita lapa.ch                                               │
-│  2. Odoo carica il custom_code_footer                                   │
-│  3. Lo script crea il PULSANTE ROSSO in basso a destra                  │
-│  4. Quando l'utente clicca, si apre un IFRAME                           │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ iframe src="https://hub.lapa.ch/lapa-ai-agents/widget"
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           VERCEL (hub.lapa.ch)                           │
-│                                                                          │
-│  5. Vercel serve la pagina widget (React)                               │
-│  6. Utente scrive messaggio                                             │
-│  7. Messaggio inviato a /api/lapa-agents/chat                           │
-│  8. Orchestrator decide quale agente risponde                           │
-│  9. Agente genera risposta (usando Claude AI)                           │
-│  10. Risposta tornata all'iframe                                        │
-│  11. Widget mostra la risposta all'utente                               │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                              ODOO (lapa.ch)                              â”‚
+â”‚                                                                          â”‚
+â”‚  1. Utente visita lapa.ch                                               â”‚
+â”‚  2. Odoo carica il custom_code_footer                                   â”‚
+â”‚  3. Lo script crea il PULSANTE ROSSO in basso a destra                  â”‚
+â”‚  4. Quando l'utente clicca, si apre un IFRAME                           â”‚
+â”‚                                                                          â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                    â”‚
+                                    â”‚ iframe src="https://hub.lapa.ch/lapa-ai-agents/widget"
+                                    â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                           VERCEL (hub.lapa.ch)                           â”‚
+â”‚                                                                          â”‚
+â”‚  5. Vercel serve la pagina widget (React)                               â”‚
+â”‚  6. Utente scrive messaggio                                             â”‚
+â”‚  7. Messaggio inviato a /api/lapa-agents/chat                           â”‚
+â”‚  8. Orchestrator decide quale agente risponde                           â”‚
+â”‚  9. Agente genera risposta (usando Claude AI)                           â”‚
+â”‚  10. Risposta tornata all'iframe                                        â”‚
+â”‚  11. Widget mostra la risposta all'utente                               â”‚
+â”‚                                                                          â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### Come fare deploy su Vercel
@@ -227,25 +227,25 @@ git push origin main
 ## PARTE 3: Cosa Modificare e Dove
 
 ### VOGLIO CAMBIARE LA POSIZIONE DEL PULSANTE
-**→ VAI SU ODOO** (custom_code_footer)
+**â†’ VAI SU ODOO** (custom_code_footer)
 
 ### VOGLIO CAMBIARE IL COLORE DEL PULSANTE
-**→ VAI SU ODOO** (custom_code_footer)
+**â†’ VAI SU ODOO** (custom_code_footer)
 
 ### VOGLIO CAMBIARE COME RISPONDE L'AI
-**→ VAI SU VERCEL** (lib/lapa-agents/orchestrator.ts)
+**â†’ VAI SU VERCEL** (lib/lapa-agents/orchestrator.ts)
 
 ### VOGLIO AGGIUNGERE UN NUOVO AGENTE
-**→ VAI SU VERCEL** (crea nuovo file in lib/lapa-agents/)
+**â†’ VAI SU VERCEL** (crea nuovo file in lib/lapa-agents/)
 
 ### VOGLIO CAMBIARE L'INTERFACCIA DELLA CHAT (dentro la finestra)
-**→ VAI SU VERCEL** (app/lapa-ai-agents/widget/page.tsx)
+**â†’ VAI SU VERCEL** (app/lapa-ai-agents/widget/page.tsx)
 
 ### VOGLIO AGGIUNGERE TRACKING/ANALYTICS
-**→ VAI SU ODOO** (custom_code_head o custom_code_footer)
+**â†’ VAI SU ODOO** (custom_code_head o custom_code_footer)
 
 ### VOGLIO CAMBIARE IL MESSAGGIO DI BENVENUTO
-**→ VAI SU VERCEL** (app/lapa-ai-agents/widget/page.tsx)
+**â†’ VAI SU VERCEL** (app/lapa-ai-agents/widget/page.tsx)
 
 ---
 
@@ -257,7 +257,7 @@ URL Backend: https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/web
 URL Sito: https://www.lapa.ch
 Database: lapadevadmin-lapa-v2-main-7268478
 Email: paul@lapa.ch
-Password: lapa201180
+Password: __REDACTED__
 ```
 
 ### Vercel
@@ -280,9 +280,9 @@ ODOO_API_KEY=9ac3da527ecc3b4e08...     # Per chiamare API Odoo
 
 ## PARTE 5: Risoluzione Problemi Comuni
 
-### Il pulsante della chat è nella posizione sbagliata
+### Il pulsante della chat Ã¨ nella posizione sbagliata
 1. **NON modificare file su Vercel!**
-2. Vai su Odoo → Sito → Editor HTML/CSS
+2. Vai su Odoo â†’ Sito â†’ Editor HTML/CSS
 3. Trova `<!-- LAPA AI Chat Position Fix -->`
 4. Modifica il valore `bottom: XXXpx`
 5. Salva
@@ -298,7 +298,7 @@ ODOO_API_KEY=9ac3da527ecc3b4e08...     # Per chiamare API Odoo
 3. Controlla che non ci siano errori nel custom_code_footer di Odoo
 
 ### La chat mostra l'interfaccia sbagliata
-1. Il problema è su Vercel
+1. Il problema Ã¨ su Vercel
 2. Modifica `app/lapa-ai-agents/widget/page.tsx`
 3. Fai deploy
 
@@ -330,10 +330,10 @@ curl -s "https://hub.lapa.ch/lapa-chat-embed.js" | grep "bottom:"
 
 | Cosa | Dove | Come Accedere |
 |------|------|---------------|
-| **Pulsante chat (posizione, colore, dimensione)** | ODOO | Backend → Sito → Editor HTML/CSS |
-| **Pulsante Shop** | ODOO | Backend → Sito → Editor HTML/CSS |
-| **Tracking (Google, Facebook, TikTok, LinkedIn)** | ODOO | Backend → Sito → Editor HTML/CSS |
-| **Cookie consent** | ODOO | Backend → Sito → Editor HTML/CSS |
+| **Pulsante chat (posizione, colore, dimensione)** | ODOO | Backend â†’ Sito â†’ Editor HTML/CSS |
+| **Pulsante Shop** | ODOO | Backend â†’ Sito â†’ Editor HTML/CSS |
+| **Tracking (Google, Facebook, TikTok, LinkedIn)** | ODOO | Backend â†’ Sito â†’ Editor HTML/CSS |
+| **Cookie consent** | ODOO | Backend â†’ Sito â†’ Editor HTML/CSS |
 | **Agenti AI (logica risposte)** | VERCEL | `lib/lapa-agents/*.ts` |
 | **API chat** | VERCEL | `app/api/lapa-agents/chat/route.ts` |
 | **Interfaccia dentro la chat** | VERCEL | `app/lapa-ai-agents/widget/page.tsx` |

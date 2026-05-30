@@ -1,4 +1,4 @@
-# SOLUZIONE DEFINITIVA - KONTO 1026 CREDIT SUISSE
+﻿# SOLUZIONE DEFINITIVA - KONTO 1026 CREDIT SUISSE
 
 **Data**: 16 Novembre 2025
 **Commercialista**: Analisi Tecnica Backend Specialist
@@ -52,7 +52,7 @@ RIGHE:
   1021 Bank Suspense AVERE:  -132,834.54
 ```
 
-**Errore**: Descrizione generica "azzeramento 2023", ma è del 2024. Importo sospetto, nessuna giustificazione bancaria.
+**Errore**: Descrizione generica "azzeramento 2023", ma Ã¨ del 2024. Importo sospetto, nessuna giustificazione bancaria.
 
 **AZIONE**: ELIMINARE
 
@@ -120,9 +120,9 @@ RIGHE:
 
 **Errore**: Stesso importo del move 95447! Potrebbe essere DUPLICATO.
 
-**NOTA**: La descrizione dice "saldo 1024" (UBS), ma è registrato su 1026 (Credit Suisse)! ERRORE GROSSOLANO.
+**NOTA**: La descrizione dice "saldo 1024" (UBS), ma Ã¨ registrato su 1026 (Credit Suisse)! ERRORE GROSSOLANO.
 
-**AZIONE**: ELIMINARE (è un duplicato e su account sbagliato)
+**AZIONE**: ELIMINARE (Ã¨ un duplicato e su account sbagliato)
 
 ---
 
@@ -171,9 +171,9 @@ Saldo al 31.12.2023 (calcolato da Odoo): CHF 100,903.87
 **SE saldo estratto conto = CHF 10,903.87**:
   - Mantenere move 95447
   - Il saldo Odoo prima della rettifica era -10,000 (errato)
-  - La rettifica è corretta
+  - La rettifica Ã¨ corretta
 
-**SE saldo estratto conto ≠ CHF 10,903.87**:
+**SE saldo estratto conto â‰  CHF 10,903.87**:
   - Eliminare move 95447
   - Creare nuova rettifica con importo corretto
 
@@ -210,7 +210,7 @@ import xmlrpc.client
 ODOO_URL = "https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com"
 ODOO_DB = "lapadevadmin-lapa-v2-staging-2406-25408900"
 ODOO_USER = "paul@lapa.ch"
-ODOO_PASS = "lapa201180"
+ODOO_PASS = "__REDACTED__"
 
 # Connect
 common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common')
@@ -259,14 +259,14 @@ print(f"\nNUOVO SALDO KONTO 1026: CHF {new_balance:,.2f}")
 
 ## DOMANDE PER IL COMMERCIALISTA
 
-1. **Saldo Credit Suisse al 31.12.2023**: Qual è il saldo REALE da estratto conto?
+1. **Saldo Credit Suisse al 31.12.2023**: Qual Ã¨ il saldo REALE da estratto conto?
 
 2. **Saldo atteso CHF 24,897.72**: Da dove viene questo valore?
-   - È il saldo OGGI da estratto conto?
-   - È il saldo target?
-   - È il saldo da bilancio?
+   - Ãˆ il saldo OGGI da estratto conto?
+   - Ãˆ il saldo target?
+   - Ãˆ il saldo da bilancio?
 
-3. **Move 95447**: La rettifica del 31.12.2023 è corretta?
+3. **Move 95447**: La rettifica del 31.12.2023 Ã¨ corretta?
 
 4. **Movimenti clearing**: I molti "Pagamento clearing" da CHF 20,000 sono corretti o duplicati?
 

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Check what's actually on Odoo for article translations
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,13 +48,13 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   // Check article 1 (Post ID 286)
   const postId = 286;
 
-  console.log(`📋 Controllo articolo ID ${postId} in tutte le lingue:\n`);
+  console.log(`ðŸ“‹ Controllo articolo ID ${postId} in tutte le lingue:\n`);
 
   const languages = {
     'it_IT': 'Italiano',
@@ -74,9 +74,9 @@ async function main() {
 
     if (post && post.length > 0) {
       const p = post[0];
-      console.log(`\n📝 Titolo: ${p.name}`);
-      console.log(`\n📄 Sottotitolo: ${p.subtitle || 'N/A'}`);
-      console.log(`\n📖 Contenuto (primi 500 caratteri):`);
+      console.log(`\nðŸ“ Titolo: ${p.name}`);
+      console.log(`\nðŸ“„ Sottotitolo: ${p.subtitle || 'N/A'}`);
+      console.log(`\nðŸ“– Contenuto (primi 500 caratteri):`);
       const content = p.content || '';
       const textContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       console.log(textContent.substring(0, 500) + '...\n');

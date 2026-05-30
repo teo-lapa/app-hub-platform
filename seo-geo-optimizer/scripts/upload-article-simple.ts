@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo SEO+GEO su Odoo - Versione SEMPLICE
  *
  * Rimuove i tag <strong> dall'HTML per evitare frammentazione dei segmenti.
@@ -10,7 +10,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -92,11 +92,11 @@ function extractTexts(html: string): string[] {
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 ${articlePath}\n`);
+  console.log(`ðŸ“„ ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Auth...');
+  console.log('ðŸ” Auth...');
   await authenticate();
 
   const itData = article.translations.it_IT;
@@ -105,7 +105,7 @@ async function uploadArticle(articlePath: string) {
   const cleanItHtml = cleanInlineTags(itData.content_html);
 
   // 1. Crea articolo con HTML pulito
-  console.log('🇮🇹 Creo articolo...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -184,12 +184,12 @@ async function uploadArticle(articlePath: string) {
           [postId], 'content', { [odooLang]: translations }
         ]);
       } catch (e: any) {
-        console.log(`   ❌ ${e.message.substring(0, 60)}`);
+        console.log(`   âŒ ${e.message.substring(0, 60)}`);
       }
     }
   }
 
-  console.log(`\n✅ ID: ${postId}`);
+  console.log(`\nâœ… ID: ${postId}`);
   return postId;
 }
 

@@ -1,4 +1,4 @@
-# VERIFICA MARZO 2024 - README
+﻿# VERIFICA MARZO 2024 - README
 
 Verifica completa riga per riga dei movimenti bancari di **Marzo 2024** confrontando estratti conto vs registrazioni Odoo.
 
@@ -55,15 +55,15 @@ Questo tool **confronta automaticamente** i movimenti bancari di Marzo 2024 tra:
 export ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 export ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 export ODOO_USERNAME="apphubplatform@lapa.ch"
-export ODOO_PASSWORD="apphubplatform2025"
+export ODOO_PASSWORD="__REDACTED__"
 ```
 
 ### File Richiesti
 ```
 data-estratti/
-├── UBS-CHF-2024-CLEAN.json          (Estratto UBS CHF marzo 2024)
-├── UBS-EUR-2024-CLEAN.json          (Estratto UBS EUR marzo 2024)
-└── CREDIT-SUISSE-2024-CLEAN.json    (Estratto Credit Suisse marzo 2024)
+â”œâ”€â”€ UBS-CHF-2024-CLEAN.json          (Estratto UBS CHF marzo 2024)
+â”œâ”€â”€ UBS-EUR-2024-CLEAN.json          (Estratto UBS EUR marzo 2024)
+â””â”€â”€ CREDIT-SUISSE-2024-CLEAN.json    (Estratto Credit Suisse marzo 2024)
 ```
 
 **ATTENZIONE**: Attualmente questi file sono **vuoti**. Servono i PDF originali da parsare.
@@ -185,8 +185,8 @@ $ cat data-estratti/UBS-CHF-2024-CLEAN.json
 
 #### Step 1: Download PDF
 Accedi a:
-- UBS Online Banking → Estratti Conto → Marzo 2024 → Download PDF
-- Credit Suisse Online → Statements → March 2024 → Download PDF
+- UBS Online Banking â†’ Estratti Conto â†’ Marzo 2024 â†’ Download PDF
+- Credit Suisse Online â†’ Statements â†’ March 2024 â†’ Download PDF
 
 Salva come:
 ```
@@ -271,7 +271,7 @@ Anche senza estratti, l'analisi Odoo ha identificato **3 movimenti critici**:
 **Soluzione**:
 ```bash
 export ODOO_USERNAME="apphubplatform@lapa.ch"
-export ODOO_PASSWORD="apphubplatform2025"
+export ODOO_PASSWORD="__REDACTED__"
 ```
 
 ### Errore: "File JSON vuoto"
@@ -324,29 +324,29 @@ if abs(json_mov['amount'] - odoo_mov['amount']) < Decimal('0.10'):
 
 ```
 VERIFICA MARZO 2024
-│
-├── INPUT
-│   ├── Odoo (XML-RPC)
-│   │   └── account.move.line (periodo 01-31/03/2024)
-│   │
-│   └── Estratti Conto (JSON)
-│       └── UBS-CHF, UBS-EUR, Credit Suisse
-│
-├── PROCESSING
-│   ├── Matching Engine
-│   │   ├── Data + Importo (exact match)
-│   │   ├── Fuzzy match descrizioni
-│   │   └── Tolleranza centesimi
-│   │
-│   └── Analytics
-│       ├── Totali per konto
-│       ├── Discrepanze
-│       └── Movimenti critici
-│
-└── OUTPUT
-    ├── JSON Report (machine-readable)
-    ├── Markdown Summary (human-readable)
-    └── TODO List (actionable)
+â”‚
+â”œâ”€â”€ INPUT
+â”‚   â”œâ”€â”€ Odoo (XML-RPC)
+â”‚   â”‚   â””â”€â”€ account.move.line (periodo 01-31/03/2024)
+â”‚   â”‚
+â”‚   â””â”€â”€ Estratti Conto (JSON)
+â”‚       â””â”€â”€ UBS-CHF, UBS-EUR, Credit Suisse
+â”‚
+â”œâ”€â”€ PROCESSING
+â”‚   â”œâ”€â”€ Matching Engine
+â”‚   â”‚   â”œâ”€â”€ Data + Importo (exact match)
+â”‚   â”‚   â”œâ”€â”€ Fuzzy match descrizioni
+â”‚   â”‚   â””â”€â”€ Tolleranza centesimi
+â”‚   â”‚
+â”‚   â””â”€â”€ Analytics
+â”‚       â”œâ”€â”€ Totali per konto
+â”‚       â”œâ”€â”€ Discrepanze
+â”‚       â””â”€â”€ Movimenti critici
+â”‚
+â””â”€â”€ OUTPUT
+    â”œâ”€â”€ JSON Report (machine-readable)
+    â”œâ”€â”€ Markdown Summary (human-readable)
+    â””â”€â”€ TODO List (actionable)
 ```
 
 ---
@@ -378,7 +378,7 @@ gh issue create --title "Discrepanza Konto 1024 - Marzo 2024" \
 ### 4. Automazione
 Aggiungi a cron per esecuzione automatica:
 ```bash
-# Ogni 1° del mese verifica mese precedente
+# Ogni 1Â° del mese verifica mese precedente
 0 9 1 * * cd /path/to/app && ./run-verifica-prev-month.sh
 ```
 

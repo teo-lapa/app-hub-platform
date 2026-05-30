@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Check an existing article that works properly
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,11 +48,11 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   // Get posts that are NOT our new ones (IDs < 300)
-  console.log('📋 Cerco articoli esistenti che funzionano...\n');
+  console.log('ðŸ“‹ Cerco articoli esistenti che funzionano...\n');
 
   const oldPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4], ['id', '<', 300]],
@@ -71,13 +71,13 @@ async function main() {
 
   // Check the first old post
   const testPostId = oldPosts[0].id;
-  console.log(`\n📋 Controllo articolo ID ${testPostId}:\n`);
+  console.log(`\nðŸ“‹ Controllo articolo ID ${testPostId}:\n`);
 
   const languages = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪',
-    'fr_CH': 'Francese 🇫🇷',
-    'en_US': 'Inglese 🇬🇧'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+    'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {

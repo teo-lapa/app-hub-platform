@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo con traduzioni al 100%
  * Versione 7: Matching intelligente per tabelle, liste e tag inline
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -121,7 +121,7 @@ function extractInlineTags(html: string): Map<string, string[]> {
 }
 
 /**
- * Matching intelligente che combina più strategie
+ * Matching intelligente che combina piÃ¹ strategie
  */
 function findTranslationSmart(
   segment: string,
@@ -165,8 +165,8 @@ function findTranslationSmart(
   }
 
   // Strategia 3: Matching per liste (elementi che iniziano con emoji o bullet)
-  if (seg.match(/^(✅|❌|🍷|👉|🛡️|📧|📞|🌐|-|\d+\.)\s/)) {
-    const prefix = seg.match(/^(✅|❌|🍷|👉|🛡️|📧|📞|🌐|-|\d+\.)\s/)?.[0];
+  if (seg.match(/^(âœ…|âŒ|ðŸ·|ðŸ‘‰|ðŸ›¡ï¸|ðŸ“§|ðŸ“ž|ðŸŒ|-|\d+\.)\s/)) {
+    const prefix = seg.match(/^(âœ…|âŒ|ðŸ·|ðŸ‘‰|ðŸ›¡ï¸|ðŸ“§|ðŸ“ž|ðŸŒ|-|\d+\.)\s/)?.[0];
     if (prefix) {
       // Trova tutte le liste con lo stesso prefix
       const itLists = itHtml.match(new RegExp(`${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n<]+`, 'g')) || [];
@@ -250,18 +250,18 @@ function findTranslationSmart(
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -276,7 +276,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   ID: ${postId}\n`);
 
   // 2. Traduci campi semplici
-  console.log('📝 Traduco campi...');
+  console.log('ðŸ“ Traduco campi...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang];
@@ -289,11 +289,11 @@ async function uploadArticle(articlePath: string) {
       website_meta_description: langData.meta.description,
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
   // 3. Leggi segmenti
-  console.log('\n📖 Leggo segmenti...');
+  console.log('\nðŸ“– Leggo segmenti...');
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData?.[0]?.length) {
@@ -305,7 +305,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   ${sources.length} segmenti`);
 
   // Pre-estrai elementi per matching veloce
-  console.log('\n🔍 Analizzo struttura HTML...');
+  console.log('\nðŸ” Analizzo struttura HTML...');
   const itTableCells = extractTableCells(itData.content_html);
   const itInlineTags = extractInlineTags(itData.content_html);
 
@@ -325,7 +325,7 @@ async function uploadArticle(articlePath: string) {
   const itHeadings = extractHeadings(itData.content_html);
 
   // 4. Traduci per ogni lingua
-  console.log('\n🌍 Traduco contenuto...\n');
+  console.log('\nðŸŒ Traduco contenuto...\n');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -375,20 +375,20 @@ async function uploadArticle(articlePath: string) {
         await callOdoo('blog.post', 'update_field_translations', [
           [postId], 'content', { [odooLang]: translations }
         ]);
-        console.log(`     ✅ OK`);
+        console.log(`     âœ… OK`);
       } catch (e: any) {
-        console.log(`     ❌ ${e.message.substring(0, 80)}`);
+        console.log(`     âŒ ${e.message.substring(0, 80)}`);
       }
     }
   }
 
-  console.log(`\n✅ ID: ${postId}`);
+  console.log(`\nâœ… ID: ${postId}`);
   return postId;
 }
 
 const articlePath = process.argv[2];
 if (!articlePath) {
-  console.error('❌ Specifica il path dell\'articolo');
+  console.error('âŒ Specifica il path dell\'articolo');
   console.error('Uso: npx tsx upload-article-v7.ts <path>');
   process.exit(1);
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script per creare aliquote IVA intracomunitarie per ItaEmpire S.r.l.
  *
  * Crea due aliquote per operazioni B2B Italia -> UE:
@@ -9,7 +9,7 @@
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 // ID dell'azienda ItaEmpire S.r.l.
 const ITAEMPIRE_COMPANY_ID = 6;
@@ -44,7 +44,7 @@ const TAXES_TO_CREATE = [
 ];
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -74,7 +74,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -108,7 +108,7 @@ async function callOdoo(cookies: string, model: string, method: string, args: an
 }
 
 async function findTaxGroupForCompany(cookies: string, companyId: number): Promise<number | null> {
-  console.log('🔍 Ricerca gruppo fiscale italiano per ItaEmpire...');
+  console.log('ðŸ” Ricerca gruppo fiscale italiano per ItaEmpire...');
 
   // ID Italia = 109 (verificato)
   const ITALY_COUNTRY_ID = 109;
@@ -121,9 +121,9 @@ async function findTaxGroupForCompany(cookies: string, companyId: number): Promi
     limit: 50
   });
 
-  console.log(`\n📋 Gruppi fiscali italiani disponibili (${groups.length}):`);
+  console.log(`\nðŸ“‹ Gruppi fiscali italiani disponibili (${groups.length}):`);
   groups.forEach((g: any) => {
-    console.log(`   • ${g.name} (ID: ${g.id})`);
+    console.log(`   â€¢ ${g.name} (ID: ${g.id})`);
   });
 
   // Cerca "Fuori Campo IVA" - usato per le aliquote 0% esistenti
@@ -132,7 +132,7 @@ async function findTaxGroupForCompany(cookies: string, companyId: number): Promi
   );
 
   if (fuoriCampoGroup) {
-    console.log(`\n✅ Gruppo trovato: ${fuoriCampoGroup.name} (ID: ${fuoriCampoGroup.id})\n`);
+    console.log(`\nâœ… Gruppo trovato: ${fuoriCampoGroup.name} (ID: ${fuoriCampoGroup.id})\n`);
     return fuoriCampoGroup.id;
   }
 
@@ -143,16 +143,16 @@ async function findTaxGroupForCompany(cookies: string, companyId: number): Promi
   );
 
   if (esclusoGroup) {
-    console.log(`\n✅ Gruppo trovato: ${esclusoGroup.name} (ID: ${esclusoGroup.id})\n`);
+    console.log(`\nâœ… Gruppo trovato: ${esclusoGroup.name} (ID: ${esclusoGroup.id})\n`);
     return esclusoGroup.id;
   }
 
-  console.log('\n⚠️  Nessun gruppo fiscale 0% trovato, userò "Fuori Campo IVA" (ID: 119)\n');
+  console.log('\nâš ï¸  Nessun gruppo fiscale 0% trovato, userÃ² "Fuori Campo IVA" (ID: 119)\n');
   return 119; // Fallback hardcoded
 }
 
 async function checkExistingTaxes(cookies: string, companyId: number): Promise<any[]> {
-  console.log('🔍 Verifica aliquote esistenti per ItaEmpire...');
+  console.log('ðŸ” Verifica aliquote esistenti per ItaEmpire...');
 
   const existingTaxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
     ['company_id', '=', companyId],
@@ -164,9 +164,9 @@ async function checkExistingTaxes(cookies: string, companyId: number): Promise<a
   });
 
   if (existingTaxes.length > 0) {
-    console.log('\n📋 Aliquote 0% vendita esistenti per ItaEmpire:');
+    console.log('\nðŸ“‹ Aliquote 0% vendita esistenti per ItaEmpire:');
     existingTaxes.forEach((t: any) => {
-      console.log(`   • ${t.name} - "${t.description || 'nessuna descrizione'}"`);
+      console.log(`   â€¢ ${t.name} - "${t.description || 'nessuna descrizione'}"`);
     });
     console.log('');
   }
@@ -175,7 +175,7 @@ async function checkExistingTaxes(cookies: string, companyId: number): Promise<a
 }
 
 async function createTax(cookies: string, taxData: any, taxGroupId: number | null): Promise<number> {
-  console.log(`\n📝 Creazione aliquota: ${taxData.name}`);
+  console.log(`\nðŸ“ Creazione aliquota: ${taxData.name}`);
 
   const values: any = {
     ...taxData
@@ -187,12 +187,12 @@ async function createTax(cookies: string, taxData: any, taxGroupId: number | nul
 
   const taxId = await callOdoo(cookies, 'account.tax', 'create', [values]);
 
-  console.log(`   ✅ Creata con ID: ${taxId}`);
+  console.log(`   âœ… Creata con ID: ${taxId}`);
   return taxId;
 }
 
 async function deleteTaxesFromWrongCompany(cookies: string): Promise<void> {
-  console.log('🗑️  Eliminazione aliquote create erroneamente per LAPA GmbH...');
+  console.log('ðŸ—‘ï¸  Eliminazione aliquote create erroneamente per LAPA GmbH...');
 
   // Trova le aliquote create per errore
   const wrongTaxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
@@ -206,12 +206,12 @@ async function deleteTaxesFromWrongCompany(cookies: string): Promise<void> {
   if (wrongTaxes.length > 0) {
     console.log('   Aliquote da eliminare:');
     for (const tax of wrongTaxes) {
-      console.log(`   • ${tax.name} (ID: ${tax.id})`);
+      console.log(`   â€¢ ${tax.name} (ID: ${tax.id})`);
       try {
         await callOdoo(cookies, 'account.tax', 'unlink', [[tax.id]]);
-        console.log(`     ✅ Eliminata`);
+        console.log(`     âœ… Eliminata`);
       } catch (error: any) {
-        console.log(`     ⚠️  Non eliminata: ${error.message}`);
+        console.log(`     âš ï¸  Non eliminata: ${error.message}`);
       }
     }
   } else {
@@ -221,9 +221,9 @@ async function deleteTaxesFromWrongCompany(cookies: string): Promise<void> {
 }
 
 async function verifyTaxes(cookies: string, taxIds: number[]): Promise<void> {
-  console.log('\n═══════════════════════════════════════════════════════════════════');
-  console.log('🔍 VERIFICA FINALE');
-  console.log('═══════════════════════════════════════════════════════════════════\n');
+  console.log('\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+  console.log('ðŸ” VERIFICA FINALE');
+  console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
   const taxes = await callOdoo(cookies, 'account.tax', 'read', [taxIds], {
     fields: [
@@ -234,7 +234,7 @@ async function verifyTaxes(cookies: string, taxIds: number[]): Promise<void> {
   });
 
   taxes.forEach((tax: any) => {
-    console.log(`📋 ${tax.name}`);
+    console.log(`ðŸ“‹ ${tax.name}`);
     console.log(`   ID: ${tax.id}`);
     console.log(`   Azienda: ${tax.company_id ? tax.company_id[1] : 'N/A'}`);
     console.log(`   Aliquota: ${tax.amount}%`);
@@ -243,7 +243,7 @@ async function verifyTaxes(cookies: string, taxIds: number[]): Promise<void> {
     console.log(`   Codice esenzione: ${tax.l10n_it_exempt_reason || 'N/A'}`);
     console.log(`   Riferimento legge: ${tax.l10n_it_law_reference || 'N/A'}`);
     console.log(`   Gruppo fiscale: ${tax.tax_group_id ? tax.tax_group_id[1] : 'N/A'}`);
-    console.log(`   Attiva: ${tax.active ? 'Sì' : 'No'}`);
+    console.log(`   Attiva: ${tax.active ? 'SÃ¬' : 'No'}`);
     console.log('');
   });
 }
@@ -262,14 +262,14 @@ async function main() {
     const existingTaxes = await checkExistingTaxes(cookies, ITAEMPIRE_COMPANY_ID);
 
     // 3. Crea le nuove aliquote
-    console.log('\n═══════════════════════════════════════════════════════════════════');
-    console.log('🔄 CREAZIONE ALIQUOTE INTRACOMUNITARIE PER ITAEMPIRE S.R.L.');
-    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ”„ CREAZIONE ALIQUOTE INTRACOMUNITARIE PER ITAEMPIRE S.R.L.');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
 
     const createdTaxIds: number[] = [];
 
     for (const taxData of TAXES_TO_CREATE) {
-      // Verifica se esiste già
+      // Verifica se esiste giÃ 
       const exists = existingTaxes.find((t: any) =>
         t.name === taxData.name ||
         (t.name.includes('Art. 41') && taxData.name.includes('Art. 41')) ||
@@ -277,7 +277,7 @@ async function main() {
       );
 
       if (exists) {
-        console.log(`\n⚠️  Aliquota "${taxData.name}" già esistente (ID: ${exists.id})`);
+        console.log(`\nâš ï¸  Aliquota "${taxData.name}" giÃ  esistente (ID: ${exists.id})`);
         createdTaxIds.push(exists.id);
       } else {
         const taxId = await createTax(cookies, taxData, taxGroupId);
@@ -288,19 +288,19 @@ async function main() {
     // 4. Verifica finale
     await verifyTaxes(cookies, createdTaxIds);
 
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('✅ ALIQUOTE IVA INTRACOMUNITARIE CREATE PER ITAEMPIRE S.R.L.!');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('âœ… ALIQUOTE IVA INTRACOMUNITARIE CREATE PER ITAEMPIRE S.R.L.!');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-    console.log('📌 PROSSIMI PASSI:');
-    console.log('   1. Vai in Odoo → Contabilità → Configurazione → Imposte');
+    console.log('ðŸ“Œ PROSSIMI PASSI:');
+    console.log('   1. Vai in Odoo â†’ ContabilitÃ  â†’ Configurazione â†’ Imposte');
     console.log('   2. Assicurati di essere loggato come ItaEmpire S.r.l.');
     console.log('   3. Verifica le nuove aliquote "IVA 0% Intra UE"');
     console.log('   4. Assegna le aliquote ai prodotti/clienti UE con VAT valido (VIES)');
     console.log('');
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

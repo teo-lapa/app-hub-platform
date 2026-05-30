@@ -1,11 +1,11 @@
-/**
- * Debug: mostra i segmenti di Odoo per capire perché l'H1 non viene tradotto
+﻿/**
+ * Debug: mostra i segmenti di Odoo per capire perchÃ© l'H1 non viene tradotto
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -46,7 +46,7 @@ async function callOdoo(model, method, args, kwargs = {}) {
 async function main() {
   const postId = 175;
 
-  console.log(`📖 SEGMENTI ARTICOLO ${postId}\n`);
+  console.log(`ðŸ“– SEGMENTI ARTICOLO ${postId}\n`);
 
   await authenticate();
 
@@ -64,7 +64,7 @@ async function main() {
   }
 
   // Cerca segmenti che contengono "Burrata di Andria"
-  console.log('\n🔍 Segmenti che contengono "Burrata di Andria DOP":\n');
+  console.log('\nðŸ” Segmenti che contengono "Burrata di Andria DOP":\n');
   const h1Segments = sources.filter(s => s.includes('Burrata di Andria DOP'));
   h1Segments.forEach((seg, i) => {
     console.log(`[${i+1}] ${seg}`);

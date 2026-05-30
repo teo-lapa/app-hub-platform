@@ -31,26 +31,34 @@ export function VideoPreviewPiP({
   const [isVideoReady, setIsVideoReady] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.onloadedmetadata = () => {
-        setIsVideoReady(true);
-        // Explicitly play the video to ensure it starts
-        videoRef.current?.play().catch(err => {
-          console.warn('[VideoPreviewPiP] Could not autoplay video:', err);
-        });
-      };
-      // Also try to play immediately
-      videoRef.current.play().catch(() => {
-        // Ignore - will play after metadata loads
-      });
+    const video = videoRef.current;
+    if (!video || !stream) {
+      setIsVideoReady(false);
+      return;
     }
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    video.srcObject = stream;
+    const markReady = () => {
+      setIsVideoReady(true);
+      video.play().catch(err => {
+        console.warn('[VideoPreviewPiP] Could not autoplay video:', err);
+      });
     };
-  }, [stream]);
+    video.addEventListener('loadedmetadata', markReady);
+    video.addEventListener('playing', markReady);
+    // Se i metadati sono gia' pronti (stream getUserMedia), l'evento puo' essere
+    // gia' scattato: forziamo subito lo stato per non lasciare l'overlay nero.
+    if (video.readyState >= 1) markReady();
+    video.play().catch(() => {
+      // Ignore - will play after metadata loads
+    });
+    return () => {
+      video.removeEventListener('loadedmetadata', markReady);
+      video.removeEventListener('playing', markReady);
+      video.srcObject = null;
+    };
+    // minimized incluso: quando si riapre il PiP il <video> viene rimontato
+    // e va riassegnato lo stream.
+  }, [stream, minimized]);
 
   if (!stream || !isRecording) {
     return null;

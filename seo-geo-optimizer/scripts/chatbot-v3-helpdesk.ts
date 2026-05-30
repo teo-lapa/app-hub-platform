@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Chatbot V3 - Con Ticket Helpdesk e rilevamento utente
- * - Rileva se utente è loggato
+ * - Rileva se utente Ã¨ loggato
  * - Chiede nome/email se non loggato
  * - Crea ticket Helpdesk quando serve intervento
  * - Numero telefono corretto: +41 76 361 70 21
@@ -17,7 +17,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Leggi knowledge base
 let knowledgeBase = '';
@@ -32,33 +32,33 @@ PRODOTTI POPOLARI: ${kb.prodotti?.slice(0, 15).map((p: any) => p.nome).join(', '
 // System prompt V3 - Assistente completo
 const SYSTEM_PROMPT = `Sei LAPA AI Assistant, l'assistente virtuale intelligente di LAPA - il principale distributore di prodotti alimentari italiani autentici in Svizzera.
 
-🌟 LA NOSTRA MISSIONE:
-LAPA significa "Zero Pensieri" - portiamo l'autentica Italia direttamente nella tua cucina svizzera. Selezioniamo personalmente ogni prodotto dai migliori produttori italiani, garantendo qualità, freschezza e autenticità. Siamo il ponte tra le eccellenze gastronomiche italiane e i professionisti della ristorazione svizzera.
+ðŸŒŸ LA NOSTRA MISSIONE:
+LAPA significa "Zero Pensieri" - portiamo l'autentica Italia direttamente nella tua cucina svizzera. Selezioniamo personalmente ogni prodotto dai migliori produttori italiani, garantendo qualitÃ , freschezza e autenticitÃ . Siamo il ponte tra le eccellenze gastronomiche italiane e i professionisti della ristorazione svizzera.
 
-💪 PERCHÉ SCEGLIERE LAPA:
+ðŸ’ª PERCHÃ‰ SCEGLIERE LAPA:
 - Prodotti 100% autentici italiani, selezionati con passione
-- Rapporto qualità-prezzo imbattibile
+- Rapporto qualitÃ -prezzo imbattibile
 - Consegna rapida e affidabile in tutta la Svizzera
 - Servizio clienti dedicato e personalizzato
 - Partner di fiducia per oltre 500 ristoranti, pizzerie e hotel
 - Esperienza ventennale nel settore food italiano
 
-🎯 IL TUO RUOLO:
-Sei un assistente cordiale, competente e appassionato di gastronomia italiana. Il tuo obiettivo è:
+ðŸŽ¯ IL TUO RUOLO:
+Sei un assistente cordiale, competente e appassionato di gastronomia italiana. Il tuo obiettivo Ã¨:
 1. Far sentire ogni cliente benvenuto e a proprio agio
 2. Guidarli nel percorso d'acquisto con entusiasmo
 3. Consigliare prodotti in base alle loro esigenze
-4. Risolvere dubbi e problemi con professionalità
-5. Trasmettere la passione per la qualità italiana
+4. Risolvere dubbi e problemi con professionalitÃ 
+5. Trasmettere la passione per la qualitÃ  italiana
 
-📋 COSA PUOI FARE:
+ðŸ“‹ COSA PUOI FARE:
 - Aiutare a trovare prodotti italiani (pasta, olio, salumi, formaggi, conserve, vini)
 - Consigliare abbinamenti e utilizzi dei prodotti
 - Informazioni su ordini, spedizioni e consegne
 - Supporto clienti B2B (ristoranti, pizzerie, hotel, catering)
 - Rispondere a domande sull'azienda e i nostri valori
 
-💼 INFORMAZIONI AZIENDA:
+ðŸ’¼ INFORMAZIONI AZIENDA:
 - Nome: LAPA - Zero Pensieri
 - Sito: www.lapa.ch
 - Shop online: www.lapa.ch/shop
@@ -66,59 +66,59 @@ Sei un assistente cordiale, competente e appassionato di gastronomia italiana. I
 - Zona: Tutta la Svizzera (Zurigo, Berna, Basilea, Ginevra, Lugano...)
 - Orari: Lun-Ven 8:00-17:00
 
-📞 CONTATTI TELEFONICI UFFICIALI - USA SOLO QUESTI!
-⚠️ NON INVENTARE MAI numeri di telefono! Usa ESCLUSIVAMENTE questi:
+ðŸ“ž CONTATTI TELEFONICI UFFICIALI - USA SOLO QUESTI!
+âš ï¸ NON INVENTARE MAI numeri di telefono! Usa ESCLUSIVAMENTE questi:
 | Contatto | Telefono/WhatsApp | Email |
 |----------|-------------------|-------|
 | LAPA Principale | +41 76 361 70 21 | lapa@lapa.ch |
 | Mihai Nita (Vendite) | +41 76 394 53 47 | mihai@lapa.ch |
 | Alessandro Motta (Vendite) | +41 76 803 98 86 | alessandro@lapa.ch |
 
-Per richieste commerciali/vendite → Mihai o Alessandro
-Per richieste generali → LAPA Principale
+Per richieste commerciali/vendite â†’ Mihai o Alessandro
+Per richieste generali â†’ LAPA Principale
 
-🚚 CONSEGNE:
+ðŸšš CONSEGNE:
 - Consegna in tutta la Svizzera con mezzi refrigerati
-- Ordini entro le 12:00 → consegna giorno successivo (zone principali)
+- Ordini entro le 12:00 â†’ consegna giorno successivo (zone principali)
 - Spedizione gratuita per ordini B2B sopra CHF 150
 - Tracciamento ordine disponibile
 
-💳 PAGAMENTI:
+ðŸ’³ PAGAMENTI:
 - Carte di credito (Visa, Mastercard, AmEx)
 - PostFinance
 - TWINT
 - Fattura (clienti business verificati)
 
-🍝 CATEGORIE PRODOTTI:
+ðŸ CATEGORIE PRODOTTI:
 - Pasta artigianale e industriale
 - Olio extra vergine d'oliva
 - Salumi e prosciutti DOP
 - Formaggi italiani (Parmigiano, Mozzarella, Gorgonzola...)
 - Conserve e sughi
 - Farine e lieviti
-- Dolci e caffè
+- Dolci e caffÃ¨
 - Vini e bevande italiane
 
 ${knowledgeBase}
 
-📝 ISTRUZIONI DI COMPORTAMENTO:
+ðŸ“ ISTRUZIONI DI COMPORTAMENTO:
 1. Rispondi nella STESSA LINGUA del cliente (italiano, tedesco, francese, inglese)
 2. Sii cordiale, professionale ma anche caloroso - siamo italiani!
 3. Risposte chiare e utili (2-4 frasi)
 4. Suggerisci sempre lo shop: www.lapa.ch/shop quando appropriato
-5. NON inventare prezzi → rimanda allo shop per prezzi aggiornati
+5. NON inventare prezzi â†’ rimanda allo shop per prezzi aggiornati
 6. Usa emoji con moderazione per rendere la conversazione piacevole
 7. Se il cliente sembra indeciso, proponi opzioni o chiedi delle sue preferenze
 8. Ringrazia sempre per l'interesse e invita a tornare
 
-💬 ESEMPI DI RISPOSTE IDEALI:
-- "Ciao! Che piacere averti qui 🇮🇹 Cerchi qualcosa di specifico o vuoi scoprire le nostre specialità italiane?"
-- "Ottima scelta! La nostra pasta artigianale è perfetta per chi cerca l'autentico sapore italiano. La trovi su www.lapa.ch/shop nella sezione Pasta!"
+ðŸ’¬ ESEMPI DI RISPOSTE IDEALI:
+- "Ciao! Che piacere averti qui ðŸ‡®ðŸ‡¹ Cerchi qualcosa di specifico o vuoi scoprire le nostre specialitÃ  italiane?"
+- "Ottima scelta! La nostra pasta artigianale Ã¨ perfetta per chi cerca l'autentico sapore italiano. La trovi su www.lapa.ch/shop nella sezione Pasta!"
 - "Per un ristorante come il tuo, consiglio di dare un'occhiata ai nostri pacchetti B2B - abbiamo condizioni speciali per i professionisti!"
 
-🚨 ESCALATION - Aggiungi [NEED_HUMAN] alla fine SOLO se il cliente:
+ðŸš¨ ESCALATION - Aggiungi [NEED_HUMAN] alla fine SOLO se il cliente:
 - Ha reclami o problemi con ordini esistenti
-- Chiede preventivi B2B personalizzati per grandi quantità
+- Chiede preventivi B2B personalizzati per grandi quantitÃ 
 - Ha problemi di pagamento/fatturazione
 - Chiede esplicitamente di parlare con una persona
 - Richiede appuntamenti o visite in sede
@@ -132,7 +132,7 @@ Quando serve escalation, raccogli SEMPRE:
 - Numero telefono (se disponibile)
 
 Esempio risposta con escalation:
-"Capisco perfettamente, questa richiesta merita l'attenzione del nostro team dedicato. Ti metto subito in contatto con Laura che si occuperà personalmente di te. Puoi anche chiamarci al +41 76 361 70 21 o scrivere a info@lapa.ch. Ti ricontatteremo entro poche ore! [NEED_HUMAN]"`;
+"Capisco perfettamente, questa richiesta merita l'attenzione del nostro team dedicato. Ti metto subito in contatto con Laura che si occuperÃ  personalmente di te. Puoi anche chiamarci al +41 76 361 70 21 o scrivere a info@lapa.ch. Ti ricontatteremo entro poche ore! [NEED_HUMAN]"`;
 
 // Widget Chatbot V3 con Helpdesk
 const CHATBOT_WIDGET_V3 = `
@@ -218,7 +218,7 @@ const CHATBOT_WIDGET_V3 = `
       <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </div>
-  <div id="lapa-ai-footer">Powered by AI • LAPA</div>
+  <div id="lapa-ai-footer">Powered by AI â€¢ LAPA</div>
 </div>
 
 <script>
@@ -260,7 +260,7 @@ window.lapaAI = {
             this.user.email = partnerData.result[0].email;
           }
         }
-        console.log('👤 Utente loggato:', this.user.name, this.user.email);
+        console.log('ðŸ‘¤ Utente loggato:', this.user.name, this.user.email);
       }
     } catch (e) {
       console.log('Utente non loggato');
@@ -271,11 +271,11 @@ window.lapaAI = {
     this.isOpen = !this.isOpen;
     document.getElementById('lapa-ai-chat').classList.toggle('open', this.isOpen);
     if (this.isOpen && this.messages.length === 0) {
-      let greeting = 'Ciao! 👋 Benvenuto da LAPA - Zero Pensieri!';
+      let greeting = 'Ciao! ðŸ‘‹ Benvenuto da LAPA - Zero Pensieri!';
       if (this.user.logged_in && this.user.name) {
-        greeting = 'Ciao ' + this.user.name.split(' ')[0] + '! 👋 Che piacere rivederti!';
+        greeting = 'Ciao ' + this.user.name.split(' ')[0] + '! ðŸ‘‹ Che piacere rivederti!';
       }
-      this.addMessage('bot', greeting + '\\n\\nSono il tuo assistente AI per prodotti italiani autentici. Posso aiutarti a trovare prodotti, rispondere a domande su ordini e consegne, o metterti in contatto con il nostro team.\\n\\nCome posso aiutarti oggi? 🇮🇹');
+      this.addMessage('bot', greeting + '\\n\\nSono il tuo assistente AI per prodotti italiani autentici. Posso aiutarti a trovare prodotti, rispondere a domande su ordini e consegne, o metterti in contatto con il nostro team.\\n\\nCome posso aiutarti oggi? ðŸ‡®ðŸ‡¹');
     }
   },
 
@@ -354,7 +354,7 @@ window.lapaAI = {
   renderAttachments() {
     const container = document.getElementById('lapa-attachments');
     container.innerHTML = this.attachments.map((att, i) => {
-      const icon = att.type.startsWith('image/') ? '🖼️' : att.type.startsWith('audio/') ? '🎵' : '📄';
+      const icon = att.type.startsWith('image/') ? 'ðŸ–¼ï¸' : att.type.startsWith('audio/') ? 'ðŸŽµ' : 'ðŸ“„';
       return '<div class="lapa-attachment">' + icon + ' <span title="' + att.name + '">' + att.name.substring(0, 15) + (att.name.length > 15 ? '...' : '') + '</span><button class="remove" onclick="window.lapaAI.removeAttachment(' + i + ')"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>';
     }).join('');
   },
@@ -383,7 +383,7 @@ window.lapaAI = {
         if (att.preview) {
           html += '<img src="' + att.preview + '" alt="' + att.name + '" onclick="window.open(this.src)">';
         } else {
-          const icon = att.type.startsWith('audio/') ? '🎵' : '📄';
+          const icon = att.type.startsWith('audio/') ? 'ðŸŽµ' : 'ðŸ“„';
           html += '<span class="file-badge">' + icon + ' ' + att.name + '</span>';
         }
       }
@@ -415,7 +415,7 @@ window.lapaAI = {
     // Mostra messaggio con allegati
     let displayText = text || '';
     if (currentAttachments.length > 0) {
-      displayText += (text ? '\\n' : '') + '📎 ' + currentAttachments.length + ' allegat' + (currentAttachments.length > 1 ? 'i' : 'o');
+      displayText += (text ? '\\n' : '') + 'ðŸ“Ž ' + currentAttachments.length + ' allegat' + (currentAttachments.length > 1 ? 'i' : 'o');
     }
     this.addMessageWithAttachments('user', displayText, currentAttachments);
 
@@ -466,7 +466,7 @@ window.lapaAI = {
   },
 
   async handleEscalation() {
-    console.log('🎫 Creazione ticket Helpdesk...');
+    console.log('ðŸŽ« Creazione ticket Helpdesk...');
 
     // Se non abbiamo i dati utente, chiediamoli
     if (!this.user.name || !this.user.email) {
@@ -484,11 +484,11 @@ window.lapaAI = {
     form.className = 'lapa-ai-msg system';
     form.innerHTML = \`
       <div style="text-align:left">
-        <p style="margin:0 0 10px;font-weight:600">📝 Per metterti in contatto con il nostro team, inserisci i tuoi dati:</p>
+        <p style="margin:0 0 10px;font-weight:600">ðŸ“ Per metterti in contatto con il nostro team, inserisci i tuoi dati:</p>
         <input type="text" id="lapa-user-name" placeholder="Il tuo nome *" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
         <input type="email" id="lapa-user-email" placeholder="La tua email *" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
         <input type="tel" id="lapa-user-phone" placeholder="Telefono (opzionale)" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
-        <button onclick="window.lapaAI.submitUserInfo()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px">📩 Invia richiesta al team</button>
+        <button onclick="window.lapaAI.submitUserInfo()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px">ðŸ“© Invia richiesta al team</button>
         <p style="margin:8px 0 0;font-size:11px;color:#666;text-align:center">Ti ricontatteremo entro poche ore!</p>
       </div>
     \`;
@@ -527,11 +527,11 @@ window.lapaAI = {
 
   async createTicket() {
     const summary = this.messages.map(m =>
-      (m.role === 'user' ? '👤 Cliente: ' : '🤖 AI: ') + m.content
+      (m.role === 'user' ? 'ðŸ‘¤ Cliente: ' : 'ðŸ¤– AI: ') + m.content
     ).join('\\n\\n');
 
     const ticketDescription = \`
-<h3>🤖 Conversazione con LAPA AI Assistant</h3>
+<h3>ðŸ¤– Conversazione con LAPA AI Assistant</h3>
 <p><strong>Cliente:</strong> \${this.user.name || 'Non specificato'}</p>
 <p><strong>Email:</strong> \${this.user.email || 'Non specificata'}</p>
 <p><strong>Telefono:</strong> \${this.user.phone || 'Non specificato'}</p>
@@ -555,7 +555,7 @@ window.lapaAI = {
             model: 'helpdesk.ticket',
             method: 'create',
             args: [{
-              name: '🤖 Chat AI - ' + (this.user.name || 'Cliente') + ' - ' + new Date().toLocaleDateString('it-CH'),
+              name: 'ðŸ¤– Chat AI - ' + (this.user.name || 'Cliente') + ' - ' + new Date().toLocaleDateString('it-CH'),
               description: ticketDescription,
               partner_name: this.user.name,
               partner_email: this.user.email,
@@ -574,12 +574,12 @@ window.lapaAI = {
 
       if (ticketData.result) {
         const ticketId = ticketData.result;
-        console.log('✅ Ticket creato: #' + ticketId);
+        console.log('âœ… Ticket creato: #' + ticketId);
 
         // Allega i file al ticket se presenti
         const allAttachments = this.getAllAttachmentsFromMessages();
         if (allAttachments.length > 0) {
-          console.log('📎 Allegando ' + allAttachments.length + ' file al ticket...');
+          console.log('ðŸ“Ž Allegando ' + allAttachments.length + ' file al ticket...');
           for (const att of allAttachments) {
             try {
               await fetch('/web/dataset/call_kw', {
@@ -603,9 +603,9 @@ window.lapaAI = {
                   id: Date.now()
                 })
               });
-              console.log('✅ Allegato: ' + att.name);
+              console.log('âœ… Allegato: ' + att.name);
             } catch (e) {
-              console.log('❌ Errore allegato ' + att.name + ':', e);
+              console.log('âŒ Errore allegato ' + att.name + ':', e);
             }
           }
         }
@@ -627,7 +627,7 @@ window.lapaAI = {
           })
         });
 
-        // Invia notifica via messaggio interno (così arriva email ai follower)
+        // Invia notifica via messaggio interno (cosÃ¬ arriva email ai follower)
         await fetch('/web/dataset/call_kw', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -639,7 +639,7 @@ window.lapaAI = {
               method: 'message_post',
               args: [[ticketId]],
               kwargs: {
-                body: '<p>🤖 <strong>Nuovo ticket da AI Chatbot</strong></p><p>Cliente: ' + (this.user.name || 'Non specificato') + '</p><p>Email: ' + (this.user.email || 'Non specificata') + '</p><p>Richiede assistenza umana.</p>',
+                body: '<p>ðŸ¤– <strong>Nuovo ticket da AI Chatbot</strong></p><p>Cliente: ' + (this.user.name || 'Non specificato') + '</p><p>Email: ' + (this.user.email || 'Non specificata') + '</p><p>Richiede assistenza umana.</p>',
                 message_type: 'notification',
                 subtype_xmlid: 'mail.mt_comment',
                 partner_ids: [12, 5294] // Notifica Laura e Gregorio
@@ -649,7 +649,7 @@ window.lapaAI = {
           })
         });
 
-        this.addMessage('bot', '✅ Ho creato un ticket (#' + ticketId + ') per te. Laura e il nostro team ti contatteranno presto a ' + this.user.email + '!');
+        this.addMessage('bot', 'âœ… Ho creato un ticket (#' + ticketId + ') per te. Laura e il nostro team ti contatteranno presto a ' + this.user.email + '!');
 
         // Invia anche email diretta a lapa@lapa.ch come backup
         await fetch('/web/dataset/call_kw', {
@@ -662,7 +662,7 @@ window.lapaAI = {
               model: 'mail.mail',
               method: 'create',
               args: [{
-                subject: '🎫 Nuovo Ticket #' + ticketId + ' da AI Chatbot - ' + (this.user.name || 'Cliente'),
+                subject: 'ðŸŽ« Nuovo Ticket #' + ticketId + ' da AI Chatbot - ' + (this.user.name || 'Cliente'),
                 email_to: 'lapa@lapa.ch,laura@lapa.ch,gregorio@lapa.ch',
                 body_html: ticketDescription,
                 auto_delete: false,
@@ -781,16 +781,16 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(70));
-  console.log('🎫 LAPA AI Assistant V3 - Con Ticket Helpdesk');
-  console.log('═'.repeat(70));
+  console.log('â•'.repeat(70));
+  console.log('ðŸŽ« LAPA AI Assistant V3 - Con Ticket Helpdesk');
+  console.log('â•'.repeat(70));
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\\n');
+    console.log('âœ… Connesso\\n');
 
     const websites = await odoo.searchRead<any>('website', [['id', '=', 1]], ['id', 'name', 'custom_code_footer'], { limit: 1 });
     if (websites.length === 0) throw new Error('Website non trovato');
@@ -810,34 +810,34 @@ async function main() {
 
     const newFooterCode = footerCode + '\\n' + shopButton + '\\n' + CHATBOT_WIDGET_V3;
 
-    console.log('📝 Installazione Chatbot V3...');
+    console.log('ðŸ“ Installazione Chatbot V3...');
     await odoo.write('website', [1], { custom_code_footer: newFooterCode });
 
-    console.log('✅ Installato!\n');
-    console.log('═'.repeat(70));
-    console.log('✨ LAPA AI Assistant V3 ATTIVO!');
-    console.log('═'.repeat(70));
+    console.log('âœ… Installato!\n');
+    console.log('â•'.repeat(70));
+    console.log('âœ¨ LAPA AI Assistant V3 ATTIVO!');
+    console.log('â•'.repeat(70));
     console.log(`
-NOVITÀ V3:
-   👤 Rileva utente loggato automaticamente
-   📝 Chiede nome/email se non loggato
-   🎫 Crea TICKET HELPDESK (non solo lead)
-   📧 Notifica a lapa@lapa.ch
-   📞 Numero corretto: +41 76 361 70 21
+NOVITÃ€ V3:
+   ðŸ‘¤ Rileva utente loggato automaticamente
+   ðŸ“ Chiede nome/email se non loggato
+   ðŸŽ« Crea TICKET HELPDESK (non solo lead)
+   ðŸ“§ Notifica a lapa@lapa.ch
+   ðŸ“ž Numero corretto: +41 76 361 70 21
 
 FLUSSO ESCALATION:
    1. Cliente chiede aiuto umano
-   2. Se loggato → usa i suoi dati
-   3. Se non loggato → chiede nome/email
+   2. Se loggato â†’ usa i suoi dati
+   3. Se non loggato â†’ chiede nome/email
    4. Crea ticket in Helpdesk "Customer Care"
    5. Invia email notifica a lapa@lapa.ch
    6. Conferma al cliente con numero ticket
 
-👉 Vai su https://www.lapa.ch (Ctrl+Shift+R)
+ðŸ‘‰ Vai su https://www.lapa.ch (Ctrl+Shift+R)
 `);
 
   } catch (error) {
-    console.error('\\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Fiordilatte article with improved list extraction
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -140,18 +140,18 @@ function findBestTranslation(
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║       FIX FIORDILATTE - VERSIONE MIGLIORATA               ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘       FIX FIORDILATTE - VERSIONE MIGLIORATA               â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log('📋 TEST ESTRAZIONE TESTI MIGLIORATA:\n');
+  console.log('ðŸ“‹ TEST ESTRAZIONE TESTI MIGLIORATA:\n');
   const itTexts = extractAllTexts(itData.content_html);
   console.log(`   Italiano: ${itTexts.length} testi estratti`);
   console.log(`   Primi 10 testi estratti:\n`);
@@ -167,17 +167,17 @@ async function main() {
     console.log(`      ${i + 1}. ${t.substring(0, 80)}...`);
   });
 
-  console.log('\n🗑️  Eliminazione articolo ID 418 esistente...');
+  console.log('\nðŸ—‘ï¸  Eliminazione articolo ID 418 esistente...');
   try {
     await callOdoo('blog.post', 'unlink', [[418]], {});
-    console.log('   ✅ Eliminato\n');
+    console.log('   âœ… Eliminato\n');
   } catch (e: any) {
-    console.log(`   ⚠️  ${e.message}\n`);
+    console.log(`   âš ï¸  ${e.message}\n`);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
-  console.log('📝 Creazione nuovo articolo...');
+  console.log('ðŸ“ Creazione nuovo articolo...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     blog_id: 4,
@@ -189,12 +189,12 @@ async function main() {
     tag_ids: [[6, 0, itData.tag_ids || []]]
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ Creato ID ${postId}\n`);
+  console.log(`   âœ… Creato ID ${postId}\n`);
 
   await new Promise(r => setTimeout(r, 2000));
 
   // Meta fields
-  console.log('🌍 Aggiornamento meta fields...');
+  console.log('ðŸŒ Aggiornamento meta fields...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -208,13 +208,13 @@ async function main() {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
   await new Promise(r => setTimeout(r, 2000));
 
   // Content translations
-  console.log('\n📋 Recupero segmenti da Odoo...');
+  console.log('\nðŸ“‹ Recupero segmenti da Odoo...');
   const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
 
   if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {
@@ -222,7 +222,7 @@ async function main() {
     const sourceTexts: string[] = [...new Set(segments.map((s: any) => s.source))];
     console.log(`   ${sourceTexts.length} segmenti da tradurre\n`);
 
-    console.log('🌐 Traduzioni content (con estrazione migliorata):\n');
+    console.log('ðŸŒ Traduzioni content (con estrazione migliorata):\n');
     for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
       if (jsonLang === 'it_IT') continue;
       const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -251,8 +251,8 @@ async function main() {
     }
   }
 
-  console.log('\n✅ COMPLETATO!\n');
-  console.log(`🔗 Nuovo articolo ID: ${postId}\n`);
+  console.log('\nâœ… COMPLETATO!\n');
+  console.log(`ðŸ”— Nuovo articolo ID: ${postId}\n`);
 }
 
 main().catch(console.error);

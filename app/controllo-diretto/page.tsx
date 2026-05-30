@@ -920,7 +920,7 @@ export default function ControlloDirettoPage() {
                             {/* Pulsante OK */}
                             <button
                               onClick={() => markProductOK(product)}
-                              disabled={(control && control.status !== 'ok') || isLoading}
+                              disabled={isLoading}
                               className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
                                 control?.status === 'ok'
                                   ? 'bg-green-600 text-white hover:bg-green-700'

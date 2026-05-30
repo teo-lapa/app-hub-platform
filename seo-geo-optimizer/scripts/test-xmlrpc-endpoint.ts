@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test using XML-RPC endpoint for update_field_translations
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let uid: number = 0;
 
@@ -65,19 +65,19 @@ async function executeKw(model: string, method: string, args: any[]): Promise<st
 }
 
 async function main() {
-  console.log('🔐 Autenticazione XML-RPC...\n');
+  console.log('ðŸ” Autenticazione XML-RPC...\n');
   await authenticate();
-  console.log(`✅ UID: ${uid}\n`);
+  console.log(`âœ… UID: ${uid}\n`);
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log('📝 Questo è solo un test per vedere se XML-RPC funziona meglio\n');
-  console.log('   Non creerò un articolo, solo testerò l\'endpoint\n');
+  console.log('ðŸ“ Questo Ã¨ solo un test per vedere se XML-RPC funziona meglio\n');
+  console.log('   Non creerÃ² un articolo, solo testerÃ² l\'endpoint\n');
 
   // Test a simple read operation first
-  console.log('🔍 Test lettura articolo 376 con XML-RPC...\n');
+  console.log('ðŸ” Test lettura articolo 376 con XML-RPC...\n');
 
   const result = await executeKw('blog.post', 'read', [[376], ['name']]);
   console.log('Risposta XML-RPC:');

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 const LAPA_COMPANY_ID = 1;
 
 interface OdooSession {

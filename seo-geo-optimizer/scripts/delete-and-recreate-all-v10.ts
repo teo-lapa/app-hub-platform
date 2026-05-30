@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Delete all 60 articles and recreate them with V10 method
  * This ensures proper translations in all languages
  */
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -84,16 +84,16 @@ function titleSimilarity(a: string, b: string): number {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║   ELIMINA E RICREA ARTICOLI CON METODO V10 (100%)         ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘   ELIMINA E RICREA ARTICOLI CON METODO V10 (100%)         â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Get ALL blog posts from Odoo
-  console.log('📋 Recupero tutti i post da Odoo...');
+  console.log('ðŸ“‹ Recupero tutti i post da Odoo...');
   const allPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]],
     ['id', 'name']
@@ -107,7 +107,7 @@ async function main() {
     .filter(f => f.endsWith('.json') && f.startsWith('article-'))
     .sort();
 
-  console.log(`📄 ${files.length} articoli da processare\n`);
+  console.log(`ðŸ“„ ${files.length} articoli da processare\n`);
 
   const results: Array<{ file: string; oldPostId?: number; newPostId?: number; success: boolean; error?: string }> = [];
 
@@ -116,20 +116,20 @@ async function main() {
     const articlePath = join(articlesDir, file);
 
     console.log(`\n[${i + 1}/${files.length}] ${file}`);
-    console.log('─'.repeat(60));
+    console.log('â”€'.repeat(60));
 
     try {
       const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
       const itData = article.translations.it_IT;
 
       if (!itData) {
-        console.log('❌ Manca traduzione italiana');
+        console.log('âŒ Manca traduzione italiana');
         results.push({ file, success: false, error: 'No Italian translation' });
         continue;
       }
 
       const title = itData.name;
-      console.log(`📝 "${title.slice(0, 50)}..."`);
+      console.log(`ðŸ“ "${title.slice(0, 50)}..."`);
 
       // Find and delete old post
       let bestMatch: any = null;
@@ -147,13 +147,13 @@ async function main() {
 
       if (bestMatch && bestScore >= 50) {
         oldPostId = bestMatch.id;
-        console.log(`   🗑️  Elimino vecchio post ID ${oldPostId}...`);
+        console.log(`   ðŸ—‘ï¸  Elimino vecchio post ID ${oldPostId}...`);
         await callOdoo('blog.post', 'unlink', [[oldPostId]], {});
         await new Promise(r => setTimeout(r, 500));
       }
 
       // Create new post with V10 method
-      console.log('   🆕 Creo nuovo post...');
+      console.log('   ðŸ†• Creo nuovo post...');
 
       // 1. Create in Italian
       const newPostId = await callOdoo('blog.post', 'create', [{
@@ -167,7 +167,7 @@ async function main() {
         is_published: false
       }], { context: { lang: 'it_IT' } });
 
-      console.log(`   ✅ Creato ID ${newPostId}`);
+      console.log(`   âœ… Creato ID ${newPostId}`);
 
       // 2. Write FULL content for ALL other languages (V10 method)
       for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
@@ -175,17 +175,17 @@ async function main() {
 
         const langData = article.translations[jsonLang];
         if (!langData) {
-          console.log(`   ⚠️  ${jsonLang}: skip (traduzione mancante)`);
+          console.log(`   âš ï¸  ${jsonLang}: skip (traduzione mancante)`);
           continue;
         }
 
-        const langFlag = jsonLang === 'de_DE' ? '🇩🇪' : jsonLang === 'fr_FR' ? '🇫🇷' : '🇬🇧';
+        const langFlag = jsonLang === 'de_DE' ? 'ðŸ‡©ðŸ‡ª' : jsonLang === 'fr_FR' ? 'ðŸ‡«ðŸ‡·' : 'ðŸ‡¬ðŸ‡§';
         console.log(`   ${langFlag} ${odooLang}...`);
 
         await callOdoo('blog.post', 'write', [[newPostId], {
           name: langData.name,
           subtitle: langData.subtitle,
-          content: langData.content_html,  // ← V10: FULL CONTENT 100%
+          content: langData.content_html,  // â† V10: FULL CONTENT 100%
           website_meta_title: langData.meta.title,
           website_meta_description: langData.meta.description,
           website_meta_keywords: langData.meta.keywords
@@ -194,43 +194,43 @@ async function main() {
         await new Promise(r => setTimeout(r, 200));
       }
 
-      console.log(`✅ Creato con traduzioni 100% complete`);
+      console.log(`âœ… Creato con traduzioni 100% complete`);
       results.push({ file, oldPostId, newPostId, success: true });
 
       await new Promise(r => setTimeout(r, 1500));
 
     } catch (e: any) {
       const errorMsg = e.message ? e.message.slice(0, 100) : String(e).slice(0, 100);
-      console.log(`❌ ERRORE: ${errorMsg}`);
+      console.log(`âŒ ERRORE: ${errorMsg}`);
       results.push({ file, success: false, error: errorMsg });
     }
   }
 
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 RIEPILOGO FINALE');
-  console.log('═'.repeat(60) + '\n');
+  console.log('\n' + 'â•'.repeat(60));
+  console.log('ðŸ“Š RIEPILOGO FINALE');
+  console.log('â•'.repeat(60) + '\n');
 
   const successes = results.filter(r => r.success);
   const errors = results.filter(r => !r.success);
 
-  console.log(`✅ Successi: ${successes.length}/${files.length}`);
-  console.log(`❌ Errori: ${errors.length}/${files.length}\n`);
+  console.log(`âœ… Successi: ${successes.length}/${files.length}`);
+  console.log(`âŒ Errori: ${errors.length}/${files.length}\n`);
 
   if (successes.length > 0) {
     const newIds = successes.filter(r => r.newPostId).map(r => r.newPostId);
-    console.log(`📝 Nuovi post creati: IDs ${Math.min(...newIds as number[])} - ${Math.max(...newIds as number[])}\n`);
+    console.log(`ðŸ“ Nuovi post creati: IDs ${Math.min(...newIds as number[])} - ${Math.max(...newIds as number[])}\n`);
   }
 
   if (errors.length > 0 && errors.length <= 10) {
-    console.log('❌ ERRORI:\n');
+    console.log('âŒ ERRORI:\n');
     for (const r of errors) {
-      console.log(`  • ${r.file}: ${r.error}`);
+      console.log(`  â€¢ ${r.file}: ${r.error}`);
     }
     console.log('');
   }
 
-  console.log('🎉 Processo completato!');
-  console.log('📋 IMPORTANTE: Verifica le traduzioni su Odoo prima di pubblicare.\n');
+  console.log('ðŸŽ‰ Processo completato!');
+  console.log('ðŸ“‹ IMPORTANTE: Verifica le traduzioni su Odoo prima di pubblicare.\n');
 }
 
 main().catch(console.error);

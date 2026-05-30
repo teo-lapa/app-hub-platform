@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Update Chatbot V2 - Design AI moderno + Notifiche
  * - Colore blu/viola AI style
  * - Rimuove LiveChat Odoo
@@ -16,7 +16,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Leggi knowledge base
 let knowledgeBase = '';
@@ -35,16 +35,16 @@ ${kb.faq?.map((f: any) => `Q: ${f.domanda}\nA: ${f.risposta}`).join('\n\n')}
 // System prompt con istruzione per escalation
 const SYSTEM_PROMPT = `Sei LAPA AI Assistant, l'assistente virtuale intelligente di LAPA - il principale distributore di prodotti alimentari italiani autentici in Svizzera.
 
-🎯 IL TUO RUOLO:
+ðŸŽ¯ IL TUO RUOLO:
 Assistenza clienti AI professionale per il sito www.lapa.ch
 
-📋 COSA PUOI FARE:
+ðŸ“‹ COSA PUOI FARE:
 - Aiutare a trovare prodotti italiani (pasta, olio, salumi, formaggi, conserve, vini, ecc.)
 - Informazioni su ordini, spedizioni e consegne
 - Supporto clienti B2B (ristoranti, pizzerie, hotel, catering)
 - Rispondere a domande sull'azienda e i servizi
 
-💼 INFORMAZIONI AZIENDA:
+ðŸ’¼ INFORMAZIONI AZIENDA:
 - Nome: LAPA - Zero Pensieri
 - Sito: www.lapa.ch
 - Shop online: www.lapa.ch/shop
@@ -54,28 +54,28 @@ Assistenza clienti AI professionale per il sito www.lapa.ch
 - Orari: Lun-Ven 8:00-17:00
 - Indirizzo: LAPA GmbH, Svizzera
 
-🚚 CONSEGNE:
+ðŸšš CONSEGNE:
 - Consegna in tutta la Svizzera
-- Ordini entro le 12:00 → consegna giorno successivo (zone principali)
+- Ordini entro le 12:00 â†’ consegna giorno successivo (zone principali)
 - Spedizione gratuita per ordini B2B sopra CHF 150
 
-💳 PAGAMENTI:
+ðŸ’³ PAGAMENTI:
 - Carte di credito (Visa, Mastercard)
 - PostFinance, TWINT
 - Fattura (solo clienti business registrati)
 
 ${knowledgeBase}
 
-📝 ISTRUZIONI COMPORTAMENTO:
+ðŸ“ ISTRUZIONI COMPORTAMENTO:
 1. Sii sempre cordiale e professionale
 2. Rispondi nella STESSA LINGUA del cliente (italiano, tedesco, francese, inglese)
 3. Risposte brevi e concise (max 2-3 frasi quando possibile)
 4. Suggerisci sempre di visitare lo shop: www.lapa.ch/shop
-5. NON inventare prezzi specifici → rimanda allo shop
+5. NON inventare prezzi specifici â†’ rimanda allo shop
 6. Sii proattivo: suggerisci prodotti correlati quando appropriato
-7. Usa emoji con moderazione per rendere la chat più amichevole
+7. Usa emoji con moderazione per rendere la chat piÃ¹ amichevole
 
-🚨 ESCALATION - QUANDO CHIEDERE INTERVENTO UMANO:
+ðŸš¨ ESCALATION - QUANDO CHIEDERE INTERVENTO UMANO:
 Se il cliente chiede una di queste cose, rispondi normalmente MA aggiungi alla fine della tua risposta il tag speciale [NEED_HUMAN]:
 - Reclami o problemi con ordini esistenti
 - Richieste di preventivi personalizzati B2B
@@ -85,9 +85,9 @@ Se il cliente chiede una di queste cose, rispondi normalmente MA aggiungi alla f
 - Se non riesci a rispondere dopo 2 tentativi
 - Richieste di partnership o collaborazioni
 
-Esempio: "Capisco, mi dispiace per il problema con il tuo ordine. Ho notificato il nostro team che ti contatterà al più presto. Nel frattempo, puoi scrivere a info@lapa.ch per velocizzare la risoluzione. [NEED_HUMAN]"
+Esempio: "Capisco, mi dispiace per il problema con il tuo ordine. Ho notificato il nostro team che ti contatterÃ  al piÃ¹ presto. Nel frattempo, puoi scrivere a info@lapa.ch per velocizzare la risoluzione. [NEED_HUMAN]"
 
-🚫 NON FARE:
+ðŸš« NON FARE:
 - Non parlare di concorrenti
 - Non promettere sconti senza verifica
 - Non dare informazioni tecniche sui sistemi interni`;
@@ -184,7 +184,7 @@ const CHATBOT_WIDGET_V2 = `
       <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </div>
-  <div id="lapa-ai-footer">Powered by <a href="https://openai.com" target="_blank">AI</a> • LAPA</div>
+  <div id="lapa-ai-footer">Powered by <a href="https://openai.com" target="_blank">AI</a> â€¢ LAPA</div>
 </div>
 
 <script>
@@ -198,7 +198,7 @@ window.lapaAI = {
     this.isOpen = !this.isOpen;
     document.getElementById('lapa-ai-chat').classList.toggle('open', this.isOpen);
     if (this.isOpen && this.messages.length === 0) {
-      this.addMessage('bot', 'Ciao! 👋 Sono LAPA AI Assistant.\\n\\nCome posso aiutarti oggi? Posso consigliarti prodotti italiani, darti info su ordini e consegne, o supportarti per il tuo business.');
+      this.addMessage('bot', 'Ciao! ðŸ‘‹ Sono LAPA AI Assistant.\\n\\nCome posso aiutarti oggi? Posso consigliarti prodotti italiani, darti info su ordini e consegne, o supportarti per il tuo business.');
     }
   },
 
@@ -252,7 +252,7 @@ window.lapaAI = {
       this.addMessage('bot', response);
     } catch (error) {
       this.hideTyping();
-      this.addMessage('bot', 'Mi scuso, c\\'è stato un problema tecnico. Ti consiglio di contattarci direttamente a info@lapa.ch o chiamare durante gli orari di ufficio. [NEED_HUMAN]');
+      this.addMessage('bot', 'Mi scuso, c\\'Ã¨ stato un problema tecnico. Ti consiglio di contattarci direttamente a info@lapa.ch o chiamare durante gli orari di ufficio. [NEED_HUMAN]');
       console.error('AI error:', error);
     }
 
@@ -312,11 +312,11 @@ window.lapaAI = {
   },
 
   async notifyHuman() {
-    console.log('🔔 Richiesta intervento umano');
+    console.log('ðŸ”” Richiesta intervento umano');
 
     // Prepara il riepilogo conversazione
     const summary = this.messages.map(m =>
-      (m.role === 'user' ? '👤 Cliente: ' : '🤖 AI: ') + m.content
+      (m.role === 'user' ? 'ðŸ‘¤ Cliente: ' : 'ðŸ¤– AI: ') + m.content
     ).join('\\n\\n');
 
     // Invia notifica via Odoo (crea un lead/ticket + email)
@@ -332,8 +332,8 @@ window.lapaAI = {
             model: 'crm.lead',
             method: 'create',
             args: [{
-              name: '🤖 Richiesta da AI Chatbot - ' + new Date().toLocaleString('it-CH'),
-              description: 'CONVERSAZIONE CHATBOT AI\\n' + '═'.repeat(40) + '\\n\\n' + summary + '\\n\\n' + '═'.repeat(40) + '\\nIl cliente necessita di assistenza umana.',
+              name: 'ðŸ¤– Richiesta da AI Chatbot - ' + new Date().toLocaleString('it-CH'),
+              description: 'CONVERSAZIONE CHATBOT AI\\n' + 'â•'.repeat(40) + '\\n\\n' + summary + '\\n\\n' + 'â•'.repeat(40) + '\\nIl cliente necessita di assistenza umana.',
               email_from: 'lapa@lapa.ch',
               type: 'opportunity',
               priority: '2'
@@ -355,10 +355,10 @@ window.lapaAI = {
             model: 'mail.mail',
             method: 'create',
             args: [{
-              subject: '🤖 LAPA AI Chatbot - Richiesta Assistenza Cliente',
+              subject: 'ðŸ¤– LAPA AI Chatbot - Richiesta Assistenza Cliente',
               email_to: 'lapa@lapa.ch',
               email_from: 'noreply@lapa.ch',
-              body_html: '<h2>🤖 Richiesta dal Chatbot AI</h2><p>Un cliente ha richiesto assistenza umana.</p><h3>Conversazione:</h3><pre style="background:#f5f5f5;padding:15px;border-radius:8px;">' + summary.replace(/\\n/g, '<br>') + '</pre><p><strong>Data:</strong> ' + new Date().toLocaleString('it-CH') + '</p><p>Rispondi al più presto!</p>',
+              body_html: '<h2>ðŸ¤– Richiesta dal Chatbot AI</h2><p>Un cliente ha richiesto assistenza umana.</p><h3>Conversazione:</h3><pre style="background:#f5f5f5;padding:15px;border-radius:8px;">' + summary.replace(/\\n/g, '<br>') + '</pre><p><strong>Data:</strong> ' + new Date().toLocaleString('it-CH') + '</p><p>Rispondi al piÃ¹ presto!</p>',
               auto_delete: false
             }],
             kwargs: {}
@@ -384,7 +384,7 @@ window.lapaAI = {
         })
       });
 
-      console.log('✅ Notifica inviata a lapa@lapa.ch');
+      console.log('âœ… Notifica inviata a lapa@lapa.ch');
     } catch (e) {
       console.log('Notifica non inviata:', e);
     }
@@ -476,20 +476,20 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🤖 LAPA AI Assistant V2 - Update Design + Notifiche');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ¤– LAPA AI Assistant V2 - Update Design + Notifiche');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Leggi il custom_code_footer attuale
-    console.log('📖 Lettura configurazione website...');
+    console.log('ðŸ“– Lettura configurazione website...');
     const websites = await odoo.searchRead<any>(
       'website',
       [['id', '=', 1]],
@@ -508,14 +508,14 @@ async function main() {
 
     // Rimuovi vecchio chatbot
     if (currentFooterCode.includes('lapa-chatbot') || currentFooterCode.includes('lapa-ai')) {
-      console.log('   🗑️ Rimozione vecchio chatbot...');
+      console.log('   ðŸ—‘ï¸ Rimozione vecchio chatbot...');
       currentFooterCode = currentFooterCode
         .replace(/<!-- LAPA AI Chatbot Widget -->[\s\S]*?<!-- End LAPA AI Chatbot Widget -->/g, '')
         .replace(/<!-- LAPA AI Assistant Widget[\s\S]*?<!-- End LAPA AI Assistant Widget[^>]*-->/g, '');
     }
 
     // Aggiungi il nuovo chatbot V2
-    console.log('\n📝 Installazione LAPA AI Assistant V2...');
+    console.log('\nðŸ“ Installazione LAPA AI Assistant V2...');
     const newFooterCode = currentFooterCode.trim() + '\n' + CHATBOT_WIDGET_V2;
 
     const success = await odoo.write('website', [1], {
@@ -523,35 +523,35 @@ async function main() {
     });
 
     if (success) {
-      console.log('✅ Chatbot V2 installato!\n');
-      console.log('═'.repeat(80));
-      console.log('✨ AGGIORNAMENTO COMPLETATO!');
-      console.log('═'.repeat(80));
+      console.log('âœ… Chatbot V2 installato!\n');
+      console.log('â•'.repeat(80));
+      console.log('âœ¨ AGGIORNAMENTO COMPLETATO!');
+      console.log('â•'.repeat(80));
       console.log(`
-🤖 LAPA AI Assistant V2 è attivo!
+ðŸ¤– LAPA AI Assistant V2 Ã¨ attivo!
 
-NOVITÀ:
-   🎨 Design AI moderno (blu/viola gradiente)
-   🚫 LiveChat Odoo nascosto
-   📧 Notifiche automatiche quando serve intervento umano
-   🎯 Crea lead in CRM per follow-up
+NOVITÃ€:
+   ðŸŽ¨ Design AI moderno (blu/viola gradiente)
+   ðŸš« LiveChat Odoo nascosto
+   ðŸ“§ Notifiche automatiche quando serve intervento umano
+   ðŸŽ¯ Crea lead in CRM per follow-up
 
 ASPETTO:
-   💜 Colore: Gradiente blu-viola AI style
-   ✨ Animazioni fluide e moderne
-   🌐 Icona globo AI
+   ðŸ’œ Colore: Gradiente blu-viola AI style
+   âœ¨ Animazioni fluide e moderne
+   ðŸŒ Icona globo AI
 
-FUNZIONALITÀ ESCALATION:
+FUNZIONALITÃ€ ESCALATION:
    Quando il cliente chiede:
    - Reclami ordini
    - Preventivi B2B
    - Problemi pagamento
    - Vuole parlare con una persona
 
-   → L'AI risponde E crea automaticamente un lead nel CRM
-   → Il team riceve la notifica per follow-up
+   â†’ L'AI risponde E crea automaticamente un lead nel CRM
+   â†’ Il team riceve la notifica per follow-up
 
-👉 Vai su https://www.lapa.ch per testarlo!
+ðŸ‘‰ Vai su https://www.lapa.ch per testarlo!
    (Ctrl+Shift+R per svuotare la cache)
 `);
     } else {
@@ -559,7 +559,7 @@ FUNZIONALITÀ ESCALATION:
     }
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

@@ -1,4 +1,4 @@
-# INDICE COMPLETO - VERIFICA GIUGNO 2024
+﻿# INDICE COMPLETO - VERIFICA GIUGNO 2024
 
 **Agente**: Backend Specialist
 **Data analisi**: 16 novembre 2025, ore 17:03
@@ -12,10 +12,10 @@
 
 | Livello | File | Descrizione | Tempo Lettura |
 |---------|------|-------------|---------------|
-| **⚡ START HERE** | [GIUGNO-2024-QUICK-START.md](GIUGNO-2024-QUICK-START.md) | Guida step-by-step per risolvere | 10 min |
-| **📊 EXECUTIVE** | [REPORT-GIUGNO-2024-SUMMARY.md](REPORT-GIUGNO-2024-SUMMARY.md) | Summary per management | 5 min |
-| **📋 DETTAGLIO** | [REPORT-GIUGNO-2024.md](REPORT-GIUGNO-2024.md) | Analisi completa riga per riga | 30 min |
-| **💾 RAW DATA** | [REPORT-GIUGNO-2024.json](REPORT-GIUGNO-2024.json) | Dati strutturati per processing | - |
+| **âš¡ START HERE** | [GIUGNO-2024-QUICK-START.md](GIUGNO-2024-QUICK-START.md) | Guida step-by-step per risolvere | 10 min |
+| **ðŸ“Š EXECUTIVE** | [REPORT-GIUGNO-2024-SUMMARY.md](REPORT-GIUGNO-2024-SUMMARY.md) | Summary per management | 5 min |
+| **ðŸ“‹ DETTAGLIO** | [REPORT-GIUGNO-2024.md](REPORT-GIUGNO-2024.md) | Analisi completa riga per riga | 30 min |
+| **ðŸ’¾ RAW DATA** | [REPORT-GIUGNO-2024.json](REPORT-GIUGNO-2024.json) | Dati strutturati per processing | - |
 
 ---
 
@@ -43,7 +43,7 @@
 **Scopo**: Report per CEO/CFO/Management
 **Contiene**:
 - Il problema in 3 numeri
-- Cosa è successo (executive level)
+- Cosa Ã¨ successo (executive level)
 - Top 10 transazioni mancanti
 - Azioni immediate (entro 48h)
 - Metriche di successo
@@ -253,7 +253,7 @@ psql -h odoo-host -U odoo -d odoo-db
 Host: lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 DB: lapadevadmin-lapa-v2-main-7268478
 User: apphubplatform@lapa.ch
-Pass: apphubplatform2025
+Pass: __REDACTED__
 ```
 
 **Konto 1025**:
@@ -274,23 +274,23 @@ Pass: apphubplatform2025
 
 | Metrica | Valore | Status |
 |---------|--------|--------|
-| **Tasso riconciliazione** | 0% | 🔴 CRITICO |
-| **Movimenti bancari** | 44 | ✓ |
-| **Movimenti Odoo** | 57 | ⚠️ (+13 extra) |
-| **Match esatti** | 0 | 🔴 |
-| **Saldo banca** | EUR -50,573.62 | ✓ |
-| **Saldo Odoo** | Da verificare | ❓ |
-| **Gap Dare** | EUR 234,205.35 | 🔴 |
-| **Gap Avere** | EUR 162,079.02 | 🔴 |
+| **Tasso riconciliazione** | 0% | ðŸ”´ CRITICO |
+| **Movimenti bancari** | 44 | âœ“ |
+| **Movimenti Odoo** | 57 | âš ï¸ (+13 extra) |
+| **Match esatti** | 0 | ðŸ”´ |
+| **Saldo banca** | EUR -50,573.62 | âœ“ |
+| **Saldo Odoo** | Da verificare | â“ |
+| **Gap Dare** | EUR 234,205.35 | ðŸ”´ |
+| **Gap Avere** | EUR 162,079.02 | ðŸ”´ |
 
 ### Target Post-Riconciliazione
 
 | Metrica | Target | Come Verificare |
 |---------|--------|-----------------|
-| **Tasso riconciliazione** | ≥95% | Script verifica-giugno-2024.py |
-| **Match esatti** | ≥42/44 | JSON report |
+| **Tasso riconciliazione** | â‰¥95% | Script verifica-giugno-2024.py |
+| **Match esatti** | â‰¥42/44 | JSON report |
 | **Differenza saldo** | <EUR 100 | Banca vs Odoo al 30/06 |
-| **Movimenti non matchati** | ≤2 | Count unmatched |
+| **Movimenti non matchati** | â‰¤2 | Count unmatched |
 | **Duplicati Odoo** | 0 | SQL query #4 |
 
 ---
@@ -299,7 +299,7 @@ Pass: apphubplatform2025
 
 ### Prima Volta (Analisi)
 1. Leggi `REPORT-GIUGNO-2024-SUMMARY.md` (5 min)
-2. Leggi `REPORT-GIUGNO-2024.md` sezione "Cosa è successo" (10 min)
+2. Leggi `REPORT-GIUGNO-2024.md` sezione "Cosa Ã¨ successo" (10 min)
 3. Esamina `REPORT-GIUGNO-2024.json` in JSON viewer (5 min)
 4. Esegui `scripts/verifica-giugno-2024.py` per verificare (2 min)
 
@@ -317,7 +317,7 @@ Pass: apphubplatform2025
 
 ### Follow-up (Verifica)
 1. Re-run `scripts/verifica-giugno-2024.py`
-2. Verifica tasso ≥95%
+2. Verifica tasso â‰¥95%
 3. Genera report finale Excel
 4. Approval commercialista
 5. Archivia documentazione
@@ -347,7 +347,7 @@ Pass: apphubplatform2025
 - **Odoo Integration**: API Architect
 
 ### Domande Business
-- **Contabilità**: Commercialista
+- **ContabilitÃ **: Commercialista
 - **Strategia**: CFO
 - **Escalation**: CEO
 

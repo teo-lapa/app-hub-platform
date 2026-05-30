@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
-const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
-const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
-const ODOO_LOGIN = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_URL = process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
+const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
+const ODOO_LOGIN = process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'paul@lapa.ch';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '';
 
 // Paesi reali (clienti potenziali)
 const REAL_COUNTRIES = ['Switzerland', 'Italy', 'France', 'Germany', 'Austria', 'Liechtenstein'];

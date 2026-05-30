@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload ALL 60 articles using V10 method (100% full content translation)
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -102,15 +102,15 @@ async function main() {
     .filter(f => f.endsWith('.json') && f.startsWith('article-'))
     .sort();
 
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║     UPLOAD TUTTI 60 ARTICOLI CON V10 (100% TRADUZIONI)   ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
-  console.log(`📄 Trovati ${files.length} articoli\n`);
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘     UPLOAD TUTTI 60 ARTICOLI CON V10 (100% TRADUZIONI)   â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
+  console.log(`ðŸ“„ Trovati ${files.length} articoli\n`);
 
   // Authenticate once
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   const results: Array<{ file: string; postId?: number; title?: string; error?: string }> = [];
 
@@ -119,57 +119,57 @@ async function main() {
     const articlePath = join(articlesDir, file);
 
     console.log(`\n[${ i + 1}/${files.length}] ${file}`);
-    console.log('─'.repeat(60));
+    console.log('â”€'.repeat(60));
 
     try {
       const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
       const title = article.translations.it_IT.name;
 
-      console.log(`📝 "${title.substring(0, 50)}..."`);
-      console.log('🇮🇹 Creazione post italiano...');
+      console.log(`ðŸ“ "${title.substring(0, 50)}..."`);
+      console.log('ðŸ‡®ðŸ‡¹ Creazione post italiano...');
 
       const postId = await uploadArticleV10(articlePath);
 
       results.push({ file, postId, title });
-      console.log(`✅ ID ${postId} - Traduzioni 100% complete`);
+      console.log(`âœ… ID ${postId} - Traduzioni 100% complete`);
 
       // Pausa tra upload
       await new Promise(r => setTimeout(r, 1500));
 
     } catch (e: any) {
       const errorMsg = e.message.substring(0, 200);
-      console.log(`❌ ERRORE: ${errorMsg}`);
+      console.log(`âŒ ERRORE: ${errorMsg}`);
       results.push({ file, error: errorMsg });
     }
   }
 
   // Riepilogo finale
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 RIEPILOGO UPLOAD');
-  console.log('═'.repeat(60) + '\n');
+  console.log('\n' + 'â•'.repeat(60));
+  console.log('ðŸ“Š RIEPILOGO UPLOAD');
+  console.log('â•'.repeat(60) + '\n');
 
   const successes = results.filter(r => r.postId);
   const errors = results.filter(r => r.error);
 
-  console.log(`✅ Successi: ${successes.length}/${files.length}`);
-  console.log(`❌ Errori: ${errors.length}/${files.length}\n`);
+  console.log(`âœ… Successi: ${successes.length}/${files.length}`);
+  console.log(`âŒ Errori: ${errors.length}/${files.length}\n`);
 
   if (successes.length > 0) {
-    console.log('✅ ARTICOLI CARICATI (100% traduzioni):\n');
+    console.log('âœ… ARTICOLI CARICATI (100% traduzioni):\n');
     for (const r of successes) {
-      console.log(`  • ID ${r.postId}: "${r.title?.substring(0, 50)}..."`);
+      console.log(`  â€¢ ID ${r.postId}: "${r.title?.substring(0, 50)}..."`);
     }
   }
 
   if (errors.length > 0) {
-    console.log('\n❌ ERRORI:\n');
+    console.log('\nâŒ ERRORI:\n');
     for (const r of errors) {
-      console.log(`  • ${r.file}: ${r.error?.substring(0, 80)}`);
+      console.log(`  â€¢ ${r.file}: ${r.error?.substring(0, 80)}`);
     }
   }
 
-  console.log('\n🎉 Upload completato con metodo V10!');
-  console.log('📌 IMPORTANTE: Tutti gli articoli hanno traduzioni 100% complete.');
+  console.log('\nðŸŽ‰ Upload completato con metodo V10!');
+  console.log('ðŸ“Œ IMPORTANTE: Tutti gli articoli hanno traduzioni 100% complete.');
   console.log('   Verifica su Odoo che il contenuto sia completo in tutte le lingue.\n');
 }
 

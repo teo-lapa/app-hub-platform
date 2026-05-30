@@ -1,4 +1,4 @@
-# DELIVERABLE - CHIUSURA KONTO 1022 E 1023
+﻿# DELIVERABLE - CHIUSURA KONTO 1022 E 1023
 
 **Richiesta:** Portare a ZERO i konti 1022 e 1023 Outstanding
 **Esecuzione:** 16 Novembre 2025, 10:12:39
@@ -10,8 +10,8 @@
 ## RISULTATO
 
 ```
-Konto 1022 Outstanding Receipts:  CHF 0.00 ✓
-Konto 1023 Outstanding Payments:  CHF 0.00 ✓
+Konto 1022 Outstanding Receipts:  CHF 0.00 âœ“
+Konto 1023 Outstanding Payments:  CHF 0.00 âœ“
 ```
 
 **Verifica eseguita:** Tutti i check PASSED
@@ -22,8 +22,8 @@ Konto 1023 Outstanding Payments:  CHF 0.00 ✓
 
 | Move ID | Numero Odoo | Data | Importo | Status |
 |---------|-------------|------|---------|--------|
-| 97148 | SLR/2024/12/0013 | 31/12/2024 | CHF 366,046.52 | POSTED ✓ |
-| 97149 | SLR/2024/12/0014 | 31/12/2024 | CHF 893,092.68 | POSTED ✓ |
+| 97148 | SLR/2024/12/0013 | 31/12/2024 | CHF 366,046.52 | POSTED âœ“ |
+| 97149 | SLR/2024/12/0014 | 31/12/2024 | CHF 893,092.68 | POSTED âœ“ |
 
 **Riferimenti:**
 - Move 97148: CHIUSURA-1022-STAGING-2024
@@ -78,7 +78,7 @@ Konto 1023 Outstanding Payments:  CHF 0.00 ✓
 
 **[scripts/cancella-move-errati.py](scripts/cancella-move-errati.py)**
 - Cleanup move errati precedenti
-- Già eseguito (97146, 97147)
+- GiÃ  eseguito (97146, 97147)
 
 ---
 
@@ -120,8 +120,8 @@ Konto 1023 Outstanding Payments:  CHF 0.00 ✓
 - Konto 3900: CHF 486,935.95
 
 ### Dopo la chiusura:
-- Konto 1022: **CHF 0.00** ✓
-- Konto 1023: **CHF 0.00** ✓
+- Konto 1022: **CHF 0.00** âœ“
+- Konto 1023: **CHF 0.00** âœ“
 - Konto 3900: CHF -40,110.21
 
 ### Impatto netto:
@@ -176,11 +176,11 @@ python scripts/verifica-chiusura-1022-1023.py
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **Database:** lapadevadmin-lapa-v2-staging-2406-25408900
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 
 **Dove guardare:**
-- Contabilità → Piano dei Conti → Konto 1022, 1023, 3900
-- Contabilità → Registrazioni → Filtrare 31/12/2024
+- ContabilitÃ  â†’ Piano dei Conti â†’ Konto 1022, 1023, 3900
+- ContabilitÃ  â†’ Registrazioni â†’ Filtrare 31/12/2024
 
 ---
 
@@ -207,25 +207,25 @@ c:\Users\lapa\Desktop\Claude Code\app-hub-platform\
 
 ## RIEPILOGO FINALE
 
-OBIETTIVO: ✓ RAGGIUNTO
-- Konto 1022 → CHF 0.00
-- Konto 1023 → CHF 0.00
+OBIETTIVO: âœ“ RAGGIUNTO
+- Konto 1022 â†’ CHF 0.00
+- Konto 1023 â†’ CHF 0.00
 
-REGISTRAZIONI: ✓ CREATE E POSTED
+REGISTRAZIONI: âœ“ CREATE E POSTED
 - Move 97148 (SLR/2024/12/0013)
 - Move 97149 (SLR/2024/12/0014)
 
-DOCUMENTAZIONE: ✓ COMPLETA
+DOCUMENTAZIONE: âœ“ COMPLETA
 - 5 documenti markdown
 - 3 script Python
 - Email pronta per commercialista
 
-VERIFICA: ✓ PASSED
+VERIFICA: âœ“ PASSED
 - Tutti i check automatici OK
 - Saldi al centesimo
 - Quadratura dare/avere
 
-AMBIENTE: ✓ STAGING
+AMBIENTE: âœ“ STAGING
 - Nessun impatto su production
 - Safe to test
 - Replica possibile quando approvato

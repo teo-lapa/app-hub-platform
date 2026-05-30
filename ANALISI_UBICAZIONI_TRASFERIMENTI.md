@@ -1,4 +1,4 @@
-# Analisi Ubicazioni e Trasferimenti Interni Odoo
+﻿# Analisi Ubicazioni e Trasferimenti Interni Odoo
 
 ## 1. UBICAZIONI FURGONI
 
@@ -71,7 +71,7 @@
   "active": true
 }
 ```
-**Note:** Questa è l'ubicazione "Sopra" - contiene numerose sotto-ubicazioni stock e scaffali
+**Note:** Questa Ã¨ l'ubicazione "Sopra" - contiene numerose sotto-ubicazioni stock e scaffali
 
 ### Ubicazioni Buffer Specifiche con "buffer tempora"
 ```json
@@ -165,7 +165,7 @@
   date: DATETIME,                // Data schedulata (obbligatorio)
   company_id: NUMBER,            // ID azienda (obbligatorio)
   product_id: NUMBER,            // ID prodotto (obbligatorio)
-  product_uom_qty: FLOAT,        // Quantità (obbligatorio)
+  product_uom_qty: FLOAT,        // QuantitÃ  (obbligatorio)
   product_uom: NUMBER,           // ID UoM (obbligatorio)
   location_id: NUMBER,           // ID ubicazione sorgente (obbligatorio)
   location_dest_id: NUMBER,      // ID ubicazione destinazione (obbligatorio)
@@ -190,7 +190,7 @@
       name: "Descrizione trasferimento",
       product_id: ID_PRODOTTO,
       product_uom_qty: QUANTITA,
-      product_uom: ID_UOM,  // es. 1 per unità
+      product_uom: ID_UOM,  // es. 1 per unitÃ 
       location_id: ID_LOCATION_SOURCE,
       location_dest_id: ID_LOCATION_DEST
     }]
@@ -211,7 +211,7 @@ const pickingData = {
       name: "Trasferimento da Pingu-01 a Furgoni",
       product_id: 12968,           // Es: PICI 1KG
       product_uom_qty: 5,          // 5 kg
-      product_uom: 1,              // Unità
+      product_uom: 1,              // UnitÃ 
       location_id: 31,             // Pingu-01
       location_dest_id: 11         // Furgoni
     }]
@@ -311,7 +311,7 @@ const odoo = new Odoo({
   url: 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com',
   db: 'lapadevadmin-lapa-v2-main-7268478',
   username: 'apphubplatform@lapa.ch',
-  password: 'apphubplatform2025'
+  password: '__REDACTED__'
 });
 
 async function createInternalTransfer(fromLocationId, toLocationId, products) {
@@ -430,7 +430,7 @@ createInternalTransfer(31, 11, products)  // Da Pingu a Furgoni
 ### Altri ID Utili
 - **WH/Deposito**: 8
 - **Company ID**: 1
-- **UoM Unità**: 1
+- **UoM UnitÃ **: 1
 - **UoM kg**: 3
 
 ---

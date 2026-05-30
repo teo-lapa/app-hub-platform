@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Test usando get_field_translations + update_field_translations
- * Questo è il metodo usato in upload-27-articles-final.cjs
+ * Questo Ã¨ il metodo usato in upload-27-articles-final.cjs
  */
 
 import { readFileSync } from 'fs';
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -76,13 +76,13 @@ function extractTexts(html: string): string[] {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║   TEST get_field_translations + update_field_translations  ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘   TEST get_field_translations + update_field_translations  â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
@@ -91,14 +91,14 @@ async function main() {
   // Delete post 420 if exists
   try {
     await callOdoo('blog.post', 'unlink', [[420]], {});
-    console.log('🗑️  Eliminato post 420\n');
+    console.log('ðŸ—‘ï¸  Eliminato post 420\n');
     await new Promise(r => setTimeout(r, 1000));
   } catch (e) {
-    console.log('⚠️  Post 420 non trovato\n');
+    console.log('âš ï¸  Post 420 non trovato\n');
   }
 
   // 1. Create post in Italian
-  console.log('📝 Creazione post in italiano...\n');
+  console.log('ðŸ“ Creazione post in italiano...\n');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -109,10 +109,10 @@ async function main() {
     website_meta_keywords: itData.meta.keywords,
     is_published: false
   }], { context: { lang: 'it_IT' } });
-  console.log(`✅ Creato post ID ${postId}\n`);
+  console.log(`âœ… Creato post ID ${postId}\n`);
 
   // 2. Translate meta fields first
-  console.log('🌍 Traduzioni meta fields...\n');
+  console.log('ðŸŒ Traduzioni meta fields...\n');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -126,15 +126,15 @@ async function main() {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✓ ${jsonLang}`);
+    console.log(`   âœ“ ${jsonLang}`);
   }
 
   // 3. Wait for Odoo to process
-  console.log('\n⏳ Attendo 2 secondi per Odoo...\n');
+  console.log('\nâ³ Attendo 2 secondi per Odoo...\n');
   await new Promise(r => setTimeout(r, 2000));
 
   // 4. Get field translation segments from Odoo
-  console.log('📋 Ottengo segmenti traduzione da Odoo...\n');
+  console.log('ðŸ“‹ Ottengo segmenti traduzione da Odoo...\n');
 
   try {
     const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
@@ -145,14 +145,14 @@ async function main() {
     if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {
       const segments = fieldTrans[0];
       const sourceTexts = [...new Set(segments.map((s: any) => s.source))];
-      console.log(`✅ Trovati ${sourceTexts.length} segmenti\n`);
+      console.log(`âœ… Trovati ${sourceTexts.length} segmenti\n`);
 
       // 5. Extract texts from HTML
       const itTexts = extractTexts(itData.content_html);
-      console.log(`📝 Estratti ${itTexts.length} testi dall'HTML italiano\n`);
+      console.log(`ðŸ“ Estratti ${itTexts.length} testi dall'HTML italiano\n`);
 
       // 6. Create translations for each language
-      console.log('🌐 Creazione traduzioni...\n');
+      console.log('ðŸŒ Creazione traduzioni...\n');
 
       for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
         if (jsonLang === 'it_IT') continue;
@@ -177,31 +177,31 @@ async function main() {
               'content',
               { [odooLang]: translations }
             ], {});
-            console.log(`   ✅ Tradotto\n`);
+            console.log(`   âœ… Tradotto\n`);
           } catch (e: any) {
-            console.log(`   ❌ Errore: ${e.message}\n`);
+            console.log(`   âŒ Errore: ${e.message}\n`);
           }
         }
       }
     } else {
-      console.log('⚠️  Nessun segmento trovato\n');
+      console.log('âš ï¸  Nessun segmento trovato\n');
     }
 
   } catch (e: any) {
-    console.log(`❌ Errore get_field_translations: ${e.message}\n`);
+    console.log(`âŒ Errore get_field_translations: ${e.message}\n`);
   }
 
   // 7. Verify
-  console.log('⏳ Attendo 3 secondi...\n');
+  console.log('â³ Attendo 3 secondi...\n');
   await new Promise(r => setTimeout(r, 3000));
 
-  console.log('📋 VERIFICA:\n');
+  console.log('ðŸ“‹ VERIFICA:\n');
 
   const languages = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪',
-    'fr_CH': 'Francese 🇫🇷',
-    'en_US': 'Inglese 🇬🇧'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+    'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {
@@ -219,7 +219,7 @@ async function main() {
     }
   }
 
-  console.log('🎉 Test completato!');
+  console.log('ðŸŽ‰ Test completato!');
 }
 
 main().catch(console.error);

@@ -1,4 +1,4 @@
-# Odoo Product Variants - Complete Research Document
+﻿# Odoo Product Variants - Complete Research Document
 
 ## Overview
 This document contains complete research on how Odoo handles product variants, including RPC calls, field structures, and implementation recommendations for the pre-order system.
@@ -135,7 +135,7 @@ const variants = await rpc.searchRead(
   [
     'id',
     'name',
-    'display_name',        // ⭐ USE THIS for display!
+    'display_name',        // â­ USE THIS for display!
     'default_code',
     'barcode',
     'lst_price',
@@ -343,7 +343,7 @@ interface ProductVariant {
             >
               <div className="font-medium">{variant.display_name}</div>
               <div className="text-sm text-gray-600">
-                Stock: {variant.qty_available} | Prezzo: €{variant.lst_price}
+                Stock: {variant.qty_available} | Prezzo: â‚¬{variant.lst_price}
               </div>
             </div>
           ))}
@@ -412,7 +412,7 @@ The current schema is already correct because:
 
 ## 7. Key Insights
 
-### ✅ What Works
+### âœ… What Works
 
 1. **`display_name` is the key field**
    - Odoo automatically formats it with variant attributes
@@ -427,7 +427,7 @@ The current schema is already correct because:
    - Current `product_id` in database is correct
    - No migration needed
 
-### ⚠️ Important Considerations
+### âš ï¸ Important Considerations
 
 1. **Template vs Variant**
    - `product.template` = parent/template
@@ -465,9 +465,9 @@ This script:
 ## 9. Next Steps for Implementation
 
 ### Phase 1: Backend API Changes
-1. ✅ Modify `pre-order-products/route.ts` to include variant detection
-2. ✅ Load all variants when `product_variant_count > 1`
-3. ✅ Return enriched product data with variants array
+1. âœ… Modify `pre-order-products/route.ts` to include variant detection
+2. âœ… Load all variants when `product_variant_count > 1`
+3. âœ… Return enriched product data with variants array
 
 ### Phase 2: Frontend UI
 1. Add variant selector component (dropdown/radio/expandable)
@@ -529,16 +529,16 @@ const productTmplId = product.product_tmpl_id[0];
 3. **Variant Detection**: Check `product_variant_count > 1` on template
 4. **Display**: Use `display_name` field directly (Odoo formats it)
 5. **UI Pattern**:
-   - 2-5 variants → Radio buttons or cards
-   - 6+ variants → Dropdown
-   - Complex → Expandable row with grid
+   - 2-5 variants â†’ Radio buttons or cards
+   - 6+ variants â†’ Dropdown
+   - Complex â†’ Expandable row with grid
 
 ### No Breaking Changes Required
 
-- ✅ Database schema already supports variants (stores `product.product.id`)
-- ✅ Existing code uses correct IDs
-- ✅ Only need to add variant selection UI
-- ✅ Backend needs minimal changes (add variant loading)
+- âœ… Database schema already supports variants (stores `product.product.id`)
+- âœ… Existing code uses correct IDs
+- âœ… Only need to add variant selection UI
+- âœ… Backend needs minimal changes (add variant loading)
 
 ---
 
@@ -549,5 +549,5 @@ From `.env.local`:
 ODOO_URL=https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 ODOO_DB=lapadevadmin-lapa-v2-main-7268478
 ODOO_ADMIN_EMAIL=apphubplatform@lapa.ch
-ODOO_ADMIN_PASSWORD=apphubplatform2025
+ODOO_ADMIN_PASSWORD=__REDACTED__
 ```

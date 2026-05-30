@@ -1,4 +1,4 @@
-# res.partner - Analisi Completa Odoo 17
+﻿# res.partner - Analisi Completa Odoo 17
 
 ## Riepilogo Esecutivo
 
@@ -55,8 +55,8 @@ Solo **2 campi obbligatori**, ma **Odoo li assegna automaticamente**:
     'street2': 'Edificio A',      # Secondo rigo (opzionale)
     'city': 'Lugano',
     'zip': '6900',
-    'state_id': 1596,              # ID cantone (many2one → res.country.state)
-    'country_id': 43,              # ID paese (many2one → res.country)
+    'state_id': 1596,              # ID cantone (many2one â†’ res.country.state)
+    'country_id': 43,              # ID paese (many2one â†’ res.country)
 }
 ```
 
@@ -138,23 +138,23 @@ partner_data = {
 ### Classificazione Cliente/Fornitore
 ```python
 {
-    'customer_rank': 1,  # >0 = è cliente (conta numero ordini)
-    'supplier_rank': 0,  # >0 = è fornitore
+    'customer_rank': 1,  # >0 = Ã¨ cliente (conta numero ordini)
+    'supplier_rank': 0,  # >0 = Ã¨ fornitore
 }
 ```
 
 ### Assegnazioni
 ```python
 {
-    'user_id': 7,   # ID venditore assegnato (many2one → res.users)
-    'team_id': 1,   # ID team vendite (many2one → crm.team)
+    'user_id': 7,   # ID venditore assegnato (many2one â†’ res.users)
+    'team_id': 1,   # ID team vendite (many2one â†’ crm.team)
 }
 ```
 
 ### Tag/Categorie
 ```python
 {
-    'category_id': [(6, 0, [1, 2, 3])]  # Many2many → res.partner.category
+    'category_id': [(6, 0, [1, 2, 3])]  # Many2many â†’ res.partner.category
 }
 ```
 
@@ -167,7 +167,7 @@ partner_data = {
 ### Condizioni Pagamento
 ```python
 {
-    'property_payment_term_id': 4,          # Vendita (many2one → account.payment.term)
+    'property_payment_term_id': 4,          # Vendita (many2one â†’ account.payment.term)
     'property_supplier_payment_term_id': 4, # Acquisto
 }
 ```
@@ -199,7 +199,7 @@ import base64
 ODOO_URL = 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com'
 ODOO_DB = 'lapadevadmin-lapa-v2-staging-2406-25408900'
 ODOO_USERNAME = 'paul@lapa.ch'
-ODOO_PASSWORD = 'lapa201180'
+ODOO_PASSWORD = '__REDACTED__'
 
 # Autenticazione
 common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common')
@@ -340,7 +340,7 @@ invoice_id = models.execute_kw(
 ## 9. TEST ESEGUITI
 
 ### Test 1: Creazione Partner Completo
-**Risultato:** ✅ SUCCESSO
+**Risultato:** âœ… SUCCESSO
 
 ```
 Partner ID: 10791
@@ -353,7 +353,7 @@ Partner ID: 10791
 ```
 
 ### Test 2: Indirizzi Secondari
-**Risultato:** ✅ SUCCESSO
+**Risultato:** âœ… SUCCESSO
 
 ```
 Indirizzo consegna ID: 10792
@@ -371,8 +371,8 @@ Indirizzo fatturazione ID: 10793
 
 ## 10. PUNTI CHIAVE
 
-1. **Solo 'name' è veramente necessario** - Odoo gestisce tutto il resto
-2. **P.IVA è VALIDATA** - Usa formato `CHE-XXX.XXX.XXX TVA/MWST/IVA`
+1. **Solo 'name' Ã¨ veramente necessario** - Odoo gestisce tutto il resto
+2. **P.IVA Ã¨ VALIDATA** - Usa formato `CHE-XXX.XXX.XXX TVA/MWST/IVA`
 3. **Logo in base64** - Max 1920x1920, Odoo genera thumbnail automaticamente
 4. **Many2one usa ID** - Passa l'ID, non il codice (es. `country_id: 43`, non `'CH'`)
 5. **Many2many usa comandi** - `[(6, 0, [ids])]` per sostituire

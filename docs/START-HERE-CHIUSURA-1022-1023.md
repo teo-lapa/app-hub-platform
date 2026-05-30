@@ -1,4 +1,4 @@
-# START HERE - Chiusura Konto 1022 e 1023
+﻿# START HERE - Chiusura Konto 1022 e 1023
 
 **OPERAZIONE COMPLETATA CON SUCCESSO**
 **Data:** 16 Novembre 2025, 10:20
@@ -9,15 +9,15 @@
 ## IN 10 SECONDI
 
 ```
-Konto 1022 Outstanding Receipts:  CHF 0.00 ✓
-Konto 1023 Outstanding Payments:  CHF 0.00 ✓
+Konto 1022 Outstanding Receipts:  CHF 0.00 âœ“
+Konto 1023 Outstanding Payments:  CHF 0.00 âœ“
 
 Move creati:
-- SLR/2024/12/0013 (CHF 366,046.52) POSTED ✓
-- SLR/2024/12/0014 (CHF 893,092.68) POSTED ✓
+- SLR/2024/12/0013 (CHF 366,046.52) POSTED âœ“
+- SLR/2024/12/0014 (CHF 893,092.68) POSTED âœ“
 
 Ambiente: STAGING (safe to verify)
-Verifica: All checks PASSED ✓
+Verifica: All checks PASSED âœ“
 ```
 
 ---
@@ -51,24 +51,24 @@ README-COMMERCIALISTA-1022-1023.md
 START-HERE-CHIUSURA-1022-1023.md         <- SEI QUI
 
 PER IL COMMERCIALISTA:
-├── README-COMMERCIALISTA-1022-1023.md   <- INIZIA DA QUI
-├── QUICK-START-VERIFICA-CHIUSURA-1022-1023.md
-├── CHIUSURA-2024-OUTSTANDING-SUMMARY.md
-└── EMAIL-COMMERCIALISTA-CHIUSURA-1022-1023.md
+â”œâ”€â”€ README-COMMERCIALISTA-1022-1023.md   <- INIZIA DA QUI
+â”œâ”€â”€ QUICK-START-VERIFICA-CHIUSURA-1022-1023.md
+â”œâ”€â”€ CHIUSURA-2024-OUTSTANDING-SUMMARY.md
+â””â”€â”€ EMAIL-COMMERCIALISTA-CHIUSURA-1022-1023.md
 
 REPORT TECNICI:
-├── CHIUSURA-KONTO-1022-1023-REPORT-FINALE.md
-├── CHIUSURA-1022-1023-COMPLETATA.md
-├── DELIVERABLE-CHIUSURA-1022-1023.md
-└── INDEX-CHIUSURA-1022-1023.md
+â”œâ”€â”€ CHIUSURA-KONTO-1022-1023-REPORT-FINALE.md
+â”œâ”€â”€ CHIUSURA-1022-1023-COMPLETATA.md
+â”œâ”€â”€ DELIVERABLE-CHIUSURA-1022-1023.md
+â””â”€â”€ INDEX-CHIUSURA-1022-1023.md
 
 SCRIPT:
-├── scripts/chiusura-definitiva-1022-1023.py
-├── scripts/verifica-chiusura-1022-1023.py
-└── scripts/cancella-move-errati.py
+â”œâ”€â”€ scripts/chiusura-definitiva-1022-1023.py
+â”œâ”€â”€ scripts/verifica-chiusura-1022-1023.py
+â””â”€â”€ scripts/cancella-move-errati.py
 
 VERIFICHE:
-└── VERIFICA-FINALE-1022-1023.txt
+â””â”€â”€ VERIFICA-FINALE-1022-1023.txt
 ```
 
 ---
@@ -82,8 +82,8 @@ Azzerare konti 1022 Outstanding Receipts e 1023 Outstanding Payments per chiusur
 
 | Konto | Pre-Chiusura | Post-Chiusura | Status |
 |-------|-------------|---------------|--------|
-| 1022 | CHF 366,046.52 | **CHF 0.00** | AZZERATO ✓ |
-| 1023 | CHF -893,092.68 | **CHF 0.00** | AZZERATO ✓ |
+| 1022 | CHF 366,046.52 | **CHF 0.00** | AZZERATO âœ“ |
+| 1023 | CHF -893,092.68 | **CHF 0.00** | AZZERATO âœ“ |
 | 3900 | CHF 486,935.95 | CHF -40,110.21 | Delta imputato |
 
 ### Registrazioni Create
@@ -156,9 +156,9 @@ python scripts/verifica-chiusura-1022-1023.py
 ### Opzione 2: Verifica Manuale in Odoo (2 minuti)
 
 1. Accedi: https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
-2. User/Pass: paul@lapa.ch / lapa201180
-3. Contabilità → Piano dei Conti → Cerca 1022, 1023
-4. Contabilità → Registrazioni → Filtra 31/12/2024
+2. User/Pass: paul@lapa.ch / __REDACTED__
+3. ContabilitÃ  â†’ Piano dei Conti â†’ Cerca 1022, 1023
+4. ContabilitÃ  â†’ Registrazioni â†’ Filtra 31/12/2024
 
 ---
 
@@ -207,7 +207,7 @@ python scripts/verifica-chiusura-1022-1023.py
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **Database:** lapadevadmin-lapa-v2-staging-2406-25408900
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 **Environment:** STAGING (safe to test)
 
 ---
@@ -218,9 +218,9 @@ python scripts/verifica-chiusura-1022-1023.py
 |-----|--------|-----------|
 | 09:45 | Richiesta chiusura | Analisi avviata |
 | 10:00 | Primo tentativo | Errore corretto |
-| 10:12 | Esecuzione definitiva | SUCCESS ✓ |
-| 10:13 | Verifica automatica | All checks PASSED ✓ |
-| 10:20 | Documentazione completa | 12 file consegnati ✓ |
+| 10:12 | Esecuzione definitiva | SUCCESS âœ“ |
+| 10:13 | Verifica automatica | All checks PASSED âœ“ |
+| 10:20 | Documentazione completa | 12 file consegnati âœ“ |
 
 **Durata totale:** 35 minuti (incluso debugging e docs)
 
@@ -238,7 +238,7 @@ python scripts/verifica-chiusura-1022-1023.py
 ## RIEPILOGO FINALE
 
 **OBIETTIVO:** Azzerare konti 1022 e 1023 per chiusura 2024
-**RISULTATO:** COMPLETATO CON SUCCESSO ✓
+**RISULTATO:** COMPLETATO CON SUCCESSO âœ“
 **SALDI FINALI:** Konto 1022 = CHF 0.00, Konto 1023 = CHF 0.00
 **REGISTRAZIONI:** Move 97148 e 97149 posted
 **IMPATTO:** Delta CHF 527k su konto 3900

@@ -15,7 +15,7 @@ export async function authenticateWithCredentials(): Promise<string | null> {
   const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
   // Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
   const odooLogin = process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
-  const odooPassword = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
+  const odooPassword = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '';
 
   console.log('🔐 Autenticazione Odoo con credenziali...');
 

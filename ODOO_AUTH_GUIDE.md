@@ -1,6 +1,6 @@
-# 🔐 Guida Autenticazione Odoo per la Piattaforma
+﻿# ðŸ” Guida Autenticazione Odoo per la Piattaforma
 
-## 📋 Panoramica
+## ðŸ“‹ Panoramica
 
 Questa guida spiega come **TUTTE** le app della piattaforma devono autenticarsi con Odoo per effettuare chiamate API.
 
@@ -8,7 +8,7 @@ Questa guida spiega come **TUTTE** le app della piattaforma devono autenticarsi 
 
 ---
 
-## 🎯 Come Funziona
+## ðŸŽ¯ Come Funziona
 
 ### 1. File Helper Centralizzato
 
@@ -17,7 +17,7 @@ Questa guida spiega come **TUTTE** le app della piattaforma devono autenticarsi 
 Questo file contiene:
 - `getOdooSession()` - Autentica con Odoo e ritorna cookies + UID
 - `callOdoo()` - Chiama metodi Odoo
-- Credenziali Odoo centralizzate (paul@lapa.ch / lapa201180)
+- Credenziali Odoo centralizzate (paul@lapa.ch / __REDACTED__)
 
 ### 2. Variabili d'Ambiente
 
@@ -30,7 +30,7 @@ ODOO_DB=lapadevadmin-lapa-v2-staging-2406-24063382
 
 ---
 
-## 💻 Come Usarlo nelle API
+## ðŸ’» Come Usarlo nelle API
 
 ### Template Base per Nuove API
 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: risultato });
 
   } catch (error: any) {
-    console.error('❌ Errore:', error);
+    console.error('âŒ Errore:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
 ---
 
-## 📝 Esempi Pratici
+## ðŸ“ Esempi Pratici
 
 ### Esempio 1: Leggere Dati da Odoo
 
@@ -153,24 +153,24 @@ export async function POST(request: NextRequest) {
 
 ---
 
-## ⚠️ Errori Comuni da Evitare
+## âš ï¸ Errori Comuni da Evitare
 
-### ❌ SBAGLIATO - Autenticazione diretta
+### âŒ SBAGLIATO - Autenticazione diretta
 
 ```typescript
-// NON FARE COSÌ!
+// NON FARE COSÃŒ!
 const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
   method: 'POST',
   body: JSON.stringify({
     params: {
       login: 'paul@lapa.ch',  // Credenziali hardcoded sparse ovunque!
-      password: 'lapa201180'
+      password: '__REDACTED__'
     }
   })
 });
 ```
 
-### ✅ CORRETTO - Usa helper centralizzato
+### âœ… CORRETTO - Usa helper centralizzato
 
 ```typescript
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
@@ -180,7 +180,7 @@ const { cookies, uid } = await getOdooSession();  // Una riga!
 
 ---
 
-## 🔄 Flusso Completo
+## ðŸ”„ Flusso Completo
 
 ```mermaid
 graph TD
@@ -198,7 +198,7 @@ graph TD
 
 ---
 
-## 📚 API Odoo Disponibili
+## ðŸ“š API Odoo Disponibili
 
 ### Metodi Comuni
 
@@ -206,7 +206,7 @@ graph TD
 |--------|-------------|---------|
 | `search_read` | Cerca e leggi record | Prodotti, Clienti, Ordini |
 | `create` | Crea nuovo record | Nuovo ordine |
-| `write` | Aggiorna record | Modifica quantità |
+| `write` | Aggiorna record | Modifica quantitÃ  |
 | `unlink` | Elimina record | Cancella riga |
 | `button_validate` | Chiama azione bottone | Valida consegna |
 
@@ -221,7 +221,7 @@ graph TD
 
 ---
 
-## 🛠️ Troubleshooting
+## ðŸ› ï¸ Troubleshooting
 
 ### Errore 401 Unauthorized
 
@@ -231,7 +231,7 @@ graph TD
 ```typescript
 const { cookies, uid } = await getOdooSession();
 if (!uid) {
-  console.error('❌ Autenticazione fallita!');
+  console.error('âŒ Autenticazione fallita!');
   // Controlla credenziali in lib/odoo-auth.ts
 }
 ```
@@ -250,9 +250,9 @@ if (!uid) {
 
 ---
 
-## 🎓 Best Practices
+## ðŸŽ“ Best Practices
 
-### ✅ DA FARE
+### âœ… DA FARE
 
 1. **Importa sempre** da `@/lib/odoo-auth`
 2. **Controlla uid** dopo autenticazione
@@ -260,7 +260,7 @@ if (!uid) {
 4. **Logga operazioni** con console.log
 5. **Usa TypeScript** per type safety
 
-### ❌ DA NON FARE
+### âŒ DA NON FARE
 
 1. ~~Hardcode credenziali~~ nelle API
 2. ~~Crea sessioni multiple~~ per stessa richiesta
@@ -270,7 +270,7 @@ if (!uid) {
 
 ---
 
-## 📞 Supporto
+## ðŸ“ž Supporto
 
 Per domande o problemi:
 
@@ -281,7 +281,7 @@ Per domande o problemi:
 
 ---
 
-## 🔄 Changelog
+## ðŸ”„ Changelog
 
 - **2025-01-03**: Creazione guida centralizzata
 - Helper unificato in `lib/odoo-auth.ts`
@@ -289,4 +289,4 @@ Per domande o problemi:
 
 ---
 
-**RICORDA:** Un solo file helper, infinite possibilità! 🚀
+**RICORDA:** Un solo file helper, infinite possibilitÃ ! ðŸš€

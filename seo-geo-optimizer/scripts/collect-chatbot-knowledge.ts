@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Collect Knowledge Base for LAPA Chatbot
  * Raccoglie informazioni su prodotti, categorie, FAQ e servizi per il chatbot AI
  */
@@ -14,7 +14,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 class OdooAPI {
   private uid: number | null = null;
@@ -85,9 +85,9 @@ function stripHtml(html: string): string {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🧠 LAPA - Raccolta Knowledge Base per Chatbot AI');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ§  LAPA - Raccolta Knowledge Base per Chatbot AI');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
@@ -101,16 +101,16 @@ async function main() {
   };
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // 1. Info azienda
-    console.log('🏢 Raccolta info azienda...');
+    console.log('ðŸ¢ Raccolta info azienda...');
     knowledge.azienda = {
       nome: "LAPA",
       slogan: "Zero Pensieri - Specialisti in prodotti italiani in Svizzera",
-      descrizione: "LAPA è il principale distributore di prodotti alimentari italiani autentici in Svizzera. Serviamo ristoranti, pizzerie, hotel e privati con ingredienti di alta qualità direttamente dall'Italia.",
+      descrizione: "LAPA Ã¨ il principale distributore di prodotti alimentari italiani autentici in Svizzera. Serviamo ristoranti, pizzerie, hotel e privati con ingredienti di alta qualitÃ  direttamente dall'Italia.",
       puntiForza: [
         "Prodotti 100% italiani autentici",
         "Consegna rapida in tutta la Svizzera",
@@ -124,7 +124,7 @@ async function main() {
     };
 
     // 2. Categorie prodotti
-    console.log('📦 Raccolta categorie prodotti...');
+    console.log('ðŸ“¦ Raccolta categorie prodotti...');
     try {
       const categories = await odoo.searchRead<any>(
         'product.public.category',
@@ -145,14 +145,14 @@ async function main() {
         { nome: "Salumi e Formaggi", parent: null },
         { nome: "Olio e Condimenti", parent: null },
         { nome: "Conserve e Sughi", parent: null },
-        { nome: "Dolci e Caffè", parent: null },
+        { nome: "Dolci e CaffÃ¨", parent: null },
         { nome: "Vini e Bevande", parent: null },
         { nome: "Prodotti Freschi", parent: null }
       ];
     }
 
     // 3. Prodotti principali (top sellers e in evidenza)
-    console.log('🍕 Raccolta prodotti...');
+    console.log('ðŸ• Raccolta prodotti...');
     try {
       const products = await odoo.searchRead<any>(
         'product.template',
@@ -171,14 +171,14 @@ async function main() {
     } catch (e) {
       console.log('   Usando prodotti di esempio...');
       knowledge.prodotti = [
-        { nome: "Pasta Barilla", prezzo: "CHF 3.50", codice: "", descrizione: "Pasta italiana di qualità" },
+        { nome: "Pasta Barilla", prezzo: "CHF 3.50", codice: "", descrizione: "Pasta italiana di qualitÃ " },
         { nome: "Olio Extra Vergine", prezzo: "CHF 15.00", codice: "", descrizione: "Olio d'oliva italiano" },
         { nome: "Pomodori San Marzano", prezzo: "CHF 4.50", codice: "", descrizione: "Pomodori DOP" }
       ];
     }
 
     // 4. Servizi
-    console.log('🛎️ Raccolta servizi...');
+    console.log('ðŸ›Žï¸ Raccolta servizi...');
     knowledge.servizi = [
       {
         nome: "Consegna a domicilio",
@@ -198,12 +198,12 @@ async function main() {
       },
       {
         nome: "Catalogo e campioni",
-        descrizione: "Richiedi il nostro catalogo completo o campioni di prodotti per provare la qualità."
+        descrizione: "Richiedi il nostro catalogo completo o campioni di prodotti per provare la qualitÃ ."
       }
     ];
 
     // 5. FAQ comuni
-    console.log('❓ Creazione FAQ...');
+    console.log('â“ Creazione FAQ...');
     knowledge.faq = [
       {
         domanda: "Come posso ordinare?",
@@ -211,19 +211,19 @@ async function main() {
       },
       {
         domanda: "Quali sono i tempi di consegna?",
-        risposta: "Ordini effettuati entro le 12:00 vengono generalmente consegnati il giorno lavorativo successivo nelle zone principali della Svizzera. Per zone più remote potrebbero essere necessari 2-3 giorni."
+        risposta: "Ordini effettuati entro le 12:00 vengono generalmente consegnati il giorno lavorativo successivo nelle zone principali della Svizzera. Per zone piÃ¹ remote potrebbero essere necessari 2-3 giorni."
       },
       {
-        domanda: "Qual è l'ordine minimo?",
-        risposta: "Per i privati non c'è un ordine minimo. Per i clienti business (B2B) l'ordine minimo è di CHF 150 per la consegna gratuita."
+        domanda: "Qual Ã¨ l'ordine minimo?",
+        risposta: "Per i privati non c'Ã¨ un ordine minimo. Per i clienti business (B2B) l'ordine minimo Ã¨ di CHF 150 per la consegna gratuita."
       },
       {
         domanda: "Consegnate in tutta la Svizzera?",
-        risposta: "Sì, consegniamo in tutta la Svizzera: Zurigo, Berna, Basilea, Ginevra, Lugano, Lucerna e tutte le altre città e comuni."
+        risposta: "SÃ¬, consegniamo in tutta la Svizzera: Zurigo, Berna, Basilea, Ginevra, Lugano, Lucerna e tutte le altre cittÃ  e comuni."
       },
       {
         domanda: "Come posso diventare cliente business/B2B?",
-        risposta: "Contattaci via email o telefono con i dati della tua attività (nome, indirizzo, partita IVA). Ti creeremo un account business con listino prezzi dedicato e condizioni speciali."
+        risposta: "Contattaci via email o telefono con i dati della tua attivitÃ  (nome, indirizzo, partita IVA). Ti creeremo un account business con listino prezzi dedicato e condizioni speciali."
       },
       {
         domanda: "Quali metodi di pagamento accettate?",
@@ -231,11 +231,11 @@ async function main() {
       },
       {
         domanda: "I prodotti sono veramente italiani?",
-        risposta: "Assolutamente sì! Tutti i nostri prodotti sono importati direttamente dall'Italia da produttori selezionati. Garantiamo autenticità e qualità 100% italiana."
+        risposta: "Assolutamente sÃ¬! Tutti i nostri prodotti sono importati direttamente dall'Italia da produttori selezionati. Garantiamo autenticitÃ  e qualitÃ  100% italiana."
       },
       {
         domanda: "Posso visitare il vostro magazzino?",
-        risposta: "Sì, su appuntamento puoi visitare il nostro magazzino e vedere i prodotti. Contattaci per fissare una visita."
+        risposta: "SÃ¬, su appuntamento puoi visitare il nostro magazzino e vedere i prodotti. Contattaci per fissare una visita."
       },
       {
         domanda: "Fate consegne per eventi e catering?",
@@ -248,12 +248,12 @@ async function main() {
     ];
 
     // 6. Contatti
-    console.log('📞 Raccolta contatti...');
+    console.log('ðŸ“ž Raccolta contatti...');
     knowledge.contatti = {
       email: "info@lapa.ch",
       sito: "www.lapa.ch",
       shop: "www.lapa.ch/shop",
-      orari: "Lunedì-Venerdì 8:00-17:00",
+      orari: "LunedÃ¬-VenerdÃ¬ 8:00-17:00",
       social: {
         linkedin: "LAPA",
         instagram: "@lapa_ch"
@@ -263,7 +263,7 @@ async function main() {
     // Salva knowledge base
     const outputPath = resolve(__dirname, 'chatbot-knowledge.json');
     writeFileSync(outputPath, JSON.stringify(knowledge, null, 2), 'utf-8');
-    console.log(`\n✅ Knowledge base salvata in: ${outputPath}`);
+    console.log(`\nâœ… Knowledge base salvata in: ${outputPath}`);
 
     // Crea il system prompt per OpenAI
     const systemPrompt = `Sei l'assistente virtuale di LAPA, il principale distributore di prodotti alimentari italiani autentici in Svizzera.
@@ -293,21 +293,21 @@ ISTRUZIONI:
 4. Rispondi nella lingua in cui ti scrive l'utente (italiano, tedesco, francese o inglese)
 5. Non inventare informazioni sui prezzi se non le conosci, rimanda allo shop
 6. Sii conciso ma utile nelle risposte
-7. Promuovi sempre la qualità italiana dei prodotti`;
+7. Promuovi sempre la qualitÃ  italiana dei prodotti`;
 
     const promptPath = resolve(__dirname, 'chatbot-system-prompt.txt');
     writeFileSync(promptPath, systemPrompt, 'utf-8');
-    console.log(`✅ System prompt salvato in: ${promptPath}`);
+    console.log(`âœ… System prompt salvato in: ${promptPath}`);
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('📊 RIEPILOGO KNOWLEDGE BASE');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“Š RIEPILOGO KNOWLEDGE BASE');
+    console.log('â•'.repeat(80));
     console.log(`
-   🏢 Azienda: LAPA - Zero Pensieri
-   📦 Categorie: ${knowledge.categorie.length}
-   🍕 Prodotti: ${knowledge.prodotti.length}
-   🛎️ Servizi: ${knowledge.servizi.length}
-   ❓ FAQ: ${knowledge.faq.length}
+   ðŸ¢ Azienda: LAPA - Zero Pensieri
+   ðŸ“¦ Categorie: ${knowledge.categorie.length}
+   ðŸ• Prodotti: ${knowledge.prodotti.length}
+   ðŸ›Žï¸ Servizi: ${knowledge.servizi.length}
+   â“ FAQ: ${knowledge.faq.length}
 
    File generati:
    - chatbot-knowledge.json (dati strutturati)
@@ -315,7 +315,7 @@ ISTRUZIONI:
 `);
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

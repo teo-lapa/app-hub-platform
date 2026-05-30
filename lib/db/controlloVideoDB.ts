@@ -198,6 +198,11 @@ class ControlloVideoDB {
    * Inizia una nuova registrazione
    */
   async startRecording(batchId: number): Promise<void> {
+    // Pulisci eventuali chunk residui di una registrazione precedente dello
+    // stesso batch, altrimenti combineChunks mescola sessioni diverse e il
+    // video risulta corrotto.
+    await this.clearChunks(batchId);
+
     const db = await this.ensureDB();
     const tx = db.transaction([STORES.RECORDINGS], 'readwrite');
     const store = tx.objectStore(STORES.RECORDINGS);

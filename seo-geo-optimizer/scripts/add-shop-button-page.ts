@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Add Shop Button via Website Page
  * Aggiunge il pulsante Shop modificando la homepage
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Codice HTML/CSS per il pulsante floating
 const FLOATING_BUTTON_CODE = `<!-- LAPA Shop Button -->
@@ -100,20 +100,20 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🛒 LAPA - Aggiunta Pulsante Shop');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ›’ LAPA - Aggiunta Pulsante Shop');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Cerca la homepage
-    console.log('🔍 Ricerca homepage...');
+    console.log('ðŸ” Ricerca homepage...');
     const pages = await odoo.searchRead<any>(
       'website.page',
       [['url', '=', '/']],
@@ -130,10 +130,10 @@ async function main() {
     const lapaHomepage = pages.find(p => p.website_id?.[0] === 1);
 
     if (!lapaHomepage) {
-      console.log('\n⚠️ Homepage LAPA non trovata tra le pagine');
+      console.log('\nâš ï¸ Homepage LAPA non trovata tra le pagine');
 
       // Prova a cercare la vista direttamente
-      console.log('\n🔍 Ricerca vista homepage...');
+      console.log('\nðŸ” Ricerca vista homepage...');
       const homeViews = await odoo.searchRead<any>(
         'ir.ui.view',
         [
@@ -149,8 +149,8 @@ async function main() {
       }
     }
 
-    // Cerca anche il menu del footer per aggiungere lì
-    console.log('\n🔍 Ricerca elementi footer...');
+    // Cerca anche il menu del footer per aggiungere lÃ¬
+    console.log('\nðŸ” Ricerca elementi footer...');
     const footerViews = await odoo.searchRead<any>(
       'ir.ui.view',
       [
@@ -167,7 +167,7 @@ async function main() {
     }
 
     // Prova a trovare website.snippets per inserire HTML custom
-    console.log('\n🔍 Ricerca snippet HTML personalizzabili...');
+    console.log('\nðŸ” Ricerca snippet HTML personalizzabili...');
     const snippets = await odoo.searchRead<any>(
       'ir.ui.view',
       [
@@ -181,7 +181,7 @@ async function main() {
     console.log(`   Trovati ${snippets.length} snippet`);
 
     // Cerca website.page con arch_db accessibile
-    console.log('\n🔍 Ricerca struttura pagine website...');
+    console.log('\nðŸ” Ricerca struttura pagine website...');
     const websitePages = await odoo.searchRead<any>(
       'website.page',
       [['website_id', '=', 1], ['is_published', '=', true]],
@@ -194,13 +194,13 @@ async function main() {
       console.log(`   - ${p.url} (${p.name})`);
     }
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('📋 ISTRUZIONI MANUALI');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“‹ ISTRUZIONI MANUALI');
+    console.log('â•'.repeat(80));
     console.log(`
 L'inserimento automatico via API richiede permessi di admin sul sistema viste.
 
-📌 METODO PIÙ SEMPLICE - Aggiungi blocco HTML nella homepage:
+ðŸ“Œ METODO PIÃ™ SEMPLICE - Aggiungi blocco HTML nella homepage:
 
 1. Vai su https://www.lapa.ch
 2. Clicca su "Modifica" (in alto a destra, devi essere loggato)
@@ -213,11 +213,11 @@ ${FLOATING_BUTTON_CODE}
 
 7. Clicca "Salva"
 
-✨ Il pulsante apparirà in basso a sinistra!
+âœ¨ Il pulsante apparirÃ  in basso a sinistra!
 `);
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
   }
 }
 

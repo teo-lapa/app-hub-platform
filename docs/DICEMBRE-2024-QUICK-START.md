@@ -1,4 +1,4 @@
-# DICEMBRE 2024 - QUICK START
+﻿# DICEMBRE 2024 - QUICK START
 
 **Per chi ha fretta**: Comandi pronti da eseguire
 
@@ -30,7 +30,7 @@ cat .env.local | grep ODOO
 # ODOO_URL=https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 # ODOO_DB=lapadevadmin-lapa-v2-main-7268478
 # ODOO_ADMIN_EMAIL=apphubplatform@lapa.ch
-# ODOO_ADMIN_PASSWORD=apphubplatform2025
+# ODOO_ADMIN_PASSWORD=__REDACTED__
 ```
 
 ---
@@ -238,7 +238,7 @@ A: Si, Python funziona su tutti i sistemi. Adatta i path se necessario.
 cat .env.local | grep ODOO_ADMIN_PASSWORD
 
 # Se mancante, aggiungi:
-echo 'ODOO_ADMIN_PASSWORD=apphubplatform2025' >> .env.local
+echo 'ODOO_ADMIN_PASSWORD=__REDACTED__' >> .env.local
 ```
 
 ### Errore: "Autenticazione fallita"

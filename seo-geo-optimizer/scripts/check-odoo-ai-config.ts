@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Check Odoo AI Configuration
  * Verifica le configurazioni AI esistenti in Odoo (OpenAI, Gemini, etc.)
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 class OdooAPI {
   private uid: number | null = null;
@@ -122,21 +122,21 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🤖 LAPA - Verifica Configurazione AI in Odoo');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ¤– LAPA - Verifica Configurazione AI in Odoo');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // 1. Cerca moduli AI installati
-    console.log('📦 MODULI AI INSTALLATI');
-    console.log('─'.repeat(60));
+    console.log('ðŸ“¦ MODULI AI INSTALLATI');
+    console.log('â”€'.repeat(60));
 
     const modules = await odoo.getModules();
     const aiModules = modules.filter(m =>
@@ -156,7 +156,7 @@ async function main() {
     if (aiModules.length > 0) {
       console.log(`Trovati ${aiModules.length} moduli AI:\n`);
       for (const mod of aiModules) {
-        console.log(`   📌 ${mod.name}`);
+        console.log(`   ðŸ“Œ ${mod.name}`);
         console.log(`      ${mod.shortdesc}`);
         if (mod.summary) console.log(`      ${mod.summary.substring(0, 100)}...`);
         console.log('');
@@ -166,8 +166,8 @@ async function main() {
     }
 
     // 2. Cerca moduli livechat/helpdesk
-    console.log('\n💬 MODULI CHAT/HELPDESK');
-    console.log('─'.repeat(60));
+    console.log('\nðŸ’¬ MODULI CHAT/HELPDESK');
+    console.log('â”€'.repeat(60));
 
     const chatModules = modules.filter(m =>
       m.name.includes('livechat') ||
@@ -178,12 +178,12 @@ async function main() {
     );
 
     for (const mod of chatModules) {
-      console.log(`   📌 ${mod.name}: ${mod.shortdesc}`);
+      console.log(`   ðŸ“Œ ${mod.name}: ${mod.shortdesc}`);
     }
 
     // 3. Cerca configurazioni API
-    console.log('\n\n🔑 CONFIGURAZIONI API');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ”‘ CONFIGURAZIONI API');
+    console.log('â”€'.repeat(60));
 
     // Cerca parametri di sistema con chiavi API
     const params = await odoo.searchRead<any>(
@@ -215,8 +215,8 @@ async function main() {
     }
 
     // 4. Cerca impostazioni res.config.settings relative ad AI
-    console.log('\n\n⚙️ IMPOSTAZIONI AI IN CONFIG');
-    console.log('─'.repeat(60));
+    console.log('\n\nâš™ï¸ IMPOSTAZIONI AI IN CONFIG');
+    console.log('â”€'.repeat(60));
 
     const configFields = await odoo.fieldsGet('res.config.settings');
     if (configFields) {
@@ -242,8 +242,8 @@ async function main() {
     }
 
     // 5. Cerca modello chatbot se esiste
-    console.log('\n\n🤖 MODELLO CHATBOT');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ¤– MODELLO CHATBOT');
+    console.log('â”€'.repeat(60));
 
     const chatbotModels = [
       'chatbot.script',
@@ -257,7 +257,7 @@ async function main() {
       try {
         const fields = await odoo.fieldsGet(model);
         if (fields) {
-          console.log(`\n   ✅ Modello ${model} disponibile`);
+          console.log(`\n   âœ… Modello ${model} disponibile`);
           const relevantFields = Object.keys(fields).slice(0, 10);
           console.log(`      Campi: ${relevantFields.join(', ')}...`);
         }
@@ -267,8 +267,8 @@ async function main() {
     }
 
     // 6. Cerca livechat channels
-    console.log('\n\n📡 CANALI LIVECHAT');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ“¡ CANALI LIVECHAT');
+    console.log('â”€'.repeat(60));
 
     try {
       const channels = await odoo.searchRead<any>(
@@ -281,7 +281,7 @@ async function main() {
       if (channels.length > 0) {
         console.log(`Trovati ${channels.length} canali LiveChat:\n`);
         for (const ch of channels) {
-          console.log(`   📌 ${ch.name} (ID: ${ch.id})`);
+          console.log(`   ðŸ“Œ ${ch.name} (ID: ${ch.id})`);
           console.log(`      Testo pulsante: ${ch.button_text || 'default'}`);
           console.log(`      Chatbot: ${ch.chatbot_script_id ? ch.chatbot_script_id[1] : 'Nessuno'}`);
           console.log('');
@@ -294,8 +294,8 @@ async function main() {
     }
 
     // 7. Cerca chatbot scripts
-    console.log('\n📜 SCRIPT CHATBOT');
-    console.log('─'.repeat(60));
+    console.log('\nðŸ“œ SCRIPT CHATBOT');
+    console.log('â”€'.repeat(60));
 
     try {
       const scripts = await odoo.searchRead<any>(
@@ -308,7 +308,7 @@ async function main() {
       if (scripts.length > 0) {
         console.log(`Trovati ${scripts.length} script chatbot:\n`);
         for (const s of scripts) {
-          console.log(`   📌 ${s.name} (ID: ${s.id}) - Pubblicato: ${s.is_published ? 'Sì' : 'No'}`);
+          console.log(`   ðŸ“Œ ${s.name} (ID: ${s.id}) - Pubblicato: ${s.is_published ? 'SÃ¬' : 'No'}`);
         }
       } else {
         console.log('   Nessuno script chatbot configurato.\n');
@@ -317,12 +317,12 @@ async function main() {
       console.log('   Modello chatbot.script non disponibile.\n');
     }
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('📋 RIEPILOGO');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“‹ RIEPILOGO');
+    console.log('â•'.repeat(80));
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
   }
 }
 

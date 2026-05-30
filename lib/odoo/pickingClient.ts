@@ -349,7 +349,7 @@ export class PickingOdooClient {
       console.log('🔄 [Picking] Caricamento batch...');
 
       const domain = [
-        ['state', '=', 'in_progress']
+        ['state', 'in', ['in_progress', 'draft']]
       ];
 
       const fields = [

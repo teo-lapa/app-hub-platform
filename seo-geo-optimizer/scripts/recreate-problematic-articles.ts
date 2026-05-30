@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Delete and recreate problematic articles with correct content
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -114,17 +114,17 @@ async function recreateArticle(oldPostId: number, articlePath: string) {
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log(`\n🗑️  Eliminazione ID ${oldPostId}...`);
+  console.log(`\nðŸ—‘ï¸  Eliminazione ID ${oldPostId}...`);
   try {
     await callOdoo('blog.post', 'unlink', [[oldPostId]], {});
-    console.log(`   ✅ Eliminato`);
+    console.log(`   âœ… Eliminato`);
   } catch (e: any) {
-    console.log(`   ⚠️  ${e.message}`);
+    console.log(`   âš ï¸  ${e.message}`);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
-  console.log(`📝 Creazione nuovo articolo...`);
+  console.log(`ðŸ“ Creazione nuovo articolo...`);
   const newPostId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     blog_id: 4,
@@ -136,12 +136,12 @@ async function recreateArticle(oldPostId: number, articlePath: string) {
     tag_ids: [[6, 0, itData.tag_ids || []]]
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ Nuovo ID: ${newPostId}`);
+  console.log(`   âœ… Nuovo ID: ${newPostId}`);
 
   await new Promise(r => setTimeout(r, 2000));
 
   // Meta fields
-  console.log(`🌍 Meta fields...`);
+  console.log(`ðŸŒ Meta fields...`);
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -159,7 +159,7 @@ async function recreateArticle(oldPostId: number, articlePath: string) {
   await new Promise(r => setTimeout(r, 2000));
 
   // Content translations
-  console.log(`📋 Content translations...`);
+  console.log(`ðŸ“‹ Content translations...`);
   const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[newPostId], 'content'], {});
 
   if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {
@@ -197,11 +197,11 @@ async function recreateArticle(oldPostId: number, articlePath: string) {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║         RICREA ARTICOLI PROBLEMATICI                       ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘         RICREA ARTICOLI PROBLEMATICI                       â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   // Problematic articles that need recreation
@@ -224,19 +224,19 @@ async function main() {
     const newId = await recreateArticle(article.id, articlePath);
     newIds[article.id] = newId;
 
-    console.log(`✅ Completato - Vecchio ID: ${article.id}, Nuovo ID: ${newId}\n`);
+    console.log(`âœ… Completato - Vecchio ID: ${article.id}, Nuovo ID: ${newId}\n`);
 
     await new Promise(r => setTimeout(r, 2000));
   }
 
   console.log('='.repeat(70));
-  console.log('\n📊 RIEPILOGO RICREAZIONE:');
+  console.log('\nðŸ“Š RIEPILOGO RICREAZIONE:');
   console.log('');
   for (const [oldId, newId] of Object.entries(newIds)) {
-    console.log(`   ID ${oldId} → ID ${newId}`);
+    console.log(`   ID ${oldId} â†’ ID ${newId}`);
   }
   console.log('');
-  console.log('🎉 RICREAZIONE COMPLETATA!\n');
+  console.log('ðŸŽ‰ RICREAZIONE COMPLETATA!\n');
 }
 
 main().catch(console.error);

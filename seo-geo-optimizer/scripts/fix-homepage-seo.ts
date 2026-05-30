@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+﻿#!/usr/bin/env npx tsx
 /**
  * Fix SEO Homepage LAPA
  * Corregge tutti i problemi SEO identificati sulla homepage lapa.ch
@@ -11,7 +11,7 @@ const ODOO_CONFIG = {
   url: 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com',
   db: 'lapadevadmin-lapa-v2-main-7268478',
   username: 'paul@lapa.ch',
-  password: 'lapa201180',
+  password: (process.env.ODOO_PASSWORD || ''),
 };
 
 // =====================================================
@@ -23,7 +23,7 @@ const SEO_FIXES = {
   title: 'LAPA - Grossista Prodotti Italiani Svizzera | Zero Pensieri',
 
   // Meta Description pulita (max 160 caratteri, senza JSON)
-  description: 'LAPA: il tuo grossista di prodotti alimentari italiani in Svizzera. Oltre 3000 prodotti, consegna rapida 6 giorni su 7, qualità garantita. Fornitura per ristoranti.',
+  description: 'LAPA: il tuo grossista di prodotti alimentari italiani in Svizzera. Oltre 3000 prodotti, consegna rapida 6 giorni su 7, qualitÃ  garantita. Fornitura per ristoranti.',
 
   // Keywords
   keywords: 'grossista prodotti italiani, forniture ristoranti svizzera, mozzarella, prosciutto, pasta italiana, consegna rapida zurigo',
@@ -53,13 +53,13 @@ const SEO_FIXES = {
       "longitude": 8.5969
     },
     "areaServed": [
-      { "@type": "City", "name": "Zürich" },
+      { "@type": "City", "name": "ZÃ¼rich" },
       { "@type": "City", "name": "Winterthur" },
       { "@type": "City", "name": "Basel" },
       { "@type": "City", "name": "Bern" },
       { "@type": "Country", "name": "Switzerland" }
     ],
-    "description": "LAPA è il grossista di riferimento per prodotti italiani di alta qualità in Svizzera. Offriamo oltre 3000 specialità italiane: mozzarella fior di latte, burrata pugliese, prosciutto di Parma, formaggi DOP, pasta artigianale.",
+    "description": "LAPA Ã¨ il grossista di riferimento per prodotti italiani di alta qualitÃ  in Svizzera. Offriamo oltre 3000 specialitÃ  italiane: mozzarella fior di latte, burrata pugliese, prosciutto di Parma, formaggi DOP, pasta artigianale.",
     "priceRange": "CHF",
     "currenciesAccepted": "CHF, EUR",
     "paymentAccepted": "Cash, Credit Card, Invoice, Bank Transfer",
@@ -191,38 +191,38 @@ class OdooSEOFixer {
   }
 
   async fixHomepageSEO(): Promise<void> {
-    console.log('🔧 LAPA SEO Fix - Homepage\n');
+    console.log('ðŸ”§ LAPA SEO Fix - Homepage\n');
     console.log('='.repeat(60));
 
     // 1. Get current website config
-    console.log('\n📥 Recupero configurazione attuale...');
+    console.log('\nðŸ“¥ Recupero configurazione attuale...');
     const websites = await this.getWebsiteConfig();
 
     if (websites.length === 0) {
-      console.log('❌ Nessun website trovato!');
+      console.log('âŒ Nessun website trovato!');
       return;
     }
 
     const website = websites[0];
-    console.log(`\n📍 Website: ${website.name} (ID: ${website.id})`);
+    console.log(`\nðŸ“ Website: ${website.name} (ID: ${website.id})`);
     console.log(`   Dati attuali:`, JSON.stringify(website, null, 2));
 
     // 2. Get homepage
-    console.log('\n📥 Recupero homepage...');
+    console.log('\nðŸ“¥ Recupero homepage...');
     const pages = await this.getWebsitePages();
     const homepage = pages.find(p => p.url === '/' || p.url === '/homepage' || p.name?.toLowerCase().includes('home'));
 
     if (homepage) {
-      console.log(`📍 Homepage trovata: "${homepage.name}" (ID: ${homepage.id})`);
+      console.log(`ðŸ“ Homepage trovata: "${homepage.name}" (ID: ${homepage.id})`);
       console.log(`   Dati attuali:`, JSON.stringify(homepage, null, 2));
     } else {
-      console.log('⚠️  Homepage non trovata nelle pagine');
+      console.log('âš ï¸  Homepage non trovata nelle pagine');
       console.log('   Pagine disponibili:');
       pages.slice(0, 10).forEach(p => console.log(`   - ${p.name} (${p.url})`));
     }
 
     // 3. Try to find correct fields and update
-    console.log('\n📝 Analisi campi e preparazione correzioni...');
+    console.log('\nðŸ“ Analisi campi e preparazione correzioni...');
 
     // Determina quali campi sono disponibili per l'update
     const websiteFields = await this.getModelFields('website');
@@ -241,7 +241,7 @@ class OdooSEOFixer {
     for (const fieldName of titleFieldNames) {
       if (pageFields[fieldName]) {
         pageUpdate[fieldName] = SEO_FIXES.title;
-        console.log(`   ✅ Campo title trovato: ${fieldName}`);
+        console.log(`   âœ… Campo title trovato: ${fieldName}`);
         break;
       }
     }
@@ -250,7 +250,7 @@ class OdooSEOFixer {
     for (const fieldName of descFieldNames) {
       if (pageFields[fieldName]) {
         pageUpdate[fieldName] = SEO_FIXES.description;
-        console.log(`   ✅ Campo description trovato: ${fieldName}`);
+        console.log(`   âœ… Campo description trovato: ${fieldName}`);
         break;
       }
     }
@@ -259,28 +259,28 @@ class OdooSEOFixer {
     for (const fieldName of keywordsFieldNames) {
       if (pageFields[fieldName]) {
         pageUpdate[fieldName] = SEO_FIXES.keywords;
-        console.log(`   ✅ Campo keywords trovato: ${fieldName}`);
+        console.log(`   âœ… Campo keywords trovato: ${fieldName}`);
         break;
       }
     }
 
     // 4. Apply fixes
     if (homepage && Object.keys(pageUpdate).length > 0) {
-      console.log('\n🔄 Applicazione correzioni alla Homepage...');
+      console.log('\nðŸ”„ Applicazione correzioni alla Homepage...');
       console.log('   Update:', JSON.stringify(pageUpdate, null, 2));
       try {
         await this.updatePageSEO(homepage.id, pageUpdate);
-        console.log('✅ Homepage SEO aggiornata con successo!');
+        console.log('âœ… Homepage SEO aggiornata con successo!');
       } catch (error) {
-        console.log(`❌ Errore aggiornamento homepage: ${error}`);
+        console.log(`âŒ Errore aggiornamento homepage: ${error}`);
       }
     } else {
-      console.log('\n⚠️  Nessun campo SEO trovato per l\'aggiornamento automatico');
+      console.log('\nâš ï¸  Nessun campo SEO trovato per l\'aggiornamento automatico');
     }
 
     // 5. Summary
     console.log('\n' + '='.repeat(60));
-    console.log('📊 RIEPILOGO:');
+    console.log('ðŸ“Š RIEPILOGO:');
     console.log('='.repeat(60));
     console.log(`
 I meta tag SEO in Odoo Website sono gestiti direttamente
@@ -289,17 +289,17 @@ nel backend Odoo. Per correggere i problemi identificati:
 1. Vai su: ${ODOO_CONFIG.url}/web#action=website.action_website_configuration
 2. Modifica i seguenti campi:
 
-   📌 Website Meta Title:
+   ðŸ“Œ Website Meta Title:
    ${SEO_FIXES.title}
 
-   📌 Website Meta Description:
+   ðŸ“Œ Website Meta Description:
    ${SEO_FIXES.description}
 
-   📌 Keywords:
+   ðŸ“Œ Keywords:
    ${SEO_FIXES.keywords}
 
 3. Per lo Schema.org JSON-LD, vai su:
-   Website → Configuration → Settings → SEO
+   Website â†’ Configuration â†’ Settings â†’ SEO
    E aggiungi il seguente codice nel campo "Website Schema":
 `);
     console.log('```json');
@@ -307,13 +307,13 @@ nel backend Odoo. Per correggere i problemi identificati:
     console.log('```');
 
     console.log(`
-📋 PROBLEMI DA CORREGGERE MANUALMENTE IN ODOO:
+ðŸ“‹ PROBLEMI DA CORREGGERE MANUALMENTE IN ODOO:
 
-1. ❌ Title troncato → Cambiarlo a max 60 caratteri
-2. ❌ Meta description contiene JSON → Pulire il campo
-3. ❌ H1 vuoto → Aggiungere testo nel page builder
-4. ❌ H2 nested → Correggere struttura heading
-5. ⚠️  Hreflang → Aggiungere se sito multilingua
+1. âŒ Title troncato â†’ Cambiarlo a max 60 caratteri
+2. âŒ Meta description contiene JSON â†’ Pulire il campo
+3. âŒ H1 vuoto â†’ Aggiungere testo nel page builder
+4. âŒ H2 nested â†’ Correggere struttura heading
+5. âš ï¸  Hreflang â†’ Aggiungere se sito multilingua
 
 URL Odoo Editor: ${ODOO_CONFIG.url}/@/
 `);
@@ -326,7 +326,7 @@ async function main() {
   try {
     await fixer.fixHomepageSEO();
   } catch (error) {
-    console.error('❌ Errore:', error);
+    console.error('âŒ Errore:', error);
     process.exit(1);
   }
 }

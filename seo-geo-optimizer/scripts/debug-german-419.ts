@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Debug German content for article 419
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,12 +48,12 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const postId = 419;
 
-  console.log('📋 VERIFICA CONTENUTO TEDESCO:\n');
+  console.log('ðŸ“‹ VERIFICA CONTENUTO TEDESCO:\n');
   console.log('='.repeat(70));
 
   const post = await callOdoo('blog.post', 'read', [[postId], ['content']], {
@@ -64,26 +64,26 @@ async function main() {
     const content = post[0].content;
 
     // Find the section with lists
-    const listSection = content.substring(content.indexOf('Häufiger Fehler'), content.indexOf('Häufiger Fehler') + 1000);
+    const listSection = content.substring(content.indexOf('HÃ¤ufiger Fehler'), content.indexOf('HÃ¤ufiger Fehler') + 1000);
 
-    console.log('\n📋 SEZIONE TEDESCA CON LISTE (primi 1000 caratteri):\n');
+    console.log('\nðŸ“‹ SEZIONE TEDESCA CON LISTE (primi 1000 caratteri):\n');
     console.log(listSection);
     console.log('\n' + '='.repeat(70));
 
     // Extract just the first list
     const firstList = content.match(/<ol[^>]*>[\s\S]*?<\/ol>/i);
     if (firstList) {
-      console.log('\n📋 PRIMA LISTA COMPLETA:\n');
+      console.log('\nðŸ“‹ PRIMA LISTA COMPLETA:\n');
       console.log(firstList[0]);
     }
 
     // Count how many times the problematic text appears
     const problemText = 'Neapolitanischer Fior di Latte hat einen';
     const count = (content.match(new RegExp(problemText, 'g')) || []).length;
-    console.log(`\n⚠️  Testo problematico "${problemText}" appare ${count} volte\n`);
+    console.log(`\nâš ï¸  Testo problematico "${problemText}" appare ${count} volte\n`);
   }
 
-  console.log('\n📋 TRADUZIONI DEI SEGMENTI:\n');
+  console.log('\nðŸ“‹ TRADUZIONI DEI SEGMENTI:\n');
   const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
 
   if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {

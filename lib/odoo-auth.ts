@@ -23,7 +23,7 @@ const getOdooUrl = () => process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_UR
 const getOdooDb = () => process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 // Supporta sia ODOO_USERNAME che ODOO_ADMIN_EMAIL per retrocompatibilità
 const getOdooLogin = () => process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
-const getOdooPassword = () => process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
+const getOdooPassword = () => process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '';
 
 // Cache sessione fallback per evitare re-autenticazioni multiple
 let cachedFallbackSession: { cookie: string; expires: number } | null = null;

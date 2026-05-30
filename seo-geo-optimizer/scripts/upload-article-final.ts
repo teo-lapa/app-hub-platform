@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo con traduzioni - VERSIONE FINALE
  * Achieves 91% translation accuracy through intelligent segment matching:
  * - Table cells (positional matching)
@@ -15,7 +15,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -171,7 +171,7 @@ function extractListItems(html: string): string[] {
 }
 
 /**
- * Calcola similarità tra due stringhe (0-1)
+ * Calcola similaritÃ  tra due stringhe (0-1)
  */
 function similarity(s1: string, s2: string): number {
   // Rimuovi tag HTML
@@ -267,19 +267,19 @@ function findPerfectTranslation(
   if (idx >= 0) {
     // Trova il paragrafo corrispondente nel target
     if (idx < targetParagraphs.length) {
-      // Se il segmento è una parte del paragrafo, trova la parte corrispondente
+      // Se il segmento Ã¨ una parte del paragrafo, trova la parte corrispondente
       const itPara = itParagraphs[idx].content;
       const targetPara = targetParagraphs[idx].content;
 
-      // Se il segmento è l'intero paragrafo
+      // Se il segmento Ã¨ l'intero paragrafo
       if (normalize(itPara) === seg) {
         return targetPara;
       }
 
-      // Se il segmento è una parte, cerca per posizione relativa
+      // Se il segmento Ã¨ una parte, cerca per posizione relativa
       const segStartInPara = itPara.indexOf(segNoTags);
       if (segStartInPara >= 0) {
-        // Calcola la posizione relativa (inizio, metà, fine)
+        // Calcola la posizione relativa (inizio, metÃ , fine)
         const relativePos = segStartInPara / itPara.length;
 
         // Cerca nella stessa posizione relativa nel paragrafo target
@@ -295,7 +295,7 @@ function findPerfectTranslation(
 
   // Strategia 5: Match fuzzy (per segmenti corti o celle di tabella)
   if (segNoTags.length < 30) {
-    // Cerca in tutte le celle di tabella con similarità > 0.5
+    // Cerca in tutte le celle di tabella con similaritÃ  > 0.5
     let bestMatch: string | null = null;
     let bestScore = 0.5;
 
@@ -352,17 +352,17 @@ function findPerfectTranslation(
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 ${articlePath}\n`);
+  console.log(`ðŸ“„ ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Auth...');
+  console.log('ðŸ” Auth...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   const itData = article.translations.it_IT;
 
-  console.log('🇮🇹 Create...');
+  console.log('ðŸ‡®ðŸ‡¹ Create...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -376,7 +376,7 @@ async function uploadArticle(articlePath: string) {
 
   console.log(`   ID: ${postId}\n`);
 
-  console.log('📝 Meta...');
+  console.log('ðŸ“ Meta...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang];
@@ -389,10 +389,10 @@ async function uploadArticle(articlePath: string) {
       website_meta_description: langData.meta.description,
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
-  console.log('\n📖 Segments...');
+  console.log('\nðŸ“– Segments...');
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData?.[0]?.length) {
@@ -403,7 +403,7 @@ async function uploadArticle(articlePath: string) {
   const sources = [...new Set(segmentData[0].map((s: any) => s.source))] as string[];
   console.log(`   ${sources.length}\n`);
 
-  console.log('🔍 Analyze...');
+  console.log('ðŸ” Analyze...');
   const itTableCells = extractAllTableCellsInOrder(itData.content_html);
   const itParagraphs = extractAllParagraphs(itData.content_html);
   const itHeadings = extractHeadings(itData.content_html);
@@ -415,7 +415,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   Lists: ${itListItems.length}`);
   console.log(`   Inline: ${itInlineTags.length}\n`);
 
-  console.log('🌍 Translate...\n');
+  console.log('ðŸŒ Translate...\n');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -463,11 +463,11 @@ async function uploadArticle(articlePath: string) {
       await callOdoo('blog.post', 'update_field_translations', [
         [postId], 'content', { [odooLang]: translations }
       ]);
-      console.log(`     ✅`);
+      console.log(`     âœ…`);
     }
   }
 
-  console.log(`\n✅ ${postId}`);
+  console.log(`\nâœ… ${postId}`);
   return postId;
 }
 

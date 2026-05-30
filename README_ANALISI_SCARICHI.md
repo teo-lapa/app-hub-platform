@@ -1,4 +1,4 @@
-# Analisi Ubicazioni Scarichi Parziali
+﻿# Analisi Ubicazioni Scarichi Parziali
 
 ## Descrizione
 
@@ -8,7 +8,7 @@ Questo sistema analizza gli ordini con scarichi parziali e determina:
 
 ## File Generati
 
-### 📄 ANALISI_UBICAZIONI_SCARICHI_PARZIALI.json
+### ðŸ“„ ANALISI_UBICAZIONI_SCARICHI_PARZIALI.json
 
 Contiene l'analisi completa di tutti gli ordini con scarichi parziali:
 
@@ -34,7 +34,7 @@ Contiene l'analisi completa di tutti gli ordini con scarichi parziali:
 
 ## Script Disponibili
 
-### 1. genera-ubicazioni-buffer-simulato.js ✅
+### 1. genera-ubicazioni-buffer-simulato.js âœ…
 
 **Status**: Funzionante (non richiede connessione Odoo)
 
@@ -55,7 +55,7 @@ node genera-ubicazioni-buffer-simulato.js
 | **Refrigerati** | `Buffer/Frigo` | Nome contiene: S.V., salumi, formaggi, guanciale, mortadella, grana, fiordilatte, ecc. |
 | **Altri** | `Buffer/Sopra` | Tutti gli altri prodotti (carta, plastica, scatole, farina, ecc.) |
 
-### 2. analizza-scarichi-parziali-ubicazioni.js 🚧
+### 2. analizza-scarichi-parziali-ubicazioni.js ðŸš§
 
 **Status**: Richiede connessione Odoo (attualmente non disponibile)
 
@@ -65,18 +65,18 @@ Versione completa che si connette a Odoo staging per:
 - Determinare il buffer dalla categoria Odoo
 
 ```bash
-# Quando Odoo sarà disponibile:
+# Quando Odoo sarÃ  disponibile:
 node analizza-scarichi-parziali-ubicazioni.js
 ```
 
 ## Statistiche Report Attuale
 
-### 📊 Riepilogo Generale
+### ðŸ“Š Riepilogo Generale
 - **Ordini totali**: 26
 - **Ordini con prodotti**: 10
 - **Prodotti da ricollocare**: 19
 
-### 👥 Distribuzione per Autista
+### ðŸ‘¥ Distribuzione per Autista
 | Autista | Ordini |
 |---------|--------|
 | Liviu | 4 |
@@ -84,14 +84,14 @@ node analizza-scarichi-parziali-ubicazioni.js
 | Alexandru | 2 |
 | Domingos | 1 |
 
-### 📦 Distribuzione per Buffer
+### ðŸ“¦ Distribuzione per Buffer
 | Buffer | Prodotti | % |
 |--------|----------|---|
 | **Sopra** | 10 | 52.6% |
 | **Frigo** | 8 | 42.1% |
 | **Pingu** | 1 | 5.3% |
 
-### 📏 Distribuzione per UOM
+### ðŸ“ Distribuzione per UOM
 | UOM | Prodotti |
 |-----|----------|
 | kg | 10 |
@@ -119,7 +119,7 @@ node analizza-scarichi-parziali-ubicazioni.js
    - Qty: come specificato nel report
 
 4. **Validare i trasferimenti**
-   - Verificare che le quantità corrispondano
+   - Verificare che le quantitÃ  corrispondano
    - Controllare che i buffer siano corretti
 
 ## Note Tecniche
@@ -133,7 +133,7 @@ node analizza-scarichi-parziali-ubicazioni.js
 - URL: `https://lapadevadmin-lapa-v2-staging-2406-24517859.dev.odoo.com`
 - DB: `lapadevadmin-lapa-v2-staging-2406-24517859`
 - Login: `paul@lapa.ch`
-- Password: `lapa201180`
+- Password: `__REDACTED__`
 
 ### Modelli Odoo Utilizzati
 

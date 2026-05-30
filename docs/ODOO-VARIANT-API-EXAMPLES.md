@@ -1,4 +1,4 @@
-# Odoo Variant API - Executable Examples
+﻿# Odoo Variant API - Executable Examples
 
 ## Quick Reference: RPC Calls for Product Variants
 
@@ -6,7 +6,7 @@ All examples use the Odoo instance from `.env.local`:
 - **URL**: `https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com`
 - **DB**: `lapadevadmin-lapa-v2-main-7268478`
 - **Email**: `apphubplatform@lapa.ch`
-- **Password**: `apphubplatform2025`
+- **Password**: `__REDACTED__`
 
 ---
 
@@ -16,7 +16,7 @@ All examples use the Odoo instance from `.env.local`:
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_EMAIL = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = '__REDACTED__';
 
 async function authenticate() {
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
@@ -115,7 +115,7 @@ async function getAllVariants(sessionId, templateId) {
       fields: [
         'id',
         'name',
-        'display_name',  // ⭐ MOST IMPORTANT FIELD
+        'display_name',  // â­ MOST IMPORTANT FIELD
         'default_code',
         'barcode',
         'lst_price',
@@ -498,34 +498,34 @@ async function findProductsWithVariants(sessionId, limit = 10) {
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_EMAIL = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = '__REDACTED__';
 
 // ... (include authenticate and callOdoo functions from above)
 
 async function main() {
   // Authenticate
   const { uid, sessionId } = await authenticate();
-  console.log('✅ Authenticated as UID:', uid);
+  console.log('âœ… Authenticated as UID:', uid);
 
   // Test 1: Find products with variants
-  console.log('\n📦 Finding products with variants...');
+  console.log('\nðŸ“¦ Finding products with variants...');
   const templatesWithVariants = await findProductsWithVariants(sessionId, 5);
 
   if (templatesWithVariants.length > 0) {
     const template = templatesWithVariants[0];
 
     // Test 2: Load full variant details
-    console.log(`\n🔍 Loading variants for: ${template.name}`);
+    console.log(`\nðŸ” Loading variants for: ${template.name}`);
     const variants = await getAllVariants(sessionId, template.id);
 
-    console.log(`\n✅ Found ${variants.length} variants:`);
+    console.log(`\nâœ… Found ${variants.length} variants:`);
     variants.forEach((v, i) => {
       console.log(`  ${i + 1}. ${v.display_name}`);
-      console.log(`     Stock: ${v.qty_available}, Price: €${v.lst_price}`);
+      console.log(`     Stock: ${v.qty_available}, Price: â‚¬${v.lst_price}`);
     });
 
     // Test 3: Get attribute structure
-    console.log(`\n🏷️ Loading attribute structure...`);
+    console.log(`\nðŸ·ï¸ Loading attribute structure...`);
     const structure = await getVariantAttributeStructure(sessionId, template.id);
 
     console.log('Attributes:');
@@ -621,9 +621,9 @@ const products = await callOdoo(sessionId, 'product.product', 'search_read',
 ## Summary
 
 **Essential Flow:**
-1. Get product → Extract `product_tmpl_id`
-2. Check template → Get `product_variant_count`
-3. If > 1 → Load all variants with `display_name`
+1. Get product â†’ Extract `product_tmpl_id`
+2. Check template â†’ Get `product_variant_count`
+3. If > 1 â†’ Load all variants with `display_name`
 4. Display variants to user
 5. Use selected variant ID (not template ID!) for operations
 

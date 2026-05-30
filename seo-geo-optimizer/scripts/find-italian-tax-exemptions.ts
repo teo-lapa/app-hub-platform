@@ -1,14 +1,14 @@
-/**
+﻿/**
  * Script per trovare i codici di esenzione IVA italiani disponibili in Odoo
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -38,7 +38,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -76,9 +76,9 @@ async function main() {
     const cookies = await authenticate();
 
     // 1. Cerca i campi della tassa per vedere i campi italiani
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🔍 RICERCA CAMPI account.tax');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ” RICERCA CAMPI account.tax');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const taxFields = await callOdoo(cookies, 'account.tax', 'fields_get', [[
       'l10n_it_exempt_reason',
@@ -86,13 +86,13 @@ async function main() {
       'l10n_it_kind_exoneration'
     ]], { attributes: ['string', 'type', 'selection'] });
 
-    console.log('📋 Campi italiani disponibili:');
+    console.log('ðŸ“‹ Campi italiani disponibili:');
     for (const [fieldName, fieldInfo] of Object.entries(taxFields) as any) {
       console.log(`\n   ${fieldName}:`);
-      console.log(`   • Etichetta: ${fieldInfo.string}`);
-      console.log(`   • Tipo: ${fieldInfo.type}`);
+      console.log(`   â€¢ Etichetta: ${fieldInfo.string}`);
+      console.log(`   â€¢ Tipo: ${fieldInfo.type}`);
       if (fieldInfo.selection) {
-        console.log(`   • Valori disponibili:`);
+        console.log(`   â€¢ Valori disponibili:`);
         fieldInfo.selection.forEach((s: any) => {
           console.log(`     - ${s[0]}: ${s[1]}`);
         });
@@ -100,9 +100,9 @@ async function main() {
     }
 
     // 2. Guarda come sono configurate le aliquote 0% esistenti per ItaEmpire
-    console.log('\n\n═══════════════════════════════════════════════════════════════════');
-    console.log('🔍 ALIQUOTE 0% ESISTENTI PER ITAEMPIRE (con campi italiani)');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('\n\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ” ALIQUOTE 0% ESISTENTI PER ITAEMPIRE (con campi italiani)');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const existingTaxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
       ['company_id', '=', 6], // ItaEmpire
@@ -116,7 +116,7 @@ async function main() {
     });
 
     existingTaxes.forEach((tax: any) => {
-      console.log(`📋 ${tax.name} (ID: ${tax.id})`);
+      console.log(`ðŸ“‹ ${tax.name} (ID: ${tax.id})`);
       console.log(`   Descrizione: ${tax.description || 'N/A'}`);
       console.log(`   Codice esenzione: ${tax.l10n_it_kind_exoneration || 'N/A'}`);
       console.log(`   Motivo esenzione: ${tax.l10n_it_exempt_reason || 'N/A'}`);
@@ -125,7 +125,7 @@ async function main() {
     });
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

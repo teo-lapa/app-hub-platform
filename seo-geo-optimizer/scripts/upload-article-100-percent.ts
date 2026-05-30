@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo con traduzioni al 100%
  * Usa get_field_translations + matching intelligente
  */
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -153,7 +153,7 @@ async function uploadArticle(articlePath: string): Promise<number> {
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log(`📝 ${itData.name.substring(0, 60)}...`);
+  console.log(`ðŸ“ ${itData.name.substring(0, 60)}...`);
 
   // 1. Create post in Italian
   const postId = await callOdoo('blog.post', 'create', [{
@@ -167,10 +167,10 @@ async function uploadArticle(articlePath: string): Promise<number> {
     is_published: false
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ ID: ${postId}`);
+  console.log(`   âœ… ID: ${postId}`);
 
   // 2. Translate meta fields
-  console.log(`   🌍 Meta fields...`);
+  console.log(`   ðŸŒ Meta fields...`);
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -184,13 +184,13 @@ async function uploadArticle(articlePath: string): Promise<number> {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
   }
-  console.log(`      ✓ Done`);
+  console.log(`      âœ“ Done`);
 
   // 3. Wait for Odoo
   await new Promise(r => setTimeout(r, 2000));
 
   // 4. Get field translation segments
-  console.log(`   📋 Segmenti...`);
+  console.log(`   ðŸ“‹ Segmenti...`);
   const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
 
   if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {
@@ -199,7 +199,7 @@ async function uploadArticle(articlePath: string): Promise<number> {
     console.log(`      ${sourceTexts.length} segmenti da Odoo`);
 
     // 5. Translate content using structural matching
-    console.log(`   🌐 Content (structural matching)...`);
+    console.log(`   ðŸŒ Content (structural matching)...`);
 
     for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
       if (jsonLang === 'it_IT') continue;
@@ -233,13 +233,13 @@ async function uploadArticle(articlePath: string): Promise<number> {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║          UPLOAD ARTICOLO CON TRADUZIONI AL 100%            ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘          UPLOAD ARTICOLO CON TRADUZIONI AL 100%            â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Test with article 1
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
@@ -247,23 +247,23 @@ async function main() {
   // Delete post 421 if exists
   try {
     await callOdoo('blog.post', 'unlink', [[421]], {});
-    console.log('🗑️  Eliminato post 421\n');
+    console.log('ðŸ—‘ï¸  Eliminato post 421\n');
     await new Promise(r => setTimeout(r, 1000));
   } catch (e) {}
 
   const postId = await uploadArticle(articlePath);
 
   // Verify
-  console.log('\n⏳ Attendo 3 secondi...\n');
+  console.log('\nâ³ Attendo 3 secondi...\n');
   await new Promise(r => setTimeout(r, 3000));
 
-  console.log('📋 VERIFICA:\n');
+  console.log('ðŸ“‹ VERIFICA:\n');
 
   const languages = {
-    'it_IT': 'IT 🇮🇹',
-    'de_CH': 'DE 🇩🇪',
-    'fr_CH': 'FR 🇫🇷',
-    'en_US': 'EN 🇬🇧'
+    'it_IT': 'IT ðŸ‡®ðŸ‡¹',
+    'de_CH': 'DE ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'FR ðŸ‡«ðŸ‡·',
+    'en_US': 'EN ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {
@@ -280,7 +280,7 @@ async function main() {
     }
   }
 
-  console.log('🎉 Completato!');
+  console.log('ðŸŽ‰ Completato!');
 }
 
 main().catch(console.error);

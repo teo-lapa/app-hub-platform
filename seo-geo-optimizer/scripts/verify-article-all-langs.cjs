@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verifica articolo in tutte le lingue
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -50,17 +50,17 @@ async function callOdoo(model, method, args, kwargs = {}) {
 async function main() {
   const postId = 172; // ID articolo burrata test
 
-  console.log(`🔍 VERIFICA ARTICOLO ID ${postId} IN TUTTE LE LINGUE\n`);
+  console.log(`ðŸ” VERIFICA ARTICOLO ID ${postId} IN TUTTE LE LINGUE\n`);
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const langs = ['it_IT', 'de_CH', 'fr_CH', 'en_US'];
 
   for (const lang of langs) {
-    console.log(`\n🌐 Lingua: ${lang}`);
-    console.log('─'.repeat(70));
+    console.log(`\nðŸŒ Lingua: ${lang}`);
+    console.log('â”€'.repeat(70));
 
     const data = await callOdoo('blog.post', 'read', [[postId]], {
       fields: ['name', 'subtitle', 'content', 'website_meta_title', 'website_meta_description', 'website_meta_keywords'],
@@ -69,25 +69,25 @@ async function main() {
 
     const post = data[0];
 
-    console.log(`📝 Title: ${post.name}`);
-    console.log(`📝 Subtitle: ${post.subtitle ? post.subtitle.substring(0, 60) + '...' : 'N/A'}`);
-    console.log(`📝 Meta Title: ${post.website_meta_title || 'N/A'}`);
-    console.log(`📝 Meta Desc: ${post.website_meta_description ? post.website_meta_description.substring(0, 80) + '...' : 'N/A'}`);
-    console.log(`📝 Keywords: ${post.website_meta_keywords || 'N/A'}`);
+    console.log(`ðŸ“ Title: ${post.name}`);
+    console.log(`ðŸ“ Subtitle: ${post.subtitle ? post.subtitle.substring(0, 60) + '...' : 'N/A'}`);
+    console.log(`ðŸ“ Meta Title: ${post.website_meta_title || 'N/A'}`);
+    console.log(`ðŸ“ Meta Desc: ${post.website_meta_description ? post.website_meta_description.substring(0, 80) + '...' : 'N/A'}`);
+    console.log(`ðŸ“ Keywords: ${post.website_meta_keywords || 'N/A'}`);
 
     // Controlla content
     const contentWords = post.content ? post.content.split(/\s+/).length : 0;
     const hasH1 = post.content ? post.content.includes('<h1>') : false;
     const hasH2 = post.content ? post.content.includes('<h2>') : false;
 
-    console.log(`📊 Content: ${contentWords} parole`);
-    console.log(`📊 H1: ${hasH1 ? '✓' : '✗'}`);
-    console.log(`📊 H2: ${hasH2 ? '✓' : '✗'}`);
+    console.log(`ðŸ“Š Content: ${contentWords} parole`);
+    console.log(`ðŸ“Š H1: ${hasH1 ? 'âœ“' : 'âœ—'}`);
+    console.log(`ðŸ“Š H2: ${hasH2 ? 'âœ“' : 'âœ—'}`);
   }
 
-  console.log('\n' + '═'.repeat(70));
-  console.log('✅ Verifica completata!');
-  console.log('═'.repeat(70));
+  console.log('\n' + 'â•'.repeat(70));
+  console.log('âœ… Verifica completata!');
+  console.log('â•'.repeat(70));
 }
 
 main().catch(console.error);

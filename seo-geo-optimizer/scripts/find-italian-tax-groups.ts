@@ -1,14 +1,14 @@
-/**
+﻿/**
  * Script per trovare i gruppi fiscali italiani
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -38,7 +38,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -76,7 +76,7 @@ async function main() {
     const cookies = await authenticate();
 
     // Trova il country_id dell'Italia
-    console.log('🔍 Ricerca ID paese Italia...');
+    console.log('ðŸ” Ricerca ID paese Italia...');
     const italy = await callOdoo(cookies, 'res.country', 'search_read', [[
       ['code', '=', 'IT']
     ]], {
@@ -89,12 +89,12 @@ async function main() {
     }
 
     const italyId = italy[0].id;
-    console.log(`✅ Italia trovata: ID ${italyId}\n`);
+    console.log(`âœ… Italia trovata: ID ${italyId}\n`);
 
     // Cerca tutti i gruppi fiscali
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('📋 TUTTI I GRUPPI FISCALI');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ“‹ TUTTI I GRUPPI FISCALI');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const allGroups = await callOdoo(cookies, 'account.tax.group', 'search_read', [[]], {
       fields: ['id', 'name', 'country_id'],
@@ -106,29 +106,29 @@ async function main() {
     const swissGroups = allGroups.filter((g: any) => g.country_id && g.country_id[1]?.includes('Switzerland'));
     const noCountryGroups = allGroups.filter((g: any) => !g.country_id);
 
-    console.log('🇮🇹 GRUPPI ITALIANI:');
+    console.log('ðŸ‡®ðŸ‡¹ GRUPPI ITALIANI:');
     if (italianGroups.length === 0) {
       console.log('   Nessuno trovato');
     } else {
       italianGroups.forEach((g: any) => {
-        console.log(`   • ${g.name} (ID: ${g.id})`);
+        console.log(`   â€¢ ${g.name} (ID: ${g.id})`);
       });
     }
 
-    console.log('\n🇨🇭 GRUPPI SVIZZERI:');
+    console.log('\nðŸ‡¨ðŸ‡­ GRUPPI SVIZZERI:');
     swissGroups.forEach((g: any) => {
-      console.log(`   • ${g.name} (ID: ${g.id})`);
+      console.log(`   â€¢ ${g.name} (ID: ${g.id})`);
     });
 
-    console.log('\n🌍 GRUPPI SENZA PAESE:');
+    console.log('\nðŸŒ GRUPPI SENZA PAESE:');
     noCountryGroups.forEach((g: any) => {
-      console.log(`   • ${g.name} (ID: ${g.id})`);
+      console.log(`   â€¢ ${g.name} (ID: ${g.id})`);
     });
 
     // Verifica le aliquote esistenti per ItaEmpire e i loro gruppi
-    console.log('\n\n═══════════════════════════════════════════════════════════════════');
-    console.log('📋 ALIQUOTE ESISTENTI PER ITAEMPIRE E I LORO GRUPPI');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('\n\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ“‹ ALIQUOTE ESISTENTI PER ITAEMPIRE E I LORO GRUPPI');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const taxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
       ['company_id', '=', 6]
@@ -138,11 +138,11 @@ async function main() {
     });
 
     taxes.forEach((t: any) => {
-      console.log(`   • ${t.name} (${t.amount}%) → Gruppo: ${t.tax_group_id ? `${t.tax_group_id[1]} (ID: ${t.tax_group_id[0]})` : 'N/A'}`);
+      console.log(`   â€¢ ${t.name} (${t.amount}%) â†’ Gruppo: ${t.tax_group_id ? `${t.tax_group_id[1]} (ID: ${t.tax_group_id[0]})` : 'N/A'}`);
     });
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

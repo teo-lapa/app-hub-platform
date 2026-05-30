@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Manual test - create article 1 with detailed logging
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -62,27 +62,27 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('📄 Caricato JSON articolo\n');
+  console.log('ðŸ“„ Caricato JSON articolo\n');
 
   // Delete old post 347 if exists
-  console.log('🗑️  Elimino post 347 se esiste...');
+  console.log('ðŸ—‘ï¸  Elimino post 347 se esiste...');
   try {
     await callOdoo('blog.post', 'unlink', [[347]], {});
-    console.log('✅ Eliminato\n');
+    console.log('âœ… Eliminato\n');
     await new Promise(r => setTimeout(r, 1000));
   } catch (e) {
-    console.log('⚠️  Post 347 non trovato o già eliminato\n');
+    console.log('âš ï¸  Post 347 non trovato o giÃ  eliminato\n');
   }
 
   // Create in ENGLISH first (not Italian!)
   const enData = article.translations.en_US;
-  console.log('🇬🇧 Creazione in INGLESE (base)...');
+  console.log('ðŸ‡¬ðŸ‡§ Creazione in INGLESE (base)...');
   console.log(`   Titolo: ${enData.name}`);
   console.log(`   Content (primi 150 char): ${enData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 150)}...\n`);
 
@@ -97,13 +97,13 @@ async function main() {
     is_published: false
   }], { context: { lang: 'en_US' } });
 
-  console.log(`✅ Creato ID ${newPostId}\n`);
+  console.log(`âœ… Creato ID ${newPostId}\n`);
 
   await new Promise(r => setTimeout(r, 1000));
 
   // Write German
   const deData = article.translations.de_DE;
-  console.log('🇩🇪 Scrittura TEDESCO...');
+  console.log('ðŸ‡©ðŸ‡ª Scrittura TEDESCO...');
   console.log(`   Titolo: ${deData.name}`);
   console.log(`   Content (primi 150 char): ${deData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 150)}...\n`);
 
@@ -116,13 +116,13 @@ async function main() {
     website_meta_keywords: deData.meta.keywords
   }], { context: { lang: 'de_CH' } });
 
-  console.log('✅ Scritto\n');
+  console.log('âœ… Scritto\n');
 
   await new Promise(r => setTimeout(r, 1000));
 
   // Write French
   const frData = article.translations.fr_FR;
-  console.log('🇫🇷 Scrittura FRANCESE...');
+  console.log('ðŸ‡«ðŸ‡· Scrittura FRANCESE...');
   console.log(`   Titolo: ${frData.name}`);
   console.log(`   Content (primi 150 char): ${frData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 150)}...\n`);
 
@@ -135,13 +135,13 @@ async function main() {
     website_meta_keywords: frData.meta.keywords
   }], { context: { lang: 'fr_CH' } });
 
-  console.log('✅ Scritto\n');
+  console.log('âœ… Scritto\n');
 
   await new Promise(r => setTimeout(r, 1000));
 
   // Write Italian LAST
   const itData = article.translations.it_IT;
-  console.log('🇮🇹 Scrittura ITALIANO (per ultimo)...');
+  console.log('ðŸ‡®ðŸ‡¹ Scrittura ITALIANO (per ultimo)...');
   console.log(`   Titolo: ${itData.name}`);
   console.log(`   Content (primi 150 char): ${itData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 150)}...\n`);
 
@@ -154,19 +154,19 @@ async function main() {
     website_meta_keywords: itData.meta.keywords
   }], { context: { lang: 'it_IT' } });
 
-  console.log('✅ Scritto\n');
+  console.log('âœ… Scritto\n');
 
   await new Promise(r => setTimeout(r, 2000));
 
   // Verify ALL languages
   const langs = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪',
-    'fr_CH': 'Francese 🇫🇷',
-    'en_US': 'Inglese 🇬🇧'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+    'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
   };
 
-  console.log('\n📋 VERIFICA FINALE DI TUTTE LE LINGUE:\n');
+  console.log('\nðŸ“‹ VERIFICA FINALE DI TUTTE LE LINGUE:\n');
 
   for (const [lang, langName] of Object.entries(langs)) {
     const post = await callOdoo('blog.post', 'read', [[newPostId], ['name', 'content']], {
@@ -178,7 +178,7 @@ async function main() {
     console.log(`   Content: ${content.substring(0, 120)}...\n`);
   }
 
-  console.log('🎉 Test completato!');
+  console.log('ðŸŽ‰ Test completato!');
 }
 
 main().catch(console.error);

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Setup Complete Chatbot for LAPA Website
- * Crea un chatbot AI professionale usando le API OpenAI già in Odoo
+ * Crea un chatbot AI professionale usando le API OpenAI giÃ  in Odoo
  *
  * ARCHITETTURA:
  * 1. Widget frontend (HTML/CSS/JS) iniettato nel sito
@@ -19,7 +19,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Leggi knowledge base
 let knowledgeBase = '';
@@ -40,16 +40,16 @@ ${kb.faq?.map((f: any) => `Q: ${f.domanda}\nA: ${f.risposta}`).join('\n\n')}
 // System prompt professionale
 const SYSTEM_PROMPT = `Sei LAPA Assistant, l'assistente AI di LAPA - il principale distributore di prodotti alimentari italiani autentici in Svizzera.
 
-🎯 IL TUO RUOLO:
+ðŸŽ¯ IL TUO RUOLO:
 Assistenza clienti professionale per il sito www.lapa.ch
 
-📋 COSA PUOI FARE:
+ðŸ“‹ COSA PUOI FARE:
 - Aiutare a trovare prodotti italiani (pasta, olio, salumi, formaggi, conserve, vini, ecc.)
 - Informazioni su ordini, spedizioni e consegne
 - Supporto clienti B2B (ristoranti, pizzerie, hotel, catering)
 - Rispondere a domande sull'azienda e i servizi
 
-💼 INFORMAZIONI AZIENDA:
+ðŸ’¼ INFORMAZIONI AZIENDA:
 - Nome: LAPA - Zero Pensieri
 - Sito: www.lapa.ch
 - Shop online: www.lapa.ch/shop
@@ -57,29 +57,29 @@ Assistenza clienti professionale per il sito www.lapa.ch
 - Zona: Tutta la Svizzera
 - Orari: Lun-Ven 8:00-17:00
 
-🚚 CONSEGNE:
+ðŸšš CONSEGNE:
 - Consegna in tutta la Svizzera
-- Ordini entro le 12:00 → consegna giorno successivo (zone principali)
+- Ordini entro le 12:00 â†’ consegna giorno successivo (zone principali)
 - Spedizione gratuita per ordini B2B sopra CHF 150
 
-💳 PAGAMENTI:
+ðŸ’³ PAGAMENTI:
 - Carte di credito (Visa, Mastercard)
 - PostFinance, TWINT
 - Fattura (solo clienti business registrati)
 
 ${knowledgeBase}
 
-📝 ISTRUZIONI COMPORTAMENTO:
+ðŸ“ ISTRUZIONI COMPORTAMENTO:
 1. Sii sempre cordiale e professionale
 2. Rispondi nella STESSA LINGUA del cliente (italiano, tedesco, francese, inglese)
 3. Risposte brevi e concise (max 2-3 frasi quando possibile)
 4. Suggerisci sempre di visitare lo shop: www.lapa.ch/shop
-5. Per richieste complesse → invita a contattare info@lapa.ch o chiamare
-6. NON inventare prezzi specifici → rimanda allo shop
+5. Per richieste complesse â†’ invita a contattare info@lapa.ch o chiamare
+6. NON inventare prezzi specifici â†’ rimanda allo shop
 7. Sii proattivo: suggerisci prodotti correlati quando appropriato
-8. Usa emoji con moderazione per rendere la chat più amichevole
+8. Usa emoji con moderazione per rendere la chat piÃ¹ amichevole
 
-🚫 NON FARE:
+ðŸš« NON FARE:
 - Non parlare di concorrenti
 - Non promettere sconti senza verifica
 - Non dare informazioni tecniche sui sistemi interni`;
@@ -139,7 +139,7 @@ const CHATBOT_WIDGET = `
     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23c41e3a'/%3E%3Ctext x='50' y='62' text-anchor='middle' fill='white' font-size='40' font-weight='bold'%3EL%3C/text%3E%3C/svg%3E" alt="LAPA">
     <div class="info">
       <h4>LAPA Assistant</h4>
-      <p>🟢 Online - Rispondo subito</p>
+      <p>ðŸŸ¢ Online - Rispondo subito</p>
     </div>
     <button class="close" onclick="window.lapaChat.toggle()">&times;</button>
   </div>
@@ -162,7 +162,7 @@ window.lapaChat = {
     this.isOpen = !this.isOpen;
     document.getElementById('lapa-chatbot').classList.toggle('open', this.isOpen);
     if (this.isOpen && this.messages.length === 0) {
-      this.addMessage('bot', 'Ciao! 👋 Sono LAPA Assistant. Come posso aiutarti oggi?\\n\\nPosso aiutarti a trovare prodotti italiani, informazioni su ordini e consegne, o supporto per il tuo business.');
+      this.addMessage('bot', 'Ciao! ðŸ‘‹ Sono LAPA Assistant. Come posso aiutarti oggi?\\n\\nPosso aiutarti a trovare prodotti italiani, informazioni su ordini e consegne, o supporto per il tuo business.');
     }
   },
 
@@ -208,7 +208,7 @@ window.lapaChat = {
       this.addMessage('bot', response);
     } catch (error) {
       this.hideTyping();
-      this.addMessage('bot', 'Mi scuso, c\\'è stato un problema. Riprova o contattaci a info@lapa.ch');
+      this.addMessage('bot', 'Mi scuso, c\\'Ã¨ stato un problema. Riprova o contattaci a info@lapa.ch');
       console.error('Chat error:', error);
     }
 
@@ -250,7 +250,7 @@ window.lapaChat = {
       throw new Error('API key not found');
     }
 
-    // Chiama OpenAI direttamente (la chiave è già in Odoo)
+    // Chiama OpenAI direttamente (la chiave Ã¨ giÃ  in Odoo)
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -353,20 +353,20 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🤖 LAPA - Installazione Chatbot AI Professionale');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ¤– LAPA - Installazione Chatbot AI Professionale');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Leggi il custom_code_footer attuale
-    console.log('📖 Lettura configurazione website...');
+    console.log('ðŸ“– Lettura configurazione website...');
     const websites = await odoo.searchRead<any>(
       'website',
       [['id', '=', 1]],
@@ -385,12 +385,12 @@ async function main() {
 
     // Rimuovi vecchio chatbot se presente
     if (currentFooterCode.includes('lapa-chatbot')) {
-      console.log('   ⚠️ Chatbot esistente trovato, lo sostituisco...');
+      console.log('   âš ï¸ Chatbot esistente trovato, lo sostituisco...');
       currentFooterCode = currentFooterCode.replace(/<!-- LAPA AI Chatbot Widget -->[\s\S]*?<!-- End LAPA AI Chatbot Widget -->/g, '');
     }
 
     // Aggiungi il nuovo chatbot
-    console.log('\n📝 Installazione chatbot AI...');
+    console.log('\nðŸ“ Installazione chatbot AI...');
     const newFooterCode = currentFooterCode + CHATBOT_WIDGET;
 
     const success = await odoo.write('website', [1], {
@@ -398,32 +398,32 @@ async function main() {
     });
 
     if (success) {
-      console.log('✅ Chatbot installato con successo!\n');
-      console.log('═'.repeat(80));
-      console.log('✨ INSTALLAZIONE COMPLETATA!');
-      console.log('═'.repeat(80));
+      console.log('âœ… Chatbot installato con successo!\n');
+      console.log('â•'.repeat(80));
+      console.log('âœ¨ INSTALLAZIONE COMPLETATA!');
+      console.log('â•'.repeat(80));
       console.log(`
-🤖 LAPA Assistant è ora attivo sul sito!
+ðŸ¤– LAPA Assistant Ã¨ ora attivo sul sito!
 
 CARATTERISTICHE:
-   💬 Chatbot AI con GPT-4o
-   🇮🇹 🇩🇪 🇫🇷 🇬🇧 Multilingue automatico
-   📱 Design responsive (mobile-friendly)
-   🎨 Stile LAPA (rosso brand)
-   📚 Knowledge base prodotti e FAQ
+   ðŸ’¬ Chatbot AI con GPT-4o
+   ðŸ‡®ðŸ‡¹ ðŸ‡©ðŸ‡ª ðŸ‡«ðŸ‡· ðŸ‡¬ðŸ‡§ Multilingue automatico
+   ðŸ“± Design responsive (mobile-friendly)
+   ðŸŽ¨ Stile LAPA (rosso brand)
+   ðŸ“š Knowledge base prodotti e FAQ
 
 POSIZIONE:
-   📍 Pulsante chat in basso a destra
-   💬 Click per aprire la chat
+   ðŸ“ Pulsante chat in basso a destra
+   ðŸ’¬ Click per aprire la chat
 
-FUNZIONALITÀ:
-   ✅ Risponde a domande sui prodotti
-   ✅ Informazioni ordini e consegne
-   ✅ Supporto clienti B2B
-   ✅ Indirizza allo shop online
-   ✅ Suggerisce contatto per richieste complesse
+FUNZIONALITÃ€:
+   âœ… Risponde a domande sui prodotti
+   âœ… Informazioni ordini e consegne
+   âœ… Supporto clienti B2B
+   âœ… Indirizza allo shop online
+   âœ… Suggerisce contatto per richieste complesse
 
-👉 Vai su https://www.lapa.ch per testarlo!
+ðŸ‘‰ Vai su https://www.lapa.ch per testarlo!
 
 NOTA: Potrebbe essere necessario svuotare la cache del browser.
 `);
@@ -432,7 +432,7 @@ NOTA: Potrebbe essere necessario svuotare la cache del browser.
     }
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

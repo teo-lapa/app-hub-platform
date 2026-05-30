@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Add Shop Button via Website Configuration
  * Prova diversi metodi API per aggiungere il pulsante Shop
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Codice HTML/CSS per il pulsante floating
 const FLOATING_BUTTON_CODE = `<!-- LAPA Shop Button -->
@@ -98,21 +98,21 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🛒 LAPA - Aggiunta Pulsante Shop (Metodi Alternativi)');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ›’ LAPA - Aggiunta Pulsante Shop (Metodi Alternativi)');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Metodo 1: Cerca campi configurazione website
-    console.log('🔍 METODO 1: Configurazione Website');
-    console.log('─'.repeat(60));
+    console.log('ðŸ” METODO 1: Configurazione Website');
+    console.log('â”€'.repeat(60));
 
     const websiteFields = await odoo.fieldsGet('website');
     const relevantFields = Object.entries(websiteFields as Record<string, any>)
@@ -144,8 +144,8 @@ async function main() {
     }
 
     // Metodo 2: Cerca website.menu per aggiungere voce Shop
-    console.log('\n\n🔍 METODO 2: Menu Website');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” METODO 2: Menu Website');
+    console.log('â”€'.repeat(60));
 
     const menus = await odoo.searchRead<any>(
       'website.menu',
@@ -157,20 +157,20 @@ async function main() {
     console.log(`Menu trovati: ${menus.length}`);
     for (const menu of menus) {
       const indent = menu.parent_id ? '      ' : '   ';
-      console.log(`${indent}- ${menu.name} → ${menu.url} (seq: ${menu.sequence})`);
+      console.log(`${indent}- ${menu.name} â†’ ${menu.url} (seq: ${menu.sequence})`);
     }
 
-    // Cerca se esiste già Shop nel menu
+    // Cerca se esiste giÃ  Shop nel menu
     const shopMenu = menus.find((m: any) => m.url === '/shop' || m.name.toLowerCase().includes('shop'));
     if (!shopMenu) {
-      console.log('\n📝 Shop non presente nel menu. Posso aggiungerlo...');
+      console.log('\nðŸ“ Shop non presente nel menu. Posso aggiungerlo...');
     } else {
-      console.log(`\n✅ Shop già presente: ${shopMenu.name} → ${shopMenu.url}`);
+      console.log(`\nâœ… Shop giÃ  presente: ${shopMenu.name} â†’ ${shopMenu.url}`);
     }
 
     // Metodo 3: Cerca ir.attachment per aggiungere CSS/JS custom
-    console.log('\n\n🔍 METODO 3: Asset personalizzati (ir.attachment)');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” METODO 3: Asset personalizzati (ir.attachment)');
+    console.log('â”€'.repeat(60));
 
     const attachments = await odoo.searchRead<any>(
       'ir.attachment',
@@ -185,8 +185,8 @@ async function main() {
     }
 
     // Metodo 4: Cerca website.page della homepage
-    console.log('\n\n🔍 METODO 4: Modifica Homepage (website.page)');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” METODO 4: Modifica Homepage (website.page)');
+    console.log('â”€'.repeat(60));
 
     const homepages = await odoo.searchRead<any>(
       'website.page',
@@ -207,8 +207,8 @@ async function main() {
     }
 
     // Metodo 5: Prova a modificare direttamente ir.ui.view esistente
-    console.log('\n\n🔍 METODO 5: Vista Layout esistente');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” METODO 5: Vista Layout esistente');
+    console.log('â”€'.repeat(60));
 
     // Cerca viste ereditate dal layout che possiamo modificare
     const customViews = await odoo.searchRead<any>(
@@ -228,8 +228,8 @@ async function main() {
     }
 
     // Metodo 6: Usa website.snippet per contenuto custom
-    console.log('\n\n🔍 METODO 6: Snippet HTML');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” METODO 6: Snippet HTML');
+    console.log('â”€'.repeat(60));
 
     const snippets = await odoo.searchRead<any>(
       'ir.ui.view',
@@ -241,9 +241,9 @@ async function main() {
     console.log(`Snippet trovati: ${snippets.length}`);
 
     // PROVA: Aggiungi voce menu Shop se non esiste
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('🚀 TENTATIVO: Aggiunta Menu Shop');
-    console.log('═'.repeat(80));
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸš€ TENTATIVO: Aggiunta Menu Shop');
+    console.log('â•'.repeat(80));
 
     if (!shopMenu) {
       try {
@@ -251,7 +251,7 @@ async function main() {
         const rootMenu = menus.find((m: any) => !m.parent_id);
 
         const newMenuId = await odoo.create('website.menu', {
-          name: '🛒 Shop',
+          name: 'ðŸ›’ Shop',
           url: '/shop',
           website_id: 1,
           parent_id: rootMenu?.id || false,
@@ -259,16 +259,16 @@ async function main() {
           new_window: false
         });
 
-        console.log(`✅ Menu Shop creato con ID: ${newMenuId}`);
+        console.log(`âœ… Menu Shop creato con ID: ${newMenuId}`);
       } catch (err: any) {
-        console.log(`❌ Impossibile creare menu: ${err.message}`);
+        console.log(`âŒ Impossibile creare menu: ${err.message}`);
       }
     }
 
     // PROVA: Cerca se website ha campo per custom HTML/JS
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('🚀 TENTATIVO: Inject Custom HTML');
-    console.log('═'.repeat(80));
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸš€ TENTATIVO: Inject Custom HTML');
+    console.log('â•'.repeat(80));
 
     // Alcuni temi Odoo hanno campi come website.custom_head o website.custom_footer
     try {
@@ -286,8 +286,8 @@ async function main() {
     }
 
     // PROVA: Cerca modello website.config.settings
-    console.log('\n\n🔍 Configurazione eCommerce');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ” Configurazione eCommerce');
+    console.log('â”€'.repeat(60));
 
     try {
       const configFields = await odoo.fieldsGet('res.config.settings');
@@ -302,31 +302,31 @@ async function main() {
       console.log(`Nota: ${err.message}`);
     }
 
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('📋 RIEPILOGO');
-    console.log('═'.repeat(80));
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸ“‹ RIEPILOGO');
+    console.log('â•'.repeat(80));
     console.log(`
 Il sistema Odoo SaaS ha restrizioni sulla creazione diretta di viste.
 
 OPZIONI DISPONIBILI:
 
-1. ✅ MENU SHOP - Posso aggiungere una voce "Shop" al menu principale
-   (Già fatto se non esisteva)
+1. âœ… MENU SHOP - Posso aggiungere una voce "Shop" al menu principale
+   (GiÃ  fatto se non esisteva)
 
-2. 📝 HOMEPAGE CONTENT - Posso modificare il contenuto della homepage
+2. ðŸ“ HOMEPAGE CONTENT - Posso modificare il contenuto della homepage
    per includere un banner/link allo shop
 
-3. ⚙️ CONFIGURAZIONE - Alcuni parametri di configurazione potrebbero
+3. âš™ï¸ CONFIGURAZIONE - Alcuni parametri di configurazione potrebbero
    permettere l'inserimento di HTML custom
 
-4. 🎨 TEMA - Se il tema supporta custom HTML/CSS, posso usare quei campi
+4. ðŸŽ¨ TEMA - Se il tema supporta custom HTML/CSS, posso usare quei campi
 
-Il pulsante floating richiede accesso al template base, che è protetto.
+Il pulsante floating richiede accesso al template base, che Ã¨ protetto.
 Tuttavia, posso aggiungere un elemento visibile nel menu o nella homepage.
 `);
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
   }
 }
 

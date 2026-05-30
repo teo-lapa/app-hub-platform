@@ -11,10 +11,6 @@
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/social-stream-sync",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/cron/sync-products-rag",
       "schedule": "*/15 * * * *"
     },
@@ -24,6 +20,10 @@
     },
     {
       "path": "/api/cron/ocr-attachments",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/ocr-all",
       "schedule": "*/5 * * * *"
     }
   ],

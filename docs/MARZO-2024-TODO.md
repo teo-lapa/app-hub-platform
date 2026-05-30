@@ -1,4 +1,4 @@
-# MARZO 2024 - TODO LIST
+﻿# MARZO 2024 - TODO LIST
 
 ## DOCUMENTI MANCANTI
 
@@ -46,7 +46,7 @@ python scripts/parse-ubs-statement.py data-estratti/UBS-CHF-2024-03-MARCH.pdf
 export ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 export ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 export ODOO_USERNAME="apphubplatform@lapa.ch"
-export ODOO_PASSWORD="apphubplatform2025"
+export ODOO_PASSWORD="__REDACTED__"
 
 python scripts/verifica-marzo-2024.py
 ```

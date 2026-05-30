@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload TUTTI gli articoli SEO+GEO su Odoo - Versione CORRETTA
  * Rimuove tag <strong> per evitare frammentazione segmenti
  */
@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -160,29 +160,29 @@ async function uploadArticle(articlePath: string): Promise<{ id: number; name: s
 }
 
 async function main() {
-  console.log('🚀 Upload articoli SEO+GEO (versione corretta)\n');
+  console.log('ðŸš€ Upload articoli SEO+GEO (versione corretta)\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ OK\n');
+  console.log('âœ… OK\n');
 
   const articlesDir = 'data/new-articles';
   const files = readdirSync(articlesDir)
     .filter(f => f.startsWith('article-') && f.endsWith('.json'))
     .sort();
 
-  console.log(`📄 ${files.length} articoli da caricare\n`);
+  console.log(`ðŸ“„ ${files.length} articoli da caricare\n`);
 
   const results: { file: string; id: number; name: string }[] = [];
 
   for (const file of files) {
-    process.stdout.write(`📤 ${file}... `);
+    process.stdout.write(`ðŸ“¤ ${file}... `);
     try {
       const result = await uploadArticle(`${articlesDir}/${file}`);
       results.push({ file, ...result });
-      console.log(`✅ ID ${result.id}`);
+      console.log(`âœ… ID ${result.id}`);
     } catch (e: any) {
-      console.log(`❌ ${e.message.substring(0, 50)}`);
+      console.log(`âŒ ${e.message.substring(0, 50)}`);
     }
     await new Promise(r => setTimeout(r, 500));
   }
@@ -194,7 +194,7 @@ async function main() {
     console.log(`${r.id}: ${r.name.substring(0, 50)}...`);
   }
 
-  console.log(`\n🎉 Caricati ${results.length}/${files.length} articoli`);
+  console.log(`\nðŸŽ‰ Caricati ${results.length}/${files.length} articoli`);
 }
 
 main().catch(console.error);

@@ -1,14 +1,14 @@
-/**
+﻿/**
  * Script per verificare le aziende e le aliquote associate
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -38,7 +38,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -76,9 +76,9 @@ async function main() {
     const cookies = await authenticate();
 
     // 1. Lista tutte le aziende
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🏢 AZIENDE NEL SISTEMA');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ¢ AZIENDE NEL SISTEMA');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const companies = await callOdoo(cookies, 'res.company', 'search_read', [[]], {
       fields: ['id', 'name', 'country_id', 'vat', 'currency_id'],
@@ -86,7 +86,7 @@ async function main() {
     });
 
     companies.forEach((c: any) => {
-      console.log(`📋 ${c.name}`);
+      console.log(`ðŸ“‹ ${c.name}`);
       console.log(`   ID: ${c.id}`);
       console.log(`   Paese: ${c.country_id ? c.country_id[1] : 'N/A'}`);
       console.log(`   VAT: ${c.vat || 'N/A'}`);
@@ -95,9 +95,9 @@ async function main() {
     });
 
     // 2. Verifica le aliquote appena create e la loro azienda
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('📊 ALIQUOTE INTRA UE CREATE');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ“Š ALIQUOTE INTRA UE CREATE');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const intraEuTaxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
       ['name', 'ilike', 'Intra UE']
@@ -107,10 +107,10 @@ async function main() {
     });
 
     if (intraEuTaxes.length === 0) {
-      console.log('⚠️  Nessuna aliquota "Intra UE" trovata');
+      console.log('âš ï¸  Nessuna aliquota "Intra UE" trovata');
     } else {
       intraEuTaxes.forEach((t: any) => {
-        console.log(`📋 ${t.name}`);
+        console.log(`ðŸ“‹ ${t.name}`);
         console.log(`   ID: ${t.id}`);
         console.log(`   Azienda: ${t.company_id ? t.company_id[1] : 'N/A'} (ID: ${t.company_id ? t.company_id[0] : 'N/A'})`);
         console.log(`   Descrizione: ${t.description || 'N/A'}`);
@@ -119,12 +119,12 @@ async function main() {
     }
 
     // 3. Mostra tutte le aliquote per azienda
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('📊 ALIQUOTE 0% PER AZIENDA');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ“Š ALIQUOTE 0% PER AZIENDA');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     for (const company of companies) {
-      console.log(`\n🏢 ${company.name} (ID: ${company.id}):`);
+      console.log(`\nðŸ¢ ${company.name} (ID: ${company.id}):`);
 
       const taxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
         ['company_id', '=', company.id],
@@ -139,7 +139,7 @@ async function main() {
         console.log('   Nessuna aliquota 0% vendita');
       } else {
         taxes.forEach((t: any) => {
-          console.log(`   • ${t.name} (ID: ${t.id})`);
+          console.log(`   â€¢ ${t.name} (ID: ${t.id})`);
           if (t.description) {
             console.log(`     "${t.description}"`);
           }
@@ -150,7 +150,7 @@ async function main() {
     console.log('\n');
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

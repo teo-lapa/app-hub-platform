@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Script per aggiungere le etichette alle aliquote IVA intracomunitarie
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 // ID delle aliquote da aggiornare (create precedentemente)
 const TAXES_TO_UPDATE = [
@@ -22,7 +22,7 @@ const TAXES_TO_UPDATE = [
 ];
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -52,7 +52,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -89,25 +89,25 @@ async function main() {
   try {
     const cookies = await authenticate();
 
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🏷️  AGGIORNAMENTO ETICHETTE ALIQUOTE INTRA UE');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ·ï¸  AGGIORNAMENTO ETICHETTE ALIQUOTE INTRA UE');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     for (const tax of TAXES_TO_UPDATE) {
-      console.log(`📝 Aggiornamento: ${tax.name}`);
+      console.log(`ðŸ“ Aggiornamento: ${tax.name}`);
       console.log(`   Nuova etichetta: "${tax.invoice_label}"`);
 
       await callOdoo(cookies, 'account.tax', 'write', [[tax.id], {
         invoice_label: tax.invoice_label
       }]);
 
-      console.log(`   ✅ Aggiornata!\n`);
+      console.log(`   âœ… Aggiornata!\n`);
     }
 
     // Verifica finale
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🔍 VERIFICA FINALE');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ” VERIFICA FINALE');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
     const taxIds = TAXES_TO_UPDATE.map(t => t.id);
     const taxes = await callOdoo(cookies, 'account.tax', 'read', [taxIds], {
@@ -115,19 +115,19 @@ async function main() {
     });
 
     taxes.forEach((tax: any) => {
-      console.log(`📋 ${tax.name}`);
+      console.log(`ðŸ“‹ ${tax.name}`);
       console.log(`   Descrizione: ${tax.description}`);
       console.log(`   Etichetta fattura: ${tax.invoice_label || 'N/A'}`);
       console.log(`   Codice esenzione: ${tax.l10n_it_exempt_reason}`);
       console.log('');
     });
 
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('✅ ETICHETTE AGGIORNATE CON SUCCESSO!');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('âœ… ETICHETTE AGGIORNATE CON SUCCESSO!');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

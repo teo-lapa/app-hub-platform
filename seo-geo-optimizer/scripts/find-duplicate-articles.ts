@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Trova articoli duplicati nel blog
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -67,15 +67,15 @@ async function checkTranslations(postId: number): Promise<boolean> {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║              RICERCA ARTICOLI DUPLICATI                    ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘              RICERCA ARTICOLI DUPLICATI                    â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
-  console.log('📋 Recupero TUTTI gli articoli del blog...\n');
+  console.log('ðŸ“‹ Recupero TUTTI gli articoli del blog...\n');
 
   const allPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]],
@@ -118,17 +118,17 @@ async function main() {
     }
   }
 
-  console.log(`🔍 Trovati ${duplicates.length} titoli duplicati\n`);
+  console.log(`ðŸ” Trovati ${duplicates.length} titoli duplicati\n`);
   console.log('='.repeat(70));
 
   for (const dup of duplicates) {
-    console.log(`\n📝 "${dup.title}" (${dup.count} copie):`);
+    console.log(`\nðŸ“ "${dup.title}" (${dup.count} copie):`);
     console.log('');
 
     for (const post of dup.posts) {
       const createDate = new Date(post.create_date).toLocaleString('it-IT');
       const hasTranslations = await checkTranslations(post.id);
-      const status = hasTranslations ? '✅' : '❌';
+      const status = hasTranslations ? 'âœ…' : 'âŒ';
 
       console.log(`   ${status} ID ${post.id.toString().padStart(3)} - Creato: ${createDate}`);
 
@@ -155,8 +155,8 @@ async function main() {
 
       const toDelete = dup.posts.filter(p => p.id !== bestPost.id).map(p => p.id);
 
-      console.log(`   ✅ MANTIENI: ID ${bestPost.id} (ha traduzioni, più recente)`);
-      console.log(`   🗑️  ELIMINA: ${toDelete.join(', ')}`);
+      console.log(`   âœ… MANTIENI: ID ${bestPost.id} (ha traduzioni, piÃ¹ recente)`);
+      console.log(`   ðŸ—‘ï¸  ELIMINA: ${toDelete.join(', ')}`);
     } else {
       // Keep the most recent one
       const bestPost = dup.posts.sort((a, b) =>
@@ -165,15 +165,15 @@ async function main() {
 
       const toDelete = dup.posts.filter(p => p.id !== bestPost.id).map(p => p.id);
 
-      console.log(`   ⚠️  MANTIENI: ID ${bestPost.id} (più recente, ma senza traduzioni)`);
-      console.log(`   🗑️  ELIMINA: ${toDelete.join(', ')}`);
+      console.log(`   âš ï¸  MANTIENI: ID ${bestPost.id} (piÃ¹ recente, ma senza traduzioni)`);
+      console.log(`   ðŸ—‘ï¸  ELIMINA: ${toDelete.join(', ')}`);
     }
 
     console.log('');
   }
 
   console.log('='.repeat(70));
-  console.log('\n📊 RIEPILOGO:');
+  console.log('\nðŸ“Š RIEPILOGO:');
   console.log(`   Articoli totali: ${allPosts.length}`);
   console.log(`   Titoli duplicati: ${duplicates.length}`);
   console.log(`   Articoli da eliminare: ${duplicates.reduce((sum, d) => sum + (d.count - 1), 0)}`);

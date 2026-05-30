@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FIX TUTTI I 60 ARTICOLI CON TRADUZIONI AL 100%
  * Applica il metodo funzionante a tutti gli articoli IDs 347-406
  */
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -205,13 +205,13 @@ async function fixArticleTranslations(postId: number, article: any): Promise<voi
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║        FIX TUTTI I 60 ARTICOLI - TRADUZIONI AL 100%        ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘        FIX TUTTI I 60 ARTICOLI - TRADUZIONI AL 100%        â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Get all article files
   const articlesDir = join(__dirname, '../data/new-articles-2025');
@@ -219,8 +219,8 @@ async function main() {
     .filter(f => f.startsWith('article-') && f.endsWith('.json'))
     .sort();
 
-  console.log(`📚 Trovati ${files.length} articoli\n`);
-  console.log('🔧 Inizio fix traduzioni...\n');
+  console.log(`ðŸ“š Trovati ${files.length} articoli\n`);
+  console.log('ðŸ”§ Inizio fix traduzioni...\n');
 
   const results: any[] = [];
   let successCount = 0;
@@ -242,7 +242,7 @@ async function main() {
 
       successCount++;
       results.push({ id: postId, status: 'success', title: itData.name });
-      console.log(`         ✅ Completato\n`);
+      console.log(`         âœ… Completato\n`);
 
       // Piccola pausa tra articoli per non sovraccaricare
       await new Promise(r => setTimeout(r, 500));
@@ -250,15 +250,15 @@ async function main() {
     } catch (e: any) {
       errorCount++;
       results.push({ id: postId, status: 'error', error: e.message });
-      console.log(`         ❌ Errore: ${e.message}\n`);
+      console.log(`         âŒ Errore: ${e.message}\n`);
     }
   }
 
   console.log('='.repeat(70));
-  console.log('📊 RIEPILOGO FINALE');
+  console.log('ðŸ“Š RIEPILOGO FINALE');
   console.log('='.repeat(70));
-  console.log(`✅ Successi: ${successCount}/60`);
-  console.log(`❌ Errori: ${errorCount}/60`);
+  console.log(`âœ… Successi: ${successCount}/60`);
+  console.log(`âŒ Errori: ${errorCount}/60`);
   console.log('');
 
   if (errorCount > 0) {
@@ -268,7 +268,7 @@ async function main() {
     });
   }
 
-  console.log('\n🎉 FIX COMPLETATO!\n');
+  console.log('\nðŸŽ‰ FIX COMPLETATO!\n');
 }
 
 main().catch(console.error);

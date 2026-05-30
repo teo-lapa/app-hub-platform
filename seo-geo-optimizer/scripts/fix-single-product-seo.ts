@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Single Product SEO
  * Ottimizza SEO per un singolo prodotto:
  * - Meta title, description, keywords
@@ -19,7 +19,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // SEO Limits
 const SEO_LIMITS = {
@@ -165,7 +165,7 @@ function optimizeDescription(
       .replace(/\s+CRT\s+\w+/gi, '')
       .trim();
 
-    desc = `${cleanName}. Prodotto italiano di alta qualità disponibile da LAPA, il tuo grossista di fiducia in Svizzera.`;
+    desc = `${cleanName}. Prodotto italiano di alta qualitÃ  disponibile da LAPA, il tuo grossista di fiducia in Svizzera.`;
     if (price) desc += ` Prezzo: CHF ${price.toFixed(2)}.`;
   }
 
@@ -189,7 +189,7 @@ function optimizeKeywords(keywords: string | undefined, name: string, category?:
   // Estrai parole chiave dal nome
   const nameWords = name
     .toLowerCase()
-    .replace(/[^\w\sàèéìòù]/g, ' ')
+    .replace(/[^\w\sÃ Ã¨Ã©Ã¬Ã²Ã¹]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 3 && !['conf', 'crt'].includes(w));
 
@@ -303,7 +303,7 @@ function generateProductSchema(product: any): object {
         "@type": "Organization",
         "name": "LAPA Quality Team"
       },
-      "reviewBody": "Prodotto italiano di alta qualità, selezionato direttamente dai migliori produttori. Ideale per ristoranti e professionisti della ristorazione."
+      "reviewBody": "Prodotto italiano di alta qualitÃ , selezionato direttamente dai migliori produttori. Ideale per ristoranti e professionisti della ristorazione."
     },
 
     "manufacturer": {
@@ -327,20 +327,20 @@ function generateProductSchema(product: any): object {
 async function main() {
   const productId = parseInt(process.argv[2] || '14317', 10);
 
-  console.log('═'.repeat(70));
-  console.log('🔧 LAPA SEO FIXER - Single Product');
-  console.log('═'.repeat(70));
-  console.log(`\n📦 Product ID: ${productId}\n`);
+  console.log('â•'.repeat(70));
+  console.log('ðŸ”§ LAPA SEO FIXER - Single Product');
+  console.log('â•'.repeat(70));
+  console.log(`\nðŸ“¦ Product ID: ${productId}\n`);
 
   const odoo = new OdooClient();
 
   try {
-    console.log('🔐 Connecting to Odoo...');
+    console.log('ðŸ” Connecting to Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connected\n');
+    console.log('âœ… Connected\n');
 
     // Fetch product
-    console.log('📥 Fetching product data...');
+    console.log('ðŸ“¥ Fetching product data...');
     const products = await odoo.searchRead<any>(
       'product.template',
       [['id', '=', productId]],
@@ -350,16 +350,16 @@ async function main() {
     );
 
     if (products.length === 0) {
-      console.error(`❌ Product ID ${productId} not found!`);
+      console.error(`âŒ Product ID ${productId} not found!`);
       process.exit(1);
     }
 
     const product = products[0];
     const category = product.categ_id?.[1] || '';
 
-    console.log('\n' + '─'.repeat(70));
-    console.log('📋 CURRENT STATE:');
-    console.log('─'.repeat(70));
+    console.log('\n' + 'â”€'.repeat(70));
+    console.log('ðŸ“‹ CURRENT STATE:');
+    console.log('â”€'.repeat(70));
     console.log(`Name:        ${product.name}`);
     console.log(`Category:    ${category}`);
     console.log(`Price:       CHF ${product.list_price}`);
@@ -378,15 +378,15 @@ async function main() {
     );
     const newKeywords = optimizeKeywords(product.website_meta_keywords, product.name, category);
 
-    console.log('\n' + '─'.repeat(70));
-    console.log('✨ OPTIMIZED SEO:');
-    console.log('─'.repeat(70));
+    console.log('\n' + 'â”€'.repeat(70));
+    console.log('âœ¨ OPTIMIZED SEO:');
+    console.log('â”€'.repeat(70));
     console.log(`Meta Title:       ${newTitle} (${newTitle.length} chars)`);
     console.log(`Meta Description: ${newDescription} (${newDescription.length} chars)`);
     console.log(`Meta Keywords:    ${newKeywords}`);
 
     // Update Odoo
-    console.log('\n📤 Updating Odoo...');
+    console.log('\nðŸ“¤ Updating Odoo...');
     const changes = {
       website_meta_title: newTitle,
       website_meta_description: newDescription,
@@ -394,15 +394,15 @@ async function main() {
     };
 
     await odoo.write('product.template', [productId], changes);
-    console.log('✅ SEO fields updated successfully!\n');
+    console.log('âœ… SEO fields updated successfully!\n');
 
     // Generate Schema.org
     const updatedProduct = { ...product, ...changes };
     const schema = generateProductSchema(updatedProduct);
 
-    console.log('─'.repeat(70));
-    console.log('📊 SCHEMA.ORG JSON-LD:');
-    console.log('─'.repeat(70));
+    console.log('â”€'.repeat(70));
+    console.log('ðŸ“Š SCHEMA.ORG JSON-LD:');
+    console.log('â”€'.repeat(70));
     console.log(`<script type="application/ld+json">`);
     console.log(JSON.stringify(schema, null, 2));
     console.log(`</script>`);
@@ -427,18 +427,18 @@ async function main() {
     const reportPath = resolve(dataDir, `fix-product-${productId}-report.json`);
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
-    console.log('\n' + '═'.repeat(70));
-    console.log('✅ SEO FIX COMPLETE');
-    console.log('═'.repeat(70));
-    console.log(`\n📄 Report saved: ${reportPath}`);
-    console.log(`\n🌐 Product URL: https://www.lapa.ch/shop/${productId}`);
-    console.log(`\n📋 Next steps:`);
+    console.log('\n' + 'â•'.repeat(70));
+    console.log('âœ… SEO FIX COMPLETE');
+    console.log('â•'.repeat(70));
+    console.log(`\nðŸ“„ Report saved: ${reportPath}`);
+    console.log(`\nðŸŒ Product URL: https://www.lapa.ch/shop/${productId}`);
+    console.log(`\nðŸ“‹ Next steps:`);
     console.log(`   1. Visit the product page to verify meta tags`);
     console.log(`   2. Use Google Rich Results Test to validate Schema.org`);
     console.log(`   3. Copy the JSON-LD script above to your Odoo template`);
 
   } catch (error) {
-    console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Error:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

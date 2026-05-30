@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ELIMINA ARTICOLI DUPLICATI
  * Elimina solo i doppioni identificati, mantiene quelli con traduzioni
  */
@@ -6,7 +6,7 @@
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -49,13 +49,13 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║            ELIMINAZIONE ARTICOLI DUPLICATI                 ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘            ELIMINAZIONE ARTICOLI DUPLICATI                 â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Lista completa degli ID da eliminare (solo i doppioni vecchi)
   const idsToDelete = [
@@ -65,8 +65,8 @@ async function main() {
     338, 407, 409, 411, 412, 413, 415, 416
   ];
 
-  console.log(`🗑️  Elimino ${idsToDelete.length} articoli duplicati...\n`);
-  console.log('⚠️  MANTENGO gli articoli più recenti con traduzioni funzionanti\n');
+  console.log(`ðŸ—‘ï¸  Elimino ${idsToDelete.length} articoli duplicati...\n`);
+  console.log('âš ï¸  MANTENGO gli articoli piÃ¹ recenti con traduzioni funzionanti\n');
 
   const results: any[] = [];
   let successCount = 0;
@@ -89,25 +89,25 @@ async function main() {
       successCount++;
       results.push({ id: postId, status: 'deleted', name: articleName });
 
-      console.log(`[${i + 1}/${idsToDelete.length}] ✅ Eliminato ID ${postId}: ${articleName.substring(0, 60)}...`);
+      console.log(`[${i + 1}/${idsToDelete.length}] âœ… Eliminato ID ${postId}: ${articleName.substring(0, 60)}...`);
 
       // Small delay to not overload
       await new Promise(r => setTimeout(r, 300));
 
     } catch (e: any) {
       errorCount++;
-      const errorMsg = e.message.includes('non esiste') ? 'Già eliminato' : e.message;
+      const errorMsg = e.message.includes('non esiste') ? 'GiÃ  eliminato' : e.message;
       results.push({ id: postId, status: 'error', error: errorMsg });
 
-      console.log(`[${i + 1}/${idsToDelete.length}] ⚠️  ID ${postId}: ${errorMsg}`);
+      console.log(`[${i + 1}/${idsToDelete.length}] âš ï¸  ID ${postId}: ${errorMsg}`);
     }
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('📊 RIEPILOGO ELIMINAZIONE');
+  console.log('ðŸ“Š RIEPILOGO ELIMINAZIONE');
   console.log('='.repeat(70));
-  console.log(`✅ Eliminati con successo: ${successCount}/${idsToDelete.length}`);
-  console.log(`⚠️  Errori/Già eliminati: ${errorCount}/${idsToDelete.length}`);
+  console.log(`âœ… Eliminati con successo: ${successCount}/${idsToDelete.length}`);
+  console.log(`âš ï¸  Errori/GiÃ  eliminati: ${errorCount}/${idsToDelete.length}`);
   console.log('');
 
   if (errorCount > 0) {
@@ -118,8 +118,8 @@ async function main() {
     console.log('');
   }
 
-  console.log('🎉 ELIMINAZIONE COMPLETATA!\n');
-  console.log('📝 Articoli rimanenti: articoli unici con traduzioni funzionanti\n');
+  console.log('ðŸŽ‰ ELIMINAZIONE COMPLETATA!\n');
+  console.log('ðŸ“ Articoli rimanenti: articoli unici con traduzioni funzionanti\n');
 }
 
 main().catch(console.error);

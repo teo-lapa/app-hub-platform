@@ -1,4 +1,4 @@
-# CHIUSURA KONTO 1022 E 1023 - OPERAZIONE COMPLETATA
+﻿# CHIUSURA KONTO 1022 E 1023 - OPERAZIONE COMPLETATA
 
 **Data Richiesta:** 16 Novembre 2025, 09:45
 **Data Completamento:** 16 Novembre 2025, 10:20
@@ -11,12 +11,12 @@
 ## OBIETTIVO RAGGIUNTO
 
 ```
-Konto 1022 Outstanding Receipts:  CHF 366,046.52 → CHF 0.00 ✓
-Konto 1023 Outstanding Payments:  CHF 893,092.68 → CHF 0.00 ✓
+Konto 1022 Outstanding Receipts:  CHF 366,046.52 â†’ CHF 0.00 âœ“
+Konto 1023 Outstanding Payments:  CHF 893,092.68 â†’ CHF 0.00 âœ“
 ```
 
 **Verifica eseguita:** 16/11/2025 10:20
-**Tutti i check:** PASSED ✓
+**Tutti i check:** PASSED âœ“
 
 ---
 
@@ -28,7 +28,7 @@ Konto 1023 Outstanding Payments:  CHF 893,092.68 → CHF 0.00 ✓
 **Numero:** SLR/2024/12/0013
 **Data:** 31/12/2024
 **Ref:** CHIUSURA-1022-STAGING-2024
-**Status:** POSTED ✓
+**Status:** POSTED âœ“
 
 ```
 Dare  3900  CHF 366,046.52
@@ -43,7 +43,7 @@ Avere 1022  CHF 366,046.52
 **Numero:** SLR/2024/12/0014
 **Data:** 31/12/2024
 **Ref:** CHIUSURA-1023-STAGING-2024
-**Status:** POSTED ✓
+**Status:** POSTED âœ“
 
 ```
 Dare  1023  CHF 893,092.68
@@ -139,7 +139,7 @@ Questo rappresenta un **miglioramento del risultato 2024** perche i debiti outst
 python scripts/verifica-chiusura-1022-1023.py
 ```
 
-**Ultimo run:** 16/11/2025 10:20 → SUCCESS (tutti check PASSED)
+**Ultimo run:** 16/11/2025 10:20 â†’ SUCCESS (tutti check PASSED)
 
 ---
 
@@ -164,10 +164,10 @@ python scripts/verifica-chiusura-1022-1023.py
 ```
 [SUCCESS] Tutti i check PASSED!
 
-1. Konto 1022: CHF 0.00 ✓
-2. Konto 1023: CHF 0.00 ✓
-3. Move 97148: POSTED ✓
-4. Move 97149: POSTED ✓
+1. Konto 1022: CHF 0.00 âœ“
+2. Konto 1023: CHF 0.00 âœ“
+3. Move 97148: POSTED âœ“
+4. Move 97149: POSTED âœ“
 ```
 
 ---
@@ -195,18 +195,18 @@ python scripts/verifica-chiusura-1022-1023.py
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **Database:** lapadevadmin-lapa-v2-staging-2406-25408900
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 
 **Verifica Manuale:**
-1. Contabilità → Piano dei Conti → Cerca 1022, 1023, 3900
-2. Contabilità → Registrazioni → Filtra 31/12/2024
+1. ContabilitÃ  â†’ Piano dei Conti â†’ Cerca 1022, 1023, 3900
+2. ContabilitÃ  â†’ Registrazioni â†’ Filtra 31/12/2024
 3. Apri move SLR/2024/12/0013 e SLR/2024/12/0014
 
 ---
 
 ## CHECKLIST FINALE
 
-### Tecnico ✓
+### Tecnico âœ“
 
 - [x] Script creato e testato
 - [x] Konto 1022 azzerato (CHF 0.00)
@@ -326,4 +326,4 @@ RISULTATO FINALE:
 **Operazione completata con successo il:** 16 Novembre 2025, 10:20
 **Status:** COMPLETED - AWAITING ACCOUNTANT APPROVAL
 **Version:** 1.0
-**Confidenzialità:** Interno Lapa
+**ConfidenzialitÃ :** Interno Lapa

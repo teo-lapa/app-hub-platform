@@ -1,4 +1,4 @@
-# Bank Statement Import 2024
+﻿# Bank Statement Import 2024
 
 Importazione automatica degli estratti conto bancari 2024 in Odoo.
 
@@ -24,23 +24,23 @@ Sistema completo per importare estratti conto da:
 
 ```
 lib/
-├── parsers/
-│   └── ubs-csv-parser.ts          # Parser CSV UBS (CHF/EUR)
-├── odoo/
-│   ├── xmlrpc-client.ts           # Client XML-RPC Odoo base
-│   └── bank-statement-client.ts   # Client specifico bank statements
-└── services/
-    └── bank-statement-import-service.ts  # Orchestrazione import
+â”œâ”€â”€ parsers/
+â”‚   â””â”€â”€ ubs-csv-parser.ts          # Parser CSV UBS (CHF/EUR)
+â”œâ”€â”€ odoo/
+â”‚   â”œâ”€â”€ xmlrpc-client.ts           # Client XML-RPC Odoo base
+â”‚   â””â”€â”€ bank-statement-client.ts   # Client specifico bank statements
+â””â”€â”€ services/
+    â””â”€â”€ bank-statement-import-service.ts  # Orchestrazione import
 
 scripts/
-├── import-bank-statements-2024.ts # Script principale import
-└── test-ubs-parser.js             # Test parser UBS
+â”œâ”€â”€ import-bank-statements-2024.ts # Script principale import
+â””â”€â”€ test-ubs-parser.js             # Test parser UBS
 ```
 
 ### Data Flow
 
 ```
-CSV Files → Parser → Validation → Odoo Client → Import → Balance Check
+CSV Files â†’ Parser â†’ Validation â†’ Odoo Client â†’ Import â†’ Balance Check
 ```
 
 ## Setup
@@ -49,7 +49,7 @@ CSV Files → Parser → Validation → Odoo Client → Import → Balance Check
 
 Prima di importare, **devi configurare i journal bancari in Odoo**:
 
-1. Vai in **Contabilità > Configurazione > Journals**
+1. Vai in **ContabilitÃ  > Configurazione > Journals**
 2. Crea/verifica i journal bancari:
    - **UBS CHF**: Code `UBS_CHF`, Currency CHF
    - **UBS EUR**: Code `UBS_EUR`, Currency EUR
@@ -78,7 +78,7 @@ const ODOO_CONFIG = {
   odooUrl: 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com',
   odooDb: 'lapadevadmin-lapa-v2-staging-2406-25408900',
   odooUsername: 'paul@lapa.ch',
-  odooPassword: 'lapa201180'
+  odooPassword: '__REDACTED__'
 };
 ```
 
@@ -97,14 +97,14 @@ Verifica che i file siano nella directory corretta:
 
 ```
 C:\Users\lapa\Downloads\CHIUSURA 2024\CHIUSURA 2024\
-├── UBS CHF/
-│   ├── UBS CHF 1.1-31.3.2024.csv     (Q1)
-│   ├── UBS CHF 1.4-30.6.2024.csv     (Q2)
-│   ├── UBS CHF 1.7-30.9.2024.csv     (Q3)
-│   └── UBS CHF 1.10-31.12.2024.csv   (Q4)
-└── UBS EUR/
-    ├── UBS EUR 1.1-30.6.2024.csv     (H1)
-    └── UBS EUR 1.7-31.12.2024.csv    (H2)
+â”œâ”€â”€ UBS CHF/
+â”‚   â”œâ”€â”€ UBS CHF 1.1-31.3.2024.csv     (Q1)
+â”‚   â”œâ”€â”€ UBS CHF 1.4-30.6.2024.csv     (Q2)
+â”‚   â”œâ”€â”€ UBS CHF 1.7-30.9.2024.csv     (Q3)
+â”‚   â””â”€â”€ UBS CHF 1.10-31.12.2024.csv   (Q4)
+â””â”€â”€ UBS EUR/
+    â”œâ”€â”€ UBS EUR 1.1-30.6.2024.csv     (H1)
+    â””â”€â”€ UBS EUR 1.7-31.12.2024.csv    (H2)
 ```
 
 ## Usage
@@ -120,8 +120,8 @@ node scripts/test-ubs-parser.js
 
 Output atteso:
 ```
-✓ Parser test completed successfully!
-✓ Parsed 756 transactions
+âœ“ Parser test completed successfully!
+âœ“ Parsed 756 transactions
 Balance Match: YES
 ```
 
@@ -167,7 +167,7 @@ npx ts-node scripts/import-bank-statements-2024.ts --journal="UBS EUR"
 ### Step 3: Deduplication
 
 - Cerca statement esistenti per nome + journal
-- Skip se già importato (con flag `skipIfExists`)
+- Skip se giÃ  importato (con flag `skipIfExists`)
 - Errore se esiste senza flag
 
 ### Step 4: Odoo Import
@@ -192,23 +192,23 @@ BANK STATEMENT IMPORT 2024
 ============================================================
 
 Importing UBS CHF (CHF)
-  ✓ UBS CHF 1.1-31.3.2024: 756 transactions imported
-  ✓ UBS CHF 1.4-30.6.2024: 698 transactions imported
-  ✓ UBS CHF 1.7-30.9.2024: 742 transactions imported
-  ✓ UBS CHF 1.10-31.12.2024: 823 transactions imported
+  âœ“ UBS CHF 1.1-31.3.2024: 756 transactions imported
+  âœ“ UBS CHF 1.4-30.6.2024: 698 transactions imported
+  âœ“ UBS CHF 1.7-30.9.2024: 742 transactions imported
+  âœ“ UBS CHF 1.10-31.12.2024: 823 transactions imported
 
 Importing UBS EUR (EUR)
-  ✓ UBS EUR 1.1-30.6.2024: 267 transactions imported
-  ✓ UBS EUR 1.7-31.12.2024: 301 transactions imported
+  âœ“ UBS EUR 1.1-30.6.2024: 267 transactions imported
+  âœ“ UBS EUR 1.7-31.12.2024: 301 transactions imported
 
 ============================================================
 FINAL BALANCE VERIFICATION
 ============================================================
 
-UBS_CHF (CHF): Expected 182613.26, Actual 182613.26 ✓ MATCH
-UBS_EUR (EUR): Expected 128860.70, Actual 128860.70 ✓ MATCH
+UBS_CHF (CHF): Expected 182613.26, Actual 182613.26 âœ“ MATCH
+UBS_EUR (EUR): Expected 128860.70, Actual 128860.70 âœ“ MATCH
 
-✓ All imports completed successfully with matching balances!
+âœ“ All imports completed successfully with matching balances!
 ```
 
 ### Report File
@@ -243,7 +243,7 @@ Anzahl Transaktionen:;756
 ### Column Headers (Line 10)
 
 ```
-Abschlussdatum;Abschlusszeit;Buchungsdatum;Valutadatum;Währung;Belastung;Gutschrift;Einzelbetrag;Saldo;Transaktions-Nr.;Beschreibung1;Beschreibung2;Beschreibung3;Fussnoten
+Abschlussdatum;Abschlusszeit;Buchungsdatum;Valutadatum;WÃ¤hrung;Belastung;Gutschrift;Einzelbetrag;Saldo;Transaktions-Nr.;Beschreibung1;Beschreibung2;Beschreibung3;Fussnoten
 ```
 
 ### Transaction Lines (Line 11+)
@@ -253,8 +253,8 @@ Abschlussdatum;Abschlusszeit;Buchungsdatum;Valutadatum;Währung;Belastung;Gutsch
 ```
 
 **Note**:
-- `Belastung` (debit) è **già negativo** nel CSV
-- `Gutschrift` (credit) è positivo
+- `Belastung` (debit) Ã¨ **giÃ  negativo** nel CSV
+- `Gutschrift` (credit) Ã¨ positivo
 - Alcune transazioni hanno righe multiple (detail lines)
 
 ## Troubleshooting
@@ -266,7 +266,7 @@ ERROR: Journal "UBS_CHF" not found in Odoo
 ```
 
 **Fix**:
-1. Vai in Odoo → Contabilità → Journals
+1. Vai in Odoo â†’ ContabilitÃ  â†’ Journals
 2. Crea il journal con code "UBS_CHF"
 3. Aggiorna `odooJournalCode` nello script
 
@@ -278,12 +278,12 @@ ERROR: Statement "UBS CHF 01.01.2024 - 31.03.2024" already exists (ID: 123)
 
 **Fix**:
 - **Option A**: Elimina lo statement esistente in Odoo
-- **Option B**: Usa flag `skipIfExists` (lo script lo fa già)
+- **Option B**: Usa flag `skipIfExists` (lo script lo fa giÃ )
 
 ### Balance Mismatch
 
 ```
-✗ MISMATCH: Expected 182613.26, Actual 180000.00
+âœ— MISMATCH: Expected 182613.26, Actual 180000.00
 ```
 
 **Cause possibili**:
@@ -380,13 +380,13 @@ Per importare i PDF Credit Suisse, serve:
 
 1. **PDF Parser**: Estrarre testo/tabelle da PDF
 2. **Data Extraction**: Identificare transazioni, dates, amounts
-3. **Mapping**: Convertire formato Credit Suisse → formato standard
+3. **Mapping**: Convertire formato Credit Suisse â†’ formato standard
 4. **Integration**: Usare stesso `BankStatementImportService`
 
 Tecnologie possibili:
 - `pdf-parse` per testo
 - `pdf-lib` per metadata
-- OCR (Tesseract) se PDF è scansionato
+- OCR (Tesseract) se PDF Ã¨ scansionato
 - Regex per estrarre amounts, dates, descriptions
 
 ### Auto-Reconciliation (TODO)
