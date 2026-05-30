@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator as CalculatorIcon, X } from 'lucide-react';
 
@@ -17,6 +17,16 @@ export function Calculator({ isOpen, onClose, onConfirm, title = "Calcolatrice",
   const [operation, setOperation] = useState<string | null>(null);
   const [previousValue, setPreviousValue] = useState<string | null>(null);
   const [waitingForNewValue, setWaitingForNewValue] = useState(false);
+
+  // Resetta il display al valore corrente ogni volta che la calcolatrice si apre
+  useEffect(() => {
+    if (isOpen) {
+      setDisplay(initialValue || '0');
+      setOperation(null);
+      setPreviousValue(null);
+      setWaitingForNewValue(false);
+    }
+  }, [isOpen, initialValue]);
 
   const handleNumber = (num: string) => {
     if (waitingForNewValue) {

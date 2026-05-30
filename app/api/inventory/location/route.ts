@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     const locations = await searchReadOdoo(
       'stock.location',
       [
+        ['usage', '=', 'internal'],
         '|',
         ['barcode', '=', locationCode],
         ['name', 'ilike', locationCode]

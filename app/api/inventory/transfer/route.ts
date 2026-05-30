@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     if (lotNumber) {
       // Cerca o crea lotto
       let lots = await odooClient.callKw(
-        'stock.production.lot',
+        'stock.lot',
         'search_read',
         [
           [['product_id', '=', productId], ['name', '=', lotNumber]],
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         }
 
         lotId = await odooClient.callKw(
-          'stock.production.lot',
+          'stock.lot',
           'create',
           [lotData],
           {},

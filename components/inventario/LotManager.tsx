@@ -40,6 +40,7 @@ export function LotManager({ isOpen, onClose, productId, productName, onSelectLo
 
   const loadLots = async () => {
     setLoading(true);
+    setLots([]); // Evita di mostrare i lotti del prodotto precedente durante il caricamento
     try {
       const result = await inventoryClient.searchRead(
         'stock.lot',
@@ -47,9 +48,10 @@ export function LotManager({ isOpen, onClose, productId, productName, onSelectLo
         ['id', 'name', 'expiration_date']
       );
 
-      setLots(result);
+      setLots(result || []);
     } catch (error) {
       console.error('Errore caricamento lotti:', error);
+      alert('Errore nel caricamento dei lotti. Riprova.');
     } finally {
       setLoading(false);
     }
@@ -85,6 +87,10 @@ export function LotManager({ isOpen, onClose, productId, productName, onSelectLo
 
       const { id: newLotId } = await response.json();
 
+      if (!newLotId) {
+        throw new Error('ID lotto non restituito dal server');
+      }
+
       const newLot: Lot = {
         id: newLotId,
         name: newLotName,
@@ -100,6 +106,7 @@ export function LotManager({ isOpen, onClose, productId, productName, onSelectLo
       onSelectLot(newLot);
     } catch (error) {
       console.error('Errore creazione lotto:', error);
+      alert('Errore nella creazione del lotto. Riprova.');
     } finally {
       setCreating(false);
     }

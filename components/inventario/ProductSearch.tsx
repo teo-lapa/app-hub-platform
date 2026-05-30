@@ -18,14 +18,18 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
   const [searchResults, setSearchResults] = useState<BasicProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const latestQueryRef = useRef('');
 
   const inventoryClient = getInventoryClient();
 
   useEffect(() => {
     if (searchQuery.length >= 3) {
-      searchProducts(searchQuery);
+      // Debounce: aspetta che l'utente smetta di digitare
+      const timer = setTimeout(() => searchProducts(searchQuery), 300);
+      return () => clearTimeout(timer);
     } else {
       setSearchResults([]);
+      return undefined;
     }
   }, [searchQuery]);
 
@@ -55,9 +59,13 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
 
   const searchProducts = async (query: string) => {
     setLoading(true);
+    latestQueryRef.current = query;
 
     try {
       const products = await inventoryClient.searchProducts(query, 20);
+
+      // Ignora risposte di query ormai superate (race condition)
+      if (latestQueryRef.current !== query) return;
 
       if (!products || !Array.isArray(products)) {
         console.warn('Nessun prodotto trovato o risposta non valida');
@@ -70,7 +78,11 @@ export function ProductSearch({ isOpen, onClose, onSelectProduct, currentLocatio
         name: product.name,
         code: product.default_code || product.barcode || '',
         barcode: product.barcode,
-        image: product.image_128 ? `data:image/jpeg;base64,${product.image_128}` : null,
+        image: product.image_128
+          ? (String(product.image_128).startsWith('data:')
+              ? product.image_128
+              : `data:image/png;base64,${product.image_128}`)
+          : null,
         uom: product.uom_id ? product.uom_id[1] : 'PZ'
       }));
 

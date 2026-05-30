@@ -17,7 +17,12 @@ export async function POST(req: NextRequest) {
     const { productId, locationId, quantId, quantity, lotId, lotNumber, lotName, expiryDate } = await req.json();
 
     if (!productId || !locationId || quantity === undefined) {
-      return NextResponse.json({ success: false, error: 'Parametri mancanti' });
+      return NextResponse.json({ success: false, error: 'Parametri mancanti' }, { status: 400 });
+    }
+
+    const numericQuantity = Number(quantity);
+    if (Number.isNaN(numericQuantity) || numericQuantity < 0) {
+      return NextResponse.json({ success: false, error: 'Quantità non valida' }, { status: 400 });
     }
 
     const actualLotName = lotName || lotNumber;
@@ -67,10 +72,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await callOdoo('stock.quant', 'write', [[quantId], {
-        inventory_quantity: quantity,
+      const quantValues: any = {
+        inventory_quantity: numericQuantity,
         inventory_date: new Date().toISOString()
-      }]);
+      };
+      if (actualLotId) quantValues.lot_id = actualLotId;
+      await callOdoo('stock.quant', 'write', [[quantId], quantValues]);
       console.log(`✅ Salvato`);
 
       return NextResponse.json({ success: true, message: 'Salvato con successo' });
@@ -78,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     // Logica per nuovi prodotti
     let actualLotId = lotId;
-    if (!lotId && actualLotName && quantity > 0) {
+    if (!lotId && actualLotName && numericQuantity > 0) {
       const existingLots = await callOdoo('stock.lot', 'search_read',
         [[['product_id', '=', productId], ['name', '=', actualLotName]]],
         { fields: ['id'], limit: 1 }
@@ -108,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     if (quants?.length > 0) {
       await callOdoo('stock.quant', 'write', [[quants[0].id], {
-        inventory_quantity: quantity,
+        inventory_quantity: numericQuantity,
         inventory_date: new Date().toISOString()
       }]);
       return NextResponse.json({ success: true, message: 'Salvato' });
@@ -117,7 +124,7 @@ export async function POST(req: NextRequest) {
         product_id: productId,
         location_id: locationId,
         lot_id: actualLotId || false,
-        inventory_quantity: quantity,
+        inventory_quantity: numericQuantity,
         inventory_date: new Date().toISOString()
       }]]);
       return NextResponse.json({ success: true, message: 'Creato' });
@@ -125,6 +132,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Errore:', error);
-    return NextResponse.json({ success: false, error: `${error.message}` });
+    return NextResponse.json({ success: false, error: `${error.message}` }, { status: 500 });
   }
 }

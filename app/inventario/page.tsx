@@ -108,9 +108,9 @@ export default function InventarioPage() {
 
   const checkConnection = async () => {
     try {
-      // Simulazione controllo connessione Odoo
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setConnectionStatus('connected');
+      const res = await fetch('/api/inventory/test-connection', { credentials: 'include' });
+      const data = await res.json();
+      setConnectionStatus(data.connected ? 'connected' : 'disconnected');
     } catch (error) {
       setConnectionStatus('disconnected');
     }
