@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, CheckCircle2, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
@@ -41,6 +41,19 @@ interface ProductLine {
   moveLines: MoveLine[];
 }
 
+interface PickingGroup {
+  pickingId: number;
+  pickingName: string;
+  customerName: string;
+  products: {
+    productId: number;
+    productName: string;
+    image: string | null;
+    qtyRequested: number;
+    qtyPicked: number;
+  }[];
+}
+
 type ControlStatus = 'ok' | 'error_qty' | 'missing' | 'damaged' | 'lot_error' | 'location_error' | 'note';
 
 interface ProductControl {
@@ -79,10 +92,43 @@ export default function ControlloDirettoPage() {
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
+  // Vista: per prodotto (default) o per picking (cliente)
+  const [viewMode, setViewMode] = useState<'product' | 'picking'>('product');
+  const [pickingControls, setPickingControls] = useState<Map<number, ProductControl>>(new Map());
+  const [expandedPickings, setExpandedPickings] = useState<Set<number>>(new Set());
+
+  // Raggruppa i picking (clienti) a partire dai prodotti gia' caricati
+  const pickingGroups = useMemo<PickingGroup[]>(() => {
+    const map = new Map<number, PickingGroup>();
+    for (const p of productGroups) {
+      for (const line of p.lines) {
+        let pg = map.get(line.pickingId);
+        if (!pg) {
+          pg = {
+            pickingId: line.pickingId,
+            pickingName: line.pickingName,
+            customerName: line.customerName,
+            products: []
+          };
+          map.set(line.pickingId, pg);
+        }
+        pg.products.push({
+          productId: p.productId,
+          productName: p.productName,
+          image: p.image,
+          qtyRequested: line.quantityRequested,
+          qtyPicked: line.quantityPicked
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [productGroups]);
+
   // Modal states
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showErrorTypeModal, setShowErrorTypeModal] = useState(false);
   const [currentErrorProduct, setCurrentErrorProduct] = useState<ProductGroup | null>(null);
+  const [currentErrorPicking, setCurrentErrorPicking] = useState<PickingGroup | null>(null);
   const [errorType, setErrorType] = useState<ControlStatus | null>(null);
   const [errorNote, setErrorNote] = useState<string>('');
 
@@ -214,6 +260,8 @@ export default function ControlloDirettoPage() {
     // Reset dello stato dei prodotti controllati quando cambi batch
     setProductControls(new Map());
     setExpandedProducts(new Set());
+    setPickingControls(new Map());
+    setExpandedPickings(new Set());
 
     try {
       const counts = await pickingClient.getBatchZoneCounts(batch.id);
@@ -238,6 +286,8 @@ export default function ControlloDirettoPage() {
     // Reset dello stato dei prodotti controllati quando cambi zona
     setProductControls(new Map());
     setExpandedProducts(new Set());
+    setPickingControls(new Map());
+    setExpandedPickings(new Set());
 
     // Start video recording if not already recording (one video per batch)
     if (!isVideoRecording) {
@@ -355,9 +405,59 @@ export default function ControlloDirettoPage() {
   }
 
   function confirmError() {
+    // Errore su un intero picking (vista per picking)
+    if (currentErrorPicking) {
+      const nc = new Map(pickingControls);
+      nc.set(currentErrorPicking.pickingId, {
+        productId: currentErrorPicking.pickingId,
+        status: errorType || 'note',
+        note: errorNote,
+        controlledAt: new Date()
+      });
+      setPickingControls(nc);
+      setShowErrorModal(false);
+      setErrorNote('');
+      setCurrentErrorPicking(null);
+      toast.success('⚠️ Errore picking salvato');
+      return;
+    }
     if (currentErrorProduct && errorType) {
       saveProductControl(currentErrorProduct, errorType, errorNote);
     }
+  }
+
+  // ===== Vista per PICKING (cliente) =====
+  function togglePickingExpand(pickingId: number) {
+    const s = new Set(expandedPickings);
+    if (s.has(pickingId)) s.delete(pickingId); else s.add(pickingId);
+    setExpandedPickings(s);
+  }
+
+  function markPickingOK(picking: PickingGroup) {
+    if (!currentBatch || !currentZone || !user) return;
+    const nc = new Map(pickingControls);
+    const existing = nc.get(picking.pickingId);
+    // Se gia' OK, deseleziona
+    if (existing?.status === 'ok') {
+      nc.delete(picking.pickingId);
+      setPickingControls(nc);
+      toast.success('↩️ Controllo rimosso');
+      return;
+    }
+    nc.set(picking.pickingId, {
+      productId: picking.pickingId,
+      status: 'ok',
+      controlledAt: new Date()
+    });
+    setPickingControls(nc);
+    toast.success('✅ Picking OK');
+  }
+
+  function openPickingError(picking: PickingGroup) {
+    setCurrentErrorPicking(picking);
+    setErrorType('note');
+    setErrorNote('');
+    setShowErrorModal(true);
   }
 
   // Upload video using client-side Vercel Blob upload (bypasses 4.5MB limit)
@@ -427,7 +527,7 @@ export default function ControlloDirettoPage() {
     }
 
     // Check if there's anything to save (controls or video)
-    const hasControls = productControls.size > 0;
+    const hasControls = (viewMode === 'picking' ? pickingControls.size : productControls.size) > 0;
     const wasRecording = isVideoRecording; // Save state before it changes
 
     console.log(`📋 [finishControl] hasControls: ${hasControls}, wasRecording: ${wasRecording}`);
@@ -458,49 +558,69 @@ export default function ControlloDirettoPage() {
 
       // Save controls to Odoo chatter if any
       if (hasControls) {
-        // Prepara riepilogo
-        const controls = Array.from(productControls.values());
-        const okCount = controls.filter(c => c.status === 'ok').length;
-        const errorCount = controls.filter(c => c.status !== 'ok').length;
+        const statusLabel: Record<ControlStatus, string> = {
+          'ok': '✅ OK',
+          'error_qty': '⚠️ Errore Quantità',
+          'missing': '❌ Mancante',
+          'damaged': '🔧 Danneggiato',
+          'lot_error': '📅 Lotto Errato',
+          'location_error': '📍 Ubicazione Errata',
+          'note': '📝 Nota'
+        };
 
-        const errors = controls.filter(c => c.status !== 'ok');
+        let message = '';
 
-        let message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
-        message += `Controllato da: ${user.name}\n`;
-        message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
-        message += `✅ OK: ${okCount} prodotti\n`;
-        message += `⚠️ ERRORI: ${errorCount} prodotti\n`;
+        if (viewMode === 'picking') {
+          // Riepilogo per PICKING (cliente)
+          const controls = Array.from(pickingControls.entries());
+          const okCount = controls.filter(([, c]) => c.status === 'ok').length;
+          const errorCount = controls.filter(([, c]) => c.status !== 'ok').length;
 
-        // Include all products with OK status
-        const okProducts = controls.filter(c => c.status === 'ok');
-        if (okProducts.length > 0) {
-          message += `\nPRODOTTI OK:\n`;
-          okProducts.forEach(ctrl => {
-            const product = productGroups.find(p => p.productId === ctrl.productId);
-            message += `• ${product?.productName || 'Prodotto'}\n`;
-          });
-        }
+          message = `📋 CONTROLLO PER PICKING - ${currentZone.name}\n`;
+          message += `Controllato da: ${user.name}\n`;
+          message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
+          message += `✅ OK: ${okCount} picking\n`;
+          message += `⚠️ ERRORI: ${errorCount} picking\n`;
 
-        // Include error details
-        if (errorCount > 0) {
-          message += `\nDETTAGLIO ERRORI:\n`;
-          errors.forEach(ctrl => {
-            const product = productGroups.find(p => p.productId === ctrl.productId);
-            const statusLabel: Record<ControlStatus, string> = {
-              'ok': '✅ OK',
-              'error_qty': '⚠️ Errore Quantità',
-              'missing': '❌ Mancante',
-              'damaged': '🔧 Danneggiato',
-              'lot_error': '📅 Lotto Errato',
-              'location_error': '📍 Ubicazione Errata',
-              'note': '📝 Nota'
-            };
+          controls.forEach(([pickingId, ctrl]) => {
+            const pg = pickingGroups.find(p => p.pickingId === pickingId);
             const label = statusLabel[ctrl.status] || ctrl.status;
-
-            message += `• ${product?.productName || 'Prodotto'} - ${label}`;
+            message += `\n• ${pg?.customerName || 'Cliente'} (${pg?.pickingName || ''}) - ${label}`;
             if (ctrl.note) message += `: ${ctrl.note}`;
-            message += `\n`;
           });
+          message += `\n`;
+        } else {
+          // Riepilogo per PRODOTTO
+          const controls = Array.from(productControls.values());
+          const okCount = controls.filter(c => c.status === 'ok').length;
+          const errorCount = controls.filter(c => c.status !== 'ok').length;
+          const errors = controls.filter(c => c.status !== 'ok');
+
+          message = `📋 CONTROLLO COMPLETATO - ${currentZone.name}\n`;
+          message += `Controllato da: ${user.name}\n`;
+          message += `Data: ${new Date().toLocaleString('it-IT')}\n\n`;
+          message += `✅ OK: ${okCount} prodotti\n`;
+          message += `⚠️ ERRORI: ${errorCount} prodotti\n`;
+
+          const okProducts = controls.filter(c => c.status === 'ok');
+          if (okProducts.length > 0) {
+            message += `\nPRODOTTI OK:\n`;
+            okProducts.forEach(ctrl => {
+              const product = productGroups.find(p => p.productId === ctrl.productId);
+              message += `• ${product?.productName || 'Prodotto'}\n`;
+            });
+          }
+
+          if (errorCount > 0) {
+            message += `\nDETTAGLIO ERRORI:\n`;
+            errors.forEach(ctrl => {
+              const product = productGroups.find(p => p.productId === ctrl.productId);
+              const label = statusLabel[ctrl.status] || ctrl.status;
+              message += `• ${product?.productName || 'Prodotto'} - ${label}`;
+              if (ctrl.note) message += `: ${ctrl.note}`;
+              message += `\n`;
+            });
+          }
         }
 
         // Salva nel Chatter Odoo usando pickingClient (come prelievo-zone)
@@ -524,6 +644,7 @@ export default function ControlloDirettoPage() {
       // Pulisci localStorage
       clearLocalStorage();
       setProductControls(new Map());
+      setPickingControls(new Map());
 
       toast.success(hasControls ? '✅ Controllo salvato!' : '✅ Video salvato!');
     } catch (error) {
@@ -612,6 +733,8 @@ export default function ControlloDirettoPage() {
     setShowProductList(false);
     setExpandedProducts(new Set());
     setProductControls(new Map());
+    setPickingControls(new Map());
+    setExpandedPickings(new Set());
   }
 
   return (
@@ -771,53 +894,74 @@ export default function ControlloDirettoPage() {
             >
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-2xl font-bold text-gray-900">Prodotti da Controllare</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {viewMode === 'picking' ? 'Picking da Controllare' : 'Prodotti da Controllare'}
+                  </h2>
                   <div className="text-sm text-gray-600">
-                    {productGroups.length} prodotti • {productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe
+                    {viewMode === 'picking'
+                      ? `${pickingGroups.length} picking`
+                      : `${productGroups.length} prodotti • ${productGroups.reduce((sum, p) => sum + p.clientCount, 0)} righe`}
                   </div>
                 </div>
 
-                {/* Pulsante Termina Controllo - mostra SOLO quando TUTTI i prodotti sono controllati */}
-                {productGroups.length > 0 && (
-                  <>
-                    {/* Progress bar controlli */}
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-gray-600">Progresso controllo</span>
-                        <span className="font-semibold">
-                          {productControls.size} / {productGroups.length} prodotti
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ${
-                            productControls.size === productGroups.length
-                              ? 'bg-green-500'
-                              : 'bg-blue-500'
-                          }`}
-                          style={{ width: `${(productControls.size / productGroups.length) * 100}%` }}
-                        />
-                      </div>
-                    </div>
+                {/* Interruttore vista: Per Prodotto / Per Picking */}
+                <div className="flex gap-2 mb-3 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    onClick={() => setViewMode('product')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      viewMode === 'product' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    📦 Per Prodotto
+                  </button>
+                  <button
+                    onClick={() => setViewMode('picking')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      viewMode === 'picking' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    🧾 Per Picking
+                  </button>
+                </div>
 
-                    {/* Pulsante - abilitato solo quando tutti controllati */}
-                    {productControls.size === productGroups.length ? (
-                      <button
-                        onClick={finishControlAndSaveToOdoo}
-                        disabled={isLoading || isUploadingVideo}
-                        className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        ✅ Termina Controllo e Salva su Odoo
-                        {isVideoRecording && ' 📹'}
-                      </button>
-                    ) : (
-                      <div className="w-full py-3 bg-gray-300 text-gray-600 rounded-xl font-bold text-center">
-                        ⏳ Controlla tutti i prodotti ({productGroups.length - productControls.size} rimanenti)
-                        {isVideoRecording && ' 📹'}
+                {/* Progresso + Termina (consapevole della modalita') */}
+                {(viewMode === 'picking' ? pickingGroups.length : productGroups.length) > 0 && (() => {
+                  const total = viewMode === 'picking' ? pickingGroups.length : productGroups.length;
+                  const done = viewMode === 'picking' ? pickingControls.size : productControls.size;
+                  const unit = viewMode === 'picking' ? 'picking' : 'prodotti';
+                  return (
+                    <>
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span className="text-gray-600">Progresso controllo</span>
+                          <span className="font-semibold">{done} / {total} {unit}</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${done === total ? 'bg-green-500' : 'bg-blue-500'}`}
+                            style={{ width: `${(done / total) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                    )}
-                  </>
-                )}
+
+                      {done === total ? (
+                        <button
+                          onClick={finishControlAndSaveToOdoo}
+                          disabled={isLoading || isUploadingVideo}
+                          className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          ✅ Termina Controllo e Salva su Odoo
+                          {isVideoRecording && ' 📹'}
+                        </button>
+                      ) : (
+                        <div className="w-full py-3 bg-gray-300 text-gray-600 rounded-xl font-bold text-center">
+                          ⏳ Controlla tutti i {unit} ({total - done} rimanenti)
+                          {isVideoRecording && ' 📹'}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {isLoading ? (
@@ -828,6 +972,126 @@ export default function ControlloDirettoPage() {
                 <div className="text-center py-12 bg-white rounded-xl">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">Nessun prodotto trovato</p>
+                </div>
+              ) : viewMode === 'picking' ? (
+                <div className="space-y-3">
+                  {pickingGroups.map(picking => {
+                    const control = pickingControls.get(picking.pickingId);
+                    const isExpanded = expandedPickings.has(picking.pickingId);
+
+                    let bgColor = 'bg-white';
+                    let borderColor = '';
+                    if (control?.status === 'ok') {
+                      bgColor = 'bg-green-50';
+                      borderColor = 'border-2 border-green-500';
+                    } else if (control?.status) {
+                      bgColor = 'bg-red-50';
+                      borderColor = 'border-2 border-red-500';
+                    }
+
+                    return (
+                      <div key={picking.pickingId} className={`rounded-xl shadow-sm overflow-hidden transition-all ${bgColor} ${borderColor}`}>
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{picking.customerName}</h3>
+                              <div className="text-xs text-gray-500">{picking.pickingName}</div>
+                            </div>
+                            <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                              {picking.products.length} {picking.products.length === 1 ? 'prodotto' : 'prodotti'}
+                            </span>
+                          </div>
+
+                          {control && (
+                            <div className={`mb-3 p-3 rounded-lg ${
+                              control.status === 'ok' ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <div className={`text-sm font-semibold flex items-center gap-2 ${
+                                  control.status === 'ok' ? 'text-green-800' : 'text-red-800'
+                                }`}>
+                                  {control.status === 'ok'
+                                    ? <><span className="text-base">✅</span> Picking OK</>
+                                    : <><span className="text-base">⚠️</span> Errore</>}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  {control.controlledAt && new Date(control.controlledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              {control.note && (
+                                <div className="text-xs text-gray-700 mt-2 italic">"{control.note}"</div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => markPickingOK(picking)}
+                              disabled={isLoading}
+                              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                                control?.status === 'ok'
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {control?.status === 'ok' ? '✅ OK (clicca per rimuovere)' : 'OK tutto il picking'}
+                            </button>
+
+                            <button
+                              onClick={() => openPickingError(picking)}
+                              disabled={isLoading}
+                              className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 font-semibold"
+                            >
+                              ❌ Errore
+                            </button>
+
+                            <button
+                              onClick={() => togglePickingExpand(picking.pickingId)}
+                              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+                            >
+                              {isExpanded ? (
+                                <>Chiudi <ChevronUp className="w-4 h-4" /></>
+                              ) : (
+                                <>Dettagli <ChevronDown className="w-4 h-4" /></>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="border-t border-gray-200"
+                            >
+                              <div className="p-4 bg-gray-50 space-y-2">
+                                {picking.products.map((prod, idx) => (
+                                  <div key={idx} className="flex items-center gap-3 bg-white rounded-lg p-2">
+                                    {prod.image ? (
+                                      <div className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-gray-100">
+                                        <img src={prod.image} alt={prod.productName} className="w-full h-full object-cover" />
+                                      </div>
+                                    ) : (
+                                      <div className="flex-shrink-0 w-10 h-10 rounded bg-blue-100 flex items-center justify-center">
+                                        <Package className="w-5 h-5 text-blue-600" />
+                                      </div>
+                                    )}
+                                    <div className="flex-1 text-sm text-gray-900">{prod.productName}</div>
+                                    <div className="text-xs text-gray-600 whitespace-nowrap">
+                                      Rich: <strong className="text-red-600">{prod.qtyRequested ?? 'N/A'}</strong>
+                                      {' • '}Prel: <strong className={prod.qtyPicked >= prod.qtyRequested ? 'text-green-600' : 'text-blue-600'}>{prod.qtyPicked}</strong>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1149,7 +1413,7 @@ export default function ControlloDirettoPage() {
 
 {/* Modal Errore */}
       <AnimatePresence>
-        {showErrorModal && currentErrorProduct && (
+        {showErrorModal && (currentErrorProduct || currentErrorPicking) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1173,10 +1437,21 @@ export default function ControlloDirettoPage() {
               </h3>
 
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="font-semibold text-gray-900">{currentErrorProduct.productName}</div>
-                <div className="text-sm text-gray-600 mt-1">
-                  Richiesto: {currentErrorProduct.totalQtyRequested} | Prelevato: {currentErrorProduct.totalQtyPicked}
-                </div>
+                {currentErrorPicking ? (
+                  <>
+                    <div className="font-semibold text-gray-900">{currentErrorPicking.customerName}</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {currentErrorPicking.pickingName} • {currentErrorPicking.products.length} prodotti
+                    </div>
+                  </>
+                ) : currentErrorProduct ? (
+                  <>
+                    <div className="font-semibold text-gray-900">{currentErrorProduct.productName}</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Richiesto: {currentErrorProduct.totalQtyRequested} | Prelevato: {currentErrorProduct.totalQtyPicked}
+                    </div>
+                  </>
+                ) : null}
               </div>
 
               <div className="mb-4">
@@ -1199,6 +1474,7 @@ export default function ControlloDirettoPage() {
                     setShowErrorModal(false);
                     setErrorNote('');
                     setCurrentErrorProduct(null);
+                    setCurrentErrorPicking(null);
                   }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
                 >
