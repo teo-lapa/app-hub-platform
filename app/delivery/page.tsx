@@ -2898,7 +2898,7 @@ export default function DeliveryPage() {
                                 cursor: isCompleted ? 'not-allowed' : 'pointer'
                               }}
                             >
-                              {isCompleted ? '🔒 Bloccato' : `✏️ Modifica: ${product.delivered}${product.unit ? ' ' + product.unit : ''}`}
+                              {isCompleted ? '🔒 Bloccato' : <>✏️ Modifica: {product.delivered}{product.unit ? <span style={{color: '#dc2626', fontWeight: 700}}> {product.unit}</span> : null}</>}
                             </button>
                           </div>
                         );
