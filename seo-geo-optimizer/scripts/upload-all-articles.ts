@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload TUTTI gli articoli SEO+GEO su Odoo con traduzioni
  */
 
@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -141,11 +141,11 @@ async function uploadArticle(articlePath: string): Promise<number> {
 }
 
 async function main() {
-  console.log('🚀 Upload TUTTI gli articoli SEO+GEO su Odoo\n');
+  console.log('ðŸš€ Upload TUTTI gli articoli SEO+GEO su Odoo\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Trova tutti gli articoli
   const articlesDir = 'data/new-articles';
@@ -153,7 +153,7 @@ async function main() {
     .filter(f => f.startsWith('article-') && f.endsWith('.json'))
     .sort();
 
-  console.log(`📄 Trovati ${files.length} articoli da caricare\n`);
+  console.log(`ðŸ“„ Trovati ${files.length} articoli da caricare\n`);
 
   const results: { file: string; postId: number; name: string }[] = [];
 
@@ -161,15 +161,15 @@ async function main() {
     const articlePath = `${articlesDir}/${file}`;
     const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-    console.log(`📤 Caricamento: ${file}`);
+    console.log(`ðŸ“¤ Caricamento: ${file}`);
     console.log(`   "${article.translations.it_IT.name.substring(0, 50)}..."`);
 
     try {
       const postId = await uploadArticle(articlePath);
       results.push({ file, postId, name: article.translations.it_IT.name });
-      console.log(`   ✅ ID: ${postId}\n`);
+      console.log(`   âœ… ID: ${postId}\n`);
     } catch (e: any) {
-      console.log(`   ❌ Errore: ${e.message.substring(0, 100)}\n`);
+      console.log(`   âŒ Errore: ${e.message.substring(0, 100)}\n`);
     }
 
     // Pausa tra un articolo e l'altro
@@ -178,17 +178,17 @@ async function main() {
 
   // Riepilogo
   console.log('\n' + '='.repeat(60));
-  console.log('📊 RIEPILOGO CARICAMENTO');
+  console.log('ðŸ“Š RIEPILOGO CARICAMENTO');
   console.log('='.repeat(60) + '\n');
 
   for (const r of results) {
-    console.log(`✅ ${r.file}`);
+    console.log(`âœ… ${r.file}`);
     console.log(`   ID: ${r.postId}`);
     console.log(`   "${r.name.substring(0, 50)}..."`);
     console.log(`   URL: ${ODOO_URL}/blog/lapablog-4/${r.postId}\n`);
   }
 
-  console.log(`\n🎉 Caricati ${results.length}/${files.length} articoli con successo!`);
+  console.log(`\nðŸŽ‰ Caricati ${results.length}/${files.length} articoli con successo!`);
 }
 
 main().catch(console.error);

@@ -1,4 +1,4 @@
-# Credenziali Odoo
+﻿# Credenziali Odoo
 
 ## Sistema di Sviluppo
 
@@ -19,7 +19,7 @@ paul@lapa.ch
 
 **Password:**
 ```
-lapa201180
+__REDACTED__
 ```
 
 ---

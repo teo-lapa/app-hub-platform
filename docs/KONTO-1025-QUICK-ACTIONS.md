@@ -1,4 +1,4 @@
-# KONTO 1025 UBS EUR - QUICK ACTIONS
+﻿# KONTO 1025 UBS EUR - QUICK ACTIONS
 
 ## AZIONI IMMEDIATE DA ESEGUIRE
 
@@ -8,7 +8,7 @@
 ```python
 # IDs: 88224, 88226
 # Partner: SOLUZIONI ALIMENTARI DI BONOMINI LUIGI
-# Verificare se è pagamento duplicato
+# Verificare se Ã¨ pagamento duplicato
 ```
 
 **Duplicato 2: 16/08/2024 - 2 righe da CHF -244.44**
@@ -93,7 +93,7 @@ Data       Importo CHF    Fornitore                   Note
 
 #### GIUGNO 2024: -168,979 CHF (57 righe)
 ```python
-# Mese con crollo più grande
+# Mese con crollo piÃ¹ grande
 # Verificare:
 # - Estratto conto UBS giugno 2024
 # - Match tutte le 57 righe
@@ -102,7 +102,7 @@ Data       Importo CHF    Fornitore                   Note
 
 #### FEBBRAIO 2025: -156,353 CHF (41 righe)
 ```python
-# Secondo crollo più grande
+# Secondo crollo piÃ¹ grande
 # Possibile errore contabile sistematico?
 ```
 
@@ -129,7 +129,7 @@ import xmlrpc.client
 url = 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com'
 db = 'lapadevadmin-lapa-v2-staging-2406-25408900'
 username = 'paul@lapa.ch'
-password = 'lapa201180'
+password = '__REDACTED__'
 
 # Connect
 common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
@@ -206,7 +206,7 @@ for month in critical_months:
    - 5 gruppi identificati (~EUR 10,000)
    - Procedere con storno?
 
-5. **Priorità chiusura 2024:**
+5. **PrioritÃ  chiusura 2024:**
    - Bloccare fino a risoluzione?
    - O procedere con "reserve" per gap?
 

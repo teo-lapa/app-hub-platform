@@ -1,4 +1,4 @@
-# README PER IL COMMERCIALISTA - Chiusura Konto 1022 e 1023
+﻿# README PER IL COMMERCIALISTA - Chiusura Konto 1022 e 1023
 
 Gentile Commercialista,
 
@@ -57,8 +57,8 @@ Contiene:
 Abbiamo azzerato i konti Outstanding con registrazioni al 31/12/2024:
 
 ```
-Konto 1022 Outstanding Receipts:  CHF 0.00 ✓
-Konto 1023 Outstanding Payments:  CHF 0.00 ✓
+Konto 1022 Outstanding Receipts:  CHF 0.00 âœ“
+Konto 1023 Outstanding Payments:  CHF 0.00 âœ“
 ```
 
 ### Registrazioni Create
@@ -81,12 +81,12 @@ La differenza netta (CHF 527,046.16) e stata imputata al konto 3900 Differences.
 
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 
 **Dove guardare:**
-1. Contabilità → Piano dei Conti
+1. ContabilitÃ  â†’ Piano dei Conti
    - Cercare konto 1022, 1023, 3900
-2. Contabilità → Registrazioni
+2. ContabilitÃ  â†’ Registrazioni
    - Filtrare data 31/12/2024
    - Aprire move SLR/2024/12/0013 e SLR/2024/12/0014
 

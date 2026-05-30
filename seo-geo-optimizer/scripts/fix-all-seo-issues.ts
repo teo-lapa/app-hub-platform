@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script di FIX AUTOMATICO per tutti i problemi SEO identificati
  * Questo script corregge:
  * - Aggiunge H1 mancanti (96 articoli)
@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -90,12 +90,12 @@ function expandContent(content: string, title: string, wordCount: number): strin
   if (wordCount >= 300) return content;
 
   // Add introductory paragraph
-  const intro = `<p>In questo articolo esploreremo in dettaglio <strong>${title}</strong>, analizzando tutti gli aspetti più importanti per comprendere appieno questo argomento.</p>`;
+  const intro = `<p>In questo articolo esploreremo in dettaglio <strong>${title}</strong>, analizzando tutti gli aspetti piÃ¹ importanti per comprendere appieno questo argomento.</p>`;
 
   // Add conclusion
   const conclusion = `
 <h2>Conclusione</h2>
-<p>Come abbiamo visto, <strong>${title}</strong> rappresenta un elemento fondamentale da considerare. LAPA offre prodotti e servizi di qualità superiore per soddisfare tutte le esigenze dei professionisti della ristorazione.</p>
+<p>Come abbiamo visto, <strong>${title}</strong> rappresenta un elemento fondamentale da considerare. LAPA offre prodotti e servizi di qualitÃ  superiore per soddisfare tutte le esigenze dei professionisti della ristorazione.</p>
 
 <p>Per ulteriori informazioni o per ordinare i nostri prodotti, contatta il team LAPA. Siamo qui per supportarti nella crescita del tuo business!</p>
   `;
@@ -115,7 +115,7 @@ function optimizeMetaTitle(title: string): string {
 function optimizeMetaDescription(description: string, title: string): string {
   if (!description || description.length < 120) {
     // Create a new description
-    return `Scopri ${title} con LAPA: qualità italiana, consegna rapida in Svizzera. Prodotti premium per ristoranti e pizzerie.`;
+    return `Scopri ${title} con LAPA: qualitÃ  italiana, consegna rapida in Svizzera. Prodotti premium per ristoranti e pizzerie.`;
   }
 
   if (description.length > 160) {
@@ -127,7 +127,7 @@ function optimizeMetaDescription(description: string, title: string): string {
 
 // Main fix function
 async function fixArticle(article: any, allArticles: any[]): Promise<void> {
-  console.log(`\n🔧 Fixing article ${article.id}: ${article.name.substring(0, 50)}...`);
+  console.log(`\nðŸ”§ Fixing article ${article.id}: ${article.name.substring(0, 50)}...`);
 
   const fixes: string[] = [];
   let updatedContent = article.translations.it_IT.content || '';
@@ -181,21 +181,21 @@ async function fixArticle(article: any, allArticles: any[]): Promise<void> {
         meta_description: updatedDescription,
       }
     ]);
-    console.log(`   ✅ Updated successfully`);
+    console.log(`   âœ… Updated successfully`);
   } catch (error) {
-    console.error(`   ❌ Error updating: ${error}`);
+    console.error(`   âŒ Error updating: ${error}`);
   }
 }
 
 // Main execution
 async function main() {
-  console.log('🚀 LAPA SEO Auto-Fix Script\n');
+  console.log('ðŸš€ LAPA SEO Auto-Fix Script\n');
   console.log('This will fix:');
   console.log('- Missing H1 tags (96 articles)');
   console.log('- Missing internal links (22 articles)');
   console.log('- Short content <300 words (59 articles)');
   console.log('- Meta title/description optimization');
-  console.log('\n⚠️  WARNING: This will modify articles in Odoo!\n');
+  console.log('\nâš ï¸  WARNING: This will modify articles in Odoo!\n');
 
   // Load report
   const report = JSON.parse(readFileSync('data/seo-geo-report.json', 'utf8'));
@@ -204,9 +204,9 @@ async function main() {
   console.log(`Found ${articles.length} published articles to process\n`);
 
   // Authenticate
-  console.log('🔐 Authenticating...');
+  console.log('ðŸ” Authenticating...');
   await authenticate();
-  console.log('✅ Authenticated\n');
+  console.log('âœ… Authenticated\n');
 
   // Process each article
   let fixed = 0;
@@ -221,8 +221,8 @@ async function main() {
     }
   }
 
-  console.log(`\n\n✅ Fix completed! ${fixed} articles updated.`);
-  console.log('\n📌 NOTE: Images still need to be added manually.');
+  console.log(`\n\nâœ… Fix completed! ${fixed} articles updated.`);
+  console.log('\nðŸ“Œ NOTE: Images still need to be added manually.');
   console.log('Run the analysis again to verify improvements.');
 }
 

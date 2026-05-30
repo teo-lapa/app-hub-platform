@@ -1,12 +1,13 @@
 """
 Configurazione connessione Odoo per importazione movimenti bancari UBS
 """
+import os
 
-# Credenziali Odoo Staging
-ODOO_URL = "https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com"
-ODOO_DB = "lapadevadmin-lapa-v2-staging-2406-25408900"
-ODOO_USERNAME = "paul@lapa.ch"
-ODOO_PASSWORD = "lapa201180"
+# Credenziali Odoo Staging (password letta dalle variabili d'ambiente)
+ODOO_URL = os.environ.get("ODOO_URL", "https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com")
+ODOO_DB = os.environ.get("ODOO_DB", "lapadevadmin-lapa-v2-staging-2406-25408900")
+ODOO_USERNAME = os.environ.get("ODOO_USERNAME", "paul@lapa.ch")
+ODOO_PASSWORD = os.environ.get("ODOO_PASSWORD", "")
 
 # Giornali bancari UBS (da analisi)
 GIORNALI_UBS = {

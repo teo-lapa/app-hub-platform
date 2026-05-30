@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Inspect translation records for a working article
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,13 +48,13 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   // Check article 376 which has working translations
   const workingArticleId = 376;
 
-  console.log(`📋 Ispeziono articolo ID ${workingArticleId}...\n`);
+  console.log(`ðŸ“‹ Ispeziono articolo ID ${workingArticleId}...\n`);
 
   // Get the article
   const post = await callOdoo('blog.post', 'read', [[workingArticleId], ['name', 'content']], {
@@ -66,7 +66,7 @@ async function main() {
   console.log(`   Content preview: ${post[0].content.substring(0, 100)}...\n`);
 
   // Get translation records for this article
-  console.log('🔍 Cerco ir.translation records per questo articolo...\n');
+  console.log('ðŸ” Cerco ir.translation records per questo articolo...\n');
 
   try {
     const translations = await callOdoo('ir.translation', 'search_read', [

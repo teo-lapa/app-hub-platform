@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script per creare aliquote IVA intracomunitarie in Odoo
  *
  * Crea due aliquote per operazioni B2B Italia -> UE:
@@ -9,7 +9,7 @@
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_LOGIN = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 // Aliquote da creare
 const TAXES_TO_CREATE = [
@@ -32,7 +32,7 @@ const TAXES_TO_CREATE = [
 ];
 
 async function authenticate(): Promise<string> {
-  console.log('🔐 Autenticazione con Odoo...');
+  console.log('ðŸ” Autenticazione con Odoo...');
 
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
     method: 'POST',
@@ -62,7 +62,7 @@ async function authenticate(): Promise<string> {
     throw new Error('Nessun session_id ricevuto');
   }
 
-  console.log('✅ Autenticazione riuscita!\n');
+  console.log('âœ… Autenticazione riuscita!\n');
   return `session_id=${sessionMatch[1]}`;
 }
 
@@ -96,7 +96,7 @@ async function callOdoo(cookies: string, model: string, method: string, args: an
 }
 
 async function findTaxGroup(cookies: string): Promise<number | null> {
-  console.log('🔍 Ricerca gruppo fiscale "Non imponibile"...');
+  console.log('ðŸ” Ricerca gruppo fiscale "Non imponibile"...');
 
   // Cerca gruppi fiscali esistenti
   const groups = await callOdoo(cookies, 'account.tax.group', 'search_read', [[]], {
@@ -104,9 +104,9 @@ async function findTaxGroup(cookies: string): Promise<number | null> {
     limit: 50
   });
 
-  console.log('\n📋 Gruppi fiscali disponibili:');
+  console.log('\nðŸ“‹ Gruppi fiscali disponibili:');
   groups.forEach((g: any) => {
-    console.log(`   • ${g.name} (ID: ${g.id})`);
+    console.log(`   â€¢ ${g.name} (ID: ${g.id})`);
   });
 
   // Cerca gruppo "Non imponibile" o simile
@@ -118,16 +118,16 @@ async function findTaxGroup(cookies: string): Promise<number | null> {
   );
 
   if (nonImponibile) {
-    console.log(`\n✅ Gruppo trovato: ${nonImponibile.name} (ID: ${nonImponibile.id})\n`);
+    console.log(`\nâœ… Gruppo trovato: ${nonImponibile.name} (ID: ${nonImponibile.id})\n`);
     return nonImponibile.id;
   }
 
-  console.log('\n⚠️  Nessun gruppo "Non imponibile" trovato. Useremo il primo disponibile.\n');
+  console.log('\nâš ï¸  Nessun gruppo "Non imponibile" trovato. Useremo il primo disponibile.\n');
   return groups.length > 0 ? groups[0].id : null;
 }
 
 async function checkExistingTaxes(cookies: string): Promise<any[]> {
-  console.log('🔍 Verifica aliquote esistenti...');
+  console.log('ðŸ” Verifica aliquote esistenti...');
 
   const existingTaxes = await callOdoo(cookies, 'account.tax', 'search_read', [[
     ['type_tax_use', '=', 'sale'],
@@ -138,9 +138,9 @@ async function checkExistingTaxes(cookies: string): Promise<any[]> {
   });
 
   if (existingTaxes.length > 0) {
-    console.log('\n📋 Aliquote 0% vendita esistenti:');
+    console.log('\nðŸ“‹ Aliquote 0% vendita esistenti:');
     existingTaxes.forEach((t: any) => {
-      console.log(`   • ${t.name} - "${t.description || 'nessuna descrizione'}"`);
+      console.log(`   â€¢ ${t.name} - "${t.description || 'nessuna descrizione'}"`);
     });
     console.log('');
   }
@@ -149,7 +149,7 @@ async function checkExistingTaxes(cookies: string): Promise<any[]> {
 }
 
 async function createTax(cookies: string, taxData: any, taxGroupId: number | null): Promise<number> {
-  console.log(`\n📝 Creazione aliquota: ${taxData.name}`);
+  console.log(`\nðŸ“ Creazione aliquota: ${taxData.name}`);
 
   const values: any = {
     ...taxData
@@ -161,27 +161,27 @@ async function createTax(cookies: string, taxData: any, taxGroupId: number | nul
 
   const taxId = await callOdoo(cookies, 'account.tax', 'create', [values]);
 
-  console.log(`   ✅ Creata con ID: ${taxId}`);
+  console.log(`   âœ… Creata con ID: ${taxId}`);
   return taxId;
 }
 
 async function verifyTaxes(cookies: string, taxIds: number[]): Promise<void> {
-  console.log('\n═══════════════════════════════════════════════════════════════════');
-  console.log('🔍 VERIFICA FINALE');
-  console.log('═══════════════════════════════════════════════════════════════════\n');
+  console.log('\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+  console.log('ðŸ” VERIFICA FINALE');
+  console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
   const taxes = await callOdoo(cookies, 'account.tax', 'read', [taxIds], {
     fields: ['id', 'name', 'amount', 'amount_type', 'type_tax_use', 'description', 'tax_group_id', 'active']
   });
 
   taxes.forEach((tax: any) => {
-    console.log(`📋 ${tax.name}`);
+    console.log(`ðŸ“‹ ${tax.name}`);
     console.log(`   ID: ${tax.id}`);
     console.log(`   Aliquota: ${tax.amount}%`);
     console.log(`   Tipo: ${tax.type_tax_use}`);
     console.log(`   Descrizione fattura: "${tax.description}"`);
     console.log(`   Gruppo fiscale: ${tax.tax_group_id ? tax.tax_group_id[1] : 'N/A'}`);
-    console.log(`   Attiva: ${tax.active ? 'Sì' : 'No'}`);
+    console.log(`   Attiva: ${tax.active ? 'SÃ¬' : 'No'}`);
     console.log('');
   });
 }
@@ -197,21 +197,21 @@ async function main() {
     const existingTaxes = await checkExistingTaxes(cookies);
 
     // 3. Crea le nuove aliquote
-    console.log('\n═══════════════════════════════════════════════════════════════════');
-    console.log('🔄 CREAZIONE ALIQUOTE INTRACOMUNITARIE');
-    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('ðŸ”„ CREAZIONE ALIQUOTE INTRACOMUNITARIE');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
 
     const createdTaxIds: number[] = [];
 
     for (const taxData of TAXES_TO_CREATE) {
-      // Verifica se esiste già
+      // Verifica se esiste giÃ 
       const exists = existingTaxes.find((t: any) =>
         t.name === taxData.name ||
         (t.description && t.description.includes(taxData.description.split(' ')[0]))
       );
 
       if (exists) {
-        console.log(`\n⚠️  Aliquota "${taxData.name}" già esistente (ID: ${exists.id})`);
+        console.log(`\nâš ï¸  Aliquota "${taxData.name}" giÃ  esistente (ID: ${exists.id})`);
         createdTaxIds.push(exists.id);
       } else {
         const taxId = await createTax(cookies, taxData, taxGroupId);
@@ -222,18 +222,18 @@ async function main() {
     // 4. Verifica finale
     await verifyTaxes(cookies, createdTaxIds);
 
-    console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('✅ ALIQUOTE IVA INTRACOMUNITARIE CREATE CON SUCCESSO!');
-    console.log('═══════════════════════════════════════════════════════════════════\n');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+    console.log('âœ… ALIQUOTE IVA INTRACOMUNITARIE CREATE CON SUCCESSO!');
+    console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-    console.log('📌 PROSSIMI PASSI:');
-    console.log('   1. Vai in Odoo → Contabilità → Configurazione → Imposte');
+    console.log('ðŸ“Œ PROSSIMI PASSI:');
+    console.log('   1. Vai in Odoo â†’ ContabilitÃ  â†’ Configurazione â†’ Imposte');
     console.log('   2. Verifica le nuove aliquote "IVA 0% Intra UE"');
     console.log('   3. Assegna le aliquote ai prodotti/clienti UE con VAT valido (VIES)');
     console.log('');
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE:', error.message);
+    console.error('\nâŒ ERRORE:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

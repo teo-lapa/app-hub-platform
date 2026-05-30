@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Debug: vediamo cosa fa Odoo quando salvi una traduzione
  */
 
@@ -9,7 +9,7 @@ const article = JSON.parse(readFileSync('data/new-articles/article-01-zurich.jso
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -52,9 +52,9 @@ async function call(model: string, method: string, args: any[], kwargs: any = {}
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const postId = 118;
 
@@ -63,7 +63,7 @@ async function main() {
   // dove translations = {source_text: {lang_code: translated_text}}
 
   // Leggi i blocchi esistenti
-  console.log('📖 Leggo blocchi esistenti...');
+  console.log('ðŸ“– Leggo blocchi esistenti...');
   const fieldTrans = await call('blog.post', 'get_field_translations', [[postId], 'content'], {});
 
   // Raggruppa per source
@@ -106,7 +106,7 @@ async function main() {
   const frTexts = extractTexts(frData.content_html);
   const enTexts = extractTexts(enData.content_html);
 
-  console.log(`\n📊 Testi estratti: IT=${itTexts.length}, DE=${deTexts.length}, FR=${frTexts.length}, EN=${enTexts.length}`);
+  console.log(`\nðŸ“Š Testi estratti: IT=${itTexts.length}, DE=${deTexts.length}, FR=${frTexts.length}, EN=${enTexts.length}`);
 
   // Crea mapping source -> translations
   const translations: Record<string, Record<string, string>> = {};
@@ -136,20 +136,20 @@ async function main() {
   }
 
   // Ora prova update_field_translations con questo formato
-  console.log('\n📝 Applico traduzioni...');
+  console.log('\nðŸ“ Applico traduzioni...');
   try {
     const result = await call('blog.post', 'update_field_translations', [
       [postId],
       'content',
       translations
     ], {});
-    console.log('   ✅ Risultato:', result);
+    console.log('   âœ… Risultato:', result);
   } catch (e: any) {
-    console.log('   ❌ Errore:', e.message.substring(0, 300));
+    console.log('   âŒ Errore:', e.message.substring(0, 300));
   }
 
   // Verifica
-  console.log('\n🔍 Verifica finale...');
+  console.log('\nðŸ” Verifica finale...');
   for (const lang of ['it_IT', 'de_CH', 'fr_CH', 'en_US']) {
     const data = await call('blog.post', 'read', [[postId]], {
       fields: ['content'],

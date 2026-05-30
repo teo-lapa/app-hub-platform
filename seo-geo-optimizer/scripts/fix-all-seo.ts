@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix All SEO Issues Script
  * Corregge automaticamente i meta tag SEO di tutti gli articoli del blog
  */
@@ -14,7 +14,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Limiti SEO
 const SEO_LIMITS = {
@@ -118,7 +118,7 @@ function cleanTitle(name: string, subtitle?: string): string {
     .replace(/\s*\|\s*$/g, '')
     .trim();
 
-  // Se il titolo è troppo lungo, accorcialo
+  // Se il titolo Ã¨ troppo lungo, accorcialo
   if (title.length > SEO_LIMITS.TITLE_MAX) {
     // Prova a tagliare al primo | o :
     const sepIndex = Math.min(
@@ -133,7 +133,7 @@ function cleanTitle(name: string, subtitle?: string): string {
     }
   }
 
-  // Se il titolo è troppo corto, aggiungi LAPA
+  // Se il titolo Ã¨ troppo corto, aggiungi LAPA
   if (title.length < SEO_LIMITS.TITLE_MIN && !title.includes('LAPA')) {
     title = title + ' | LAPA';
   }
@@ -146,7 +146,7 @@ function cleanDescription(description: string, subtitle?: string, name?: string)
     // Genera descrizione dal subtitle o name
     description = subtitle || name || '';
     if (description.length > 0) {
-      description = description + ' Scopri di più su LAPA, il tuo grossista italiano in Svizzera.';
+      description = description + ' Scopri di piÃ¹ su LAPA, il tuo grossista italiano in Svizzera.';
     }
   }
 
@@ -157,12 +157,12 @@ function cleanDescription(description: string, subtitle?: string, name?: string)
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Se è troppo lunga, accorcia
+  // Se Ã¨ troppo lunga, accorcia
   if (desc.length > SEO_LIMITS.DESCRIPTION_MAX) {
     desc = desc.substring(0, SEO_LIMITS.DESCRIPTION_MAX - 3).replace(/\s+\S*$/, '') + '...';
   }
 
-  // Se è troppo corta, espandi
+  // Se Ã¨ troppo corta, espandi
   if (desc.length < SEO_LIMITS.DESCRIPTION_MIN && !desc.includes('LAPA')) {
     const suffix = ' Disponibile da LAPA Svizzera.';
     if (desc.length + suffix.length <= SEO_LIMITS.DESCRIPTION_MAX) {
@@ -206,24 +206,24 @@ function needsFix(article: OdooArticle): { needsTitle: boolean; needsDesc: boole
 }
 
 async function main() {
-  console.log('🔧 SEO Fixer - Correzione automatica meta tag\n');
+  console.log('ðŸ”§ SEO Fixer - Correzione automatica meta tag\n');
 
   const odoo = new OdooFixer();
 
   try {
-    console.log('🔐 Autenticazione Odoo...');
+    console.log('ðŸ” Autenticazione Odoo...');
     await odoo.authenticate();
-    console.log('✅ Autenticato con successo\n');
+    console.log('âœ… Autenticato con successo\n');
 
     // Carica articoli
-    console.log('📚 Caricamento articoli...');
+    console.log('ðŸ“š Caricamento articoli...');
     const articles = await odoo.searchRead<OdooArticle>(
       'blog.post',
       [['website_published', '=', true]],
       ['id', 'name', 'subtitle', 'content', 'website_meta_title', 'website_meta_description', 'website_meta_keywords'],
       { limit: 500 }
     );
-    console.log(`📊 Trovati ${articles.length} articoli pubblicati\n`);
+    console.log(`ðŸ“Š Trovati ${articles.length} articoli pubblicati\n`);
 
     // Analizza e prepara correzioni
     const fixes: { id: number; name: string; changes: any }[] = [];
@@ -255,27 +255,27 @@ async function main() {
       }
     }
 
-    console.log(`🔍 Articoli da correggere: ${fixes.length}\n`);
+    console.log(`ðŸ” Articoli da correggere: ${fixes.length}\n`);
 
     if (fixes.length === 0) {
-      console.log('✅ Nessun articolo richiede correzioni!');
+      console.log('âœ… Nessun articolo richiede correzioni!');
       return;
     }
 
     // Mostra preview delle prime 5 correzioni
-    console.log('📋 Preview correzioni (prime 5):');
-    console.log('─'.repeat(80));
+    console.log('ðŸ“‹ Preview correzioni (prime 5):');
+    console.log('â”€'.repeat(80));
     for (const fix of fixes.slice(0, 5)) {
-      console.log(`\n📝 ID ${fix.id}: ${fix.name.substring(0, 50)}...`);
+      console.log(`\nðŸ“ ID ${fix.id}: ${fix.name.substring(0, 50)}...`);
       for (const [field, value] of Object.entries(fix.changes)) {
         const displayValue = String(value).substring(0, 70);
         console.log(`   ${field}: ${displayValue}${String(value).length > 70 ? '...' : ''}`);
       }
     }
-    console.log('\n' + '─'.repeat(80));
+    console.log('\n' + 'â”€'.repeat(80));
 
     // Applica correzioni
-    console.log('\n🚀 Applicazione correzioni in corso...\n');
+    console.log('\nðŸš€ Applicazione correzioni in corso...\n');
 
     let success = 0;
     let failed = 0;
@@ -286,7 +286,7 @@ async function main() {
       try {
         await odoo.write('blog.post', [fix.id], fix.changes);
         success++;
-        process.stdout.write(`\r✅ Corretti: ${success}/${fixes.length} (Errori: ${failed})`);
+        process.stdout.write(`\râœ… Corretti: ${success}/${fixes.length} (Errori: ${failed})`);
       } catch (error) {
         failed++;
         errors.push(`ID ${fix.id}: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
@@ -298,14 +298,14 @@ async function main() {
       }
     }
 
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('📊 RIEPILOGO CORREZIONI');
-    console.log('═'.repeat(80));
-    console.log(`✅ Articoli corretti con successo: ${success}`);
-    console.log(`❌ Errori: ${failed}`);
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸ“Š RIEPILOGO CORREZIONI');
+    console.log('â•'.repeat(80));
+    console.log(`âœ… Articoli corretti con successo: ${success}`);
+    console.log(`âŒ Errori: ${failed}`);
 
     if (errors.length > 0) {
-      console.log('\n⚠️ Dettaglio errori:');
+      console.log('\nâš ï¸ Dettaglio errori:');
       errors.slice(0, 10).forEach(e => console.log(`   - ${e}`));
       if (errors.length > 10) {
         console.log(`   ... e altri ${errors.length - 10} errori`);
@@ -327,12 +327,12 @@ async function main() {
 
     const reportPath = resolve(__dirname, '..', 'data', 'seo-fix-report.json');
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
-    console.log(`\n📄 Report salvato: ${reportPath}`);
+    console.log(`\nðŸ“„ Report salvato: ${reportPath}`);
 
-    console.log('\n✨ Correzioni SEO completate!');
+    console.log('\nâœ¨ Correzioni SEO completate!');
 
   } catch (error) {
-    console.error('❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('âŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

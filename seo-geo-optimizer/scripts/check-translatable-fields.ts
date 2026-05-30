@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Check which fields are translatable in blog.post model
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,10 +48,10 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
-  console.log('📋 Recupero informazioni sui campi del modello blog.post...\n');
+  console.log('ðŸ“‹ Recupero informazioni sui campi del modello blog.post...\n');
 
   try {
     const fields = await callOdoo('blog.post', 'fields_get', [], {
@@ -61,7 +61,7 @@ async function main() {
     console.log('Campi traducibili:\n');
     for (const [fieldName, fieldInfo] of Object.entries(fields as any)) {
       if (fieldInfo.translate) {
-        console.log(`✅ ${fieldName}: ${fieldInfo.string} (${fieldInfo.type})`);
+        console.log(`âœ… ${fieldName}: ${fieldInfo.string} (${fieldInfo.type})`);
       }
     }
 
@@ -70,7 +70,7 @@ async function main() {
     for (const fieldName of importantFields) {
       const fieldInfo = (fields as any)[fieldName];
       if (fieldInfo) {
-        console.log(`❌ ${fieldName}: ${fieldInfo.string} (${fieldInfo.type}) - translate: ${fieldInfo.translate || false}`);
+        console.log(`âŒ ${fieldName}: ${fieldInfo.string} (${fieldInfo.type}) - translate: ${fieldInfo.translate || false}`);
       }
     }
 

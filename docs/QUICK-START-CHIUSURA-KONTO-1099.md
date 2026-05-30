@@ -1,4 +1,4 @@
-# Quick Start - Chiusura Konto 1099
+﻿# Quick Start - Chiusura Konto 1099
 
 Guida rapida per chiudere il Konto 1099 Transferkonto (CHF -60,842.41).
 
@@ -18,9 +18,9 @@ python scripts/chiusura-konto-1099.py
 
 1. Login: https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
    - User: paul@lapa.ch
-   - Password: lapa201180
+   - Password: __REDACTED__
 
-2. Menu: Contabilità → Registrazioni Contabili → [Crea]
+2. Menu: ContabilitÃ  â†’ Registrazioni Contabili â†’ [Crea]
 
 3. Compila:
    - Journal: General
@@ -33,9 +33,9 @@ python scripts/chiusura-konto-1099.py
 
    *Se 2979 non esiste, usa qualsiasi conto Equity
 
-5. Salva → Valida
+5. Salva â†’ Valida
 
-6. Verifica: Piano dei Conti → 1099 → Saldo = 0.00 ✅
+6. Verifica: Piano dei Conti â†’ 1099 â†’ Saldo = 0.00 âœ…
 
 ## Verifica Finale
 
@@ -44,7 +44,7 @@ python scripts/chiusura-konto-1099.py
 python -c "
 import odoorpc
 o = odoorpc.ODOO('lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com', protocol='jsonrpc+ssl', port=443)
-o.login('lapadevadmin-lapa-v2-staging-2406-25408900', 'paul@lapa.ch', 'lapa201180')
+o.login('lapadevadmin-lapa-v2-staging-2406-25408900', 'paul@lapa.ch', '__REDACTED__')
 a = o.env['account.account'].browse(o.env['account.account'].search([('code','=','1099')])[0])
 print(f'Saldo: CHF {a.current_balance:.2f}')
 "

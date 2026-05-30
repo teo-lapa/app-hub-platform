@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Odoo Accounting API Endpoint
  *
  * Permette query dirette su dati contabili Odoo:
@@ -17,7 +17,7 @@ import xmlrpc from 'xmlrpc';
 const ODOO_URL = process.env.ODOO_URL || 'https://erp.alpenpur.ch';
 const ODOO_DB = process.env.ODOO_DB || 'alpenpur';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'apphubplatform2025';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 interface OdooRPCParams {
   model: string;

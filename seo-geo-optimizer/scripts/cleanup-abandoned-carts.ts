@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cleanup Abandoned Carts Script
  * Elimina i carrelli abbandonati dei "Public user" (utenti anonimi)
  *
@@ -15,7 +15,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -121,23 +121,23 @@ class OdooCleaner {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🧹 LAPA - Pulizia Carrelli Abbandonati');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ§¹ LAPA - Pulizia Carrelli Abbandonati');
+  console.log('â•'.repeat(80));
   console.log('');
 
   if (DRY_RUN) {
-    console.log('⚠️  MODALITÀ DRY-RUN: Nessuna modifica verrà effettuata\n');
+    console.log('âš ï¸  MODALITÃ€ DRY-RUN: Nessuna modifica verrÃ  effettuata\n');
   }
 
-  console.log(`📅 Cercando carrelli più vecchi di ${DAYS_OLD} giorni...\n`);
+  console.log(`ðŸ“… Cercando carrelli piÃ¹ vecchi di ${DAYS_OLD} giorni...\n`);
 
   const odoo = new OdooCleaner();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Calculate date threshold
     const cutoffDate = new Date();
@@ -145,7 +145,7 @@ async function main() {
     const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
     // Find Public user partner ID
-    console.log('👤 Ricerca utenti "Public user"...');
+    console.log('ðŸ‘¤ Ricerca utenti "Public user"...');
     const publicPartners = await odoo.searchRead<any>(
       'res.partner',
       [['name', 'ilike', 'public user']],
@@ -162,7 +162,7 @@ async function main() {
     const publicPartnerIds = publicPartners.map(p => p.id);
 
     // Find abandoned carts (draft orders from public users)
-    console.log('🛒 Ricerca carrelli abbandonati...');
+    console.log('ðŸ›’ Ricerca carrelli abbandonati...');
 
     const domain: any[] = [
       ['state', '=', 'draft'],  // Only draft orders (carts)
@@ -186,14 +186,14 @@ async function main() {
       { limit: 500, order: 'create_date asc' }
     );
 
-    console.log(`\n📊 Risultati:`);
+    console.log(`\nðŸ“Š Risultati:`);
     console.log(`   Carrelli abbandonati trovati: ${abandonedCarts.length}`);
 
     if (abandonedCarts.length === 0) {
-      console.log('\n✅ Nessun carrello da eliminare!');
+      console.log('\nâœ… Nessun carrello da eliminare!');
 
       // Show recent carts for info
-      console.log('\n📋 Carrelli recenti (ultimi 7 giorni) da Public user:');
+      console.log('\nðŸ“‹ Carrelli recenti (ultimi 7 giorni) da Public user:');
       const recentCarts = await odoo.searchRead<any>(
         'sale.order',
         [
@@ -209,7 +209,7 @@ async function main() {
           const date = new Date(cart.create_date).toLocaleDateString('it-CH');
           console.log(`   ${cart.name} | ${date} | CHF ${cart.amount_total.toFixed(2)} | ${cart.partner_id[1]}`);
         }
-        console.log(`\n💡 Questi carrelli sono recenti. Usa --days=1 per eliminarli.`);
+        console.log(`\nðŸ’¡ Questi carrelli sono recenti. Usa --days=1 per eliminarli.`);
       } else {
         console.log('   Nessun carrello recente trovato.');
       }
@@ -218,8 +218,8 @@ async function main() {
     }
 
     // Show carts to be deleted
-    console.log('\n📋 Carrelli da eliminare:');
-    console.log('─'.repeat(80));
+    console.log('\nðŸ“‹ Carrelli da eliminare:');
+    console.log('â”€'.repeat(80));
 
     let totalAmount = 0;
     for (const cart of abandonedCarts.slice(0, 20)) {
@@ -233,17 +233,17 @@ async function main() {
       console.log(`   ... e altri ${abandonedCarts.length - 20} carrelli`);
     }
 
-    console.log('─'.repeat(80));
+    console.log('â”€'.repeat(80));
     console.log(`   Totale valore carrelli: CHF ${totalAmount.toFixed(2)}`);
 
     if (DRY_RUN) {
-      console.log('\n⚠️  DRY-RUN: Nessun carrello eliminato.');
+      console.log('\nâš ï¸  DRY-RUN: Nessun carrello eliminato.');
       console.log('   Rimuovi --dry-run per eliminare effettivamente i carrelli.');
       return;
     }
 
     // Delete carts
-    console.log('\n🗑️  Eliminazione carrelli in corso...');
+    console.log('\nðŸ—‘ï¸  Eliminazione carrelli in corso...');
 
     const cartIds = abandonedCarts.map(c => c.id);
     let deleted = 0;
@@ -271,17 +271,17 @@ async function main() {
     }
 
     console.log('\n');
-    console.log('═'.repeat(80));
-    console.log('📊 RIEPILOGO');
-    console.log('═'.repeat(80));
-    console.log(`   ✅ Carrelli eliminati: ${deleted}`);
-    console.log(`   ❌ Errori: ${errors}`);
-    console.log(`   💰 Valore liberato: CHF ${totalAmount.toFixed(2)}`);
+    console.log('â•'.repeat(80));
+    console.log('ðŸ“Š RIEPILOGO');
+    console.log('â•'.repeat(80));
+    console.log(`   âœ… Carrelli eliminati: ${deleted}`);
+    console.log(`   âŒ Errori: ${errors}`);
+    console.log(`   ðŸ’° Valore liberato: CHF ${totalAmount.toFixed(2)}`);
 
-    console.log('\n✨ Pulizia completata!');
+    console.log('\nâœ¨ Pulizia completata!');
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

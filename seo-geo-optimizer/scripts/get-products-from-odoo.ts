@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Get products from Odoo to associate with articles
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,17 +48,17 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function getProducts() {
-  console.log('🔐 Authenticating...');
+  console.log('ðŸ” Authenticating...');
   await authenticate();
 
-  console.log('📦 Fetching ALL published products in batches...\n');
+  console.log('ðŸ“¦ Fetching ALL published products in batches...\n');
 
   // First, get the count
   const totalCount = await callOdoo('product.template', 'search_count', [
     [['website_published', '=', true]]
   ], {});
 
-  console.log(`📊 Total published products: ${totalCount}\n`);
+  console.log(`ðŸ“Š Total published products: ${totalCount}\n`);
 
   // Fetch in batches of 500
   const batchSize = 500;
@@ -78,7 +78,7 @@ async function getProducts() {
     await new Promise(r => setTimeout(r, 500));
   }
 
-  console.log(`\n✅ Downloaded ${products.length} products\n`);
+  console.log(`\nâœ… Downloaded ${products.length} products\n`);
 
   // Save to file
   const fs = await import('fs');
@@ -87,7 +87,7 @@ async function getProducts() {
     JSON.stringify(products, null, 2)
   );
 
-  console.log('💾 Saved to data/odoo-products-catalog.json');
+  console.log('ðŸ’¾ Saved to data/odoo-products-catalog.json');
 
   return products;
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Debug: analizza come Odoo estrae i segmenti dal content HTML
  */
 
@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -51,11 +51,11 @@ async function main() {
   // Usa articolo 130 (mio test)
   const postId = 130;
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
-  console.log(`📖 Leggo segmenti dell'articolo ${postId}...\n`);
+  console.log(`ðŸ“– Leggo segmenti dell'articolo ${postId}...\n`);
 
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
@@ -73,12 +73,12 @@ async function main() {
 
   // Mostra i source (testo italiano base)
   const sources = [...new Set(segments.map((s: any) => s.source))];
-  console.log(`📝 ${sources.length} segmenti source unici:\n`);
+  console.log(`ðŸ“ ${sources.length} segmenti source unici:\n`);
 
   sources.slice(0, 15).forEach((src, i) => {
     console.log(`${i+1}. "${src.substring(0, 80)}${src.length > 80 ? '...' : ''}"`);
 
-    // Mostra come è tradotto in tedesco
+    // Mostra come Ã¨ tradotto in tedesco
     const deSeg = segments.find((s: any) => s.source === src && s.lang === 'de_CH');
     if (deSeg && deSeg.value) {
       console.log(`   DE: "${deSeg.value.substring(0, 80)}${deSeg.value.length > 80 ? '...' : ''}"`);
@@ -87,7 +87,7 @@ async function main() {
   });
 
   // Analizza struttura segmenti
-  console.log('\n📊 Analisi struttura:');
+  console.log('\nðŸ“Š Analisi struttura:');
 
   let containsHtml = 0;
   let plainText = 0;

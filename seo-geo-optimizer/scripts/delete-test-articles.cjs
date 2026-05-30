@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Cancella articoli di test caricati male
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,14 +48,14 @@ async function callOdoo(model, method, args, kwargs = {}) {
 }
 
 async function main() {
-  console.log('🗑️  PULIZIA ARTICOLI DI TEST\n');
+  console.log('ðŸ—‘ï¸  PULIZIA ARTICOLI DI TEST\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Trova articoli recenti (ultimi 30)
-  console.log('📄 Cerco articoli recenti...');
+  console.log('ðŸ“„ Cerco articoli recenti...');
   const posts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]]
   ], {
@@ -76,28 +76,28 @@ async function main() {
     const isToday = createDate.toDateString() === today.toDateString();
 
     if (isToday && !post.is_published) {
-      console.log(`  ❌ ID ${post.id}: ${post.name.substring(0, 50)}...`);
+      console.log(`  âŒ ID ${post.id}: ${post.name.substring(0, 50)}...`);
       toDelete.push(post.id);
     }
   }
 
   if (toDelete.length === 0) {
-    console.log('\n✅ Nessun articolo da eliminare!');
+    console.log('\nâœ… Nessun articolo da eliminare!');
     return;
   }
 
-  console.log(`\n🗑️  Elimino ${toDelete.length} articoli...`);
+  console.log(`\nðŸ—‘ï¸  Elimino ${toDelete.length} articoli...`);
 
   for (const id of toDelete) {
     try {
       await callOdoo('blog.post', 'unlink', [[id]]);
-      console.log(`   ✓ Eliminato ID ${id}`);
+      console.log(`   âœ“ Eliminato ID ${id}`);
     } catch (e) {
-      console.log(`   ✗ Errore ID ${id}: ${e.message.substring(0, 50)}`);
+      console.log(`   âœ— Errore ID ${id}: ${e.message.substring(0, 50)}`);
     }
   }
 
-  console.log('\n✅ Pulizia completata!');
+  console.log('\nâœ… Pulizia completata!');
 }
 
 main().catch(console.error);

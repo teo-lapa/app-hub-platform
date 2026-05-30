@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/auth/google-oauth';
 import { generateToken } from '@/lib/auth';
 
@@ -23,23 +23,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL(`/?error=google_${error}`, BASE_URL));
     }
 
-    // Se non c'è il code, errore
+    // Se non c'Ã¨ il code, errore
     if (!code) {
       console.error('Missing authorization code');
       return NextResponse.redirect(new URL('/?error=missing_code', BASE_URL));
     }
 
-    console.log('🔐 Google OAuth callback received code');
+    console.log('ðŸ” Google OAuth callback received code');
 
     // ========== STEP 1: SCAMBIA CODE PER TOKEN ==========
-    console.log('🔑 Step 1: Exchanging code for tokens...');
+    console.log('ðŸ”‘ Step 1: Exchanging code for tokens...');
     const tokens = await exchangeCodeForTokens(code);
-    console.log('✅ Tokens received from Google');
+    console.log('âœ… Tokens received from Google');
 
     // ========== STEP 2: OTTIENI INFO UTENTE DA GOOGLE ==========
-    console.log('👤 Step 2: Getting user info from Google...');
+    console.log('ðŸ‘¤ Step 2: Getting user info from Google...');
     const googleUser = await getGoogleUserInfo(tokens.access_token);
-    console.log(`✅ Google user: ${googleUser.email} (${googleUser.name})`);
+    console.log(`âœ… Google user: ${googleUser.email} (${googleUser.name})`);
 
     if (!googleUser.verified_email) {
       console.error('Email not verified:', googleUser.email);
@@ -47,12 +47,12 @@ export async function GET(request: NextRequest) {
     }
 
     // ========== STEP 3: CERCA/CREA PARTNER IN ODOO ==========
-    console.log('🔍 Step 3: Searching for partner in Odoo...');
+    console.log('ðŸ” Step 3: Searching for partner in Odoo...');
 
     const odooUrl = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
     const odooDb = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
     const odooAdminEmail = process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
-    const odooAdminPassword = process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
+    const odooAdminPassword = process.env.ODOO_ADMIN_PASSWORD || (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
     // Prima autentichiamo come admin per poter cercare/creare partner
     const adminAuthResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     const adminAuthData = await adminAuthResponse.json();
 
     if (!adminAuthData.result || !adminAuthData.result.uid) {
-      console.error('❌ Odoo admin authentication failed');
+      console.error('âŒ Odoo admin authentication failed');
       return NextResponse.redirect(new URL('/?error=odoo_connection_error', BASE_URL));
     }
 
@@ -90,11 +90,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (!adminSessionId) {
-      console.error('❌ Odoo admin session_id missing');
+      console.error('âŒ Odoo admin session_id missing');
       return NextResponse.redirect(new URL('/?error=odoo_session_error', BASE_URL));
     }
 
-    console.log('✅ Odoo admin authenticated');
+    console.log('âœ… Odoo admin authenticated');
 
     // Cerca partner con questa email
     const searchPartnerResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
@@ -131,12 +131,12 @@ export async function GET(request: NextRequest) {
       const existingPartner = searchPartnerData.result[0];
       partnerId = existingPartner.id;
       userName = existingPartner.name || googleUser.name;
-      console.log(`✅ Partner esistente trovato: ID ${partnerId} - ${userName}`);
+      console.log(`âœ… Partner esistente trovato: ID ${partnerId} - ${userName}`);
 
       // Se ha un utente collegato, ottieni i suoi permessi
       if (existingPartner.user_ids && existingPartner.user_ids.length > 0) {
         odooUserId = existingPartner.user_ids[0];
-        console.log(`✅ Utente Odoo collegato: ID ${odooUserId}`);
+        console.log(`âœ… Utente Odoo collegato: ID ${odooUserId}`);
 
         // Ottieni i gruppi dell'utente per determinare il ruolo
         const userGroupsResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
@@ -162,31 +162,31 @@ export async function GET(request: NextRequest) {
         const groupIds = userGroupsData.result?.[0]?.groups_id || [];
         const isShare = userGroupsData.result?.[0]?.share || false;
 
-        console.log(`🔍 User groups: ${groupIds.length} groups, share=${isShare}`);
+        console.log(`ðŸ” User groups: ${groupIds.length} groups, share=${isShare}`);
 
         // Determina ruolo
         if (!isShare && groupIds.length > 0) {
           userRole = 'dipendente';
           appPermessi = ['profile', 'dashboard'];
-          console.log('🏢 User is DIPENDENTE (Internal User)');
+          console.log('ðŸ¢ User is DIPENDENTE (Internal User)');
         } else if (isShare) {
           userRole = 'cliente_premium';
           appPermessi = ['profile', 'portale-clienti'];
-          console.log('👤 User is CLIENTE PORTAL');
+          console.log('ðŸ‘¤ User is CLIENTE PORTAL');
         } else {
           userRole = 'visitor';
           appPermessi = ['profile'];
-          console.log('🌐 User is VISITOR');
+          console.log('ðŸŒ User is VISITOR');
         }
       } else {
         // Partner senza utente = visitor
-        console.log('⚠️ Partner senza utente Odoo collegato - ruolo: visitor');
+        console.log('âš ï¸ Partner senza utente Odoo collegato - ruolo: visitor');
         userRole = 'visitor';
         appPermessi = ['profile'];
       }
     } else {
       // Partner NON esistente - CREALO come visitor
-      console.log('🆕 Partner non trovato, creazione nuovo partner...');
+      console.log('ðŸ†• Partner non trovato, creazione nuovo partner...');
 
       const createPartnerResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: 'POST',
@@ -218,20 +218,20 @@ export async function GET(request: NextRequest) {
 
       if (createPartnerData.result) {
         partnerId = createPartnerData.result;
-        console.log(`✅ Nuovo partner creato: ID ${partnerId}`);
+        console.log(`âœ… Nuovo partner creato: ID ${partnerId}`);
       } else {
-        console.error('❌ Errore creazione partner:', createPartnerData);
-        // Continua comunque - l'utente può accedere come visitor senza partner
+        console.error('âŒ Errore creazione partner:', createPartnerData);
+        // Continua comunque - l'utente puÃ² accedere come visitor senza partner
       }
 
       // Nuovo utente = sempre visitor
       userRole = 'visitor';
       appPermessi = ['profile'];
-      console.log('👤 Nuovo utente - ruolo: visitor (non può fare quasi nulla)');
+      console.log('ðŸ‘¤ Nuovo utente - ruolo: visitor (non puÃ² fare quasi nulla)');
     }
 
     // ========== STEP 4: CREA UTENTE E GENERA JWT ==========
-    console.log('✅ Step 4: Creating user object and JWT...');
+    console.log('âœ… Step 4: Creating user object and JWT...');
 
     const user = {
       id: odooUserId ? `odoo-${odooUserId}` : `google-${googleUser.id}`,
@@ -254,7 +254,7 @@ export async function GET(request: NextRequest) {
     };
 
     const token = generateToken(user, odooUserId || undefined);
-    console.log(`✅ JWT generato per: ${user.email} - Ruolo: ${userRole}`);
+    console.log(`âœ… JWT generato per: ${user.email} - Ruolo: ${userRole}`);
 
     // ========== STEP 5: REDIRECT CON COOKIE ==========
     const response = NextResponse.redirect(new URL('/dashboard', BASE_URL));
@@ -269,7 +269,7 @@ export async function GET(request: NextRequest) {
     });
 
     // IMPORTANTE: Salva anche la sessione Odoo per permettere chiamate API
-    // Usa la sessione admin che abbiamo già autenticato
+    // Usa la sessione admin che abbiamo giÃ  autenticato
     response.cookies.set('odoo_session_id', adminSessionId, {
       httpOnly: true,
       secure: true, // Sempre true per HTTPS (staging e production)
@@ -278,8 +278,8 @@ export async function GET(request: NextRequest) {
       path: '/',
     });
 
-    console.log('✅ Google OAuth login completato! Redirect a dashboard...');
-    console.log('✅ Cookie odoo_session_id salvato:', adminSessionId.substring(0, 20) + '...');
+    console.log('âœ… Google OAuth login completato! Redirect a dashboard...');
+    console.log('âœ… Cookie odoo_session_id salvato:', adminSessionId.substring(0, 20) + '...');
     return response;
 
   } catch (error) {

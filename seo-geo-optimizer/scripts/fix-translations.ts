@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Translations - Corregge le traduzioni mancanti negli articoli esistenti
  *
  * Per ogni articolo con traduzioni parziali:
@@ -13,7 +13,7 @@ import OpenAI from 'openai';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -108,7 +108,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
     return { fixed, errors };
   }
 
-  console.log(`\n📝 [${articleId}] ${itArticle.name?.substring(0, 50)}...`);
+  console.log(`\nðŸ“ [${articleId}] ${itArticle.name?.substring(0, 50)}...`);
 
   // 2. Per ogni lingua, verifica e correggi
   for (const [langCode, langInfo] of Object.entries(LANG_MAP)) {
@@ -122,7 +122,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
       try {
         const translated = await translateText(itArticle.name, langCode);
         updates.name = translated;
-        console.log(`   ${langCode} name: ✓`);
+        console.log(`   ${langCode} name: âœ“`);
       } catch (e: any) {
         errors.push(`${langCode} name: ${e.message}`);
       }
@@ -133,7 +133,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
       try {
         const translated = await translateText(itArticle.subtitle, langCode);
         updates.subtitle = translated;
-        console.log(`   ${langCode} subtitle: ✓`);
+        console.log(`   ${langCode} subtitle: âœ“`);
       } catch (e: any) {
         errors.push(`${langCode} subtitle: ${e.message}`);
       }
@@ -144,7 +144,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
       try {
         const translated = await translateText(itArticle.website_meta_title, langCode);
         updates.website_meta_title = translated;
-        console.log(`   ${langCode} meta_title: ✓`);
+        console.log(`   ${langCode} meta_title: âœ“`);
       } catch (e: any) {
         errors.push(`${langCode} meta_title: ${e.message}`);
       }
@@ -155,7 +155,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
       try {
         const translated = await translateText(itArticle.website_meta_description, langCode);
         updates.website_meta_description = translated;
-        console.log(`   ${langCode} meta_desc: ✓`);
+        console.log(`   ${langCode} meta_desc: âœ“`);
       } catch (e: any) {
         errors.push(`${langCode} meta_desc: ${e.message}`);
       }
@@ -166,7 +166,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
       try {
         const translated = await translateText(itArticle.website_meta_keywords, langCode);
         updates.website_meta_keywords = translated;
-        console.log(`   ${langCode} keywords: ✓`);
+        console.log(`   ${langCode} keywords: âœ“`);
       } catch (e: any) {
         errors.push(`${langCode} keywords: ${e.message}`);
       }
@@ -225,7 +225,7 @@ async function fixArticleTranslations(articleId: number): Promise<{ fixed: strin
                 [articleId], 'content', { [langCode]: translations }
               ]);
               fixed.push(`${langCode} content (${Object.keys(translations).length})`);
-              console.log(`   ${langCode}: ✓ ${Object.keys(translations).length} segmenti`);
+              console.log(`   ${langCode}: âœ“ ${Object.keys(translations).length} segmenti`);
             } catch (e: any) {
               errors.push(`${langCode} content: ${e.message.substring(0, 50)}`);
             }
@@ -249,12 +249,12 @@ async function main() {
     16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5
   ];
 
-  console.log('🔧 Fix Translations - Correzione articoli\n');
+  console.log('ðŸ”§ Fix Translations - Correzione articoli\n');
   console.log('='.repeat(60));
 
-  console.log('\n🔐 Autenticazione Odoo...');
+  console.log('\nðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ OK');
+  console.log('âœ… OK');
 
   const results: { id: number; fixed: string[]; errors: string[] }[] = [];
 
@@ -263,7 +263,7 @@ async function main() {
       const result = await fixArticleTranslations(articleId);
       results.push({ id: articleId, ...result });
     } catch (e: any) {
-      console.log(`\n❌ [${articleId}] Errore: ${e.message}`);
+      console.log(`\nâŒ [${articleId}] Errore: ${e.message}`);
       results.push({ id: articleId, fixed: [], errors: [e.message] });
     }
 
@@ -273,25 +273,25 @@ async function main() {
 
   // Riepilogo
   console.log('\n\n' + '='.repeat(60));
-  console.log('📊 RIEPILOGO');
+  console.log('ðŸ“Š RIEPILOGO');
   console.log('='.repeat(60));
 
   const successCount = results.filter(r => r.fixed.length > 0 && r.errors.length === 0).length;
   const partialCount = results.filter(r => r.fixed.length > 0 && r.errors.length > 0).length;
   const failedCount = results.filter(r => r.fixed.length === 0).length;
 
-  console.log(`\n✅ Successo completo: ${successCount}`);
-  console.log(`⚠️  Parziale: ${partialCount}`);
-  console.log(`❌ Falliti: ${failedCount}`);
+  console.log(`\nâœ… Successo completo: ${successCount}`);
+  console.log(`âš ï¸  Parziale: ${partialCount}`);
+  console.log(`âŒ Falliti: ${failedCount}`);
 
   if (results.some(r => r.errors.length > 0)) {
-    console.log('\n❌ Errori:');
+    console.log('\nâŒ Errori:');
     results.filter(r => r.errors.length > 0).forEach(r => {
       console.log(`   [${r.id}]: ${r.errors.join(', ')}`);
     });
   }
 
-  console.log('\n✅ Completato!');
+  console.log('\nâœ… Completato!');
 }
 
 main().catch(console.error);

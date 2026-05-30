@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verifica struttura blog Odoo e traduzioni
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = 'apphubplatform2025';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,17 +48,17 @@ async function callOdoo(model, method, args, kwargs = {}) {
 }
 
 async function main() {
-  console.log('🔐 Autenticazione Odoo...');
+  console.log('ðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // 1. Controlla blog esistenti
-  console.log('📚 Blog disponibili:');
+  console.log('ðŸ“š Blog disponibili:');
   const blogs = await callOdoo('blog.blog', 'search_read', [[]], { fields: ['id', 'name'], limit: 10 });
-  blogs.forEach(b => console.log(`   • ID ${b.id}: ${b.name}`));
+  blogs.forEach(b => console.log(`   â€¢ ID ${b.id}: ${b.name}`));
 
   // 2. Prendi un articolo esistente per vedere la struttura
-  console.log('\n📄 Ultimi 5 articoli blog:');
+  console.log('\nðŸ“„ Ultimi 5 articoli blog:');
   const posts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]]
   ], {
@@ -68,12 +68,12 @@ async function main() {
   });
 
   posts.forEach(p => {
-    console.log(`   • ID ${p.id}: ${p.name.substring(0, 50)}... [Published: ${p.is_published}]`);
+    console.log(`   â€¢ ID ${p.id}: ${p.name.substring(0, 50)}... [Published: ${p.is_published}]`);
   });
 
   if (posts.length > 0) {
     const postId = posts[0].id;
-    console.log(`\n🔍 Dettagli articolo ID ${postId}:`);
+    console.log(`\nðŸ” Dettagli articolo ID ${postId}:`);
 
     // Leggi tutti i campi disponibili
     const fullPost = await callOdoo('blog.post', 'read', [[postId]], {
@@ -87,7 +87,7 @@ async function main() {
     console.log(`   - meta_title: ${fullPost[0].website_meta_title || 'N/A'}`);
 
     // Verifica traduzioni disponibili
-    console.log(`\n🌐 Traduzioni disponibili per ID ${postId}:`);
+    console.log(`\nðŸŒ Traduzioni disponibili per ID ${postId}:`);
     for (const lang of ['it_IT', 'de_CH', 'fr_CH', 'en_US']) {
       try {
         const translated = await callOdoo('blog.post', 'read', [[postId]], {
@@ -101,10 +101,10 @@ async function main() {
     }
 
     // Controlla system di traduzioni per il content
-    console.log(`\n📝 Sistema traduzioni content:`);
+    console.log(`\nðŸ“ Sistema traduzioni content:`);
     try {
       const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
-      console.log(`   - Metodo get_field_translations disponibile: SÌ`);
+      console.log(`   - Metodo get_field_translations disponibile: SÃŒ`);
       console.log(`   - Blocchi trovati: ${fieldTrans[0] ? fieldTrans[0].length : 0}`);
       if (fieldTrans[0] && fieldTrans[0].length > 0) {
         console.log(`   - Esempio blocco:`, JSON.stringify(fieldTrans[0][0], null, 2));
@@ -114,7 +114,7 @@ async function main() {
     }
   }
 
-  console.log('\n✅ Verifica completata!');
+  console.log('\nâœ… Verifica completata!');
 }
 
 main().catch(console.error);

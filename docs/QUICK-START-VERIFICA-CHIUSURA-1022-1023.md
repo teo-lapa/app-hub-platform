@@ -1,4 +1,4 @@
-# QUICK START - Verifica Chiusura Konto 1022 e 1023
+﻿# QUICK START - Verifica Chiusura Konto 1022 e 1023
 
 **Per:** Commercialista Lapa
 **Data:** 16 Novembre 2025
@@ -11,10 +11,10 @@
 Entrambi i konti Outstanding sono stati **azzerati a CHF 0.00** con registrazioni al 31.12.2024.
 
 **Verifica rapida:**
-1. Konto 1022 Outstanding Receipts → CHF 0.00 ✓
-2. Konto 1023 Outstanding Payments → CHF 0.00 ✓
-3. Move SLR/2024/12/0013 (chiusura 1022) → POSTED ✓
-4. Move SLR/2024/12/0014 (chiusura 1023) → POSTED ✓
+1. Konto 1022 Outstanding Receipts â†’ CHF 0.00 âœ“
+2. Konto 1023 Outstanding Payments â†’ CHF 0.00 âœ“
+3. Move SLR/2024/12/0013 (chiusura 1022) â†’ POSTED âœ“
+4. Move SLR/2024/12/0014 (chiusura 1023) â†’ POSTED âœ“
 
 ---
 
@@ -24,11 +24,11 @@ Entrambi i konti Outstanding sono stati **azzerati a CHF 0.00** con registrazion
 
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 
 ### Step 2: Controlla Piano dei Conti
 
-1. Vai a **Contabilità** → **Configurazione** → **Piano dei Conti**
+1. Vai a **ContabilitÃ ** â†’ **Configurazione** â†’ **Piano dei Conti**
 
 2. Cerca konto **1022**:
    - Saldo attuale deve essere **CHF 0.00**
@@ -41,7 +41,7 @@ Entrambi i konti Outstanding sono stati **azzerati a CHF 0.00** con registrazion
 
 ### Step 3: Verifica Registrazioni
 
-1. Vai a **Contabilità** → **Contabilità** → **Registrazioni**
+1. Vai a **ContabilitÃ ** â†’ **ContabilitÃ ** â†’ **Registrazioni**
 
 2. Filtra per data **31/12/2024**
 
@@ -112,7 +112,7 @@ python scripts/verifica-chiusura-1022-1023.py
 
 ## DOMANDE FREQUENTI
 
-### Q: Perché i saldi iniziali erano diversi dall'atteso?
+### Q: PerchÃ© i saldi iniziali erano diversi dall'atteso?
 
 **A:** C'erano stati tentativi precedenti errati che avevano raddoppiato i saldi invece di azzerarli. Quei move sono stati cancellati e rifatti correttamente.
 
@@ -124,21 +124,21 @@ python scripts/verifica-chiusura-1022-1023.py
 893,092.68 - 366,046.52 = 527,046.16
 ```
 
-Questo delta è stato imputato al konto 3900 Differences, che aveva già un saldo pre-esistente di CHF 486,935.95.
+Questo delta Ã¨ stato imputato al konto 3900 Differences, che aveva giÃ  un saldo pre-esistente di CHF 486,935.95.
 
 Saldo finale 3900: 486,935.95 - 527,046.16 = **-40,110.21 CHF**
 
 ### Q: Queste registrazioni vanno nel bilancio 2024?
 
-**A:** Sì, sono datate 31/12/2024 e rappresentano la regolarizzazione finale degli Outstanding per l'anno 2024.
+**A:** SÃ¬, sono datate 31/12/2024 e rappresentano la regolarizzazione finale degli Outstanding per l'anno 2024.
 
 ### Q: Posso cancellare questi move se necessario?
 
-**A:** In staging sì, ma in production sarebbe necessario fare un reversal (storno) invece di una cancellazione diretta. Meglio verificare prima con noi.
+**A:** In staging sÃ¬, ma in production sarebbe necessario fare un reversal (storno) invece di una cancellazione diretta. Meglio verificare prima con noi.
 
 ### Q: E se devo fare modifiche?
 
-**A:** Contatta il team tecnico. Questo è staging, possiamo sperimentare liberamente senza impatto su production.
+**A:** Contatta il team tecnico. Questo Ã¨ staging, possiamo sperimentare liberamente senza impatto su production.
 
 ---
 

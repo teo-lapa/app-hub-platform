@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verify article 420 in all languages
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,20 +48,20 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║          VERIFICA ARTICOLO 420 - TUTTE LE LINGUE          ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘          VERIFICA ARTICOLO 420 - TUTTE LE LINGUE          â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   const postId = 420;
   const languages = {
-    'it_IT': 'ITALIANO 🇮🇹',
-    'de_CH': 'TEDESCO 🇩🇪',
-    'fr_CH': 'FRANCESE 🇫🇷',
-    'en_US': 'INGLESE 🇬🇧'
+    'it_IT': 'ITALIANO ðŸ‡®ðŸ‡¹',
+    'de_CH': 'TEDESCO ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'FRANCESE ðŸ‡«ðŸ‡·',
+    'en_US': 'INGLESE ðŸ‡¬ðŸ‡§'
   };
 
   console.log('='.repeat(70));
@@ -77,7 +77,7 @@ async function main() {
     if (post && post.length > 0) {
       const p = post[0];
 
-      console.log(`\n📝 TITOLO: ${p.name}\n`);
+      console.log(`\nðŸ“ TITOLO: ${p.name}\n`);
 
       if (p.content) {
         // Extract first ordered list
@@ -85,7 +85,7 @@ async function main() {
         if (firstList) {
           const listItems = firstList[1].match(/<li>(.*?)<\/li>/g);
           if (listItems) {
-            console.log(`📋 PRIMA LISTA (${listItems.length} elementi):\n`);
+            console.log(`ðŸ“‹ PRIMA LISTA (${listItems.length} elementi):\n`);
             listItems.forEach((item, i) => {
               const text = item.replace(/<[^>]+>/g, '').trim();
               console.log(`   ${i + 1}. ${text.substring(0, 100)}`);
@@ -97,21 +97,21 @@ async function main() {
         if (lang === 'de_CH') {
           const problemCount = (p.content.match(/Neapolitanischer Fior di Latte hat einen/g) || []).length;
           if (problemCount > 5) {
-            console.log(`\n   ⚠️  PROBLEMA: "${problemCount}" occorrenze di testo ripetuto`);
+            console.log(`\n   âš ï¸  PROBLEMA: "${problemCount}" occorrenze di testo ripetuto`);
           } else {
-            console.log(`\n   ✅ OK: Nessun testo ripetuto anomalo`);
+            console.log(`\n   âœ… OK: Nessun testo ripetuto anomalo`);
           }
         }
 
         const textContent = p.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        console.log(`\n📖 CONTENUTO (primi 200 caratteri):`);
+        console.log(`\nðŸ“– CONTENUTO (primi 200 caratteri):`);
         console.log(`   ${textContent.substring(0, 200)}...\n`);
       }
     }
   }
 
   console.log('='.repeat(70));
-  console.log('\n❓ VERIFICA DIVERSITÀ CONTENUTI:\n');
+  console.log('\nâ“ VERIFICA DIVERSITÃ€ CONTENUTI:\n');
 
   const contents: string[] = [];
   for (const lang of Object.keys(languages)) {
@@ -127,12 +127,12 @@ async function main() {
   const uniqueContents = new Set(contents);
 
   if (uniqueContents.size === 1) {
-    console.log('❌ PROBLEMA: Tutti i contenuti sono IDENTICI!');
+    console.log('âŒ PROBLEMA: Tutti i contenuti sono IDENTICI!');
   } else if (uniqueContents.size === 4) {
-    console.log('✅ PERFETTO: Tutti i contenuti sono DIVERSI!');
+    console.log('âœ… PERFETTO: Tutti i contenuti sono DIVERSI!');
     console.log('   Ogni lingua ha il suo testo tradotto.\n');
   } else {
-    console.log(`⚠️  PARZIALE: ${uniqueContents.size}/4 contenuti diversi`);
+    console.log(`âš ï¸  PARZIALE: ${uniqueContents.size}/4 contenuti diversi`);
   }
 }
 

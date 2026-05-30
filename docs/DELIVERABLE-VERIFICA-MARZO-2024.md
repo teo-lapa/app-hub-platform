@@ -1,4 +1,4 @@
-# DELIVERABLE - Verifica Marzo 2024
+﻿# DELIVERABLE - Verifica Marzo 2024
 
 **Cliente**: Lapa CH
 **Agente**: Backend Specialist
@@ -183,7 +183,7 @@ Tutti e 3 i file JSON sono vuoti:
 
 **Soluzione**:
 1. Ottenere PDF estratti conto marzo 2024
-2. Parsare PDF → JSON
+2. Parsare PDF â†’ JSON
 3. Ri-eseguire verifica
 
 ---
@@ -192,11 +192,11 @@ Tutti e 3 i file JSON sono vuoti:
 
 ### Immediati (Priorita ALTA)
 1. **Ottenere PDF estratti conto**:
-   - UBS CHF Marzo 2024 → Salva come `data-estratti/UBS-CHF-2024-03-MARCH.pdf`
-   - UBS EUR Marzo 2024 → Salva come `data-estratti/UBS-EUR-2024-03-MARCH.pdf`
-   - Credit Suisse Marzo 2024 → Salva come `data-estratti/CREDIT-SUISSE-2024-03-MARCH.pdf`
+   - UBS CHF Marzo 2024 â†’ Salva come `data-estratti/UBS-CHF-2024-03-MARCH.pdf`
+   - UBS EUR Marzo 2024 â†’ Salva come `data-estratti/UBS-EUR-2024-03-MARCH.pdf`
+   - Credit Suisse Marzo 2024 â†’ Salva come `data-estratti/CREDIT-SUISSE-2024-03-MARCH.pdf`
 
-2. **Parsare PDF → JSON**:
+2. **Parsare PDF â†’ JSON**:
    ```bash
    python scripts/parse-ubs-statement.py data-estratti/UBS-CHF-2024-03-MARCH.pdf
    # oppure usa Jetson OCR
@@ -247,7 +247,7 @@ Tutti e 3 i file JSON sono vuoti:
 | Documentazione | ~50 KB |
 | Codice | ~24 KB |
 | Dati JSON | ~205 KB |
-| Saving tempo vs manuale | 99.9% (~8h → 30s) |
+| Saving tempo vs manuale | 99.9% (~8h â†’ 30s) |
 
 ---
 
@@ -297,7 +297,7 @@ Tutti e 3 i file JSON sono vuoti:
 ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 ODOO_USERNAME="apphubplatform@lapa.ch"
-ODOO_PASSWORD="apphubplatform2025"
+ODOO_PASSWORD="__REDACTED__"
 ```
 
 ### Documentazione
@@ -342,7 +342,7 @@ Tutti i file con prefisso `MARZO-2024-*` o `*-MARZO-2024.*`
 
 ### In Sospeso
 - PDF estratti conto marzo 2024 richiesti
-- Parsing PDF → JSON
+- Parsing PDF â†’ JSON
 - Verifica finale con match completo
 
 ### Raccomandazioni

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Upload articoli usando update_field_translations - IL METODO CORRETTO!
- * Questo è come funziona Odoo per le traduzioni
+ * Questo Ã¨ come funziona Odoo per le traduzioni
  */
 
 import { readFileSync, readdirSync } from 'fs';
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -157,42 +157,42 @@ async function uploadArticle(articlePath: string): Promise<number> {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║   UPLOAD ARTICOLI CON update_field_translations CORRETTO  ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘   UPLOAD ARTICOLI CON update_field_translations CORRETTO  â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Test con solo articolo 1 prima
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
 
-  console.log('📝 Test con articolo 1...\n');
+  console.log('ðŸ“ Test con articolo 1...\n');
 
   // Delete post 408 if exists
   try {
     await callOdoo('blog.post', 'unlink', [[408]], {});
-    console.log('🗑️  Eliminato post 408\n');
+    console.log('ðŸ—‘ï¸  Eliminato post 408\n');
     await new Promise(r => setTimeout(r, 1000));
   } catch (e) {
-    console.log('⚠️  Post 408 non trovato\n');
+    console.log('âš ï¸  Post 408 non trovato\n');
   }
 
   const postId = await uploadArticle(articlePath);
-  console.log(`✅ Creato post ID ${postId}\n`);
+  console.log(`âœ… Creato post ID ${postId}\n`);
 
-  console.log('⏳ Attendo 3 secondi per Odoo...\n');
+  console.log('â³ Attendo 3 secondi per Odoo...\n');
   await new Promise(r => setTimeout(r, 3000));
 
   // Verifica
-  console.log('📋 VERIFICA TRADUZIONI:\n');
+  console.log('ðŸ“‹ VERIFICA TRADUZIONI:\n');
 
   const languages = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪',
-    'fr_CH': 'Francese 🇫🇷',
-    'en_US': 'Inglese 🇬🇧'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+    'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {
@@ -210,7 +210,7 @@ async function main() {
     }
   }
 
-  console.log('🎉 Test completato!');
+  console.log('ðŸŽ‰ Test completato!');
 }
 
 main().catch(console.error);

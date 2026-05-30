@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo con traduzioni PERFETTE
  * Approccio semplice: scrive tutto il content HTML per ogni lingua
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -58,18 +58,18 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo in italiano...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo in italiano...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -81,20 +81,20 @@ async function uploadArticle(articlePath: string) {
     is_published: false
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ ID: ${postId}\n`);
+  console.log(`   âœ… ID: ${postId}\n`);
 
   // 2. Scrivi TUTTO il contenuto per ogni lingua (non solo i campi meta)
-  console.log('🌍 Scrivo traduzioni complete...\n');
+  console.log('ðŸŒ Scrivo traduzioni complete...\n');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang];
     if (!langData) {
-      console.log(`   ⚠️  ${odooLang}: dati mancanti, skip`);
+      console.log(`   âš ï¸  ${odooLang}: dati mancanti, skip`);
       continue;
     }
 
-    console.log(`   🌐 ${odooLang}...`);
+    console.log(`   ðŸŒ ${odooLang}...`);
 
     // Scrivi TUTTI i campi, incluso il content HTML completo
     await callOdoo('blog.post', 'write', [[postId], {
@@ -106,18 +106,18 @@ async function uploadArticle(articlePath: string) {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ OK`);
+    console.log(`   âœ… OK`);
   }
 
-  console.log(`\n✅ Articolo ${postId} caricato con traduzioni complete!`);
-  console.log(`📎 URL: ${ODOO_URL}/blog/lapablog-4/${postId}\n`);
+  console.log(`\nâœ… Articolo ${postId} caricato con traduzioni complete!`);
+  console.log(`ðŸ“Ž URL: ${ODOO_URL}/blog/lapablog-4/${postId}\n`);
 
   return postId;
 }
 
 const articlePath = process.argv[2];
 if (!articlePath) {
-  console.error('❌ Specifica il path dell\'articolo');
+  console.error('âŒ Specifica il path dell\'articolo');
   console.error('Uso: npx tsx upload-article-perfect.ts <path>');
   process.exit(1);
 }

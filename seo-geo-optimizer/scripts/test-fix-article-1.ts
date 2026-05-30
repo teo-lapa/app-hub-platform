@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test fix for article 1 only
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -62,7 +62,7 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
@@ -71,7 +71,7 @@ async function main() {
 
   const postId = 286;
 
-  console.log(`📝 Aggiornamento articolo ID ${postId}\n`);
+  console.log(`ðŸ“ Aggiornamento articolo ID ${postId}\n`);
   console.log(`Titolo: ${itData.name}\n`);
 
   // Update ALL other languages FIRST
@@ -80,11 +80,11 @@ async function main() {
 
     const langData = article.translations[jsonLang];
     if (!langData) {
-      console.log(`⚠️  ${jsonLang}: traduzione mancante, skip`);
+      console.log(`âš ï¸  ${jsonLang}: traduzione mancante, skip`);
       continue;
     }
 
-    const langFlag = jsonLang === 'de_DE' ? '🇩🇪' : jsonLang === 'fr_FR' ? '🇫🇷' : '🇬🇧';
+    const langFlag = jsonLang === 'de_DE' ? 'ðŸ‡©ðŸ‡ª' : jsonLang === 'fr_FR' ? 'ðŸ‡«ðŸ‡·' : 'ðŸ‡¬ðŸ‡§';
     console.log(`${langFlag} Aggiornamento ${odooLang}...`);
     console.log(`   Titolo: ${langData.name}`);
     console.log(`   Contenuto (prime 200 char): ${langData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 200)}...\n`);
@@ -102,7 +102,7 @@ async function main() {
   }
 
   // Update Italian LAST
-  console.log(`🇮🇹 Aggiornamento it_IT...`);
+  console.log(`ðŸ‡®ðŸ‡¹ Aggiornamento it_IT...`);
   console.log(`   Titolo: ${itData.name}`);
   console.log(`   Contenuto (prime 200 char): ${itData.content_html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 200)}...\n`);
 
@@ -115,8 +115,8 @@ async function main() {
     website_meta_keywords: itData.meta.keywords
   }], { context: { lang: 'it_IT' } });
 
-  console.log('\n✅ Aggiornamento completato!');
-  console.log('\n📋 Ora verifico le traduzioni su Odoo...\n');
+  console.log('\nâœ… Aggiornamento completato!');
+  console.log('\nðŸ“‹ Ora verifico le traduzioni su Odoo...\n');
 
   await new Promise(r => setTimeout(r, 2000));
 

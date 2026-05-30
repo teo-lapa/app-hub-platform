@@ -1,4 +1,4 @@
-# MANIFEST - Verifica Marzo 2024
+﻿# MANIFEST - Verifica Marzo 2024
 
 Lista completa di tutti i file creati per la verifica movimenti bancari Marzo 2024.
 
@@ -242,25 +242,25 @@ verifica-marzo-2024.log (generato al runtime)
 
 ```
 app-hub-platform/
-├── scripts/
-│   └── verifica-marzo-2024.py           (18 KB)
-│
-├── data-estratti/
-│   ├── UBS-CHF-2024-CLEAN.json          (VUOTO)
-│   ├── UBS-EUR-2024-CLEAN.json          (VUOTO)
-│   └── CREDIT-SUISSE-2024-CLEAN.json    (VUOTO)
-│
-├── START-HERE-MARZO-2024.md             (3.8 KB)
-├── REPORT-MARZO-2024.json               (205 KB)
-├── REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md (4.5 KB)
-├── MARZO-2024-TODO.md                   (3.6 KB)
-├── MARZO-2024-SUMMARY.txt               (4.1 KB)
-├── README-VERIFICA-MARZO-2024.md        (11 KB)
-├── INDEX-VERIFICA-MARZO-2024.md         (8.1 KB)
-├── DELIVERABLE-VERIFICA-MARZO-2024.md   (10 KB)
-├── MANIFEST-VERIFICA-MARZO-2024.md      (questo file)
-├── run-verifica-marzo-2024.sh           (6.2 KB)
-└── verifica-marzo-2024.log              (runtime)
+â”œâ”€â”€ scripts/
+â”‚   â””â”€â”€ verifica-marzo-2024.py           (18 KB)
+â”‚
+â”œâ”€â”€ data-estratti/
+â”‚   â”œâ”€â”€ UBS-CHF-2024-CLEAN.json          (VUOTO)
+â”‚   â”œâ”€â”€ UBS-EUR-2024-CLEAN.json          (VUOTO)
+â”‚   â””â”€â”€ CREDIT-SUISSE-2024-CLEAN.json    (VUOTO)
+â”‚
+â”œâ”€â”€ START-HERE-MARZO-2024.md             (3.8 KB)
+â”œâ”€â”€ REPORT-MARZO-2024.json               (205 KB)
+â”œâ”€â”€ REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md (4.5 KB)
+â”œâ”€â”€ MARZO-2024-TODO.md                   (3.6 KB)
+â”œâ”€â”€ MARZO-2024-SUMMARY.txt               (4.1 KB)
+â”œâ”€â”€ README-VERIFICA-MARZO-2024.md        (11 KB)
+â”œâ”€â”€ INDEX-VERIFICA-MARZO-2024.md         (8.1 KB)
+â”œâ”€â”€ DELIVERABLE-VERIFICA-MARZO-2024.md   (10 KB)
+â”œâ”€â”€ MANIFEST-VERIFICA-MARZO-2024.md      (questo file)
+â”œâ”€â”€ run-verifica-marzo-2024.sh           (6.2 KB)
+â””â”€â”€ verifica-marzo-2024.log              (runtime)
 ```
 
 ---
@@ -286,7 +286,7 @@ app-hub-platform/
 ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 ODOO_USERNAME="apphubplatform@lapa.ch"
-ODOO_PASSWORD="apphubplatform2025"
+ODOO_PASSWORD="__REDACTED__"
 ```
 
 ---
@@ -315,22 +315,22 @@ data-estratti/CREDIT-SUISSE-2024-CLEAN.json     (VUOTO)
 
 ```
 1. SETUP
-   └─→ Scarica PDF estratti conto marzo 2024
+   â””â”€â†’ Scarica PDF estratti conto marzo 2024
 
 2. PARSING
-   └─→ PDF → JSON usando parser esistente
+   â””â”€â†’ PDF â†’ JSON usando parser esistente
 
 3. VERIFICA
-   ├─→ ./run-verifica-marzo-2024.sh --check-files
-   └─→ ./run-verifica-marzo-2024.sh
+   â”œâ”€â†’ ./run-verifica-marzo-2024.sh --check-files
+   â””â”€â†’ ./run-verifica-marzo-2024.sh
 
 4. ANALISI
-   ├─→ Leggi REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md
-   ├─→ Esplora REPORT-MARZO-2024.json
-   └─→ Follow MARZO-2024-TODO.md
+   â”œâ”€â†’ Leggi REPORT-MARZO-2024-EXECUTIVE-SUMMARY.md
+   â”œâ”€â†’ Esplora REPORT-MARZO-2024.json
+   â””â”€â†’ Follow MARZO-2024-TODO.md
 
 5. ACTION
-   └─→ Correggi discrepanze in Odoo se necessario
+   â””â”€â†’ Correggi discrepanze in Odoo se necessario
 ```
 
 ---

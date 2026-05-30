@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test using ir.translation model directly
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -55,7 +55,7 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
@@ -66,14 +66,14 @@ async function main() {
   // Delete post 414 if exists
   try {
     await callOdoo('blog.post', 'unlink', [[414]], {});
-    console.log('🗑️  Eliminato post 414\n');
+    console.log('ðŸ—‘ï¸  Eliminato post 414\n');
     await new Promise(r => setTimeout(r, 1000));
   } catch (e) {
-    console.log('⚠️  Post 414 non trovato\n');
+    console.log('âš ï¸  Post 414 non trovato\n');
   }
 
   // 1. Create post in Italian
-  console.log('📝 Creazione post in italiano...\n');
+  console.log('ðŸ“ Creazione post in italiano...\n');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -84,10 +84,10 @@ async function main() {
     website_meta_keywords: itData.meta.keywords,
     is_published: false
   }], { context: { lang: 'it_IT' } });
-  console.log(`✅ Creato post ID ${postId}\n`);
+  console.log(`âœ… Creato post ID ${postId}\n`);
 
   // 2. Create translation records via ir.translation
-  console.log('🌍 Creazione traduzioni via ir.translation...\n');
+  console.log('ðŸŒ Creazione traduzioni via ir.translation...\n');
 
   // German translation for name field
   console.log('   Creazione traduzione DE per name...');
@@ -113,15 +113,15 @@ async function main() {
     state: 'translated'
   }], {});
 
-  console.log('\n⏳ Attendo 3 secondi...\n');
+  console.log('\nâ³ Attendo 3 secondi...\n');
   await new Promise(r => setTimeout(r, 3000));
 
   // 3. Verify
-  console.log('📋 VERIFICA:\n');
+  console.log('ðŸ“‹ VERIFICA:\n');
 
   const languages = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {

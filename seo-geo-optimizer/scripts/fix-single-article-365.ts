@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix single article 365
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -105,7 +105,7 @@ function findBestTranslation(sourceText: string, itTexts: string[], langTexts: s
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-19-burrata-conservazione-servizio.json');
@@ -113,10 +113,10 @@ async function main() {
   const itData = article.translations.it_IT;
   const postId = 365;
 
-  console.log(`📝 Fix articolo ID ${postId}: ${itData.name}\n`);
+  console.log(`ðŸ“ Fix articolo ID ${postId}: ${itData.name}\n`);
 
   // 1. Meta fields
-  console.log('🌍 Meta fields...');
+  console.log('ðŸŒ Meta fields...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -130,12 +130,12 @@ async function main() {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
   }
-  console.log('   ✅ Done\n');
+  console.log('   âœ… Done\n');
 
   await new Promise(r => setTimeout(r, 2000));
 
   // 2. Content
-  console.log('📋 Get segments...');
+  console.log('ðŸ“‹ Get segments...');
   const fieldTrans = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content'], {});
 
   if (fieldTrans && fieldTrans[0] && fieldTrans[0].length > 0) {
@@ -144,9 +144,9 @@ async function main() {
     console.log(`   ${sourceTexts.length} segmenti\n`);
 
     const itTexts = extractAllTexts(itData.content_html);
-    console.log(`📝 ${itTexts.length} testi estratti\n`);
+    console.log(`ðŸ“ ${itTexts.length} testi estratti\n`);
 
-    console.log('🌐 Traduzioni content...');
+    console.log('ðŸŒ Traduzioni content...');
     for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
       if (jsonLang === 'it_IT') continue;
       const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -175,7 +175,7 @@ async function main() {
     }
   }
 
-  console.log('\n✅ Completato!\n');
+  console.log('\nâœ… Completato!\n');
 }
 
 main().catch(console.error);

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script per ottimizzare SEO di TUTTI i prodotti pubblicati
  * Aggiorna meta tags in tutte le lingue mantenendo nome interno invariato
  */
@@ -9,18 +9,18 @@ import { join } from 'path';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
 const LANGUAGES = {
-  it_IT: { name: 'Italiano', flag: '🇮🇹' },
-  de_CH: { name: 'Tedesco', flag: '🇩🇪' },
-  fr_CH: { name: 'Francese', flag: '🇫🇷' },
-  en_US: { name: 'Inglese', flag: '🇬🇧' }
+  it_IT: { name: 'Italiano', flag: 'ðŸ‡®ðŸ‡¹' },
+  de_CH: { name: 'Tedesco', flag: 'ðŸ‡©ðŸ‡ª' },
+  fr_CH: { name: 'Francese', flag: 'ðŸ‡«ðŸ‡·' },
+  en_US: { name: 'Inglese', flag: 'ðŸ‡¬ðŸ‡§' }
 };
 
-// File di stato per riprendere da dove si è interrotto
+// File di stato per riprendere da dove si Ã¨ interrotto
 const STATE_FILE = 'data/seo-update-state.json';
 const PROGRESS_FILE = 'output/seo-update-progress.json';
 
@@ -46,18 +46,18 @@ const COMMON_TRANSLATIONS = {
   de_CH: {
     'Acquista': 'Kaufen Sie',
     'da LAPA': 'von LAPA',
-    'grossista': 'Großhandel',
+    'grossista': 'GroÃŸhandel',
     'prodotti italiani': 'italienische Produkte',
     'in Svizzera': 'in der Schweiz',
     'Consegna rapida': 'Schnelle Lieferung',
-    'qualità garantita': 'garantierte Qualität',
-    'Alta Qualità': 'Hohe Qualität',
-    'Qualità Premium': 'Premium-Qualität',
-    'per Professionisti': 'für Profis',
-    'Ideale per': 'Ideal für',
+    'qualitÃ  garantita': 'garantierte QualitÃ¤t',
+    'Alta QualitÃ ': 'Hohe QualitÃ¤t',
+    'QualitÃ  Premium': 'Premium-QualitÃ¤t',
+    'per Professionisti': 'fÃ¼r Profis',
+    'Ideale per': 'Ideal fÃ¼r',
     'Confezione': 'Packung',
     'Cartone': 'Karton',
-    'Disponibile in': 'Verfügbar in'
+    'Disponibile in': 'VerfÃ¼gbar in'
   },
   fr_CH: {
     'Acquista': 'Achetez',
@@ -66,11 +66,11 @@ const COMMON_TRANSLATIONS = {
     'prodotti italiani': 'produits italiens',
     'in Svizzera': 'en Suisse',
     'Consegna rapida': 'Livraison rapide',
-    'qualità garantita': 'qualité garantie',
-    'Alta Qualità': 'Haute Qualité',
-    'Qualità Premium': 'Qualité Premium',
+    'qualitÃ  garantita': 'qualitÃ© garantie',
+    'Alta QualitÃ ': 'Haute QualitÃ©',
+    'QualitÃ  Premium': 'QualitÃ© Premium',
     'per Professionisti': 'pour Professionnels',
-    'Ideale per': 'Idéal pour',
+    'Ideale per': 'IdÃ©al pour',
     'Confezione': 'Conditionnement',
     'Cartone': 'Carton',
     'Disponibile in': 'Disponible en'
@@ -82,9 +82,9 @@ const COMMON_TRANSLATIONS = {
     'prodotti italiani': 'Italian products',
     'in Svizzera': 'in Switzerland',
     'Consegna rapida': 'Fast delivery',
-    'qualità garantita': 'guaranteed quality',
-    'Alta Qualità': 'High Quality',
-    'Qualità Premium': 'Premium Quality',
+    'qualitÃ  garantita': 'guaranteed quality',
+    'Alta QualitÃ ': 'High Quality',
+    'QualitÃ  Premium': 'Premium Quality',
     'per Professionisti': 'for Professionals',
     'Ideale per': 'Ideal for',
     'Confezione': 'Package',
@@ -152,23 +152,23 @@ function generateMetaTitle(productName: string, category: string, lang: string):
     .substring(0, 50);
 
   if (lang === 'de_CH') {
-    return `${cleanName} - Hohe Qualität | LAPA Grosshandel`;
+    return `${cleanName} - Hohe QualitÃ¤t | LAPA Grosshandel`;
   } else if (lang === 'fr_CH') {
-    return `${cleanName} - Haute Qualité | LAPA Grossiste`;
+    return `${cleanName} - Haute QualitÃ© | LAPA Grossiste`;
   } else if (lang === 'en_US') {
     return `${cleanName} - High Quality | LAPA Wholesaler`;
   }
 
-  return `${cleanName} - Alta Qualità | LAPA Grossista`;
+  return `${cleanName} - Alta QualitÃ  | LAPA Grossista`;
 }
 
 function generateMetaDescription(productName: string, category: string, lang: string): string {
   const cleanName = productName.substring(0, 60);
 
   const templates = {
-    it_IT: `Acquista ${cleanName} da LAPA, grossista prodotti italiani in Svizzera. ${category}. Consegna rapida, qualità garantita.`,
-    de_CH: `Kaufen Sie ${cleanName} von LAPA, Großhandel für italienische Produkte in der Schweiz. ${category}. Schnelle Lieferung, garantierte Qualität.`,
-    fr_CH: `Achetez ${cleanName} de LAPA, grossiste produits italiens en Suisse. ${category}. Livraison rapide, qualité garantie.`,
+    it_IT: `Acquista ${cleanName} da LAPA, grossista prodotti italiani in Svizzera. ${category}. Consegna rapida, qualitÃ  garantita.`,
+    de_CH: `Kaufen Sie ${cleanName} von LAPA, GroÃŸhandel fÃ¼r italienische Produkte in der Schweiz. ${category}. Schnelle Lieferung, garantierte QualitÃ¤t.`,
+    fr_CH: `Achetez ${cleanName} de LAPA, grossiste produits italiens en Suisse. ${category}. Livraison rapide, qualitÃ© garantie.`,
     en_US: `Buy ${cleanName} from LAPA, Italian products wholesaler in Switzerland. ${category}. Fast delivery, guaranteed quality.`
   };
 
@@ -207,7 +207,7 @@ function saveState(state: UpdateState) {
 
 async function updateProductSEO(product: ProductToUpdate, state: UpdateState): Promise<boolean> {
   try {
-    console.log(`\n📦 [${state.processedCount + 1}/${state.totalProducts}] ${product.name.substring(0, 50)}...`);
+    console.log(`\nðŸ“¦ [${state.processedCount + 1}/${state.totalProducts}] ${product.name.substring(0, 50)}...`);
 
     for (const [langCode, langInfo] of Object.entries(LANGUAGES)) {
       const metaTitle = generateMetaTitle(product.name, product.category, langCode);
@@ -224,7 +224,7 @@ async function updateProductSEO(product: ProductToUpdate, state: UpdateState): P
       ], { context: { lang: langCode } });
     }
 
-    console.log(`   ✅ Aggiornato in 4 lingue`);
+    console.log(`   âœ… Aggiornato in 4 lingue`);
 
     state.processedIds.push(product.id);
     state.lastProcessedId = product.id;
@@ -234,13 +234,13 @@ async function updateProductSEO(product: ProductToUpdate, state: UpdateState): P
     // Salva stato ogni 10 prodotti
     if (state.processedCount % 10 === 0) {
       saveState(state);
-      console.log(`\n💾 Progresso salvato: ${state.processedCount}/${state.totalProducts}`);
+      console.log(`\nðŸ’¾ Progresso salvato: ${state.processedCount}/${state.totalProducts}`);
     }
 
     return true;
 
   } catch (error: any) {
-    console.log(`   ❌ Errore: ${error.message}`);
+    console.log(`   âŒ Errore: ${error.message}`);
     state.failedIds.push(product.id);
     saveState(state);
     return false;
@@ -248,20 +248,20 @@ async function updateProductSEO(product: ProductToUpdate, state: UpdateState): P
 }
 
 async function main() {
-  console.log('\n🚀 OTTIMIZZAZIONE SEO MASSIVA - TUTTI I PRODOTTI PUBBLICATI\n');
+  console.log('\nðŸš€ OTTIMIZZAZIONE SEO MASSIVA - TUTTI I PRODOTTI PUBBLICATI\n');
   console.log('='.repeat(70));
 
   try {
     // Autenticazione
-    console.log('\n🔐 Connessione a Odoo...');
+    console.log('\nðŸ” Connessione a Odoo...');
     await authenticate();
-    console.log('✅ Autenticato\n');
+    console.log('âœ… Autenticato\n');
 
     // Carica stato precedente
     const state = loadState();
 
     // Carica lista prodotti pubblicati
-    console.log('📋 Caricamento prodotti pubblicati...');
+    console.log('ðŸ“‹ Caricamento prodotti pubblicati...');
     const productIds = await callOdoo('product.template', 'search', [[
       ['is_published', '=', true]
     ]], { limit: 10000 });
@@ -274,7 +274,7 @@ async function main() {
     for (let i = 0; i < productIds.length; i++) {
       const id = productIds[i];
 
-      // Salta se già processato
+      // Salta se giÃ  processato
       if (state.processedIds.includes(id)) {
         continue;
       }
@@ -293,7 +293,7 @@ async function main() {
           });
         }
       } catch (error) {
-        console.log(`   ⚠️ Impossibile caricare prodotto ID ${id}`);
+        console.log(`   âš ï¸ Impossibile caricare prodotto ID ${id}`);
       }
 
       if ((i + 1) % 100 === 0) {
@@ -304,19 +304,19 @@ async function main() {
     state.totalProducts = products.length;
 
     console.log('\n' + '='.repeat(70));
-    console.log(`📊 RIEPILOGO:`);
+    console.log(`ðŸ“Š RIEPILOGO:`);
     console.log(`   Prodotti da processare: ${products.length}`);
-    console.log(`   Già processati: ${state.processedIds.length}`);
+    console.log(`   GiÃ  processati: ${state.processedIds.length}`);
     console.log(`   Falliti in precedenza: ${state.failedIds.length}`);
     console.log('='.repeat(70));
 
     if (products.length === 0) {
-      console.log('\n✅ Tutti i prodotti sono già stati processati!\n');
+      console.log('\nâœ… Tutti i prodotti sono giÃ  stati processati!\n');
       return;
     }
 
-    console.log(`\n🔄 Inizio aggiornamento di ${products.length} prodotti...\n`);
-    console.log('⏱️  Tempo stimato: ~${Math.ceil(products.length * 0.5)} secondi (~${Math.ceil(products.length * 0.5 / 60)} minuti)\n');
+    console.log(`\nðŸ”„ Inizio aggiornamento di ${products.length} prodotti...\n`);
+    console.log('â±ï¸  Tempo stimato: ~${Math.ceil(products.length * 0.5)} secondi (~${Math.ceil(products.length * 0.5 / 60)} minuti)\n');
 
     let successCount = 0;
     let failCount = 0;
@@ -351,26 +351,26 @@ async function main() {
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
     console.log('\n' + '='.repeat(70));
-    console.log('🎉 AGGIORNAMENTO COMPLETATO!\n');
-    console.log(`✅ Prodotti aggiornati con successo: ${successCount}`);
-    console.log(`❌ Prodotti con errori: ${failCount}`);
-    console.log(`⏱️  Tempo totale: ${Math.ceil(report.duration / 1000 / 60)} minuti`);
-    console.log(`\n💾 Report salvato in: ${reportPath}`);
+    console.log('ðŸŽ‰ AGGIORNAMENTO COMPLETATO!\n');
+    console.log(`âœ… Prodotti aggiornati con successo: ${successCount}`);
+    console.log(`âŒ Prodotti con errori: ${failCount}`);
+    console.log(`â±ï¸  Tempo totale: ${Math.ceil(report.duration / 1000 / 60)} minuti`);
+    console.log(`\nðŸ’¾ Report salvato in: ${reportPath}`);
     console.log('='.repeat(70));
 
     if (failCount > 0) {
-      console.log(`\n⚠️  Prodotti con errori (ID): ${state.failedIds.join(', ')}`);
+      console.log(`\nâš ï¸  Prodotti con errori (ID): ${state.failedIds.join(', ')}`);
       console.log('   Riesegui lo script per ritentare\n');
     }
 
-    console.log('\n📋 PROSSIMI STEP PER INDICIZZAZIONE GOOGLE:\n');
-    console.log('1. 🗺️  Rigenera sitemap Odoo (Sito Web → Configurazione → Sitemap)');
-    console.log('2. 🔍 Google Search Console → Sitemaps → Aggiungi sitemap.xml');
-    console.log('3. ⚡ (Opzionale) Richiedi indicizzazione per prodotti TOP');
-    console.log('4. ⏳ Attendi 1-4 settimane per indicizzazione completa\n');
+    console.log('\nðŸ“‹ PROSSIMI STEP PER INDICIZZAZIONE GOOGLE:\n');
+    console.log('1. ðŸ—ºï¸  Rigenera sitemap Odoo (Sito Web â†’ Configurazione â†’ Sitemap)');
+    console.log('2. ðŸ” Google Search Console â†’ Sitemaps â†’ Aggiungi sitemap.xml');
+    console.log('3. âš¡ (Opzionale) Richiedi indicizzazione per prodotti TOP');
+    console.log('4. â³ Attendi 1-4 settimane per indicizzazione completa\n');
 
   } catch (error: any) {
-    console.error('\n❌ ERRORE CRITICO:', error.message);
+    console.error('\nâŒ ERRORE CRITICO:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

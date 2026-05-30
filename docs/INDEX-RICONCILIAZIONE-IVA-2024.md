@@ -1,4 +1,4 @@
-# INDEX - RICONCILIAZIONE IVA 2024
+﻿# INDEX - RICONCILIAZIONE IVA 2024
 
 Tutti i file generati dall'analisi IVA 2024 completa.
 
@@ -159,7 +159,7 @@ app-hub-platform/
 URL:      https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 Database: lapadevadmin-lapa-v2-staging-2406-25408900
 User:     paul@lapa.ch
-Password: lapa201180
+Password: __REDACTED__
 ```
 
 **Per trovare un movimento:**

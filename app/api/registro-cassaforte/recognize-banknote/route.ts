@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
   const authError = verifyCassaforteAuth(request);
   if (authError) return authError;
 
-  // Rate limit: 1 request per second per IP
+  // Rate limit: max 3 req/s per IP (permette scansione rapida senza floodare)
   const ip = request.headers.get('x-forwarded-for') || 'unknown';
   const now = Date.now();
   const lastRequest = rateLimitMap.get(ip);
-  if (lastRequest && now - lastRequest < 1000) {
+  if (lastRequest && now - lastRequest < 300) {
     return NextResponse.json({ success: false, error: 'Troppo veloce, riprova.' }, { status: 429 });
   }
   rateLimitMap.set(ip, now);
@@ -67,57 +67,40 @@ export async function POST(request: NextRequest) {
     // Use OpenAI GPT-4o-mini for fast and accurate recognition
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' },
         messages: [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Analyze this Swiss Franc (CHF) banknote image.
+                text: `Swiss Franc (CHF) banknote. Return JSON with denomination, serial_number, confidence.
 
-1. DENOMINATION: Identify the value (10, 20, 50, 100, 200, or 1000 CHF)
-   - Look at the large number printed on the note
-   - Colors: 10=Yellow, 20=Red, 50=Green, 100=Blue, 200=Brown, 1000=Purple
+denomination: READ the printed number on the banknote FIRST. Valid values: 10|20|50|100|200|1000. Then verify color matches (10=yellow, 20=red, 50=green, 100=blue, 200=brown, 1000=purple). The PRINTED NUMBER is the source of truth — do NOT guess from color alone (50 green and 100 blue can look similar in low light). If you cannot clearly read the number, return 0. If not CHF: 0.
 
-2. SERIAL NUMBER: Read the COMPLETE serial number printed on the banknote
-   - Swiss banknotes have EXACTLY 10 characters: 2 digits + 1 letter + 7 digits (e.g., "18C4545167")
-   - The serial number is printed near the edges of the note
-   - CRITICAL: You MUST read ALL 10 characters clearly
-   - If ANY character is obscured, covered, blurry, or unreadable, return null
-   - DO NOT guess or invent missing characters
-   - DO NOT complete partial serial numbers
-   - Only return a serial number if you can read ALL 10 characters with certainty
+serial_number: EXACTLY 10 chars = 2 digits + 1 letter + 7 digits (e.g. "18C4545167"). Read ALL 10 or return null. Never guess missing chars.
 
-Respond ONLY with JSON:
-{"denomination": 100, "serial_number": "18C4545167", "confidence": 0.95}
-
-IMPORTANT: Return "serial_number": null if:
-- Any part of the serial number is covered (e.g., by a finger)
-- Any character is blurry or unclear
-- You cannot read all 10 characters with 100% certainty
-- The serial number is not fully visible in the image
-
-If not a CHF banknote: {"denomination": 0, "serial_number": null, "confidence": 0}`,
+Example: {"denomination":100,"serial_number":"18C4545167","confidence":0.95}`,
               },
               {
                 type: 'image_url',
                 image_url: {
                   url: `data:image/jpeg;base64,${base64Image}`,
+                  detail: 'high',
                 },
               },
             ],
           },
         ],
-        max_tokens: 100,
+        max_tokens: 60,
       });
 
       const gptResponse = response.choices[0]?.message?.content || '';
       console.log('📝 GPT-4o-mini response:', gptResponse);
 
-      const jsonMatch = gptResponse.match(/\{[^}]+\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+      try {
+        const parsed = JSON.parse(gptResponse);
 
         if (parsed.denomination && VALID_DENOMINATIONS.includes(parsed.denomination)) {
           return NextResponse.json({
@@ -129,6 +112,8 @@ If not a CHF banknote: {"denomination": 0, "serial_number": null, "confidence": 
             method: 'openai_vision',
           });
         }
+      } catch {
+        // JSON parse fallito, passa al fallback sotto
       }
 
       // Not recognized

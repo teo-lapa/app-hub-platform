@@ -1,8 +1,8 @@
-# GIUGNO 2024 - QUICK START GUIDE
+﻿# GIUGNO 2024 - QUICK START GUIDE
 
 **Obiettivo**: Riconciliare konto 1025 (UBS EUR) per giugno 2024
 **Tempo stimato**: 14 ore
-**Tasso riconciliazione attuale**: 0% → Target: ≥95%
+**Tasso riconciliazione attuale**: 0% â†’ Target: â‰¥95%
 
 ---
 
@@ -89,7 +89,7 @@ HAVING COUNT(*) > 1;
 
 **Se trova duplicati**:
 - Annotare move_line_ids
-- Verificare quale è corretto
+- Verificare quale Ã¨ corretto
 - Preparare DELETE statement
 
 ---
@@ -99,7 +99,7 @@ HAVING COUNT(*) > 1;
 ### 3.1 Scarica estratto conto
 
 **Fonte**: UBS E-Banking
-**File**: UBS_EUR_Q2_2024.csv (già disponibile?)
+**File**: UBS_EUR_Q2_2024.csv (giÃ  disponibile?)
 
 **Oppure**:
 Usa il file esistente: `data-estratti/UBS-EUR-2024-TRANSACTIONS.json`
@@ -232,7 +232,7 @@ python scripts/verifica-giugno-2024.py
 
 | # | Data Banca | Importo | Data Odoo | Importo Odoo | Partner |
 |---|------------|---------|-----------|--------------|---------|
-| 1 | 11/06 | -170,000.00 | ? | ? | FX Spot EUR→CHF |
+| 1 | 11/06 | -170,000.00 | ? | ? | FX Spot EURâ†’CHF |
 | 2 | 11/06 | +170,000.00 | ? | ? | FX Spot storno |
 | 3 | 20/06 | -38,797.33 | 21/06 | -37,633.41 | LATTICINI MOLISANI |
 | 4 | 20/06 | -32,879.18 | 21/06 | -31,892.80 | FERRAIUOLO FOODS |
@@ -254,7 +254,7 @@ python scripts/verifica-giugno-2024.py
 
 2. **Se trovato con importo diverso**:
    - Calcola differenza
-   - Verifica se è tasso cambio o commissione
+   - Verifica se Ã¨ tasso cambio o commissione
    - Decide se accettabile (<2%)
 
 3. **Se accettabile**:
@@ -273,7 +273,7 @@ python scripts/verifica-giugno-2024.py
 # Script semi-automatico
 python scripts/reconcile-remaining-june.py \
     --tolerance 0.02  # 2% tolleranza
-    --date-range 2    # ±2 giorni
+    --date-range 2    # Â±2 giorni
 
 # Output:
 # - 20 match automatici (entro tolleranza)
@@ -283,7 +283,7 @@ python scripts/reconcile-remaining-june.py \
 **Verifica manuale per i 14 rimasti**:
 - Controllare partner name (potrebbero essere scritti diversamente)
 - Verificare descrizione/ref
-- Match per prossimità (data ±3gg, importo ±5%)
+- Match per prossimitÃ  (data Â±3gg, importo Â±5%)
 
 ---
 
@@ -295,9 +295,9 @@ python scripts/reconcile-remaining-june.py \
 python scripts/verifica-giugno-2024.py
 
 # Target:
-# ✓ Match esatti: ≥42 (su 44)
-# ✓ Tasso riconciliazione: ≥95%
-# ✓ Differenza saldo: <EUR 100
+# âœ“ Match esatti: â‰¥42 (su 44)
+# âœ“ Tasso riconciliazione: â‰¥95%
+# âœ“ Differenza saldo: <EUR 100
 ```
 
 ### 6.2 Report finale
@@ -338,7 +338,7 @@ WHERE aa.code = '1025'
 - [ ] Importati 30 movimenti mancanti (01-14 giugno)
 - [ ] Cancellati 13 duplicati
 - [ ] Riconciliati 42+ movimenti su 44
-- [ ] Tasso riconciliazione ≥95%
+- [ ] Tasso riconciliazione â‰¥95%
 
 ### Documentazione
 - [ ] Report finale Excel generato
@@ -347,7 +347,7 @@ WHERE aa.code = '1025'
 - [ ] Approvazione commercialista
 
 ### Sistema
-- [ ] Saldo Odoo allineato con banca (±EUR 100)
+- [ ] Saldo Odoo allineato con banca (Â±EUR 100)
 - [ ] Tutti movimenti in stato "posted"
 - [ ] Nessun duplicato residuo
 - [ ] Backup database pre-modifiche
@@ -360,7 +360,7 @@ WHERE aa.code = '1025'
 ```bash
 # Verifica credenziali
 export ODOO_USERNAME="apphubplatform@lapa.ch"
-export ODOO_PASSWORD="apphubplatform2025"
+export ODOO_PASSWORD="__REDACTED__"
 export ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 export ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 

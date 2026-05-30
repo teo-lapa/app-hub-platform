@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LAPA SEO Optimizer - Multilingual Version
  * Generates PERFECT SEO for products in all 4 Swiss languages
  *
@@ -23,7 +23,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // ================== MULTILINGUAL SEO CONFIG ==================
 
@@ -50,10 +50,10 @@ const LANGUAGES: Record<string, LanguageConfig> = {
     brandSuffix: ' | LAPA Svizzera',
     wholesaler: 'grossista',
     delivery: 'Consegna rapida in tutta la Svizzera',
-    quality: 'Qualità garantita',
+    quality: 'QualitÃ  garantita',
     orderNow: 'Ordina su LAPA Svizzera',
     authentic: 'Prodotto italiano autentico',
-    baseKeywords: ['prodotti italiani', 'LAPA', 'grossista Svizzera', 'gastronomia italiana', 'qualità italiana']
+    baseKeywords: ['prodotti italiani', 'LAPA', 'grossista Svizzera', 'gastronomia italiana', 'qualitÃ  italiana']
   },
   de: {
     code: 'de',
@@ -61,25 +61,25 @@ const LANGUAGES: Record<string, LanguageConfig> = {
     country: 'Schweiz',
     brand: 'LAPA',
     brandSuffix: ' | LAPA Schweiz',
-    wholesaler: 'Grosshändler',
+    wholesaler: 'GrosshÃ¤ndler',
     delivery: 'Schnelle Lieferung in die ganze Schweiz',
-    quality: 'Garantierte Qualität',
+    quality: 'Garantierte QualitÃ¤t',
     orderNow: 'Jetzt bei LAPA Schweiz bestellen',
     authentic: 'Authentisches italienisches Produkt',
-    baseKeywords: ['italienische Produkte', 'LAPA', 'Grosshändler Schweiz', 'italienische Gastronomie', 'italienische Qualität']
+    baseKeywords: ['italienische Produkte', 'LAPA', 'GrosshÃ¤ndler Schweiz', 'italienische Gastronomie', 'italienische QualitÃ¤t']
   },
   fr: {
     code: 'fr',
-    name: 'Français',
+    name: 'FranÃ§ais',
     country: 'Suisse',
     brand: 'LAPA',
     brandSuffix: ' | LAPA Suisse',
     wholesaler: 'grossiste',
     delivery: 'Livraison rapide dans toute la Suisse',
-    quality: 'Qualité garantie',
+    quality: 'QualitÃ© garantie',
     orderNow: 'Commandez sur LAPA Suisse',
     authentic: 'Produit italien authentique',
-    baseKeywords: ['produits italiens', 'LAPA', 'grossiste Suisse', 'gastronomie italienne', 'qualité italienne']
+    baseKeywords: ['produits italiens', 'LAPA', 'grossiste Suisse', 'gastronomie italienne', 'qualitÃ© italienne']
   },
   en: {
     code: 'en',
@@ -100,26 +100,26 @@ const LANGUAGES: Record<string, LanguageConfig> = {
 const PRODUCT_TRANSLATIONS: Record<string, Record<string, string>> = {
   'friarielli': {
     it: 'friarielli',
-    de: 'Stängelkohl',
+    de: 'StÃ¤ngelkohl',
     fr: 'brocoli-rave',
     en: 'broccoli rabe'
   },
   'cime di rapa': {
     it: 'cime di rapa',
-    de: 'Rübstiel',
+    de: 'RÃ¼bstiel',
     fr: 'brocoli-rave',
     en: 'rapini'
   },
   'surgelati': {
     it: 'surgelati',
     de: 'tiefgefroren',
-    fr: 'surgelés',
+    fr: 'surgelÃ©s',
     en: 'frozen'
   },
   'verdure': {
     it: 'verdure',
-    de: 'Gemüse',
-    fr: 'légumes',
+    de: 'GemÃ¼se',
+    fr: 'lÃ©gumes',
     en: 'vegetables'
   },
   'acquista': {
@@ -298,7 +298,7 @@ function generateSEO(product: any, lang: string): MultilingualSEO {
       description = `${config.baseKeywords[0].split(' ')[0]} ${translatedName} ${brand}, ${weight}. ${config.authentic} mit einzigartigem Geschmack. ${config.delivery}.`;
       break;
     case 'fr':
-      description = `Achetez ${translatedName} ${brand}, ${weight}. ${config.authentic} au goût unique. ${config.delivery}.`;
+      description = `Achetez ${translatedName} ${brand}, ${weight}. ${config.authentic} au goÃ»t unique. ${config.delivery}.`;
       break;
     case 'en':
       description = `Buy ${translatedName} ${brand}, ${weight}. ${config.authentic} with unique taste. ${config.delivery}.`;
@@ -434,7 +434,7 @@ function generateProductSchema(product: any, seo: MultilingualSEO): object {
         "@type": "Person",
         "name": "Cliente verificato"
       },
-      "reviewBody": "Prodotto di ottima qualità, conforme alla descrizione. Consegna rapida."
+      "reviewBody": "Prodotto di ottima qualitÃ , conforme alla descrizione. Consegna rapida."
     },
     "additionalProperty": [
       {
@@ -445,7 +445,7 @@ function generateProductSchema(product: any, seo: MultilingualSEO): object {
       {
         "@type": "PropertyValue",
         "name": "Conservazione",
-        "value": "Surgelato -18°C"
+        "value": "Surgelato -18Â°C"
       }
     ]
   };
@@ -456,20 +456,20 @@ function generateProductSchema(product: any, seo: MultilingualSEO): object {
 async function main() {
   const productId = parseInt(process.argv[2] || '14317', 10);
 
-  console.log('═'.repeat(80));
-  console.log('🌍 LAPA MULTILINGUAL SEO OPTIMIZER');
-  console.log('═'.repeat(80));
-  console.log(`\n📦 Product ID: ${productId}\n`);
+  console.log('â•'.repeat(80));
+  console.log('ðŸŒ LAPA MULTILINGUAL SEO OPTIMIZER');
+  console.log('â•'.repeat(80));
+  console.log(`\nðŸ“¦ Product ID: ${productId}\n`);
 
   const odoo = new OdooClient();
 
   try {
-    console.log('🔐 Connecting to Odoo...');
+    console.log('ðŸ” Connecting to Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connected\n');
+    console.log('âœ… Connected\n');
 
     // Fetch product
-    console.log('📥 Fetching product data...');
+    console.log('ðŸ“¥ Fetching product data...');
     const products = await odoo.searchRead<any>(
       'product.template',
       [['id', '=', productId]],
@@ -479,16 +479,16 @@ async function main() {
     );
 
     if (products.length === 0) {
-      console.error(`❌ Product ID ${productId} not found!`);
+      console.error(`âŒ Product ID ${productId} not found!`);
       process.exit(1);
     }
 
     const product = products[0];
     const category = product.categ_id?.[1] || '';
 
-    console.log('\n' + '─'.repeat(80));
-    console.log('📋 PRODUCT INFO:');
-    console.log('─'.repeat(80));
+    console.log('\n' + 'â”€'.repeat(80));
+    console.log('ðŸ“‹ PRODUCT INFO:');
+    console.log('â”€'.repeat(80));
     console.log(`Name:        ${product.name}`);
     console.log(`Clean Name:  ${cleanProductName(product.name)}`);
     console.log(`Category:    ${category}`);
@@ -498,28 +498,28 @@ async function main() {
     // Generate SEO for all languages
     const allSEO: Record<string, MultilingualSEO> = {};
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('🌍 MULTILINGUAL SEO OUTPUT');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸŒ MULTILINGUAL SEO OUTPUT');
+    console.log('â•'.repeat(80));
 
     for (const [langCode, langConfig] of Object.entries(LANGUAGES)) {
       const seo = generateSEO(product, langCode);
       allSEO[langCode] = seo;
 
-      console.log(`\n🇮🇹🇩🇪🇫🇷🇬🇧`.slice(Object.keys(LANGUAGES).indexOf(langCode) * 2, Object.keys(LANGUAGES).indexOf(langCode) * 2 + 2) + ` ${langConfig.name.toUpperCase()} (${langCode})`);
-      console.log('─'.repeat(80));
-      console.log(`\n📌 Meta Title (${seo.title.length} chars):`);
+      console.log(`\nðŸ‡®ðŸ‡¹ðŸ‡©ðŸ‡ªðŸ‡«ðŸ‡·ðŸ‡¬ðŸ‡§`.slice(Object.keys(LANGUAGES).indexOf(langCode) * 2, Object.keys(LANGUAGES).indexOf(langCode) * 2 + 2) + ` ${langConfig.name.toUpperCase()} (${langCode})`);
+      console.log('â”€'.repeat(80));
+      console.log(`\nðŸ“Œ Meta Title (${seo.title.length} chars):`);
       console.log(`   ${seo.title}`);
-      console.log(`\n📝 Meta Description (${seo.description.length} chars):`);
+      console.log(`\nðŸ“ Meta Description (${seo.description.length} chars):`);
       console.log(`   ${seo.description}`);
-      console.log(`\n🏷️  Keywords:`);
+      console.log(`\nðŸ·ï¸  Keywords:`);
       console.log(`   ${seo.keywords}`);
     }
 
     // Update Odoo with Italian version (primary language)
-    console.log('\n' + '═'.repeat(80));
-    console.log('📤 UPDATING ODOO (Italian - Primary Language)');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“¤ UPDATING ODOO (Italian - Primary Language)');
+    console.log('â•'.repeat(80));
 
     const changes = {
       website_meta_title: allSEO.it.title,
@@ -528,14 +528,14 @@ async function main() {
     };
 
     await odoo.write('product.template', [productId], changes);
-    console.log('\n✅ SEO fields updated successfully!');
+    console.log('\nâœ… SEO fields updated successfully!');
 
     // Generate Schema.org
     const schema = generateProductSchema(product, allSEO.it);
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('📊 SCHEMA.ORG JSON-LD');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“Š SCHEMA.ORG JSON-LD');
+    console.log('â•'.repeat(80));
     console.log('\n<script type="application/ld+json">');
     console.log(JSON.stringify(schema, null, 2));
     console.log('</script>');
@@ -559,36 +559,36 @@ async function main() {
     const reportPath = resolve(dataDir, `seo-multilingual-${productId}.json`);
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('✅ SEO OPTIMIZATION COMPLETE');
-    console.log('═'.repeat(80));
-    console.log(`\n📄 Full report saved: ${reportPath}`);
-    console.log(`\n🌐 Product URL: https://www.lapa.ch/shop/${product.website_slug || productId}`);
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('âœ… SEO OPTIMIZATION COMPLETE');
+    console.log('â•'.repeat(80));
+    console.log(`\nðŸ“„ Full report saved: ${reportPath}`);
+    console.log(`\nðŸŒ Product URL: https://www.lapa.ch/shop/${product.website_slug || productId}`);
 
-    console.log(`\n📋 COPY-PASTE SEO VALUES FOR ODOO:`);
-    console.log('─'.repeat(80));
-    console.log(`\n🇮🇹 ITALIAN:`);
+    console.log(`\nðŸ“‹ COPY-PASTE SEO VALUES FOR ODOO:`);
+    console.log('â”€'.repeat(80));
+    console.log(`\nðŸ‡®ðŸ‡¹ ITALIAN:`);
     console.log(`Title:       ${allSEO.it.title}`);
     console.log(`Description: ${allSEO.it.description}`);
     console.log(`Keywords:    ${allSEO.it.keywords}`);
 
-    console.log(`\n🇩🇪 GERMAN:`);
+    console.log(`\nðŸ‡©ðŸ‡ª GERMAN:`);
     console.log(`Title:       ${allSEO.de.title}`);
     console.log(`Description: ${allSEO.de.description}`);
     console.log(`Keywords:    ${allSEO.de.keywords}`);
 
-    console.log(`\n🇫🇷 FRENCH:`);
+    console.log(`\nðŸ‡«ðŸ‡· FRENCH:`);
     console.log(`Title:       ${allSEO.fr.title}`);
     console.log(`Description: ${allSEO.fr.description}`);
     console.log(`Keywords:    ${allSEO.fr.keywords}`);
 
-    console.log(`\n🇬🇧 ENGLISH:`);
+    console.log(`\nðŸ‡¬ðŸ‡§ ENGLISH:`);
     console.log(`Title:       ${allSEO.en.title}`);
     console.log(`Description: ${allSEO.en.description}`);
     console.log(`Keywords:    ${allSEO.en.keywords}`);
 
   } catch (error) {
-    console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Error:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

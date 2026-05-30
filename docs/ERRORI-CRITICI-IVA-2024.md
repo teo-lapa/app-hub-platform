@@ -1,4 +1,4 @@
-# ERRORI CRITICI IVA 2024 - ANALISI
+﻿# ERRORI CRITICI IVA 2024 - ANALISI
 
 ## PROBLEMA PRINCIPALE IDENTIFICATO
 
@@ -170,7 +170,7 @@ import xmlrpc.client
 ODOO_URL = 'https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com'
 ODOO_DB = 'lapadevadmin-lapa-v2-staging-2406-25408900'
 ODOO_USERNAME = 'paul@lapa.ch'
-ODOO_PASSWORD = 'lapa201180'
+ODOO_PASSWORD = '__REDACTED__'
 
 # Connessione
 common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common')

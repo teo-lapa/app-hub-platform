@@ -8,7 +8,7 @@ const ODOO_URL = process.env.NEXT_PUBLIC_ODOO_URL || process.env.ODOO_URL || 'ht
 const ODOO_DB = process.env.NEXT_PUBLIC_ODOO_DB || process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 // Usa stesse credenziali di odoo-client.ts per coerenza
 const ODOO_USERNAME = process.env.ODOO_USERNAME || process.env.ODOO_ADMIN_EMAIL || 'apphubplatform@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || 'apphubplatform2025';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || process.env.ODOO_ADMIN_PASSWORD || '';
 
 interface OdooXMLRPC {
   authenticate(): Promise<number>;

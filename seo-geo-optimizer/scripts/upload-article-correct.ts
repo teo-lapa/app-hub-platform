@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo SEO+GEO su Odoo con traduzioni corrette
  * Usa lo stesso metodo della LAPA App Platform
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -78,19 +78,19 @@ function extractTextBlocks(html: string): string[] {
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento articolo: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento articolo: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione Odoo...');
+  console.log('ðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Dati italiano (lingua base)
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo in ITALIANO (lingua base)...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo in ITALIANO (lingua base)...');
 
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
@@ -103,13 +103,13 @@ async function uploadArticle(articlePath: string) {
     is_published: false
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ Articolo creato ID: ${postId}\n`);
+  console.log(`   âœ… Articolo creato ID: ${postId}\n`);
 
   // 2. Traduci name e subtitle per ogni lingua
-  console.log('📝 Traduco name e subtitle...');
+  console.log('ðŸ“ Traduco name e subtitle...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
-    if (jsonLang === 'it_IT') continue; // Skip italiano (è già la base)
+    if (jsonLang === 'it_IT') continue; // Skip italiano (Ã¨ giÃ  la base)
 
     const langData = article.translations[jsonLang];
     if (!langData) continue;
@@ -123,16 +123,16 @@ async function uploadArticle(articlePath: string) {
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang}: name, subtitle, meta tradotti`);
+    console.log(`   âœ… ${odooLang}: name, subtitle, meta tradotti`);
   }
 
   // 3. Ora gestisco il content con il sistema di segmenti
-  console.log('\n📖 Leggo segmenti del content...');
+  console.log('\nðŸ“– Leggo segmenti del content...');
 
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData || !Array.isArray(segmentData) || segmentData.length === 0) {
-    console.log('   ⚠️ Nessun segmento trovato nel content');
+    console.log('   âš ï¸ Nessun segmento trovato nel content');
     return postId;
   }
 
@@ -143,7 +143,7 @@ async function uploadArticle(articlePath: string) {
   // Estrai testi da ogni lingua per il mapping
   const itTexts = extractTextBlocks(itData.content_html);
 
-  console.log('\n🌍 Traduco content per ogni lingua...');
+  console.log('\nðŸŒ Traduco content per ogni lingua...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -182,15 +182,15 @@ async function uploadArticle(articlePath: string) {
           'content',
           { [odooLang]: segmentTranslations }
         ]);
-        console.log(`   ✅ ${odooLang}: traduzioni applicate`);
+        console.log(`   âœ… ${odooLang}: traduzioni applicate`);
       } catch (e: any) {
-        console.log(`   ❌ ${odooLang}: errore - ${e.message.substring(0, 100)}`);
+        console.log(`   âŒ ${odooLang}: errore - ${e.message.substring(0, 100)}`);
       }
     }
   }
 
   // 4. Verifica finale
-  console.log('\n🔍 Verifica traduzioni...');
+  console.log('\nðŸ” Verifica traduzioni...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     const data = await callOdoo('blog.post', 'read', [[postId]], {
@@ -207,7 +207,7 @@ async function uploadArticle(articlePath: string) {
     console.log(`      H1: "${h1.substring(0, 50)}..."`);
   }
 
-  console.log(`\n✅ COMPLETATO! Articolo ID: ${postId}`);
+  console.log(`\nâœ… COMPLETATO! Articolo ID: ${postId}`);
   console.log(`   URL: ${ODOO_URL}/blog/lapablog-4/${postId}`);
 
   return postId;

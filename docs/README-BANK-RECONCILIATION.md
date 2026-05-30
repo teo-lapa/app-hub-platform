@@ -1,4 +1,4 @@
-# BANK RECONCILIATION VALIDATION - QUICK START
+﻿# BANK RECONCILIATION VALIDATION - QUICK START
 
 **Generated**: 2025-11-15
 **Business Analyst**: Lapa BA Agent
@@ -151,7 +151,7 @@ Status:         RAPPENGENAU (to the cent)
 
 ### ROOT CAUSES
 ```
-60% = Mapping errors (wrong Odoo→Bank links)
+60% = Mapping errors (wrong Odooâ†’Bank links)
 20% = FX conversion (EUR/USD not converted)
 15% = Timing differences (cutoff, pending txns)
  5% = Unmapped accounts (1034 unknown)
@@ -166,7 +166,7 @@ Status:         RAPPENGENAU (to the cent)
 **Cost**: CHF 1,050
 **Tasks**:
 - ACT-001: Verify IBAN mapping (Odoo vs Bank)
-- ACT-002: Fix FX conversion (EUR/USD → CHF)
+- ACT-002: Fix FX conversion (EUR/USD â†’ CHF)
 - ACT-003: Identify account 1034
 
 **Deliverable**: Correct account mapping, FX rates applied
@@ -231,7 +231,7 @@ Fri 6:  Sign-off (1h)
 **Tasks**:
 - Day 1: Review 1-pager, approve budget (1h)
 - Day 3: Review progress, address blockers (1h)
-- Week 2: Daily standup (5 × 15min)
+- Week 2: Daily standup (5 Ã— 15min)
 - Week 3: Final validation and sign-off (2h)
 
 ### Accountant (Primary Worker)
@@ -288,7 +288,7 @@ Fri 6:  Sign-off (1h)
 ## FREQUENTLY ASKED QUESTIONS
 
 ### Q1: Why is the discrepancy so large?
-**A**: Primarily mapping errors (wrong Odoo→Bank account links) and FX conversion issues (EUR/USD not converted to CHF). Not necessarily fraud or major errors, but configuration/process issues.
+**A**: Primarily mapping errors (wrong Odooâ†’Bank account links) and FX conversion issues (EUR/USD not converted to CHF). Not necessarily fraud or major errors, but configuration/process issues.
 
 ### Q2: Can we do this faster?
 **A**: Yes, with more resources (2 accountants in parallel). But rushing increases error risk. 3 weeks is realistic for quality work.
@@ -328,7 +328,7 @@ pip install pandas openpyxl xmlrpc
 URL: https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 DB:  lapadevadmin-lapa-v2-staging-2406-25408900
 User: paul@lapa.ch
-Pass: lapa201180
+Pass: __REDACTED__
 ```
 
 ### Bank Access
@@ -429,18 +429,18 @@ Pass: lapa201180
 
 ```
 app-hub-platform/
-├── BANK-RECONCILIATION-1-PAGER.md              ← START HERE (3 min)
-├── BANK-RECONCILIATION-VISUAL-SUMMARY.md       ← Next (10 min)
-├── BANK-RECONCILIATION-EXECUTIVE-REPORT.md     ← Deep dive (45 min)
-├── BANK-RECONCILIATION-INDEX.md                ← All docs guide
-├── README-BANK-RECONCILIATION.md               ← This file
-├── bank-reconciliation-dashboard.xlsx          ← Current state
-├── bank-reconciliation-validation.csv          ← Raw data
-├── bank-reconciliation-report.json             ← Machine-readable
-├── BANK-RECONCILIATION-WORKBOOK.xlsx           ← Working template
-└── scripts/
-    ├── validate-bank-reconciliation.py         ← Re-run validation
-    └── create-reconciliation-template.py       ← Regenerate workbook
+â”œâ”€â”€ BANK-RECONCILIATION-1-PAGER.md              â† START HERE (3 min)
+â”œâ”€â”€ BANK-RECONCILIATION-VISUAL-SUMMARY.md       â† Next (10 min)
+â”œâ”€â”€ BANK-RECONCILIATION-EXECUTIVE-REPORT.md     â† Deep dive (45 min)
+â”œâ”€â”€ BANK-RECONCILIATION-INDEX.md                â† All docs guide
+â”œâ”€â”€ README-BANK-RECONCILIATION.md               â† This file
+â”œâ”€â”€ bank-reconciliation-dashboard.xlsx          â† Current state
+â”œâ”€â”€ bank-reconciliation-validation.csv          â† Raw data
+â”œâ”€â”€ bank-reconciliation-report.json             â† Machine-readable
+â”œâ”€â”€ BANK-RECONCILIATION-WORKBOOK.xlsx           â† Working template
+â””â”€â”€ scripts/
+    â”œâ”€â”€ validate-bank-reconciliation.py         â† Re-run validation
+    â””â”€â”€ create-reconciliation-template.py       â† Regenerate workbook
 ```
 
 ---

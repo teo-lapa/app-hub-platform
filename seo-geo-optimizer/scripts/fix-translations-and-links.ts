@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Translations and Links Script
  * 1. Traduce gli articoli mancanti in inglese
  * 2. Aggiunge link interni ai prodotti correlati negli articoli
@@ -15,7 +15,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 const WEBSITE_URL = 'https://www.lapa.ch';
 
 // Articoli con traduzioni EN mancanti (identificati dall'analisi)
@@ -135,8 +135,8 @@ function translateToEnglish(text: string): string {
     'Grossista': 'Wholesaler',
     'il tuo': 'your',
     'Il tuo': 'Your',
-    'di alta qualità': 'high quality',
-    'Alta Qualità': 'High Quality',
+    'di alta qualitÃ ': 'high quality',
+    'Alta QualitÃ ': 'High Quality',
     'tradizione': 'tradition',
     'Tradizione': 'Tradition',
     'autentico': 'authentic',
@@ -290,7 +290,7 @@ function findRelatedProducts(articleName: string, articleContent: string, produc
     }
   }
 
-  // Limita a 5 prodotti più rilevanti
+  // Limita a 5 prodotti piÃ¹ rilevanti
   return related.slice(0, 5);
 }
 
@@ -329,9 +329,9 @@ function addLinksToContent(content: string, linksHtml: string): string {
 // ================== MAIN ==================
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🌍 LAPA - Traduzioni EN + Link Interni');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸŒ LAPA - Traduzioni EN + Link Interni');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooTranslator();
@@ -342,12 +342,12 @@ async function main() {
   };
 
   try {
-    console.log('🔐 Autenticazione...');
+    console.log('ðŸ” Autenticazione...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // ==================== CARICA PRODOTTI ====================
-    console.log('📦 Caricamento prodotti per link...');
+    console.log('ðŸ“¦ Caricamento prodotti per link...');
     const products = await odoo.searchRead<Product>(
       'product.template',
       [['is_published', '=', true]],
@@ -357,7 +357,7 @@ async function main() {
     console.log(`   ${products.length} prodotti caricati\n`);
 
     // ==================== CARICA ARTICOLI ====================
-    console.log('📝 Caricamento articoli...');
+    console.log('ðŸ“ Caricamento articoli...');
     const articles = await odoo.searchRead<any>(
       'blog.post',
       [['website_published', '=', true]],
@@ -367,17 +367,17 @@ async function main() {
     console.log(`   ${articles.length} articoli caricati\n`);
 
     // ==================== TRADUZIONI EN ====================
-    console.log('🌍 FASE 1: Traduzioni Inglese Mancanti');
-    console.log('─'.repeat(60));
+    console.log('ðŸŒ FASE 1: Traduzioni Inglese Mancanti');
+    console.log('â”€'.repeat(60));
 
     for (const articleId of ARTICLES_MISSING_EN) {
       const article = articles.find(a => a.id === articleId);
       if (!article) {
-        console.log(`   ⚠️ Articolo ID ${articleId} non trovato`);
+        console.log(`   âš ï¸ Articolo ID ${articleId} non trovato`);
         continue;
       }
 
-      console.log(`\n   📝 ID ${articleId}: ${article.name.substring(0, 50)}...`);
+      console.log(`\n   ðŸ“ ID ${articleId}: ${article.name.substring(0, 50)}...`);
 
       try {
         // Leggi versione italiana
@@ -408,22 +408,22 @@ async function main() {
           website_meta_keywords: enMeta.keywords
         }, { lang: 'en_US' });
 
-        console.log(`      ✅ Tradotto: ${enName.substring(0, 40)}...`);
+        console.log(`      âœ… Tradotto: ${enName.substring(0, 40)}...`);
         stats.translationsFixed++;
 
       } catch (err) {
-        console.log(`      ❌ Errore: ${err instanceof Error ? err.message : 'sconosciuto'}`);
+        console.log(`      âŒ Errore: ${err instanceof Error ? err.message : 'sconosciuto'}`);
         stats.errors++;
       }
     }
 
     // ==================== LINK INTERNI ====================
-    console.log('\n\n🔗 FASE 2: Aggiunta Link Interni');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ”— FASE 2: Aggiunta Link Interni');
+    console.log('â”€'.repeat(60));
 
     let processedLinks = 0;
     for (const article of articles) {
-      // Salta se già ha link (controlla nel content)
+      // Salta se giÃ  ha link (controlla nel content)
       if (article.content && (article.content.includes('<a href') || article.content.includes('related-products'))) {
         continue;
       }
@@ -449,7 +449,7 @@ async function main() {
         processedLinks++;
 
         if (processedLinks <= 10) {
-          console.log(`   ✅ ID ${article.id}: Aggiunti ${relatedProducts.length} link`);
+          console.log(`   âœ… ID ${article.id}: Aggiunti ${relatedProducts.length} link`);
         } else if (processedLinks === 11) {
           console.log(`   ... (elaborazione altri articoli)`);
         }
@@ -465,13 +465,13 @@ async function main() {
     }
 
     // ==================== RIEPILOGO ====================
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('📊 RIEPILOGO');
-    console.log('═'.repeat(80));
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸ“Š RIEPILOGO');
+    console.log('â•'.repeat(80));
     console.log(`
-   🌍 Traduzioni EN completate:  ${stats.translationsFixed}
-   🔗 Articoli con nuovi link:   ${stats.linksAdded}
-   ❌ Errori:                    ${stats.errors}
+   ðŸŒ Traduzioni EN completate:  ${stats.translationsFixed}
+   ðŸ”— Articoli con nuovi link:   ${stats.linksAdded}
+   âŒ Errori:                    ${stats.errors}
 `);
 
     // Salva report
@@ -487,12 +487,12 @@ async function main() {
     };
 
     writeFileSync(resolve(dataDir, 'translations-links-report.json'), JSON.stringify(report, null, 2));
-    console.log('📄 Report salvato in data/translations-links-report.json');
+    console.log('ðŸ“„ Report salvato in data/translations-links-report.json');
 
-    console.log('\n✨ Completato!');
+    console.log('\nâœ¨ Completato!');
 
   } catch (error) {
-    console.error('\n❌ Errore fatale:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore fatale:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

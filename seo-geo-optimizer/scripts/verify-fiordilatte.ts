@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verifica articolo Fiordilatte in dettaglio
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,16 +48,16 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║          VERIFICA DETTAGLIATA FIORDILATTE                  ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘          VERIFICA DETTAGLIATA FIORDILATTE                  â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // First find Fiordilatte article
-  console.log('🔍 Cerco articolo Fiordilatte...\n');
+  console.log('ðŸ” Cerco articolo Fiordilatte...\n');
 
   const posts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4], ['name', 'ilike', 'Fiordilatte']],
@@ -65,7 +65,7 @@ async function main() {
   ], { context: { lang: 'it_IT' } });
 
   if (posts.length === 0) {
-    console.log('❌ Nessun articolo Fiordilatte trovato!\n');
+    console.log('âŒ Nessun articolo Fiordilatte trovato!\n');
     return;
   }
 
@@ -77,14 +77,14 @@ async function main() {
 
   // Check the most recent one
   const postId = posts.sort((a, b) => b.id - a.id)[0].id;
-  console.log(`\n📋 Verifico ID ${postId} (più recente):\n`);
+  console.log(`\nðŸ“‹ Verifico ID ${postId} (piÃ¹ recente):\n`);
   console.log('='.repeat(70));
 
   const languages = {
-    'it_IT': 'ITALIANO 🇮🇹',
-    'de_CH': 'TEDESCO 🇩🇪',
-    'fr_CH': 'FRANCESE 🇫🇷',
-    'en_US': 'INGLESE 🇬🇧'
+    'it_IT': 'ITALIANO ðŸ‡®ðŸ‡¹',
+    'de_CH': 'TEDESCO ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'FRANCESE ðŸ‡«ðŸ‡·',
+    'en_US': 'INGLESE ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {
@@ -98,24 +98,24 @@ async function main() {
     if (post && post.length > 0) {
       const p = post[0];
 
-      console.log(`\n📝 TITOLO:`);
+      console.log(`\nðŸ“ TITOLO:`);
       console.log(`   ${p.name}\n`);
 
-      console.log(`📄 SOTTOTITOLO:`);
+      console.log(`ðŸ“„ SOTTOTITOLO:`);
       console.log(`   ${p.subtitle || 'N/A'}\n`);
 
       if (p.content) {
         const textContent = p.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        console.log(`📖 CONTENUTO (primi 500 caratteri):`);
+        console.log(`ðŸ“– CONTENUTO (primi 500 caratteri):`);
         console.log(`   ${textContent.substring(0, 500)}...\n`);
       } else {
-        console.log(`📖 CONTENUTO: VUOTO\n`);
+        console.log(`ðŸ“– CONTENUTO: VUOTO\n`);
       }
     }
   }
 
   console.log('='.repeat(70));
-  console.log('\n❓ ANALISI:\n');
+  console.log('\nâ“ ANALISI:\n');
 
   // Check if contents are different
   const contents: string[] = [];
@@ -132,13 +132,13 @@ async function main() {
   const uniqueContents = new Set(contents);
 
   if (uniqueContents.size === 1) {
-    console.log('❌ PROBLEMA: Tutti i contenuti sono IDENTICI!');
+    console.log('âŒ PROBLEMA: Tutti i contenuti sono IDENTICI!');
     console.log('   Tutte le lingue mostrano lo stesso testo.\n');
   } else if (uniqueContents.size === 4) {
-    console.log('✅ OK: Tutti i contenuti sono DIVERSI!');
+    console.log('âœ… OK: Tutti i contenuti sono DIVERSI!');
     console.log('   Ogni lingua ha il suo testo.\n');
   } else {
-    console.log(`⚠️  PARZIALE: ${uniqueContents.size}/4 contenuti diversi`);
+    console.log(`âš ï¸  PARZIALE: ${uniqueContents.size}/4 contenuti diversi`);
     console.log('   Alcune lingue condividono lo stesso testo.\n');
   }
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Fiordilatte - DIRECT HTML approach
  * Instead of using segments, write the translated HTML directly to each language
  */
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -63,28 +63,28 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║       FIX FIORDILATTE - DIRECT HTML METHOD                 ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘       FIX FIORDILATTE - DIRECT HTML METHOD                 â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log('🗑️  Eliminazione articolo ID 419 esistente...');
+  console.log('ðŸ—‘ï¸  Eliminazione articolo ID 419 esistente...');
   try {
     await callOdoo('blog.post', 'unlink', [[419]], {});
-    console.log('   ✅ Eliminato\n');
+    console.log('   âœ… Eliminato\n');
   } catch (e: any) {
-    console.log(`   ⚠️  ${e.message}\n`);
+    console.log(`   âš ï¸  ${e.message}\n`);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
-  console.log('📝 Creazione nuovo articolo con Italiano...');
+  console.log('ðŸ“ Creazione nuovo articolo con Italiano...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     blog_id: 4,
@@ -96,11 +96,11 @@ async function main() {
     tag_ids: [[6, 0, itData.tag_ids || []]]
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ Creato ID ${postId}\n`);
+  console.log(`   âœ… Creato ID ${postId}\n`);
 
   await new Promise(r => setTimeout(r, 2000));
 
-  console.log('🌍 Scrittura DIRETTA HTML per ogni lingua:\n');
+  console.log('ðŸŒ Scrittura DIRETTA HTML per ogni lingua:\n');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -114,20 +114,20 @@ async function main() {
     await callOdoo('blog.post', 'write', [[postId], {
       name: langData.name,
       subtitle: langData.subtitle,
-      content: langData.content_html,  // ← DIRECT HTML!
+      content: langData.content_html,  // â† DIRECT HTML!
       website_meta_title: langData.meta.title,
       website_meta_description: langData.meta.description,
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang} completato`);
+    console.log(`   âœ… ${odooLang} completato`);
 
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  console.log('\n✅ COMPLETATO!\n');
-  console.log(`🔗 Nuovo articolo ID: ${postId}\n`);
-  console.log('📋 Verifica manualmente che tutte le lingue abbiano il contenuto corretto.\n');
+  console.log('\nâœ… COMPLETATO!\n');
+  console.log(`ðŸ”— Nuovo articolo ID: ${postId}\n`);
+  console.log('ðŸ“‹ Verifica manualmente che tutte le lingue abbiano il contenuto corretto.\n');
 }
 
 main().catch(console.error);

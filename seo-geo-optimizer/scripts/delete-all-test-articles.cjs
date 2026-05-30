@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Cancella TUTTI gli articoli di test (162-171)
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -46,7 +46,7 @@ async function callOdoo(model, method, args, kwargs = {}) {
 }
 
 async function main() {
-  console.log('🗑️  CANCELLAZIONE COMPLETA ARTICOLI DI TEST\n');
+  console.log('ðŸ—‘ï¸  CANCELLAZIONE COMPLETA ARTICOLI DI TEST\n');
 
   await authenticate();
 
@@ -58,13 +58,13 @@ async function main() {
   for (const id of idsToDelete) {
     try {
       await callOdoo('blog.post', 'unlink', [[id]]);
-      console.log(`✓ Eliminato ID ${id}`);
+      console.log(`âœ“ Eliminato ID ${id}`);
     } catch (e) {
-      console.log(`✗ Errore ID ${id}: ${e.message.substring(0, 50)}`);
+      console.log(`âœ— Errore ID ${id}: ${e.message.substring(0, 50)}`);
     }
   }
 
-  console.log('\n✅ Pulizia completata!\n');
+  console.log('\nâœ… Pulizia completata!\n');
 }
 
 main().catch(console.error);

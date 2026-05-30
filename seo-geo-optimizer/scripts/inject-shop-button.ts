@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Inject Shop Button via custom_code_footer
  * Aggiunge il pulsante floating usando il campo custom_code_footer del website
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Codice HTML/CSS per il pulsante floating Shop
 const SHOP_BUTTON_CODE = `
@@ -106,20 +106,20 @@ class OdooAPI {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🛒 LAPA - Iniezione Pulsante Shop Floating');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ›’ LAPA - Iniezione Pulsante Shop Floating');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooAPI();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Leggi il custom_code_footer attuale
-    console.log('📖 Lettura codice footer attuale...');
+    console.log('ðŸ“– Lettura codice footer attuale...');
     const websites = await odoo.searchRead<any>(
       'website',
       [['id', '=', 1]],
@@ -137,15 +137,15 @@ async function main() {
     console.log(`   Website: ${website.name} (ID: ${website.id})`);
     console.log(`   Lunghezza codice attuale: ${currentFooterCode.length} caratteri`);
 
-    // Verifica se il pulsante è già presente
+    // Verifica se il pulsante Ã¨ giÃ  presente
     if (currentFooterCode.includes('lapa-shop-float') || currentFooterCode.includes('LAPA Floating Shop Button')) {
-      console.log('\n⚠️  Il pulsante Shop floating è già presente nel footer!');
+      console.log('\nâš ï¸  Il pulsante Shop floating Ã¨ giÃ  presente nel footer!');
       console.log('    Nessuna modifica necessaria.');
       return;
     }
 
     // Aggiungi il codice del pulsante
-    console.log('\n📝 Aggiunta pulsante Shop...');
+    console.log('\nðŸ“ Aggiunta pulsante Shop...');
     const newFooterCode = currentFooterCode + SHOP_BUTTON_CODE;
 
     const success = await odoo.write('website', [1], {
@@ -153,20 +153,20 @@ async function main() {
     });
 
     if (success) {
-      console.log('✅ Pulsante Shop aggiunto con successo!');
-      console.log('\n' + '═'.repeat(80));
-      console.log('✨ COMPLETATO!');
-      console.log('═'.repeat(80));
+      console.log('âœ… Pulsante Shop aggiunto con successo!');
+      console.log('\n' + 'â•'.repeat(80));
+      console.log('âœ¨ COMPLETATO!');
+      console.log('â•'.repeat(80));
       console.log(`
-🛒 Il pulsante "Shop" floating è stato aggiunto!
+ðŸ›’ Il pulsante "Shop" floating Ã¨ stato aggiunto!
 
 CARATTERISTICHE:
-   🔴 Posizione: In basso a sinistra (fixed)
-   🎨 Stile: Rosso LAPA con gradiente
-   📱 Responsive: Su mobile diventa solo icona
-   ✨ Effetto hover: Leggero sollevamento
+   ðŸ”´ Posizione: In basso a sinistra (fixed)
+   ðŸŽ¨ Stile: Rosso LAPA con gradiente
+   ðŸ“± Responsive: Su mobile diventa solo icona
+   âœ¨ Effetto hover: Leggero sollevamento
 
-👉 Vai su https://www.lapa.ch per verificare!
+ðŸ‘‰ Vai su https://www.lapa.ch per verificare!
 
 NOTA: Potrebbe essere necessario svuotare la cache del browser
 o attendere qualche minuto per vedere le modifiche.
@@ -176,7 +176,7 @@ o attendere qualche minuto per vedere le modifiche.
     }
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

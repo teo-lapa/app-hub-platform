@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Complete SEO Script
  * Corregge automaticamente i meta tag SEO di TUTTO il sito:
  * - Articoli Blog
@@ -18,7 +18,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Limiti SEO
 const SEO_LIMITS = {
@@ -61,7 +61,7 @@ class OdooFixer {
       if (!this.cookies && data.result.session_id) {
         this.cookies = `session_id=${data.result.session_id}`;
       }
-      console.log(`✅ Autenticato come UID: ${this.uid}`);
+      console.log(`âœ… Autenticato come UID: ${this.uid}`);
       return true;
     }
     throw new Error('Authentication failed');
@@ -152,7 +152,7 @@ function optimizeTitle(name: string, type: 'product' | 'article' | 'category' | 
     page: ' | LAPA'
   };
 
-  // Se il titolo è troppo lungo, accorcia intelligentemente
+  // Se il titolo Ã¨ troppo lungo, accorcia intelligentemente
   if (title.length > SEO_LIMITS.TITLE_OPTIMAL) {
     // Rimuovi parti dopo | o :
     const sepIndex = title.search(/\s*[\|:]\s*/);
@@ -164,7 +164,7 @@ function optimizeTitle(name: string, type: 'product' | 'article' | 'category' | 
     }
   }
 
-  // Aggiungi suffisso se c'è spazio
+  // Aggiungi suffisso se c'Ã¨ spazio
   const suffix = suffixes[type];
   if (title.length + suffix.length <= SEO_LIMITS.TITLE_MAX && !title.includes('LAPA')) {
     title = title + suffix;
@@ -192,17 +192,17 @@ function optimizeDescription(
   if (desc.length < 50) {
     switch (type) {
       case 'product':
-        desc = `${name}. Prodotto italiano di alta qualità disponibile da LAPA, il tuo grossista di fiducia in Svizzera.`;
+        desc = `${name}. Prodotto italiano di alta qualitÃ  disponibile da LAPA, il tuo grossista di fiducia in Svizzera.`;
         if (price) desc += ` Prezzo: CHF ${price.toFixed(2)}.`;
         break;
       case 'article':
         desc = `${name}. Scopri ricette e tradizioni italiane con LAPA, il grossista di prodotti italiani in Svizzera.`;
         break;
       case 'category':
-        desc = `Scopri i migliori ${name.toLowerCase()} italiani. LAPA offre prodotti di qualità superiore con consegna in tutta la Svizzera.`;
+        desc = `Scopri i migliori ${name.toLowerCase()} italiani. LAPA offre prodotti di qualitÃ  superiore con consegna in tutta la Svizzera.`;
         break;
       case 'page':
-        desc = `${name}. LAPA - Il tuo partner per prodotti alimentari italiani in Svizzera. Qualità, tradizione, consegna rapida.`;
+        desc = `${name}. LAPA - Il tuo partner per prodotti alimentari italiani in Svizzera. QualitÃ , tradizione, consegna rapida.`;
         break;
     }
   }
@@ -229,7 +229,7 @@ function optimizeKeywords(keywords: string | undefined, name: string, category?:
   // Estrai keywords dal nome
   const nameWords = name
     .toLowerCase()
-    .replace(/[^\w\sàèéìòù]/g, ' ')
+    .replace(/[^\w\sÃ Ã¨Ã©Ã¬Ã²Ã¹]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 3);
 
@@ -281,9 +281,9 @@ interface FixResult {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🔧 LAPA SEO FIXER - Correzione Completa Sito');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ”§ LAPA SEO FIXER - Correzione Completa Sito');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooFixer();
@@ -296,12 +296,12 @@ async function main() {
   };
 
   try {
-    console.log('🔐 Autenticazione...');
+    console.log('ðŸ” Autenticazione...');
     await odoo.authenticate();
     console.log('');
 
     // ==================== PRODOTTI ====================
-    console.log('📦 Analisi PRODOTTI...');
+    console.log('ðŸ“¦ Analisi PRODOTTI...');
     const products = await odoo.searchRead<any>(
       'product.template',
       [['is_published', '=', true]],
@@ -350,10 +350,10 @@ async function main() {
         }
       }
     }
-    console.log(`   ✅ Corretti: ${stats.products.fixed}, ❌ Errori: ${stats.products.errors}`);
+    console.log(`   âœ… Corretti: ${stats.products.fixed}, âŒ Errori: ${stats.products.errors}`);
 
     // ==================== ARTICOLI BLOG ====================
-    console.log('\n📝 Analisi ARTICOLI BLOG...');
+    console.log('\nðŸ“ Analisi ARTICOLI BLOG...');
     const articles = await odoo.searchRead<any>(
       'blog.post',
       [['website_published', '=', true]],
@@ -400,10 +400,10 @@ async function main() {
         }
       }
     }
-    console.log(`   ✅ Corretti: ${stats.articles.fixed}, ❌ Errori: ${stats.articles.errors}`);
+    console.log(`   âœ… Corretti: ${stats.articles.fixed}, âŒ Errori: ${stats.articles.errors}`);
 
     // ==================== CATEGORIE ====================
-    console.log('\n📂 Analisi CATEGORIE...');
+    console.log('\nðŸ“‚ Analisi CATEGORIE...');
     const categories = await odoo.searchRead<any>(
       'product.public.category',
       [],
@@ -444,10 +444,10 @@ async function main() {
         }
       }
     }
-    console.log(`   ✅ Corretti: ${stats.categories.fixed}, ❌ Errori: ${stats.categories.errors}`);
+    console.log(`   âœ… Corretti: ${stats.categories.fixed}, âŒ Errori: ${stats.categories.errors}`);
 
     // ==================== PAGINE WEBSITE ====================
-    console.log('\n🌐 Analisi PAGINE WEBSITE...');
+    console.log('\nðŸŒ Analisi PAGINE WEBSITE...');
     try {
       const pages = await odoo.searchRead<any>(
         'website.page',
@@ -494,26 +494,26 @@ async function main() {
           }
         }
       }
-      console.log(`   ✅ Corretti: ${stats.pages.fixed}, ❌ Errori: ${stats.pages.errors}`);
+      console.log(`   âœ… Corretti: ${stats.pages.fixed}, âŒ Errori: ${stats.pages.errors}`);
     } catch (err) {
-      console.log(`   ⚠️ Impossibile accedere alle pagine website: ${err instanceof Error ? err.message : 'errore'}`);
+      console.log(`   âš ï¸ Impossibile accedere alle pagine website: ${err instanceof Error ? err.message : 'errore'}`);
     }
 
     // ==================== RIEPILOGO ====================
-    console.log('\n' + '═'.repeat(80));
-    console.log('📊 RIEPILOGO FINALE');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('ðŸ“Š RIEPILOGO FINALE');
+    console.log('â•'.repeat(80));
     console.log(`
-┌─────────────────┬──────────┬──────────┬──────────┐
-│ Tipo            │ Totale   │ Corretti │ Errori   │
-├─────────────────┼──────────┼──────────┼──────────┤
-│ Prodotti        │ ${String(stats.products.total).padStart(8)} │ ${String(stats.products.fixed).padStart(8)} │ ${String(stats.products.errors).padStart(8)} │
-│ Articoli Blog   │ ${String(stats.articles.total).padStart(8)} │ ${String(stats.articles.fixed).padStart(8)} │ ${String(stats.articles.errors).padStart(8)} │
-│ Categorie       │ ${String(stats.categories.total).padStart(8)} │ ${String(stats.categories.fixed).padStart(8)} │ ${String(stats.categories.errors).padStart(8)} │
-│ Pagine Website  │ ${String(stats.pages.total).padStart(8)} │ ${String(stats.pages.fixed).padStart(8)} │ ${String(stats.pages.errors).padStart(8)} │
-├─────────────────┼──────────┼──────────┼──────────┤
-│ TOTALE          │ ${String(stats.products.total + stats.articles.total + stats.categories.total + stats.pages.total).padStart(8)} │ ${String(stats.products.fixed + stats.articles.fixed + stats.categories.fixed + stats.pages.fixed).padStart(8)} │ ${String(stats.products.errors + stats.articles.errors + stats.categories.errors + stats.pages.errors).padStart(8)} │
-└─────────────────┴──────────┴──────────┴──────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Tipo            â”‚ Totale   â”‚ Corretti â”‚ Errori   â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ Prodotti        â”‚ ${String(stats.products.total).padStart(8)} â”‚ ${String(stats.products.fixed).padStart(8)} â”‚ ${String(stats.products.errors).padStart(8)} â”‚
+â”‚ Articoli Blog   â”‚ ${String(stats.articles.total).padStart(8)} â”‚ ${String(stats.articles.fixed).padStart(8)} â”‚ ${String(stats.articles.errors).padStart(8)} â”‚
+â”‚ Categorie       â”‚ ${String(stats.categories.total).padStart(8)} â”‚ ${String(stats.categories.fixed).padStart(8)} â”‚ ${String(stats.categories.errors).padStart(8)} â”‚
+â”‚ Pagine Website  â”‚ ${String(stats.pages.total).padStart(8)} â”‚ ${String(stats.pages.fixed).padStart(8)} â”‚ ${String(stats.pages.errors).padStart(8)} â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ TOTALE          â”‚ ${String(stats.products.total + stats.articles.total + stats.categories.total + stats.pages.total).padStart(8)} â”‚ ${String(stats.products.fixed + stats.articles.fixed + stats.categories.fixed + stats.pages.fixed).padStart(8)} â”‚ ${String(stats.products.errors + stats.articles.errors + stats.categories.errors + stats.pages.errors).padStart(8)} â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 `);
 
     // Salva report dettagliato
@@ -530,12 +530,12 @@ async function main() {
 
     const reportPath = resolve(dataDir, 'complete-seo-fix-report.json');
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
-    console.log(`📄 Report dettagliato salvato: ${reportPath}`);
+    console.log(`ðŸ“„ Report dettagliato salvato: ${reportPath}`);
 
-    console.log('\n✨ Ottimizzazione SEO completa!');
+    console.log('\nâœ¨ Ottimizzazione SEO completa!');
 
   } catch (error) {
-    console.error('\n❌ Errore fatale:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore fatale:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

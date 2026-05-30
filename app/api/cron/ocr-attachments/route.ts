@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '7', 10);
+const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '30', 10);
 const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '50', 10);
 const SOFT_DEADLINE_MS = 240_000;
 
@@ -168,7 +168,13 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
         states.push({ ...baseState, outcome: 'done', detail: `OK ${att.name} -> ${newName} (${result.num_pages}p, ${Math.round(status.wall_time_s || 0)}s)` });
       } catch (err: any) {
         const errMsg = err?.message || String(err);
-        states.push({ ...baseState, outcome: 'pending', detail: `JOB STATUS ERR ${att.name}: ${errMsg.slice(0, 200)}` });
+        const isExpired = /HTTP 404|not found|scaduto/i.test(errMsg);
+        if (isExpired) {
+          await callOdoo(null, 'ir.attachment', 'write', [[att.id], { description: '' }]);
+          states.push({ ...baseState, outcome: 'pending', detail: `RESET ${att.name} job=${jobId} expired, requeued` });
+        } else {
+          states.push({ ...baseState, outcome: 'pending', detail: `JOB STATUS ERR ${att.name}: ${errMsg.slice(0, 200)}` });
+        }
       }
       continue;
     }

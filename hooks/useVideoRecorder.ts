@@ -65,6 +65,12 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
       setError(null);
       setPermissionDenied(false);
 
+      // Guard: su origini non sicure (HTTP) navigator.mediaDevices e' undefined.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError('La fotocamera richiede una connessione sicura (HTTPS)');
+        return false;
+      }
+
       // Request camera and microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -140,6 +146,14 @@ export function useVideoRecorder(options: UseVideoRecorderOptions): UseVideoReco
 
     } catch (err: any) {
       console.error('❌ [VideoRecorder] Error starting recording:', err);
+
+      // Se lo stream era gia' stato ottenuto, fermalo per non lasciare la
+      // camera accesa/bloccata (evita NotReadableError ai tentativi seguenti).
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        setPreviewStream(null);
+      }
 
       if (err instanceof DOMException) {
         if (err.name === 'NotAllowedError') {

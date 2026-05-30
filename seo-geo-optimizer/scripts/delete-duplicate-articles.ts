@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Delete duplicate articles - keep only V10 uploads (286-346) with 100% translations
  * Remove old uploads (247-285) with partial translations
  */
@@ -6,7 +6,7 @@
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -49,12 +49,12 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function deleteDuplicates() {
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Get all blog posts in blog_id 4
-  console.log('📋 Recupero tutti gli articoli...');
+  console.log('ðŸ“‹ Recupero tutti gli articoli...');
   const allPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]],
     ['id', 'name', 'create_date']
@@ -75,12 +75,12 @@ async function deleteDuplicates() {
   // Find duplicates
   const duplicates = Array.from(titleMap.entries()).filter(([_, posts]) => posts.length > 1);
 
-  console.log(`📊 Analisi duplicati:`);
+  console.log(`ðŸ“Š Analisi duplicati:`);
   console.log(`   Titoli unici: ${titleMap.size}`);
   console.log(`   Titoli duplicati: ${duplicates.length}\n`);
 
   if (duplicates.length === 0) {
-    console.log('✅ Nessun duplicato trovato!');
+    console.log('âœ… Nessun duplicato trovato!');
     return;
   }
 
@@ -95,14 +95,14 @@ async function deleteDuplicates() {
     const keep = posts[0];
     const deleteList = posts.slice(1);
 
-    console.log(`📝 "${title.substring(0, 50)}..."`);
-    console.log(`   Mantieni: ID ${keep.id} (più recente)`);
+    console.log(`ðŸ“ "${title.substring(0, 50)}..."`);
+    console.log(`   Mantieni: ID ${keep.id} (piÃ¹ recente)`);
     console.log(`   Elimina: ${deleteList.map(p => `ID ${p.id}`).join(', ')}`);
 
     toDelete.push(...deleteList.map(p => p.id));
   }
 
-  console.log(`\n🗑️  Elimino ${toDelete.length} articoli duplicati...\n`);
+  console.log(`\nðŸ—‘ï¸  Elimino ${toDelete.length} articoli duplicati...\n`);
 
   // Delete in batches of 10
   for (let i = 0; i < toDelete.length; i += 10) {
@@ -114,8 +114,8 @@ async function deleteDuplicates() {
     await new Promise(r => setTimeout(r, 1000));
   }
 
-  console.log(`\n✅ Duplicati eliminati con successo!`);
-  console.log(`📊 Rimangono ${titleMap.size} articoli unici`);
+  console.log(`\nâœ… Duplicati eliminati con successo!`);
+  console.log(`ðŸ“Š Rimangono ${titleMap.size} articoli unici`);
 }
 
 deleteDuplicates().catch(console.error);

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verify article 347 translations
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -48,18 +48,18 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const postId = 347;
 
-  console.log(`📋 Verifica articolo ID ${postId}:\n`);
+  console.log(`ðŸ“‹ Verifica articolo ID ${postId}:\n`);
 
   const languages = {
-    'it_IT': 'Italiano 🇮🇹',
-    'de_CH': 'Tedesco 🇩🇪',
-    'fr_CH': 'Francese 🇫🇷',
-    'en_US': 'Inglese 🇬🇧'
+    'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+    'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+    'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
   };
 
   for (const [lang, langName] of Object.entries(languages)) {
@@ -75,15 +75,15 @@ async function main() {
       const p = post[0];
       const textContent = p.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-      console.log(`\n📝 Titolo:\n${p.name}\n`);
-      console.log(`📄 Sottotitolo:\n${p.subtitle || 'N/A'}\n`);
-      console.log(`📖 Contenuto (primi 400 caratteri):\n${textContent.substring(0, 400)}...\n`);
+      console.log(`\nðŸ“ Titolo:\n${p.name}\n`);
+      console.log(`ðŸ“„ Sottotitolo:\n${p.subtitle || 'N/A'}\n`);
+      console.log(`ðŸ“– Contenuto (primi 400 caratteri):\n${textContent.substring(0, 400)}...\n`);
       console.log('');
     }
   }
 
   console.log('='.repeat(70));
-  console.log('✅ Verifica completata!');
+  console.log('âœ… Verifica completata!');
   console.log('='.repeat(70));
 }
 

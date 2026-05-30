@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo - V10: Write FULL content for each language
  * Instead of segment-based translation, write complete HTML content
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -58,17 +58,17 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 ${articlePath}\n`);
+  console.log(`ðŸ“„ ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Auth...');
+  console.log('ðŸ” Auth...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   const itData = article.translations.it_IT;
 
-  console.log('🇮🇹 Create...');
+  console.log('ðŸ‡®ðŸ‡¹ Create...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -82,7 +82,7 @@ async function uploadArticle(articlePath: string) {
 
   console.log(`   ID: ${postId}\n`);
 
-  console.log('🌍 Write ALL languages...\n');
+  console.log('ðŸŒ Write ALL languages...\n');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue; // Already created
     const langData = article.translations[jsonLang];
@@ -99,10 +99,10 @@ async function uploadArticle(articlePath: string) {
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅`);
+    console.log(`   âœ…`);
   }
 
-  console.log(`\n✅ ${postId} - 100% complete (all languages have full content)`);
+  console.log(`\nâœ… ${postId} - 100% complete (all languages have full content)`);
   return postId;
 }
 

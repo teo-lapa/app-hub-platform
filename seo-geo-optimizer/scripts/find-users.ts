@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Find Users - Laura Torrescu e Gregorio Bucolieri
  */
 
@@ -12,7 +12,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 async function main() {
   const response = await fetch(`${ODOO_URL}/web/session/authenticate`, {
@@ -51,7 +51,7 @@ async function main() {
   });
 
   const usersData = await usersResp.json();
-  console.log('👥 Utenti trovati:\n');
+  console.log('ðŸ‘¥ Utenti trovati:\n');
 
   for (const user of usersData.result || []) {
     console.log(`   ID: ${user.id}`);

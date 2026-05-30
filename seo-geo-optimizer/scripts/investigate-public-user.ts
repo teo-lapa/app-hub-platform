@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Investigazione Public User
- * Controlla chi è il "Public user" e come riesce a fare ordini
+ * Controlla chi Ã¨ il "Public user" e come riesce a fare ordini
  */
 
 import { config } from 'dotenv';
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 class OdooInvestigator {
   private uid: number | null = null;
@@ -71,21 +71,21 @@ class OdooInvestigator {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🔍 INVESTIGAZIONE "PUBLIC USER"');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ” INVESTIGAZIONE "PUBLIC USER"');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooInvestigator();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // 1. Cerca l'utente "Public user"
-    console.log('👤 RICERCA UTENTE "PUBLIC USER"');
-    console.log('─'.repeat(60));
+    console.log('ðŸ‘¤ RICERCA UTENTE "PUBLIC USER"');
+    console.log('â”€'.repeat(60));
 
     const publicUsers = await odoo.searchRead<any>(
       'res.partner',
@@ -105,14 +105,14 @@ async function main() {
       console.log(`   Creato: ${user.create_date}`);
       console.log(`   User ID (login): ${user.user_id ? user.user_id[1] : 'Nessun login associato'}`);
       console.log(`   Azienda: ${user.company_id ? user.company_id[1] : 'N/A'}`);
-      console.log(`   È azienda: ${user.is_company ? 'Sì' : 'No'}`);
+      console.log(`   Ãˆ azienda: ${user.is_company ? 'SÃ¬' : 'No'}`);
       console.log(`   Parent: ${user.parent_id ? user.parent_id[1] : 'N/A'}`);
       console.log('');
     }
 
     // 2. Cerca ordini da Public user
-    console.log('\n📦 ORDINI DA "PUBLIC USER"');
-    console.log('─'.repeat(60));
+    console.log('\nðŸ“¦ ORDINI DA "PUBLIC USER"');
+    console.log('â”€'.repeat(60));
 
     const publicOrders = await odoo.searchRead<any>(
       'sale.order',
@@ -131,13 +131,13 @@ async function main() {
       console.log(`   Creato da: ${order.create_uid ? order.create_uid[1] : 'N/A'}`);
       console.log(`   Website: ${order.website_id ? order.website_id[1] : 'N/A'}`);
       console.log(`   Origine: ${order.origin || 'N/A'}`);
-      console.log(`   Access Token: ${order.access_token ? 'Sì (carrello web)' : 'No'}`);
+      console.log(`   Access Token: ${order.access_token ? 'SÃ¬ (carrello web)' : 'No'}`);
       console.log('');
     }
 
     // 3. Controlla l'ordine specifico S36167
-    console.log('\n🎯 DETTAGLIO ORDINE S36167');
-    console.log('─'.repeat(60));
+    console.log('\nðŸŽ¯ DETTAGLIO ORDINE S36167');
+    console.log('â”€'.repeat(60));
 
     const specificOrder = await odoo.searchRead<any>(
       'sale.order',
@@ -170,9 +170,9 @@ async function main() {
       console.log(`   Sorgente: ${order.source_id ? order.source_id[1] : 'N/A'}`);
       console.log(`   Team Vendite: ${order.team_id ? order.team_id[1] : 'N/A'}`);
 
-      // Cerca chi è il create_uid
+      // Cerca chi Ã¨ il create_uid
       if (order.create_uid) {
-        console.log('\n   📌 CREATORE ORDINE:');
+        console.log('\n   ðŸ“Œ CREATORE ORDINE:');
         const creator = await odoo.searchRead<any>(
           'res.users',
           [['id', '=', order.create_uid[0]]],
@@ -188,8 +188,8 @@ async function main() {
     }
 
     // 4. Verifica carrelli attivi (draft orders) da public user
-    console.log('\n\n🛒 CARRELLI ATTIVI (DRAFT) DA PUBLIC USER');
-    console.log('─'.repeat(60));
+    console.log('\n\nðŸ›’ CARRELLI ATTIVI (DRAFT) DA PUBLIC USER');
+    console.log('â”€'.repeat(60));
 
     const draftOrders = await odoo.searchRead<any>(
       'sale.order',
@@ -204,8 +204,8 @@ async function main() {
     }
 
     // 5. Controlla configurazione website ecommerce
-    console.log('\n\n⚙️ CONFIGURAZIONE WEBSITE E-COMMERCE');
-    console.log('─'.repeat(60));
+    console.log('\n\nâš™ï¸ CONFIGURAZIONE WEBSITE E-COMMERCE');
+    console.log('â”€'.repeat(60));
 
     const websites = await odoo.searchRead<any>(
       'website',
@@ -222,11 +222,11 @@ async function main() {
       console.log(`   Registrazione aperta: ${site.auth_signup_uninvited || 'N/A'}`);
     }
 
-    console.log('\n\n' + '═'.repeat(80));
-    console.log('📋 CONCLUSIONE');
-    console.log('═'.repeat(80));
+    console.log('\n\n' + 'â•'.repeat(80));
+    console.log('ðŸ“‹ CONCLUSIONE');
+    console.log('â•'.repeat(80));
     console.log(`
-"Public user" è l'utente ANONIMO predefinito di Odoo Website.
+"Public user" Ã¨ l'utente ANONIMO predefinito di Odoo Website.
 Quando qualcuno visita il sito senza fare login e aggiunge prodotti
 al carrello, l'ordine viene associato a questo utente generico.
 
@@ -243,7 +243,7 @@ RACCOMANDAZIONI:
 `);
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
   }
 }
 

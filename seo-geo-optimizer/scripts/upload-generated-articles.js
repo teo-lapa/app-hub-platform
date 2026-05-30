@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articoli generati (JSON con markdown) su Odoo
  * Con traduzioni complete e ottimizzazione SEO/GEO
  */
@@ -9,7 +9,7 @@ const path = require('path');
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -42,14 +42,14 @@ function markdownToHtml(md) {
 
   // Lists
   html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
-  html = html.replace(/^✅ (.*$)/gim, '<li>✅ $1</li>');
-  html = html.replace(/^❌ (.*$)/gim, '<li>❌ $1</li>');
-  html = html.replace(/^🍷 (.*$)/gim, '<li>🍷 $1</li>');
-  html = html.replace(/^🛡️ (.*$)/gim, '<li>🛡️ $1</li>');
-  html = html.replace(/^👉 (.*$)/gim, '<li>👉 $1</li>');
-  html = html.replace(/^📧 (.*$)/gim, '<li>📧 $1</li>');
-  html = html.replace(/^📞 (.*$)/gim, '<li>📞 $1</li>');
-  html = html.replace(/^🌐 (.*$)/gim, '<li>🌐 $1</li>');
+  html = html.replace(/^âœ… (.*$)/gim, '<li>âœ… $1</li>');
+  html = html.replace(/^âŒ (.*$)/gim, '<li>âŒ $1</li>');
+  html = html.replace(/^ðŸ· (.*$)/gim, '<li>ðŸ· $1</li>');
+  html = html.replace(/^ðŸ›¡ï¸ (.*$)/gim, '<li>ðŸ›¡ï¸ $1</li>');
+  html = html.replace(/^ðŸ‘‰ (.*$)/gim, '<li>ðŸ‘‰ $1</li>');
+  html = html.replace(/^ðŸ“§ (.*$)/gim, '<li>ðŸ“§ $1</li>');
+  html = html.replace(/^ðŸ“ž (.*$)/gim, '<li>ðŸ“ž $1</li>');
+  html = html.replace(/^ðŸŒ (.*$)/gim, '<li>ðŸŒ $1</li>');
 
   // Wrap consecutive <li> in <ul>
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
@@ -128,8 +128,8 @@ async function uploadArticle(articlePath) {
   const article = JSON.parse(fs.readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log(`  📝 Titolo: ${itData.title}`);
-  console.log(`  📊 Lunghezza: ${itData.content.split(/\s+/).length} parole`);
+  console.log(`  ðŸ“ Titolo: ${itData.title}`);
+  console.log(`  ðŸ“Š Lunghezza: ${itData.content.split(/\s+/).length} parole`);
 
   // Converti markdown in HTML
   const itContentHtml = markdownToHtml(itData.content);
@@ -146,7 +146,7 @@ async function uploadArticle(articlePath) {
     is_published: false  // Draft per revisione
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`  ✅ Creato ID: ${postId}`);
+  console.log(`  âœ… Creato ID: ${postId}`);
 
   // 2. Traduci per ogni lingua
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
@@ -156,7 +156,7 @@ async function uploadArticle(articlePath) {
 
     const langContentHtml = markdownToHtml(langData.content);
 
-    console.log(`  🌐 Traduzione ${jsonLang}...`);
+    console.log(`  ðŸŒ Traduzione ${jsonLang}...`);
 
     await callOdoo('blog.post', 'write', [[postId], {
       name: langData.title,
@@ -172,13 +172,13 @@ async function uploadArticle(articlePath) {
 }
 
 async function main() {
-  console.log('🚀 UPLOAD ARTICOLI GENERATI SU ODOO\n');
-  console.log('═'.repeat(60));
+  console.log('ðŸš€ UPLOAD ARTICOLI GENERATI SU ODOO\n');
+  console.log('â•'.repeat(60));
 
   // Authenticate
-  console.log('\n🔐 Autenticazione Odoo...');
+  console.log('\nðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Find all articles
   const articlesDir = path.join(__dirname, '../output/articles');
@@ -186,8 +186,8 @@ async function main() {
     .filter(f => f.endsWith('.json'))
     .sort();
 
-  console.log(`📄 Trovati ${files.length} articoli da caricare\n`);
-  console.log('═'.repeat(60));
+  console.log(`ðŸ“„ Trovati ${files.length} articoli da caricare\n`);
+  console.log('â•'.repeat(60));
 
   const results = [];
   const errors = [];
@@ -210,23 +210,23 @@ async function main() {
       // Pausa tra articoli
       await new Promise(r => setTimeout(r, 2000));
     } catch (e) {
-      console.log(`  ❌ ERRORE: ${e.message.substring(0, 150)}`);
+      console.log(`  âŒ ERRORE: ${e.message.substring(0, 150)}`);
       errors.push({ file, error: e.message });
     }
   }
 
   // Riepilogo
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 RIEPILOGO UPLOAD');
-  console.log('═'.repeat(60) + '\n');
+  console.log('\n' + 'â•'.repeat(60));
+  console.log('ðŸ“Š RIEPILOGO UPLOAD');
+  console.log('â•'.repeat(60) + '\n');
 
-  console.log(`✅ Successi: ${results.length}/${files.length}`);
-  console.log(`❌ Errori: ${errors.length}/${files.length}\n`);
+  console.log(`âœ… Successi: ${results.length}/${files.length}`);
+  console.log(`âŒ Errori: ${errors.length}/${files.length}\n`);
 
   if (results.length > 0) {
-    console.log('✅ ARTICOLI CARICATI:\n');
+    console.log('âœ… ARTICOLI CARICATI:\n');
     for (const r of results) {
-      console.log(`  • ${r.file}`);
+      console.log(`  â€¢ ${r.file}`);
       console.log(`    ID: ${r.postId}`);
       console.log(`    URL: ${ODOO_URL}/blog/lapablog-4/${r.postId}`);
       console.log(`    Titolo: "${r.title.substring(0, 50)}..."\n`);
@@ -234,14 +234,14 @@ async function main() {
   }
 
   if (errors.length > 0) {
-    console.log('\n❌ ERRORI:\n');
+    console.log('\nâŒ ERRORI:\n');
     for (const e of errors) {
-      console.log(`  • ${e.file}: ${e.error.substring(0, 100)}`);
+      console.log(`  â€¢ ${e.file}: ${e.error.substring(0, 100)}`);
     }
   }
 
-  console.log('\n🎉 Upload completato!');
-  console.log('\n⚠️  IMPORTANTE: Gli articoli sono in BOZZA.');
+  console.log('\nðŸŽ‰ Upload completato!');
+  console.log('\nâš ï¸  IMPORTANTE: Gli articoli sono in BOZZA.');
   console.log('   Revisiona e pubblica manualmente da Odoo.\n');
 }
 

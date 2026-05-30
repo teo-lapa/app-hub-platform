@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Add Floating Shop Button
  * Aggiunge un pulsante "Shop" fisso in basso a sinistra sul sito LAPA
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // Codice HTML/CSS per il pulsante floating
 const FLOATING_BUTTON_CODE = `
@@ -188,20 +188,20 @@ class OdooWebsite {
 }
 
 async function main() {
-  console.log('═'.repeat(80));
-  console.log('🛒 LAPA - Aggiunta Pulsante Shop Floating');
-  console.log('═'.repeat(80));
+  console.log('â•'.repeat(80));
+  console.log('ðŸ›’ LAPA - Aggiunta Pulsante Shop Floating');
+  console.log('â•'.repeat(80));
   console.log('');
 
   const odoo = new OdooWebsite();
 
   try {
-    console.log('🔐 Connessione a Odoo...');
+    console.log('ðŸ” Connessione a Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connesso\n');
+    console.log('âœ… Connesso\n');
 
     // Metodo 1: Cercare la vista del footer o layout
-    console.log('🔍 Ricerca view website per inserire il codice...');
+    console.log('ðŸ” Ricerca view website per inserire il codice...');
 
     // Cerca le viste del website
     const views = await odoo.searchRead<any>(
@@ -221,7 +221,7 @@ async function main() {
     }
 
     // Metodo 2: Prova con website.snippets o website.assets
-    console.log('\n🔍 Ricerca assets/snippets...');
+    console.log('\nðŸ” Ricerca assets/snippets...');
     const assets = await odoo.searchRead<any>(
       'ir.ui.view',
       [
@@ -235,8 +235,8 @@ async function main() {
       console.log(`   - ${asset.key} (ID: ${asset.id})`);
     }
 
-    // Metodo 3: Cerca se esiste già un posto per custom HTML
-    console.log('\n🔍 Ricerca configurazione website...');
+    // Metodo 3: Cerca se esiste giÃ  un posto per custom HTML
+    console.log('\nðŸ” Ricerca configurazione website...');
     const websites = await odoo.searchRead<any>(
       'website',
       [],
@@ -250,9 +250,9 @@ async function main() {
     }
 
     // Metodo 4: Creare una vista inherit per aggiungere il pulsante
-    console.log('\n📝 Creazione vista personalizzata per il pulsante...');
+    console.log('\nðŸ“ Creazione vista personalizzata per il pulsante...');
 
-    // Cerca se esiste già la nostra vista
+    // Cerca se esiste giÃ  la nostra vista
     const existingView = await odoo.searchRead<any>(
       'ir.ui.view',
       [['key', '=', 'website.lapa_floating_shop_button']],
@@ -273,7 +273,7 @@ async function main() {
         arch_db: viewArch,
         active: true
       });
-      console.log('   ✅ Vista aggiornata!');
+      console.log('   âœ… Vista aggiornata!');
     } else {
       console.log('   Creazione nuova vista...');
 
@@ -299,30 +299,30 @@ async function main() {
         priority: 100
       });
 
-      console.log(`   ✅ Vista creata con ID: ${newViewId}`);
+      console.log(`   âœ… Vista creata con ID: ${newViewId}`);
     }
 
-    console.log('\n' + '═'.repeat(80));
-    console.log('✨ COMPLETATO!');
-    console.log('═'.repeat(80));
+    console.log('\n' + 'â•'.repeat(80));
+    console.log('âœ¨ COMPLETATO!');
+    console.log('â•'.repeat(80));
     console.log(`
-Il pulsante "Shop" è stato aggiunto!
+Il pulsante "Shop" Ã¨ stato aggiunto!
 
-🔴 Apparirà in basso a sinistra su tutte le pagine del sito
-🛒 Cliccando porta direttamente a /shop
-📱 Su mobile diventa un'icona compatta
+ðŸ”´ ApparirÃ  in basso a sinistra su tutte le pagine del sito
+ðŸ›’ Cliccando porta direttamente a /shop
+ðŸ“± Su mobile diventa un'icona compatta
 
 Vai su https://www.lapa.ch per verificare!
 `);
 
   } catch (error) {
-    console.error('\n❌ Errore:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Errore:', error instanceof Error ? error.message : error);
 
-    console.log('\n💡 ALTERNATIVA MANUALE:');
-    console.log('─'.repeat(60));
+    console.log('\nðŸ’¡ ALTERNATIVA MANUALE:');
+    console.log('â”€'.repeat(60));
     console.log('Se l\'aggiunta automatica non funziona, puoi farlo manualmente:');
     console.log('');
-    console.log('1. Vai in Odoo → Website → Configurazione → Personalizza');
+    console.log('1. Vai in Odoo â†’ Website â†’ Configurazione â†’ Personalizza');
     console.log('2. Cerca "HTML/CSS personalizzato" o "Custom Code"');
     console.log('3. Incolla questo codice:\n');
     console.log(FLOATING_BUTTON_CODE);

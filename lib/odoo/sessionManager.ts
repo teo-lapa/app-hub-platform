@@ -299,7 +299,7 @@ export function createOdooSessionManager(): OdooSessionManager {
   const DEFAULT_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
   const DEFAULT_DB = 'lapadevadmin-lapa-v2-main-7268478';
   const DEFAULT_LOGIN = 'apphubplatform@lapa.ch';
-  const DEFAULT_PASSWORD = 'apphubplatform2025';
+  const DEFAULT_PASSWORD = '';
 
   const credentials: OdooCredentials = {
     url: process.env.ODOO_URL || process.env.NEXT_PUBLIC_ODOO_URL || DEFAULT_URL,

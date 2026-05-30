@@ -1,13 +1,13 @@
-# Contact Enrichment Pipeline - Quick Start Guide
+﻿# Contact Enrichment Pipeline - Quick Start Guide
 
-## Cos'è?
+## Cos'Ã¨?
 
 Sistema completo per **trasformare qualsiasi documento aziendale in contatti Odoo arricchiti**:
 
-- Scansioni **biglietti da visita, fatture, scontrini** → Dati estratti con AI
-- Cerca azienda su **Moneyhouse.ch** → Dati legali completi + proprietari
-- Verifica **rating creditizio** → Buoni/cattivi pagatori automatico
-- Crea **contatti multipli in Odoo** → Azienda + proprietari + persona originale
+- Scansioni **biglietti da visita, fatture, scontrini** â†’ Dati estratti con AI
+- Cerca azienda su **Moneyhouse.ch** â†’ Dati legali completi + proprietari
+- Verifica **rating creditizio** â†’ Buoni/cattivi pagatori automatico
+- Crea **contatti multipli in Odoo** â†’ Azienda + proprietari + persona originale
 
 **Tutto automatico in 4-7 secondi!**
 
@@ -23,13 +23,13 @@ import xmlrpc.client, ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
 common = xmlrpc.client.ServerProxy('https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com/xmlrpc/2/common')
-uid = common.authenticate('lapadevadmin-lapa-v2-main-7268478', 'apphubplatform@lapa.ch', 'apphubplatform2025', {})
+uid = common.authenticate('lapadevadmin-lapa-v2-main-7268478', 'apphubplatform@lapa.ch', '__REDACTED__', {})
 
 print(f'OK! UID: {uid}')
 "
 ```
 
-Se vedi `OK! UID: 430` → Odoo funziona!
+Se vedi `OK! UID: 430` â†’ Odoo funziona!
 
 ### Step 2: Test Odoo Client Script
 
@@ -39,7 +39,7 @@ cd jetson-deployment/server
 export ODOO_URL="https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com"
 export ODOO_DB="lapadevadmin-lapa-v2-main-7268478"
 export ODOO_USERNAME="apphubplatform@lapa.ch"
-export ODOO_PASSWORD="apphubplatform2025"
+export ODOO_PASSWORD="__REDACTED__"
 
 python3 odoo-client.py create_partner '{"name": "Test Quick Start", "email": "test@example.com"}'
 ```
@@ -72,9 +72,9 @@ node index.js
 
 Output atteso:
 ```
-🚀 Jetson OCR Server running on port 3100
-📍 Health check: http://localhost:3100/api/v1/health
-📊 Metrics: http://localhost:3100/api/v1/metrics
+ðŸš€ Jetson OCR Server running on port 3100
+ðŸ“ Health check: http://localhost:3100/api/v1/health
+ðŸ“Š Metrics: http://localhost:3100/api/v1/metrics
 ```
 
 ### Step 4: Test Jetson Endpoint
@@ -123,7 +123,7 @@ TEST 1: Odoo Python Client (Direct)
   Name: Test Pipeline Complete
   ...
 
-✓✓✓ ALL TESTS PASSED! ✓✓✓
+âœ“âœ“âœ“ ALL TESTS PASSED! âœ“âœ“âœ“
 ```
 
 ---
@@ -143,7 +143,7 @@ JETSON_URL=http://10.0.0.108:3100
 ODOO_URL=https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 ODOO_DB=lapadevadmin-lapa-v2-main-7268478
 ODOO_USERNAME=apphubplatform@lapa.ch
-ODOO_PASSWORD=apphubplatform2025
+ODOO_PASSWORD=__REDACTED__
 ```
 
 ### Deploy
@@ -252,19 +252,19 @@ curl -X POST \
 
 ```
 app/
-├── api/
-│   └── scan-contatto-complete/
-│       └── route.ts          # Endpoint principale pipeline
+â”œâ”€â”€ api/
+â”‚   â””â”€â”€ scan-contatto-complete/
+â”‚       â””â”€â”€ route.ts          # Endpoint principale pipeline
 
 lib/
-├── services/
-│   ├── gemini-vision.ts       # OCR Gemini
-│   └── moneyhouse-scraper.ts  # Web scraping
+â”œâ”€â”€ services/
+â”‚   â”œâ”€â”€ gemini-vision.ts       # OCR Gemini
+â”‚   â””â”€â”€ moneyhouse-scraper.ts  # Web scraping
 
 jetson-deployment/
-└── server/
-    ├── index.js               # Server Express
-    └── odoo-client.py         # Python Odoo client
+â””â”€â”€ server/
+    â”œâ”€â”€ index.js               # Server Express
+    â””â”€â”€ odoo-client.py         # Python Odoo client
 
 test-pipeline-complete.js       # Test suite completa
 CONTACT-ENRICHMENT-PIPELINE.md  # Documentazione completa
@@ -274,11 +274,11 @@ CONTACT-ENRICHMENT-PIPELINE.md  # Documentazione completa
 
 ## Next Steps
 
-1. ✅ Test locale completo
-2. ⏳ Deploy su Vercel
-3. ⏳ Test con documenti reali
-4. ⏳ Integrazione frontend UI
-5. ⏳ Monitoring e analytics
+1. âœ… Test locale completo
+2. â³ Deploy su Vercel
+3. â³ Test con documenti reali
+4. â³ Integrazione frontend UI
+5. â³ Monitoring e analytics
 
 ---
 

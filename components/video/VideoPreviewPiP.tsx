@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minimize2, Maximize2, Video, VideoOff } from 'lucide-react';
 
@@ -27,29 +27,28 @@ export function VideoPreviewPiP({
   onMinimize,
   minimized = false
 }: VideoPreviewPiPProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
 
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.onloadedmetadata = () => {
-        setIsVideoReady(true);
-        // Explicitly play the video to ensure it starts
-        videoRef.current?.play().catch(err => {
-          console.warn('[VideoPreviewPiP] Could not autoplay video:', err);
-        });
-      };
-      // Also try to play immediately
-      videoRef.current.play().catch(() => {
-        // Ignore - will play after metadata loads
-      });
+  // Callback ref: aggancia lo stream nell'ISTANTE in cui il <video> viene
+  // montato nel DOM. Cosi' non dipende dai tempi tra setPreviewStream e
+  // isRecording: il video si vede subito, senza dover minimizzare/riaprire.
+  const setVideoNode = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node || !stream) {
+      setIsVideoReady(false);
+      return;
     }
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    node.srcObject = stream;
+    const markReady = () => {
+      setIsVideoReady(true);
+      node.play().catch(() => {});
     };
+    node.addEventListener('loadedmetadata', markReady);
+    node.addEventListener('playing', markReady);
+    // Se i metadati sono gia' pronti, l'evento puo' essere gia' scattato.
+    if (node.readyState >= 1) markReady();
+    node.play().catch(() => {});
   }, [stream]);
 
   if (!stream || !isRecording) {

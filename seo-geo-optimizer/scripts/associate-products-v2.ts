@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Associate products to articles - V2
  * Improved: Fetch all posts from Odoo first, then match by similarity
  */
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -143,9 +143,9 @@ function createProductSection(products: any[], lang: string): string {
       from: 'ab'
     },
     fr_FR: {
-      title: 'Produits Recommandés',
+      title: 'Produits RecommandÃ©s',
       buyNow: 'Acheter',
-      from: 'dès'
+      from: 'dÃ¨s'
     },
     en_US: {
       title: 'Recommended Products',
@@ -231,22 +231,22 @@ function titleSimilarity(a: string, b: string): number {
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║     ASSOCIA PRODOTTI AGLI ARTICOLI (V2 - IMPROVED)        ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘     ASSOCIA PRODOTTI AGLI ARTICOLI (V2 - IMPROVED)        â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
   // Load product catalog
-  console.log('📦 Caricamento catalogo prodotti...');
+  console.log('ðŸ“¦ Caricamento catalogo prodotti...');
   const products = JSON.parse(readFileSync(join(__dirname, '../data/odoo-products-catalog.json'), 'utf-8'));
   console.log(`   ${products.length} prodotti disponibili\n`);
 
   // Authenticate
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Get ALL blog posts from Odoo
-  console.log('📋 Recupero tutti i post da Odoo (blog_id = 4)...');
+  console.log('ðŸ“‹ Recupero tutti i post da Odoo (blog_id = 4)...');
   const allPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]],
     ['id', 'name']
@@ -260,7 +260,7 @@ async function main() {
     .filter(f => f.endsWith('.json') && f.startsWith('article-'))
     .sort();
 
-  console.log(`📄 ${files.length} articoli da aggiornare\n`);
+  console.log(`ðŸ“„ ${files.length} articoli da aggiornare\n`);
 
   const results: Array<{ file: string; postId?: number; productCount: number; error?: string }> = [];
 
@@ -269,25 +269,25 @@ async function main() {
     const articlePath = join(articlesDir, file);
 
     console.log(`\n[${i + 1}/${files.length}] ${file}`);
-    console.log('─'.repeat(60));
+    console.log('â”€'.repeat(60));
 
     try {
       const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
       const articleId = article.article_id;
       const title = article.translations.it_IT.name;
 
-      console.log(`📝 "${title.slice(0, 50)}..."`);
+      console.log(`ðŸ“ "${title.slice(0, 50)}..."`);
 
       // Find relevant products
       const relevantProducts = findRelevantProducts(articleId, products);
 
       if (relevantProducts.length === 0) {
-        console.log('⚠️  Nessun prodotto trovato, skip');
+        console.log('âš ï¸  Nessun prodotto trovato, skip');
         results.push({ file, productCount: 0 });
         continue;
       }
 
-      console.log(`🛒 Trovati ${relevantProducts.length} prodotti rilevanti`);
+      console.log(`ðŸ›’ Trovati ${relevantProducts.length} prodotti rilevanti`);
 
       // Find matching post on Odoo by title similarity
       let bestMatch: any = null;
@@ -302,7 +302,7 @@ async function main() {
       }
 
       if (!bestMatch || bestScore < 50) {
-        console.log(`❌ Nessun post corrispondente trovato su Odoo (best match: ${bestScore}%)`);
+        console.log(`âŒ Nessun post corrispondente trovato su Odoo (best match: ${bestScore}%)`);
         results.push({ file, productCount: 0, error: 'No matching post found' });
         continue;
       }
@@ -327,36 +327,36 @@ async function main() {
 
       writeFileSync(articlePath, JSON.stringify(article, null, 2));
 
-      console.log(`✅ Aggiornato con ${relevantProducts.length} prodotti`);
+      console.log(`âœ… Aggiornato con ${relevantProducts.length} prodotti`);
       results.push({ file, postId, productCount: relevantProducts.length });
 
       await new Promise(r => setTimeout(r, 1500));
 
     } catch (e: any) {
       const errorMsg = e.message ? e.message.slice(0, 100) : String(e).slice(0, 100);
-      console.log(`❌ ERRORE: ${errorMsg}`);
+      console.log(`âŒ ERRORE: ${errorMsg}`);
       results.push({ file, productCount: 0, error: errorMsg });
     }
   }
 
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 RIEPILOGO');
-  console.log('═'.repeat(60) + '\n');
+  console.log('\n' + 'â•'.repeat(60));
+  console.log('ðŸ“Š RIEPILOGO');
+  console.log('â•'.repeat(60) + '\n');
 
   const successes = results.filter(r => r.productCount > 0);
   const errors = results.filter(r => r.error);
 
-  console.log(`✅ Successi: ${successes.length}/${files.length}`);
-  console.log(`❌ Errori: ${errors.length}/${files.length}\n`);
+  console.log(`âœ… Successi: ${successes.length}/${files.length}`);
+  console.log(`âŒ Errori: ${errors.length}/${files.length}\n`);
 
   if (errors.length > 0 && errors.length <= 10) {
-    console.log('❌ ERRORI:\n');
+    console.log('âŒ ERRORI:\n');
     for (const r of errors) {
-      console.log(`  • ${r.file}: ${r.error}`);
+      console.log(`  â€¢ ${r.file}: ${r.error}`);
     }
   }
 
-  console.log('\n🎉 Associazione prodotti completata!');
+  console.log('\nðŸŽ‰ Associazione prodotti completata!');
 }
 
 main().catch(console.error);

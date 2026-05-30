@@ -1,4 +1,4 @@
-/**
+﻿/**
  * UPLOAD 27 ARTICOLI GENERATI SU ODOO
  * Con traduzioni complete usando il sistema di blocchi Odoo
  */
@@ -9,7 +9,7 @@ const path = require('path');
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -41,11 +41,11 @@ function markdownToHtml(md) {
   html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
 
   // Lists - Emoji lists
-  html = html.replace(/^✅ (.*$)/gim, '<li class="check">✅ $1</li>');
-  html = html.replace(/^❌ (.*$)/gim, '<li class="cross">❌ $1</li>');
-  html = html.replace(/^🍷 (.*$)/gim, '<li class="wine">🍷 $1</li>');
-  html = html.replace(/^🛡️ (.*$)/gim, '<li class="shield">🛡️ $1</li>');
-  html = html.replace(/^👉 (.*$)/gim, '<li class="point">👉 $1</li>');
+  html = html.replace(/^âœ… (.*$)/gim, '<li class="check">âœ… $1</li>');
+  html = html.replace(/^âŒ (.*$)/gim, '<li class="cross">âŒ $1</li>');
+  html = html.replace(/^ðŸ· (.*$)/gim, '<li class="wine">ðŸ· $1</li>');
+  html = html.replace(/^ðŸ›¡ï¸ (.*$)/gim, '<li class="shield">ðŸ›¡ï¸ $1</li>');
+  html = html.replace(/^ðŸ‘‰ (.*$)/gim, '<li class="point">ðŸ‘‰ $1</li>');
 
   // Regular lists
   html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
@@ -149,14 +149,14 @@ async function uploadArticle(articlePath) {
   const article = JSON.parse(fs.readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log(`  📝 ${itData.title}`);
-  console.log(`  📊 ${itData.content.split(/\s+/).length} parole`);
+  console.log(`  ðŸ“ ${itData.title}`);
+  console.log(`  ðŸ“Š ${itData.content.split(/\s+/).length} parole`);
 
   // Converti markdown in HTML
   const itContentHtml = markdownToHtml(itData.content);
 
   // 1. Crea articolo in italiano (base)
-  console.log(`  📤 Creazione articolo...`);
+  console.log(`  ðŸ“¤ Creazione articolo...`);
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.title,
     subtitle: itData.subtitle,
@@ -168,15 +168,15 @@ async function uploadArticle(articlePath) {
     is_published: false  // Draft per revisione
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`  ✅ ID: ${postId}`);
+  console.log(`  âœ… ID: ${postId}`);
 
   // 2. Traduci name, subtitle, meta per ogni lingua
-  console.log(`  🌐 Traduzioni meta...`);
+  console.log(`  ðŸŒ Traduzioni meta...`);
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang];
     if (!langData) {
-      console.log(`     ⚠️  ${jsonLang}: mancante`);
+      console.log(`     âš ï¸  ${jsonLang}: mancante`);
       continue;
     }
 
@@ -188,11 +188,11 @@ async function uploadArticle(articlePath) {
       website_meta_keywords: langData.keywords.join(', ')
     }], { context: { lang: odooLang } });
 
-    console.log(`     ✓ ${jsonLang}`);
+    console.log(`     âœ“ ${jsonLang}`);
   }
 
   // 3. Traduci content con sistema blocchi
-  console.log(`  📝 Traduzioni content...`);
+  console.log(`  ðŸ“ Traduzioni content...`);
 
   // Aspetta un po' per permettere a Odoo di processare
   await new Promise(r => setTimeout(r, 2000));
@@ -235,27 +235,27 @@ async function uploadArticle(articlePath) {
             'content',
             { [odooLang]: translations }
           ]);
-          console.log(`     ✓ ${jsonLang}: ${Object.keys(translations).length} blocchi`);
+          console.log(`     âœ“ ${jsonLang}: ${Object.keys(translations).length} blocchi`);
         } catch (e) {
-          console.log(`     ⚠️  ${jsonLang}: errore traduzione`);
+          console.log(`     âš ï¸  ${jsonLang}: errore traduzione`);
         }
       }
     }
   } else {
-    console.log(`     ⚠️  Nessun blocco trovato`);
+    console.log(`     âš ï¸  Nessun blocco trovato`);
   }
 
   return postId;
 }
 
 async function main() {
-  console.log('\n' + '═'.repeat(70));
-  console.log('🚀 UPLOAD 27 ARTICOLI BLOG LAPA SU ODOO');
-  console.log('═'.repeat(70) + '\n');
+  console.log('\n' + 'â•'.repeat(70));
+  console.log('ðŸš€ UPLOAD 27 ARTICOLI BLOG LAPA SU ODOO');
+  console.log('â•'.repeat(70) + '\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   // Trova articoli
   const articlesDir = path.join(__dirname, '../output/articles');
@@ -263,8 +263,8 @@ async function main() {
     .filter(f => f.endsWith('.json'))
     .sort();
 
-  console.log(`📄 Articoli da caricare: ${files.length}\n`);
-  console.log('═'.repeat(70));
+  console.log(`ðŸ“„ Articoli da caricare: ${files.length}\n`);
+  console.log('â•'.repeat(70));
 
   const results = [];
   const errors = [];
@@ -287,21 +287,21 @@ async function main() {
       // Pausa tra articoli
       await new Promise(r => setTimeout(r, 3000));
     } catch (e) {
-      console.log(`  ❌ ERRORE: ${e.message.substring(0, 200)}`);
+      console.log(`  âŒ ERRORE: ${e.message.substring(0, 200)}`);
       errors.push({ file, error: e.message });
     }
   }
 
   // Riepilogo finale
-  console.log('\n' + '═'.repeat(70));
-  console.log('📊 RIEPILOGO UPLOAD');
-  console.log('═'.repeat(70) + '\n');
+  console.log('\n' + 'â•'.repeat(70));
+  console.log('ðŸ“Š RIEPILOGO UPLOAD');
+  console.log('â•'.repeat(70) + '\n');
 
-  console.log(`✅ Successi: ${results.length}/${files.length}`);
-  console.log(`❌ Errori: ${errors.length}/${files.length}\n`);
+  console.log(`âœ… Successi: ${results.length}/${files.length}`);
+  console.log(`âŒ Errori: ${errors.length}/${files.length}\n`);
 
   if (results.length > 0) {
-    console.log('✅ ARTICOLI PUBBLICATI:\n');
+    console.log('âœ… ARTICOLI PUBBLICATI:\n');
     for (const r of results) {
       console.log(`${r.postId}. ${r.title.substring(0, 60)}...`);
       console.log(`   File: ${r.file}`);
@@ -310,18 +310,18 @@ async function main() {
   }
 
   if (errors.length > 0) {
-    console.log('\n❌ ERRORI:\n');
+    console.log('\nâŒ ERRORI:\n');
     for (const e of errors) {
-      console.log(`• ${e.file}`);
+      console.log(`â€¢ ${e.file}`);
       console.log(`  ${e.error.substring(0, 150)}\n`);
     }
   }
 
-  console.log('═'.repeat(70));
-  console.log('🎉 Upload completato!');
-  console.log('\n⚠️  IMPORTANTE: Gli articoli sono in BOZZA (non pubblicati).');
+  console.log('â•'.repeat(70));
+  console.log('ðŸŽ‰ Upload completato!');
+  console.log('\nâš ï¸  IMPORTANTE: Gli articoli sono in BOZZA (non pubblicati).');
   console.log('   Revisiona e pubblica manualmente da Odoo Backend.\n');
-  console.log('═'.repeat(70) + '\n');
+  console.log('â•'.repeat(70) + '\n');
 }
 
 main().catch(console.error);

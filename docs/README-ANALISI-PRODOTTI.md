@@ -1,4 +1,4 @@
-# Script Analisi Prodotti Non Venduti
+﻿# Script Analisi Prodotti Non Venduti
 
 Questa directory contiene uno script per analizzare i prodotti Odoo e identificare quelli non venduti negli ultimi 6 mesi.
 
@@ -58,7 +58,7 @@ Le credenziali Odoo sono caricate dal file `.env.local`:
 ODOO_URL=https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com
 ODOO_DB=lapadevadmin-lapa-v2-main-7268478
 ODOO_ADMIN_EMAIL=apphubplatform@lapa.ch
-ODOO_ADMIN_PASSWORD=apphubplatform2025
+ODOO_ADMIN_PASSWORD=__REDACTED__
 ```
 
 ## Modelli Odoo Utilizzati

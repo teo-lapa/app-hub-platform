@@ -1,16 +1,16 @@
-# 🚨🚨🚨 SISTEMA DI AUTENTICAZIONE ODOO - REGOLA ASSOLUTA 🚨🚨🚨
+﻿# ðŸš¨ðŸš¨ðŸš¨ SISTEMA DI AUTENTICAZIONE ODOO - REGOLA ASSOLUTA ðŸš¨ðŸš¨ðŸš¨
 
-## ⛔⛔⛔ LEGGI QUESTO PRIMA DI FARE QUALSIASI COSA ⛔⛔⛔
+## â›”â›”â›” LEGGI QUESTO PRIMA DI FARE QUALSIASI COSA â›”â›”â›”
 
-# ❌❌❌ NON ESISTONO FALLBACK ❌❌❌
-# ❌❌❌ NON ESISTONO CREDENZIALI HARDCODED ❌❌❌
-# ❌❌❌ SE L'UTENTE NON È LOGGATO → BUTTA FUORI ❌❌❌
+# âŒâŒâŒ NON ESISTONO FALLBACK âŒâŒâŒ
+# âŒâŒâŒ NON ESISTONO CREDENZIALI HARDCODED âŒâŒâŒ
+# âŒâŒâŒ SE L'UTENTE NON Ãˆ LOGGATO â†’ BUTTA FUORI âŒâŒâŒ
 
 ---
 
-## 🔴 REGOLA NUMERO UNO (NON NEGOZIABILE)
+## ðŸ”´ REGOLA NUMERO UNO (NON NEGOZIABILE)
 
-### **SE L'UTENTE NON È LOGGATO SULLA PIATTAFORMA = NON PUÒ ACCEDERE A NIENTE**
+### **SE L'UTENTE NON Ãˆ LOGGATO SULLA PIATTAFORMA = NON PUÃ’ ACCEDERE A NIENTE**
 
 ```
 NESSUN LOGIN = NESSUN ACCESSO
@@ -23,7 +23,7 @@ NESSUNA CREDENZIALE HARDCODED
 
 ---
 
-## 📋 COME FUNZIONA (VERSIONE SEMPLICE)
+## ðŸ“‹ COME FUNZIONA (VERSIONE SEMPLICE)
 
 ### 1. **L'utente fa login sulla piattaforma**
 - Email: `mario@lapa.ch`
@@ -37,23 +37,23 @@ NESSUNA CREDENZIALE HARDCODED
 - Cookie name: `odoo_session_id`
 - Questo cookie viene usato per TUTTE le chiamate a Odoo
 
-### 4. **Se l'utente NON è loggato**
-- ❌ Nessun cookie `odoo_session_id`
-- ❌ Nessuna chiamata a Odoo funziona
-- ❌ Errore 401 Unauthorized
-- ❌ **L'UTENTE VIENE BUTTATO FUORI**
+### 4. **Se l'utente NON Ã¨ loggato**
+- âŒ Nessun cookie `odoo_session_id`
+- âŒ Nessuna chiamata a Odoo funziona
+- âŒ Errore 401 Unauthorized
+- âŒ **L'UTENTE VIENE BUTTATO FUORI**
 
 ---
 
-## 🔥 REGOLE FERREE
+## ðŸ”¥ REGOLE FERREE
 
-### ✅ **GIUSTO**
+### âœ… **GIUSTO**
 
 ```typescript
 // 1. Controlla se l'utente ha il cookie
 const sessionId = cookies().get('odoo_session_id')?.value;
 
-// 2. Se NON ce l'ha → 401
+// 2. Se NON ce l'ha â†’ 401
 if (!sessionId) {
   return NextResponse.json(
     { error: 'Devi fare login' },
@@ -61,24 +61,24 @@ if (!sessionId) {
   );
 }
 
-// 3. Se ce l'ha → usa quel session_id
+// 3. Se ce l'ha â†’ usa quel session_id
 const result = await makeOdooCall(model, method, args, sessionId);
 ```
 
-### ❌ **SBAGLIATO - MAI FARE QUESTO**
+### âŒ **SBAGLIATO - MAI FARE QUESTO**
 
 ```typescript
-// ❌❌❌ MAI MAI MAI ❌❌❌
+// âŒâŒâŒ MAI MAI MAI âŒâŒâŒ
 const FALLBACK_LOGIN = 'paul@lapa.ch';
-const FALLBACK_PASSWORD = 'lapa201180';
+const FALLBACK_PASSWORD = '__REDACTED__';
 
 if (!sessionId) {
-  // ❌ SBAGLIATO! NON USARE CREDENZIALI HARDCODED!
+  // âŒ SBAGLIATO! NON USARE CREDENZIALI HARDCODED!
   sessionId = await loginWithFallback(FALLBACK_LOGIN, FALLBACK_PASSWORD);
 }
 ```
 
-**PERCHÉ È SBAGLIATO:**
+**PERCHÃ‰ Ãˆ SBAGLIATO:**
 - Tutti operano come `paul@lapa.ch`
 - I permessi Odoo non funzionano
 - Non si sa chi ha fatto cosa
@@ -86,7 +86,7 @@ if (!sessionId) {
 
 ---
 
-## 🔐 PRINCIPIO FONDAMENTALE
+## ðŸ” PRINCIPIO FONDAMENTALE
 
 ### **CREDENZIALI PIATTAFORMA = CREDENZIALI ODOO**
 
@@ -100,12 +100,12 @@ NON NEGOZIABILE
 
 **Se le credenziali non corrispondono:**
 - Il login FALLISCE
-- L'utente NON può accedere
+- L'utente NON puÃ² accedere
 - Messaggio errore: "Credenziali Odoo non valide"
 
 ---
 
-## 🛠️ COME CREARE UNA NUOVA APP
+## ðŸ› ï¸ COME CREARE UNA NUOVA APP
 
 ### Passo 1: Usa l'API Odoo Corretta
 
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
   const sessionId = cookies().get('odoo_session_id')?.value;
 
   if (!sessionId) {
-    console.error('❌ Utente NON loggato - accesso negato');
+    console.error('âŒ Utente NON loggato - accesso negato');
     return NextResponse.json(
       { success: false, error: 'Devi fare login' },
       { status: 401 }
@@ -151,12 +151,12 @@ export async function POST(request: NextRequest) {
 // File: app/my-app/page.tsx
 const response = await fetch('/api/my-app/data', {
   method: 'POST',
-  credentials: 'include', // ✅ IMPORTANTE: Include i cookie!
+  credentials: 'include', // âœ… IMPORTANTE: Include i cookie!
   body: JSON.stringify({ ... })
 });
 
 if (response.status === 401) {
-  // ❌ Utente non loggato - redirect al login
+  // âŒ Utente non loggato - redirect al login
   router.push('/auth');
   return;
 }
@@ -166,29 +166,29 @@ const data = await response.json();
 
 ---
 
-## ❌ COSA NON FARE MAI
+## âŒ COSA NON FARE MAI
 
-### 1. ❌ NON Hardcodare Credenziali
+### 1. âŒ NON Hardcodare Credenziali
 
 ```typescript
-// ❌ SBAGLIATO
+// âŒ SBAGLIATO
 const ODOO_LOGIN = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = '__REDACTED__';
 ```
 
-### 2. ❌ NON Creare Fallback
+### 2. âŒ NON Creare Fallback
 
 ```typescript
-// ❌ SBAGLIATO
+// âŒ SBAGLIATO
 if (!userSessionId) {
   sessionId = await fallbackLogin();
 }
 ```
 
-### 3. ❌ NON Permettere Accesso Senza Login
+### 3. âŒ NON Permettere Accesso Senza Login
 
 ```typescript
-// ❌ SBAGLIATO
+// âŒ SBAGLIATO
 if (!sessionId) {
   sessionId = 'default-session'; // NO!
 }
@@ -196,22 +196,22 @@ if (!sessionId) {
 
 ---
 
-## 🚨 SE VEDI CREDENZIALI HARDCODED = RIMUOVILE SUBITO
+## ðŸš¨ SE VEDI CREDENZIALI HARDCODED = RIMUOVILE SUBITO
 
 Se vedi questo codice:
 
 ```typescript
 const FALLBACK_LOGIN = 'paul@lapa.ch';
-const FALLBACK_PASSWORD = 'lapa201180';
+const FALLBACK_PASSWORD = '__REDACTED__';
 ```
 
 **CANCELLALO IMMEDIATAMENTE.**
 
-Non esistono fallback. Non esistono credenziali di backup. Se l'utente non è loggato, non accede. PUNTO.
+Non esistono fallback. Non esistono credenziali di backup. Se l'utente non Ã¨ loggato, non accede. PUNTO.
 
 ---
 
-## 📝 CHECKLIST PER OGNI NUOVA APP
+## ðŸ“ CHECKLIST PER OGNI NUOVA APP
 
 Prima di creare una app, verifica:
 
@@ -225,20 +225,20 @@ Prima di creare una app, verifica:
 
 ---
 
-## 🔧 FILE CHIAVE
+## ðŸ”§ FILE CHIAVE
 
 ### API Principale Odoo
 - `app/api/odoo/rpc/route.ts` - API principale per chiamate Odoo
 
 **Questo file NON DEVE AVERE:**
-- ❌ Credenziali hardcoded
-- ❌ Login di fallback
-- ❌ Session_id di default
+- âŒ Credenziali hardcoded
+- âŒ Login di fallback
+- âŒ Session_id di default
 
 **Questo file DEVE AVERE:**
-- ✅ Check del cookie `odoo_session_id`
-- ✅ Return 401 se cookie manca
-- ✅ Uso del session_id utente
+- âœ… Check del cookie `odoo_session_id`
+- âœ… Return 401 se cookie manca
+- âœ… Uso del session_id utente
 
 ### Login Utente
 - `app/api/auth/login/route.ts` - Login piattaforma + Odoo
@@ -247,20 +247,20 @@ Prima di creare una app, verifica:
 1. Verifica credenziali sulla piattaforma
 2. Login su Odoo con STESSE credenziali
 3. Salva `odoo_session_id` in cookie
-4. Se login Odoo fallisce → errore 401
+4. Se login Odoo fallisce â†’ errore 401
 
 ---
 
-## ✅ CONCLUSIONE
+## âœ… CONCLUSIONE
 
 ### RICORDA:
 
-1. 🚫 **NESSUN FALLBACK**
-2. 🚫 **NESSUNA CREDENZIALE HARDCODED**
-3. 🚫 **UTENTE NON LOGGATO = BUTTATO FUORI**
-4. ✅ **Credenziali Piattaforma = Credenziali Odoo**
-5. ✅ **Cookie `odoo_session_id` = unico modo per accedere**
-6. ✅ **401 se cookie manca**
+1. ðŸš« **NESSUN FALLBACK**
+2. ðŸš« **NESSUNA CREDENZIALE HARDCODED**
+3. ðŸš« **UTENTE NON LOGGATO = BUTTATO FUORI**
+4. âœ… **Credenziali Piattaforma = Credenziali Odoo**
+5. âœ… **Cookie `odoo_session_id` = unico modo per accedere**
+6. âœ… **401 se cookie manca**
 
 ### SE NON SEI SICURO DI QUALCOSA:
 
@@ -268,7 +268,7 @@ Prima di creare una app, verifica:
 
 Non creare fallback "per sicurezza". Non mettere credenziali "temporanee". Non cercare soluzioni "alternative".
 
-**LA REGOLA È UNA SOLA: UTENTE LOGGATO O NIENTE.**
+**LA REGOLA Ãˆ UNA SOLA: UTENTE LOGGATO O NIENTE.**
 
 ---
 

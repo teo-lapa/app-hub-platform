@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Controllo COMPLETO articolo in tutte le lingue
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -64,17 +64,17 @@ function extractTextSamples(html) {
 async function main() {
   const postId = 178;
 
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║   CONTROLLO COMPLETO ARTICOLO 178 IN TUTTE LE LINGUE      ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘   CONTROLLO COMPLETO ARTICOLO 178 IN TUTTE LE LINGUE      â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
   await authenticate();
 
   const langs = [
-    { code: 'it_IT', name: 'Italiano', flag: '🇮🇹' },
-    { code: 'de_CH', name: 'Tedesco', flag: '🇩🇪' },
-    { code: 'fr_CH', name: 'Francese', flag: '🇫🇷' },
-    { code: 'en_US', name: 'Inglese', flag: '🇬🇧' }
+    { code: 'it_IT', name: 'Italiano', flag: 'ðŸ‡®ðŸ‡¹' },
+    { code: 'de_CH', name: 'Tedesco', flag: 'ðŸ‡©ðŸ‡ª' },
+    { code: 'fr_CH', name: 'Francese', flag: 'ðŸ‡«ðŸ‡·' },
+    { code: 'en_US', name: 'Inglese', flag: 'ðŸ‡¬ðŸ‡§' }
   ];
 
   const results = {};
@@ -94,7 +94,7 @@ async function main() {
     };
 
     console.log(`${lang.flag} ${lang.name.toUpperCase()} (${lang.code})`);
-    console.log('─'.repeat(60));
+    console.log('â”€'.repeat(60));
     console.log(`Title: ${post.name}`);
     console.log(`\nCampioni testo:`);
     console.log(`  H1: ${samples.h1}`);
@@ -105,10 +105,10 @@ async function main() {
     console.log('');
   }
 
-  console.log('═'.repeat(60));
+  console.log('â•'.repeat(60));
   console.log('ANALISI TRADUZIONI:\n');
 
-  // Controlla se il content è veramente diverso tra le lingue
+  // Controlla se il content Ã¨ veramente diverso tra le lingue
   const itH1 = results['it_IT'].samples.h1;
   const deH1 = results['de_CH'].samples.h1;
   const frH1 = results['fr_CH'].samples.h1;
@@ -119,17 +119,17 @@ async function main() {
   const frP = results['fr_CH'].samples.firstParagraph;
   const enP = results['en_US'].samples.firstParagraph;
 
-  console.log('✓ H1 tradotti:');
-  console.log(`  IT ≠ DE: ${itH1 !== deH1 ? '✅ SÌ' : '❌ NO'}`);
-  console.log(`  IT ≠ FR: ${itH1 !== frH1 ? '✅ SÌ' : '❌ NO'}`);
-  console.log(`  IT ≠ EN: ${itH1 !== enH1 ? '✅ SÌ' : '❌ NO'}`);
+  console.log('âœ“ H1 tradotti:');
+  console.log(`  IT â‰  DE: ${itH1 !== deH1 ? 'âœ… SÃŒ' : 'âŒ NO'}`);
+  console.log(`  IT â‰  FR: ${itH1 !== frH1 ? 'âœ… SÃŒ' : 'âŒ NO'}`);
+  console.log(`  IT â‰  EN: ${itH1 !== enH1 ? 'âœ… SÃŒ' : 'âŒ NO'}`);
 
-  console.log('\n✓ Paragrafi tradotti:');
-  console.log(`  IT ≠ DE: ${itP !== deP ? '✅ SÌ' : '❌ NO'}`);
-  console.log(`  IT ≠ FR: ${itP !== frP ? '✅ SÌ' : '❌ NO'}`);
-  console.log(`  IT ≠ EN: ${itP !== enP ? '✅ SÌ' : '❌ NO'}`);
+  console.log('\nâœ“ Paragrafi tradotti:');
+  console.log(`  IT â‰  DE: ${itP !== deP ? 'âœ… SÃŒ' : 'âŒ NO'}`);
+  console.log(`  IT â‰  FR: ${itP !== frP ? 'âœ… SÃŒ' : 'âŒ NO'}`);
+  console.log(`  IT â‰  EN: ${itP !== enP ? 'âœ… SÃŒ' : 'âŒ NO'}`);
 
-  console.log('\n✓ Lunghezza content:');
+  console.log('\nâœ“ Lunghezza content:');
   console.log(`  IT: ${results['it_IT'].samples.totalLength} chars`);
   console.log(`  DE: ${results['de_CH'].samples.totalLength} chars`);
   console.log(`  FR: ${results['fr_CH'].samples.totalLength} chars`);
@@ -140,9 +140,9 @@ async function main() {
     results['it_IT'].samples.totalLength === results['fr_CH'].samples.totalLength &&
     results['it_IT'].samples.totalLength === results['en_US'].samples.totalLength;
 
-  console.log(`\n${allSameLength ? '⚠️  TUTTE STESSA LUNGHEZZA = PROBABILMENTE NON TRADOTTO!' : '✅ LUNGHEZZE DIVERSE = TRADOTTO'}`);
+  console.log(`\n${allSameLength ? 'âš ï¸  TUTTE STESSA LUNGHEZZA = PROBABILMENTE NON TRADOTTO!' : 'âœ… LUNGHEZZE DIVERSE = TRADOTTO'}`);
 
-  console.log('\n═'.repeat(60));
+  console.log('\nâ•'.repeat(60));
 }
 
 main().catch(console.error);

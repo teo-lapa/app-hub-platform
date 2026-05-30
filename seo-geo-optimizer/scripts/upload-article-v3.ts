@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo SEO+GEO su Odoo con traduzioni corrette
  * Versione 3: Matching basato su segmenti Odoo con tag HTML
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -76,7 +76,7 @@ function findCorrespondingSegment(segment: string, itHtml: string, targetHtml: s
   const beforeSegment = itHtml.substring(Math.max(0, itIndex - 100), itIndex);
   const afterSegment = itHtml.substring(itIndex + segment.length, itIndex + segment.length + 50);
 
-  // Trova il tag di apertura più vicino
+  // Trova il tag di apertura piÃ¹ vicino
   const tagMatch = beforeSegment.match(/<([a-z][a-z0-9]*)[^>]*>$/i);
   if (!tagMatch) {
     return null;
@@ -125,7 +125,7 @@ function findCorrespondingSegment(segment: string, itHtml: string, targetHtml: s
 
 /**
  * Estrae tutti i "blocchi" traducibili dall'HTML
- * Un blocco è il contenuto di un tag che non contiene altri tag blocco
+ * Un blocco Ã¨ il contenuto di un tag che non contiene altri tag blocco
  */
 function extractTranslatableBlocks(html: string): { content: string; start: number; end: number }[] {
   const blocks: { content: string; start: number; end: number }[] = [];
@@ -152,18 +152,18 @@ function extractTranslatableBlocks(html: string): { content: string; start: numb
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento articolo: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento articolo: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione Odoo...');
+  console.log('ðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo in ITALIANO...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo in ITALIANO...');
 
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
@@ -176,10 +176,10 @@ async function uploadArticle(articlePath: string) {
     is_published: false
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ ID: ${postId}\n`);
+  console.log(`   âœ… ID: ${postId}\n`);
 
   // 2. Traduci campi semplici
-  console.log('📝 Traduco name, subtitle, meta...');
+  console.log('ðŸ“ Traduco name, subtitle, meta...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -194,16 +194,16 @@ async function uploadArticle(articlePath: string) {
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
   // 3. Leggi segmenti Odoo
-  console.log('\n📖 Leggo segmenti content...');
+  console.log('\nðŸ“– Leggo segmenti content...');
 
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData?.[0]?.length) {
-    console.log('   ⚠️ Nessun segmento trovato');
+    console.log('   âš ï¸ Nessun segmento trovato');
     return postId;
   }
 
@@ -223,7 +223,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   - Solo testo: ${plainText}`);
 
   // 4. Crea mapping basato su blocchi ordinati
-  console.log('\n🌍 Creo mapping traduzioni...');
+  console.log('\nðŸŒ Creo mapping traduzioni...');
 
   // Estrai blocchi ordinati da IT e ogni altra lingua
   const itBlocks = extractTranslatableBlocks(itData.content_html);
@@ -272,7 +272,7 @@ async function uploadArticle(articlePath: string) {
           const targetStart = Math.floor(startRatio * targetBlock.length);
           const targetEnd = Math.floor(endRatio * targetBlock.length);
 
-          // Questa è un'approssimazione - potrebbe non essere perfetta
+          // Questa Ã¨ un'approssimazione - potrebbe non essere perfetta
           // ma per testi simili dovrebbe funzionare
           const approxTranslation = targetBlock.substring(targetStart, targetEnd);
 
@@ -282,7 +282,7 @@ async function uploadArticle(articlePath: string) {
           break;
         }
 
-        // O il blocco è contenuto nel segmento
+        // O il blocco Ã¨ contenuto nel segmento
         if (srcText.includes(itBlock)) {
           segmentTranslations[srcText] = srcText.replace(itBlock, targetBlock);
           break;
@@ -298,14 +298,14 @@ async function uploadArticle(articlePath: string) {
         await callOdoo('blog.post', 'update_field_translations', [
           [postId], 'content', { [odooLang]: segmentTranslations }
         ]);
-        console.log(`   ✅ Applicato`);
+        console.log(`   âœ… Applicato`);
       } catch (e: any) {
-        console.log(`   ❌ ${e.message.substring(0, 80)}`);
+        console.log(`   âŒ ${e.message.substring(0, 80)}`);
       }
     }
   }
 
-  console.log(`\n✅ COMPLETATO! ID: ${postId}`);
+  console.log(`\nâœ… COMPLETATO! ID: ${postId}`);
   return postId;
 }
 

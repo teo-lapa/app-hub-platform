@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Check multiple existing articles to find ones with working translations
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -68,10 +68,10 @@ async function checkArticle(postId: number): Promise<boolean> {
 }
 
 async function main() {
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
-  console.log('📋 Cerco TUTTI gli articoli del blog...\n');
+  console.log('ðŸ“‹ Cerco TUTTI gli articoli del blog...\n');
 
   const allPosts = await callOdoo('blog.post', 'search_read', [
     [['blog_id', '=', 4]],
@@ -80,7 +80,7 @@ async function main() {
 
   console.log(`Trovati ${allPosts.length} articoli totali\n`);
 
-  console.log('🔍 Controllo quali hanno traduzioni funzionanti...\n');
+  console.log('ðŸ” Controllo quali hanno traduzioni funzionanti...\n');
 
   const workingArticles: any[] = [];
   const brokenArticles: any[] = [];
@@ -90,7 +90,7 @@ async function main() {
 
     if (hasWorkingTranslations) {
       workingArticles.push(post);
-      console.log(`✅ ID ${post.id}: ${post.name.substring(0, 50)}...`);
+      console.log(`âœ… ID ${post.id}: ${post.name.substring(0, 50)}...`);
     } else {
       brokenArticles.push(post);
     }
@@ -99,28 +99,28 @@ async function main() {
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('📊 RISULTATI');
+  console.log('ðŸ“Š RISULTATI');
   console.log('='.repeat(70) + '\n');
 
-  console.log(`✅ Articoli con traduzioni FUNZIONANTI: ${workingArticles.length}`);
-  console.log(`❌ Articoli con traduzioni NON funzionanti: ${brokenArticles.length}\n`);
+  console.log(`âœ… Articoli con traduzioni FUNZIONANTI: ${workingArticles.length}`);
+  console.log(`âŒ Articoli con traduzioni NON funzionanti: ${brokenArticles.length}\n`);
 
   if (workingArticles.length > 0) {
-    console.log('📝 Articoli con traduzioni funzionanti:\n');
+    console.log('ðŸ“ Articoli con traduzioni funzionanti:\n');
     for (const post of workingArticles.slice(0, 10)) {
       console.log(`   ID ${post.id}: ${post.name}`);
     }
   }
 
   if (workingArticles.length > 0) {
-    console.log('\n🔎 Esamino il primo articolo funzionante (ID ' + workingArticles[0].id + '):\n');
+    console.log('\nðŸ”Ž Esamino il primo articolo funzionante (ID ' + workingArticles[0].id + '):\n');
 
     const testId = workingArticles[0].id;
     const languages = {
-      'it_IT': 'Italiano 🇮🇹',
-      'de_CH': 'Tedesco 🇩🇪',
-      'fr_CH': 'Francese 🇫🇷',
-      'en_US': 'Inglese 🇬🇧'
+      'it_IT': 'Italiano ðŸ‡®ðŸ‡¹',
+      'de_CH': 'Tedesco ðŸ‡©ðŸ‡ª',
+      'fr_CH': 'Francese ðŸ‡«ðŸ‡·',
+      'en_US': 'Inglese ðŸ‡¬ðŸ‡§'
     };
 
     for (const [lang, langName] of Object.entries(languages)) {

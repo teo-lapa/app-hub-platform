@@ -1,4 +1,4 @@
-# EMAIL PER COMMERCIALISTA - Chiusura Konto 1022 e 1023
+﻿# EMAIL PER COMMERCIALISTA - Chiusura Konto 1022 e 1023
 
 **Subject:** Chiusura Outstanding Receipts & Payments 2024 - Verifica Richiesta
 
@@ -16,8 +16,8 @@ Entrambi i konti sono stati portati a **CHF 0.00** tramite registrazioni contabi
 
 | Konto | Descrizione | Saldo Pre-Chiusura | Saldo Post-Chiusura | Status |
 |-------|-------------|-------------------|---------------------|--------|
-| **1022** | Outstanding Receipts | CHF 366,046.52 | **CHF 0.00** | AZZERATO ✓ |
-| **1023** | Outstanding Payments | CHF -893,092.68 | **CHF 0.00** | AZZERATO ✓ |
+| **1022** | Outstanding Receipts | CHF 366,046.52 | **CHF 0.00** | AZZERATO âœ“ |
+| **1023** | Outstanding Payments | CHF -893,092.68 | **CHF 0.00** | AZZERATO âœ“ |
 | **3900** | Differences | CHF 486,935.95 | CHF -40,110.21 | Delta imputato |
 
 ---
@@ -56,7 +56,7 @@ Entrambi i konti sono stati portati a **CHF 0.00** tramite registrazioni contabi
 
 **Effetto netto sul risultato d'esercizio:**
 
-La differenza netta tra Outstanding Payments cancellati (CHF 893k) e Outstanding Receipts cancellati (CHF 366k) è stata imputata al konto 3900 Differences:
+La differenza netta tra Outstanding Payments cancellati (CHF 893k) e Outstanding Receipts cancellati (CHF 366k) Ã¨ stata imputata al konto 3900 Differences:
 
 ```
 Delta = 893,092.68 - 366,046.52 = +CHF 527,046.16
@@ -77,15 +77,15 @@ Per verificare queste registrazioni in Odoo STAGING:
 
 **URL:** https://lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com
 **User:** paul@lapa.ch
-**Password:** lapa201180
+**Password:** __REDACTED__
 
 ### Passi rapidi:
 
-1. **Contabilità** → **Configurazione** → **Piano dei Conti**
+1. **ContabilitÃ ** â†’ **Configurazione** â†’ **Piano dei Conti**
    - Cercare konto 1022: saldo = CHF 0.00
    - Cercare konto 1023: saldo = CHF 0.00
 
-2. **Contabilità** → **Registrazioni** → Filtrare data 31/12/2024
+2. **ContabilitÃ ** â†’ **Registrazioni** â†’ Filtrare data 31/12/2024
    - Verificare move SLR/2024/12/0013 (chiusura 1022)
    - Verificare move SLR/2024/12/0014 (chiusura 1023)
 
@@ -160,11 +160,11 @@ python scripts/verifica-chiusura-1022-1023.py
 
 ## NOTA IMPORTANTE: STAGING ENVIRONMENT
 
-Questa operazione è stata eseguita in **STAGING**, NON in production.
+Questa operazione Ã¨ stata eseguita in **STAGING**, NON in production.
 
 **Cosa significa:**
 - Nessun impatto sui dati reali
-- Possibilità di testare e verificare senza rischi
+- PossibilitÃ  di testare e verificare senza rischi
 - Possiamo modificare/annullare se necessario
 - Replica in production solo dopo Sua approvazione
 
@@ -192,7 +192,7 @@ Per qualsiasi domanda o chiarimento:
 
 **Team Tecnico:** Lapa Development Team
 **Email:** [inserire email]
-**Disponibilità:** Dal lunedì al venerdì, 9-18
+**DisponibilitÃ :** Dal lunedÃ¬ al venerdÃ¬, 9-18
 
 ---
 

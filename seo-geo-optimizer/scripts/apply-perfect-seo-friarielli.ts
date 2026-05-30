@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Apply PERFECT SEO to Friarielli product (ID 14317)
  * Based on Google keyword research
  */
@@ -13,12 +13,12 @@ config({ path: resolve(__dirname, '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 // ========== PERFECT SEO FOR FRIARIELLI ==========
 // Based on Google keyword research for:
 // - friarielli, cime di rapa, broccoli di rapa
-// - Stängelkohl (German)
+// - StÃ¤ngelkohl (German)
 // - brocoli-rave (French)
 // - broccoli rabe, rapini (English)
 
@@ -31,15 +31,15 @@ const PERFECT_SEO = {
   },
   // German
   de: {
-    title: "Stängelkohl Friarielli Tiefgefroren 4kg | LAPA Schweiz",
-    description: "Kaufen Sie Friarielli Stängelkohl tiefgefroren von Spirito Contadino, 4kg Packung. Authentisches italienisches Gemüse. Schnelle Lieferung in die ganze Schweiz.",
-    keywords: "Stängelkohl, Friarielli, Cime di Rapa, tiefgefrorenes Gemüse, italienische Spezialitäten, Grosshändler Schweiz, LAPA, Spirito Contadino, Rübstiel, italienisches Gemüse"
+    title: "StÃ¤ngelkohl Friarielli Tiefgefroren 4kg | LAPA Schweiz",
+    description: "Kaufen Sie Friarielli StÃ¤ngelkohl tiefgefroren von Spirito Contadino, 4kg Packung. Authentisches italienisches GemÃ¼se. Schnelle Lieferung in die ganze Schweiz.",
+    keywords: "StÃ¤ngelkohl, Friarielli, Cime di Rapa, tiefgefrorenes GemÃ¼se, italienische SpezialitÃ¤ten, GrosshÃ¤ndler Schweiz, LAPA, Spirito Contadino, RÃ¼bstiel, italienisches GemÃ¼se"
   },
   // French
   fr: {
-    title: "Brocoli-rave Friarielli Surgelés 4kg | LAPA Suisse",
-    description: "Achetez des friarielli (brocoli-rave) surgelés Spirito Contadino, paquet de 4kg. Légume italien authentique au goût amer. Livraison rapide dans toute la Suisse.",
-    keywords: "brocoli-rave, friarielli, cime di rapa, légumes surgelés italiens, grossiste Suisse, LAPA, Spirito Contadino, rapini, légumes italiens, gastronomie italienne"
+    title: "Brocoli-rave Friarielli SurgelÃ©s 4kg | LAPA Suisse",
+    description: "Achetez des friarielli (brocoli-rave) surgelÃ©s Spirito Contadino, paquet de 4kg. LÃ©gume italien authentique au goÃ»t amer. Livraison rapide dans toute la Suisse.",
+    keywords: "brocoli-rave, friarielli, cime di rapa, lÃ©gumes surgelÃ©s italiens, grossiste Suisse, LAPA, Spirito Contadino, rapini, lÃ©gumes italiens, gastronomie italienne"
   },
   // English
   en: {
@@ -127,20 +127,20 @@ class OdooClient {
 async function main() {
   const productId = 14317;
 
-  console.log('═'.repeat(70));
-  console.log('🎯 APPLY PERFECT SEO - FRIARIELLI DI CAMPO');
-  console.log('═'.repeat(70));
-  console.log(`\n📦 Product ID: ${productId}\n`);
+  console.log('â•'.repeat(70));
+  console.log('ðŸŽ¯ APPLY PERFECT SEO - FRIARIELLI DI CAMPO');
+  console.log('â•'.repeat(70));
+  console.log(`\nðŸ“¦ Product ID: ${productId}\n`);
 
   const odoo = new OdooClient();
 
   try {
-    console.log('🔐 Connecting to Odoo...');
+    console.log('ðŸ” Connecting to Odoo...');
     await odoo.authenticate();
-    console.log('✅ Connected\n');
+    console.log('âœ… Connected\n');
 
     // Show current state
-    console.log('📥 Fetching current SEO...');
+    console.log('ðŸ“¥ Fetching current SEO...');
     const products = await odoo.searchRead<any>(
       'product.template',
       [['id', '=', productId]],
@@ -152,9 +152,9 @@ async function main() {
     }
 
     const product = products[0];
-    console.log('\n' + '─'.repeat(70));
-    console.log('📋 CURRENT STATE:');
-    console.log('─'.repeat(70));
+    console.log('\n' + 'â”€'.repeat(70));
+    console.log('ðŸ“‹ CURRENT STATE:');
+    console.log('â”€'.repeat(70));
     console.log(`Name:        ${product.name}`);
     console.log(`Title:       ${product.website_meta_title || '(empty)'}`);
     console.log(`Description: ${product.website_meta_description || '(empty)'}`);
@@ -163,47 +163,47 @@ async function main() {
     // Apply PERFECT SEO (Italian version for Odoo)
     const seo = PERFECT_SEO.it;
 
-    console.log('\n' + '─'.repeat(70));
-    console.log('✨ PERFECT SEO TO APPLY:');
-    console.log('─'.repeat(70));
-    console.log(`\n🇮🇹 Title (${seo.title.length} chars):`);
+    console.log('\n' + 'â”€'.repeat(70));
+    console.log('âœ¨ PERFECT SEO TO APPLY:');
+    console.log('â”€'.repeat(70));
+    console.log(`\nðŸ‡®ðŸ‡¹ Title (${seo.title.length} chars):`);
     console.log(`   ${seo.title}`);
-    console.log(`\n🇮🇹 Description (${seo.description.length} chars):`);
+    console.log(`\nðŸ‡®ðŸ‡¹ Description (${seo.description.length} chars):`);
     console.log(`   ${seo.description}`);
-    console.log(`\n🇮🇹 Keywords:`);
+    console.log(`\nðŸ‡®ðŸ‡¹ Keywords:`);
     console.log(`   ${seo.keywords}`);
 
     // Update Odoo
-    console.log('\n📤 Updating Odoo...');
+    console.log('\nðŸ“¤ Updating Odoo...');
     await odoo.write('product.template', [productId], {
       website_meta_title: seo.title,
       website_meta_description: seo.description,
       website_meta_keywords: seo.keywords
     });
 
-    console.log('✅ SEO updated successfully!\n');
+    console.log('âœ… SEO updated successfully!\n');
 
     // Show all language versions
-    console.log('═'.repeat(70));
-    console.log('🌍 ALL LANGUAGE VERSIONS (for reference):');
-    console.log('═'.repeat(70));
+    console.log('â•'.repeat(70));
+    console.log('ðŸŒ ALL LANGUAGE VERSIONS (for reference):');
+    console.log('â•'.repeat(70));
 
     for (const [lang, data] of Object.entries(PERFECT_SEO)) {
-      const flag = { it: '🇮🇹', de: '🇩🇪', fr: '🇫🇷', en: '🇬🇧' }[lang];
+      const flag = { it: 'ðŸ‡®ðŸ‡¹', de: 'ðŸ‡©ðŸ‡ª', fr: 'ðŸ‡«ðŸ‡·', en: 'ðŸ‡¬ðŸ‡§' }[lang];
       console.log(`\n${flag} ${lang.toUpperCase()}:`);
       console.log(`   Title:       ${data.title}`);
       console.log(`   Description: ${data.description}`);
       console.log(`   Keywords:    ${data.keywords}`);
     }
 
-    console.log('\n' + '═'.repeat(70));
-    console.log('✅ PERFECT SEO APPLIED!');
-    console.log('═'.repeat(70));
-    console.log(`\n🌐 Product URL: https://www.lapa.ch/shop/friarielli-di-campo-1kg-conf-4kg-crt-spirc-14317`);
-    console.log(`\n📋 Verify in Odoo "Ottimizza SEO" panel to see the changes.`);
+    console.log('\n' + 'â•'.repeat(70));
+    console.log('âœ… PERFECT SEO APPLIED!');
+    console.log('â•'.repeat(70));
+    console.log(`\nðŸŒ Product URL: https://www.lapa.ch/shop/friarielli-di-campo-1kg-conf-4kg-crt-spirc-14317`);
+    console.log(`\nðŸ“‹ Verify in Odoo "Ottimizza SEO" panel to see the changes.`);
 
   } catch (error) {
-    console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+    console.error('\nâŒ Error:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

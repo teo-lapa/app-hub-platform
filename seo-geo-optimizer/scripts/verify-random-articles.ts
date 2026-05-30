@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verifica articoli random per confermare traduzioni al 100%
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -53,10 +53,10 @@ async function checkArticle(postId: number): Promise<void> {
   console.log('='.repeat(70));
 
   const languages = {
-    'it_IT': 'IT 🇮🇹',
-    'de_CH': 'DE 🇩🇪',
-    'fr_CH': 'FR 🇫🇷',
-    'en_US': 'EN 🇬🇧'
+    'it_IT': 'IT ðŸ‡®ðŸ‡¹',
+    'de_CH': 'DE ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'FR ðŸ‡«ðŸ‡·',
+    'en_US': 'EN ðŸ‡¬ðŸ‡§'
   };
 
   const contents: string[] = [];
@@ -80,31 +80,31 @@ async function checkArticle(postId: number): Promise<void> {
   // Check if contents are different
   const uniqueContents = new Set(contents);
   if (uniqueContents.size > 1) {
-    console.log(`\n✅ TRADUZIONI FUNZIONANTI (${uniqueContents.size}/4 contenuti diversi)`);
+    console.log(`\nâœ… TRADUZIONI FUNZIONANTI (${uniqueContents.size}/4 contenuti diversi)`);
   } else {
-    console.log(`\n❌ PROBLEMA: Tutti i contenuti sono uguali!`);
+    console.log(`\nâŒ PROBLEMA: Tutti i contenuti sono uguali!`);
   }
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║           VERIFICA TRADUZIONI ARTICOLI RANDOM              ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘           VERIFICA TRADUZIONI ARTICOLI RANDOM              â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
 
-  console.log('\n🔐 Autenticazione...');
+  console.log('\nðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Check 5 random articles from different ranges
   const testArticles = [
     350, // Inizio (Guanciale)
-    365, // Metà (Burrata conservazione)
-    380, // Fine prima metà (Controllo Qualità LAPA)
-    395, // Fine seconda metà (Wine Pairing)
-    406  // Ultimo (Arte del Caffè)
+    365, // MetÃ  (Burrata conservazione)
+    380, // Fine prima metÃ  (Controllo QualitÃ  LAPA)
+    395, // Fine seconda metÃ  (Wine Pairing)
+    406  // Ultimo (Arte del CaffÃ¨)
   ];
 
-  console.log('📋 Controllo 5 articoli random:\n');
+  console.log('ðŸ“‹ Controllo 5 articoli random:\n');
   for (const id of testArticles) {
     console.log(`   - ID ${id}`);
   }
@@ -115,7 +115,7 @@ async function main() {
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('🎉 VERIFICA COMPLETATA!');
+  console.log('ðŸŽ‰ VERIFICA COMPLETATA!');
   console.log('='.repeat(70) + '\n');
 }
 

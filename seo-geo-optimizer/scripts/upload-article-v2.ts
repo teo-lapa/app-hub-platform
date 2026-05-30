@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo SEO+GEO su Odoo con traduzioni corrette
  * Versione 2: Mapping basato su contenuto esatto, non posizione
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -74,7 +74,7 @@ function extractOrderedTexts(html: string): string[] {
   let match;
   const seen = new Set<string>();
 
-  // Metodo più semplice: estrai tutto il testo visibile nell'ordine
+  // Metodo piÃ¹ semplice: estrai tutto il testo visibile nell'ordine
   const simpleRegex = />([^<]+)</g;
   while ((match = simpleRegex.exec(html)) !== null) {
     const text = match[1].trim();
@@ -110,18 +110,18 @@ function createTranslationMap(itHtml: string, targetHtml: string): Map<string, s
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento articolo: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento articolo: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione Odoo...');
+  console.log('ðŸ” Autenticazione Odoo...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo in ITALIANO...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo in ITALIANO...');
 
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
@@ -134,10 +134,10 @@ async function uploadArticle(articlePath: string) {
     is_published: false
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ ID: ${postId}\n`);
+  console.log(`   âœ… ID: ${postId}\n`);
 
   // 2. Traduci campi semplici per ogni lingua
-  console.log('📝 Traduco name, subtitle, meta...');
+  console.log('ðŸ“ Traduco name, subtitle, meta...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -152,16 +152,16 @@ async function uploadArticle(articlePath: string) {
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
   // 3. Leggi i segmenti del content da Odoo
-  console.log('\n📖 Leggo segmenti content da Odoo...');
+  console.log('\nðŸ“– Leggo segmenti content da Odoo...');
 
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData || !Array.isArray(segmentData) || segmentData.length === 0) {
-    console.log('   ⚠️ Nessun segmento trovato');
+    console.log('   âš ï¸ Nessun segmento trovato');
     return postId;
   }
 
@@ -176,7 +176,7 @@ async function uploadArticle(articlePath: string) {
   });
 
   // 4. Per ogni lingua, crea mapping e applica traduzioni
-  console.log('\n🌍 Traduco content...');
+  console.log('\nðŸŒ Traduco content...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -199,7 +199,7 @@ async function uploadArticle(articlePath: string) {
         segmentTranslations[srcText] = translationMap.get(srcText)!;
         matched++;
       } else {
-        // Prova matching parziale (il segmento potrebbe essere parte di un testo più lungo)
+        // Prova matching parziale (il segmento potrebbe essere parte di un testo piÃ¹ lungo)
         let found = false;
         for (const [itText, targetText] of translationMap.entries()) {
           if (itText.includes(srcText) || srcText.includes(itText)) {
@@ -226,15 +226,15 @@ async function uploadArticle(articlePath: string) {
         await callOdoo('blog.post', 'update_field_translations', [
           [postId], 'content', { [odooLang]: segmentTranslations }
         ]);
-        console.log(`   ✅ Traduzioni applicate`);
+        console.log(`   âœ… Traduzioni applicate`);
       } catch (e: any) {
-        console.log(`   ❌ Errore: ${e.message.substring(0, 100)}`);
+        console.log(`   âŒ Errore: ${e.message.substring(0, 100)}`);
       }
     }
   }
 
   // 5. Verifica
-  console.log('\n🔍 Verifica...');
+  console.log('\nðŸ” Verifica...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     const data = await callOdoo('blog.post', 'read', [[postId]], {
       fields: ['name', 'content'],
@@ -248,7 +248,7 @@ async function uploadArticle(articlePath: string) {
     console.log(`   ${odooLang}: "${firstP.substring(0, 60)}..."`);
   }
 
-  console.log(`\n✅ COMPLETATO! ID: ${postId}`);
+  console.log(`\nâœ… COMPLETATO! ID: ${postId}`);
   return postId;
 }
 

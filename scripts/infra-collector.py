@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 LAPA Infrastructure Collector v1.0
 Runs on PAUL PC (localhost), SSHs into all devices, collects metrics,
@@ -718,7 +718,7 @@ def main():
     odoo_url = os.environ.get('ODOO_URL', 'https://lapadevadmin-lapa-v2.odoo.com').rstrip('/')
     odoo_db = os.environ.get('ODOO_DB', 'lapadevadmin-lapa-v2-main-7268478')
     odoo_user = os.environ.get('ODOO_USERNAME', 'paul@lapa.ch')
-    odoo_pass = os.environ.get('ODOO_PASSWORD', 'lapa201180')
+    odoo_pass = os.environ.get('ODOO_PASSWORD', '__REDACTED__')
     try:
         # 1) authenticate
         auth_payload = {

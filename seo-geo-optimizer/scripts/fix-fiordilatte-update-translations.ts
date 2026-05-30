@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fix Fiordilatte using update_field_translations with full HTML
  */
 
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 const LANG_MAP: Record<string, string> = {
   'it_IT': 'it_IT',
@@ -62,28 +62,28 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║     FIX FIORDILATTE - UPDATE_FIELD_TRANSLATIONS            ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘     FIX FIORDILATTE - UPDATE_FIELD_TRANSLATIONS            â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...\n');
+  console.log('ðŸ” Autenticazione...\n');
   await authenticate();
 
   const articlePath = join(__dirname, '../data/new-articles-2025/article-01-fiordilatte-pizza-napoletana.json');
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
   const itData = article.translations.it_IT;
 
-  console.log('🗑️  Eliminazione articolo ID 420 esistente...');
+  console.log('ðŸ—‘ï¸  Eliminazione articolo ID 420 esistente...');
   try {
     await callOdoo('blog.post', 'unlink', [[420]], {});
-    console.log('   ✅ Eliminato\n');
+    console.log('   âœ… Eliminato\n');
   } catch (e: any) {
-    console.log(`   ⚠️  ${e.message}\n`);
+    console.log(`   âš ï¸  ${e.message}\n`);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
-  console.log('📝 Creazione articolo SOLO con Italiano...');
+  console.log('ðŸ“ Creazione articolo SOLO con Italiano...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     blog_id: 4,
@@ -95,12 +95,12 @@ async function main() {
     tag_ids: [[6, 0, itData.tag_ids || []]]
   }], { context: { lang: 'it_IT' } });
 
-  console.log(`   ✅ Creato ID ${postId}\n`);
+  console.log(`   âœ… Creato ID ${postId}\n`);
 
   await new Promise(r => setTimeout(r, 2000));
 
   // First, update meta fields for other languages
-  console.log('🌍 Aggiornamento meta fields (name, subtitle, ecc.):\n');
+  console.log('ðŸŒ Aggiornamento meta fields (name, subtitle, ecc.):\n');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang as keyof typeof article.translations];
@@ -114,14 +114,14 @@ async function main() {
       website_meta_keywords: langData.meta.keywords
     }], { context: { lang: odooLang } });
 
-    console.log(`   ✅ ${odooLang} meta fields`);
+    console.log(`   âœ… ${odooLang} meta fields`);
     await new Promise(r => setTimeout(r, 500));
   }
 
   await new Promise(r => setTimeout(r, 2000));
 
   // Now try to use update_field_translations with the FULL HTML
-  console.log('\n📋 Tentativo update_field_translations con HTML completo:\n');
+  console.log('\nðŸ“‹ Tentativo update_field_translations con HTML completo:\n');
 
   const translations: Record<string, Record<string, string>> = {};
 
@@ -145,16 +145,16 @@ async function main() {
         'content',
         { [odooLang]: trans }
       ], {});
-      console.log(`   ✅ ${odooLang}`);
+      console.log(`   âœ… ${odooLang}`);
       await new Promise(r => setTimeout(r, 1000));
     }
   } catch (e: any) {
-    console.log(`\n   ⚠️  ERRORE: ${e.message}\n`);
+    console.log(`\n   âš ï¸  ERRORE: ${e.message}\n`);
     console.log('   Questo metodo non funziona con HTML completo.\n');
   }
 
-  console.log('\n✅ COMPLETATO!\n');
-  console.log(`🔗 Articolo ID: ${postId}\n`);
+  console.log('\nâœ… COMPLETATO!\n');
+  console.log(`ðŸ”— Articolo ID: ${postId}\n`);
 }
 
 main().catch(console.error);

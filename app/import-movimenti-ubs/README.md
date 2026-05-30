@@ -1,4 +1,4 @@
-# 🏦 Import Movimenti UBS - APP
+﻿# ðŸ¦ Import Movimenti UBS - APP
 
 ## Descrizione
 
@@ -19,7 +19,7 @@ APP completa per importare automaticamente i movimenti bancari da CSV UBS in Odo
 ### 1. Esporta CSV da UBS
 
 1. Login su **UBS e-banking**
-2. Vai in **Accounts and Cards** → **Overview**
+2. Vai in **Accounts and Cards** â†’ **Overview**
 3. Seleziona conto **UBS CHF 701J**
 4. Click su **Transactions**
 5. Click icona **Excel/CSV**
@@ -39,13 +39,13 @@ APP completa per importare automaticamente i movimenti bancari da CSV UBS in Odo
 
 ```
 app/import-movimenti-ubs/
-├── page.tsx                    # Interfaccia principale APP
-├── README.md                   # Questa documentazione
-└── api/
-    ├── parse/
-    │   └── route.ts           # API parsing CSV
-    └── import/
-        └── route.ts           # API import Odoo
+â”œâ”€â”€ page.tsx                    # Interfaccia principale APP
+â”œâ”€â”€ README.md                   # Questa documentazione
+â””â”€â”€ api/
+    â”œâ”€â”€ parse/
+    â”‚   â””â”€â”€ route.ts           # API parsing CSV
+    â””â”€â”€ import/
+        â””â”€â”€ route.ts           # API import Odoo
 ```
 
 ## API Endpoints
@@ -109,7 +109,7 @@ const ODOO_CONFIG = {
   url: 'lapadevadmin-lapa-v2-staging-2406-25408900.dev.odoo.com',
   db: 'lapadevadmin-lapa-v2-staging-2406-25408900',
   username: 'paul@lapa.ch',
-  password: 'lapa201180'
+  password: '__REDACTED__'
 }
 
 const UBS_CHF_JOURNAL_ID = 9  // Giornale UBS CHF 701J
@@ -128,7 +128,7 @@ Anfangssaldo:;107226.93;
 Schlusssaldo:;135636.72;
 Bewertet in:;CHF;
 
-Abschlussdatum;Buchungsdatum;Valutadatum;Währung;Belastung;Gutschrift;Saldo;...
+Abschlussdatum;Buchungsdatum;Valutadatum;WÃ¤hrung;Belastung;Gutschrift;Saldo;...
 2025-11-10;2025-11-10;2025-11-10;CHF;;24.62;141203.02;...
 ```
 
@@ -161,7 +161,7 @@ Poi apri: http://localhost:3000/import-movimenti-ubs
 
 ## Deployment
 
-L'APP è già integrata nella piattaforma AppHub e visibile nel menu Finance.
+L'APP Ã¨ giÃ  integrata nella piattaforma AppHub e visibile nel menu Finance.
 
 ## Troubleshooting
 

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Verify that previously problematic articles are now fixed
  */
 
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -49,10 +49,10 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 
 async function verifyArticle(postId: number) {
   const languages = {
-    'it_IT': 'IT 🇮🇹',
-    'de_CH': 'DE 🇩🇪',
-    'fr_CH': 'FR 🇫🇷',
-    'en_US': 'EN 🇬🇧'
+    'it_IT': 'IT ðŸ‡®ðŸ‡¹',
+    'de_CH': 'DE ðŸ‡©ðŸ‡ª',
+    'fr_CH': 'FR ðŸ‡«ðŸ‡·',
+    'en_US': 'EN ðŸ‡¬ðŸ‡§'
   };
 
   let articleName = '';
@@ -76,24 +76,24 @@ async function verifyArticle(postId: number) {
   console.log(`   Contenuti unici: ${uniqueContents.size}/4`);
 
   if (uniqueContents.size === 4) {
-    console.log(`   ✅ PERFETTO - Tutte le lingue diverse`);
+    console.log(`   âœ… PERFETTO - Tutte le lingue diverse`);
   } else if (uniqueContents.size === 1) {
-    console.log(`   ❌ PROBLEMA - Tutte le lingue identiche`);
+    console.log(`   âŒ PROBLEMA - Tutte le lingue identiche`);
   } else {
-    console.log(`   ⚠️  PARZIALE - Solo ${uniqueContents.size} versioni diverse`);
+    console.log(`   âš ï¸  PARZIALE - Solo ${uniqueContents.size} versioni diverse`);
   }
 
   return uniqueContents.size;
 }
 
 async function main() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║          VERIFICA ARTICOLI SISTEMATI                       ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+  console.log('â•‘          VERIFICA ARTICOLI SISTEMATI                       â•‘');
+  console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅\n');
+  console.log('âœ…\n');
 
   // Articles that were previously problematic
   const articlesToCheck = [
@@ -106,7 +106,7 @@ async function main() {
     421, // Fiordilatte (nuovo, OK)
   ];
 
-  console.log('📋 Verifica articoli:\n');
+  console.log('ðŸ“‹ Verifica articoli:\n');
   console.log('='.repeat(70));
 
   let perfectCount = 0;
@@ -120,15 +120,15 @@ async function main() {
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('📊 RIEPILOGO VERIFICA:');
-  console.log(`   ✅ Articoli perfetti (4/4 lingue diverse): ${perfectCount}`);
-  console.log(`   ❌ Articoli con problema: ${problemCount}`);
+  console.log('ðŸ“Š RIEPILOGO VERIFICA:');
+  console.log(`   âœ… Articoli perfetti (4/4 lingue diverse): ${perfectCount}`);
+  console.log(`   âŒ Articoli con problema: ${problemCount}`);
   console.log('');
 
   if (problemCount === 0) {
-    console.log('🎉 SUCCESSO! Tutti gli articoli hanno traduzioni corrette!\n');
+    console.log('ðŸŽ‰ SUCCESSO! Tutti gli articoli hanno traduzioni corrette!\n');
   } else {
-    console.log('⚠️  Alcuni articoli hanno ancora problemi.\n');
+    console.log('âš ï¸  Alcuni articoli hanno ancora problemi.\n');
   }
 }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Odoo RPC Connector
  * Connessione a Odoo via JSON-RPC (stesso metodo del progetto LAPA principale)
  */
@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '..', '..', '.env') });
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = process.env.ODOO_DB || 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = process.env.ODOO_USERNAME || 'paul@lapa.ch';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || 'lapa201180';
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || (process.env.ODOO_PASSWORD || '');
 
 export interface OdooProduct {
   id: number;

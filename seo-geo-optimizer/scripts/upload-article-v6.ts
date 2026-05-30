@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Upload articolo SEO+GEO su Odoo con traduzioni corrette
  * Versione 6: Cerca segmenti esatti nell'HTML (inclusi tag inline)
  */
@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -59,7 +59,7 @@ async function callOdoo(model: string, method: string, args: any[], kwargs: any 
 
 /**
  * Trova il contenuto di un tag specifico dato il suo contenuto testuale
- * Es: se cerco "Prodotti DOP" e nell'HTML c'è <h1>Prodotti DOP</h1>
+ * Es: se cerco "Prodotti DOP" e nell'HTML c'Ã¨ <h1>Prodotti DOP</h1>
  * restituisce "Prodotti DOP"
  */
 function findTagContent(segment: string, html: string): { tag: string; fullContent: string; position: number } | null {
@@ -103,7 +103,7 @@ function findTranslation(segment: string, itHtml: string, targetHtml: string): s
   if (itPos === -1) return null;
 
   // Conta quanti tag di apertura ci sono prima di questa posizione
-  // Questo ci dà la "posizione strutturale"
+  // Questo ci dÃ  la "posizione strutturale"
   const beforeSegment = itHtml.substring(0, itPos);
 
   // Conta i tag principali (h1, h2, h3, p, li, ul)
@@ -116,7 +116,7 @@ function findTranslation(segment: string, itHtml: string, targetHtml: string): s
   }
 
   // Trova il tag che contiene immediatamente il segmento
-  // Cerca il > più vicino prima del segmento
+  // Cerca il > piÃ¹ vicino prima del segmento
   let lastTagEnd = beforeSegment.lastIndexOf('>');
   if (lastTagEnd === -1) return null;
 
@@ -170,7 +170,7 @@ function findTranslation(segment: string, itHtml: string, targetHtml: string): s
   const targetTextOnly = targetContent.replace(/<[^>]+>/g, '');
 
   if (targetTextOnly.length > segmentTextLen * 1.5) {
-    // Il contenuto target è molto più lungo, probabilmente abbiamo preso troppo
+    // Il contenuto target Ã¨ molto piÃ¹ lungo, probabilmente abbiamo preso troppo
     // Prendi solo la parte proporzionale
     targetContent = targetTextOnly.substring(0, Math.ceil(segmentTextLen * 1.2));
   }
@@ -179,18 +179,18 @@ function findTranslation(segment: string, itHtml: string, targetHtml: string): s
 }
 
 async function uploadArticle(articlePath: string) {
-  console.log(`📄 Caricamento: ${articlePath}\n`);
+  console.log(`ðŸ“„ Caricamento: ${articlePath}\n`);
 
   const article = JSON.parse(readFileSync(articlePath, 'utf-8'));
 
-  console.log('🔐 Autenticazione...');
+  console.log('ðŸ” Autenticazione...');
   await authenticate();
-  console.log('✅ Autenticato\n');
+  console.log('âœ… Autenticato\n');
 
   const itData = article.translations.it_IT;
 
   // 1. Crea articolo in italiano
-  console.log('🇮🇹 Creo articolo...');
+  console.log('ðŸ‡®ðŸ‡¹ Creo articolo...');
   const postId = await callOdoo('blog.post', 'create', [{
     name: itData.name,
     subtitle: itData.subtitle,
@@ -205,7 +205,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   ID: ${postId}\n`);
 
   // 2. Traduci campi semplici
-  console.log('📝 Traduco campi...');
+  console.log('ðŸ“ Traduco campi...');
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
     const langData = article.translations[jsonLang];
@@ -218,11 +218,11 @@ async function uploadArticle(articlePath: string) {
       website_meta_description: langData.meta.description,
       website_meta_keywords: langData.meta.keywords,
     }], { context: { lang: odooLang } });
-    console.log(`   ✅ ${odooLang}`);
+    console.log(`   âœ… ${odooLang}`);
   }
 
   // 3. Leggi segmenti
-  console.log('\n📖 Leggo segmenti...');
+  console.log('\nðŸ“– Leggo segmenti...');
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData?.[0]?.length) {
@@ -234,7 +234,7 @@ async function uploadArticle(articlePath: string) {
   console.log(`   ${sources.length} segmenti`);
 
   // 4. Traduci
-  console.log('\n🌍 Traduco...');
+  console.log('\nðŸŒ Traduco...');
 
   for (const [jsonLang, odooLang] of Object.entries(LANG_MAP)) {
     if (jsonLang === 'it_IT') continue;
@@ -270,7 +270,7 @@ async function uploadArticle(articlePath: string) {
     for (const src of sources) {
       let trans = null;
 
-      // Prova 1: Se src è un heading in IT, mappa per posizione
+      // Prova 1: Se src Ã¨ un heading in IT, mappa per posizione
       const itHeadingIndex = itHeadingsArray.indexOf(src.trim());
       if (itHeadingIndex >= 0 && itHeadingIndex < targetHeadingsArray.length) {
         trans = targetHeadingsArray[itHeadingIndex];
@@ -293,14 +293,14 @@ async function uploadArticle(articlePath: string) {
         await callOdoo('blog.post', 'update_field_translations', [
           [postId], 'content', { [odooLang]: translations }
         ]);
-        console.log(`   ✅ OK`);
+        console.log(`   âœ… OK`);
       } catch (e: any) {
-        console.log(`   ❌ ${e.message.substring(0, 80)}`);
+        console.log(`   âŒ ${e.message.substring(0, 80)}`);
       }
     }
   }
 
-  console.log(`\n✅ ID: ${postId}`);
+  console.log(`\nâœ… ID: ${postId}`);
   return postId;
 }
 

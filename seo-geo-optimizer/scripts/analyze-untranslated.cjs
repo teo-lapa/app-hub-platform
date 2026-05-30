@@ -1,5 +1,5 @@
-/**
- * Analizza quali segmenti NON vengono tradotti e perché
+﻿/**
+ * Analizza quali segmenti NON vengono tradotti e perchÃ©
  */
 
 const fs = require('fs');
@@ -7,7 +7,7 @@ const fs = require('fs');
 const ODOO_URL = 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
 const ODOO_DB = 'lapadevadmin-lapa-v2-main-7268478';
 const ODOO_USERNAME = 'paul@lapa.ch';
-const ODOO_PASSWORD = 'lapa201180';
+const ODOO_PASSWORD = (process.env.ODOO_PASSWORD || '');
 
 let cookies = '';
 
@@ -47,7 +47,7 @@ async function callOdoo(model, method, args, kwargs = {}) {
 async function main() {
   const postId = 207; // Articolo v8-perfect fresh run
 
-  console.log('🔍 ANALISI SEGMENTI NON TRADOTTI\n');
+  console.log('ðŸ” ANALISI SEGMENTI NON TRADOTTI\n');
   console.log(`Articolo ID: ${postId}\n`);
 
   await authenticate();
@@ -56,14 +56,14 @@ async function main() {
   const segmentData = await callOdoo('blog.post', 'get_field_translations', [[postId], 'content']);
 
   if (!segmentData?.[0]) {
-    console.log('❌ Nessun segmento trovato');
+    console.log('âŒ Nessun segmento trovato');
     return;
   }
 
   // Analizza per lingua DE
-  console.log('═'.repeat(70));
+  console.log('â•'.repeat(70));
   console.log('LINGUA: TEDESCO (de_CH)');
-  console.log('═'.repeat(70) + '\n');
+  console.log('â•'.repeat(70) + '\n');
 
   const segments = segmentData[0];
   const sources = [...new Set(segments.map(s => s.source))];
@@ -79,7 +79,7 @@ async function main() {
   // Trova segmenti NON tradotti
   const untranslated = sources.filter(src => !deTranslatedSources.has(src));
 
-  console.log(`\n📋 SEGMENTI NON TRADOTTI (${untranslated.length}):\n`);
+  console.log(`\nðŸ“‹ SEGMENTI NON TRADOTTI (${untranslated.length}):\n`);
 
   // Categorizza i segmenti non tradotti
   const categories = {
@@ -95,7 +95,7 @@ async function main() {
       categories.heading.push(seg);
     } else if (seg.includes('</strong>') || seg.includes('</em>') || seg.includes('</a>')) {
       categories.paragraph.push(seg);
-    } else if (seg.match(/^(✅|❌|🍷|👉|•|-|\d+\.)/)) {
+    } else if (seg.match(/^(âœ…|âŒ|ðŸ·|ðŸ‘‰|â€¢|-|\d+\.)/)) {
       categories.list.push(seg);
     } else if (seg.includes('|')) {
       categories.table.push(seg);
@@ -104,30 +104,30 @@ async function main() {
     }
   }
 
-  console.log(`\n🔹 HEADING NON TRADOTTI (${categories.heading.length}):`);
+  console.log(`\nðŸ”¹ HEADING NON TRADOTTI (${categories.heading.length}):`);
   categories.heading.forEach((s, i) => {
     console.log(`  [${i+1}] ${s.substring(0, 80)}${s.length > 80 ? '...' : ''}`);
   });
 
-  console.log(`\n🔹 PARAGRAFI CON TAG HTML NON TRADOTTI (${categories.paragraph.length}):`);
+  console.log(`\nðŸ”¹ PARAGRAFI CON TAG HTML NON TRADOTTI (${categories.paragraph.length}):`);
   categories.paragraph.slice(0, 5).forEach((s, i) => {
     console.log(`  [${i+1}] ${s.substring(0, 80)}${s.length > 80 ? '...' : ''}`);
   });
 
-  console.log(`\n🔹 LISTE NON TRADOTTE (${categories.list.length}):`);
+  console.log(`\nðŸ”¹ LISTE NON TRADOTTE (${categories.list.length}):`);
   categories.list.slice(0, 5).forEach((s, i) => {
     console.log(`  [${i+1}] ${s.substring(0, 80)}${s.length > 80 ? '...' : ''}`);
   });
 
-  console.log(`\n🔹 ALTRI NON TRADOTTI (${categories.other.length}):`);
+  console.log(`\nðŸ”¹ ALTRI NON TRADOTTI (${categories.other.length}):`);
   categories.other.slice(0, 10).forEach((s, i) => {
     console.log(`  [${i+1}] ${s.substring(0, 80)}${s.length > 80 ? '...' : ''}`);
   });
 
   // Verifica se i segmenti esistono nell'HTML source
-  console.log('\n' + '═'.repeat(70));
+  console.log('\n' + 'â•'.repeat(70));
   console.log('ANALISI PRESENZA NELL\'HTML SOURCE');
-  console.log('═'.repeat(70) + '\n');
+  console.log('â•'.repeat(70) + '\n');
 
   const article = JSON.parse(fs.readFileSync('data/new-articles/article-02-burrata-andria-dop.json', 'utf-8'));
   const deHtml = article.translations.de_DE.content_html;
@@ -136,10 +136,10 @@ async function main() {
 
   untranslated.slice(0, 10).forEach((seg, i) => {
     const found = deHtml.includes(seg);
-    console.log(`[${i+1}] ${found ? '✅ TROVATO' : '❌ NON TROVATO'}: "${seg.substring(0, 60)}..."`);
+    console.log(`[${i+1}] ${found ? 'âœ… TROVATO' : 'âŒ NON TROVATO'}: "${seg.substring(0, 60)}..."`);
   });
 
-  console.log('\n' + '═'.repeat(70));
+  console.log('\n' + 'â•'.repeat(70));
 }
 
 main().catch(console.error);

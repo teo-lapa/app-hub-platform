@@ -144,6 +144,7 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   for (const [productId, prodotto] of Array.from(prodottiMap.entries())) {
     if (prodotto.quantitaEffettiva === 0 && prodotto.quantitaRichiesta > 0) {
       prodottiNonScaricati.push({
+        productId,
         nome: prodotto.nome,
         quantitaRichiesta: prodotto.quantitaRichiesta,
         quantitaEffettiva: prodotto.quantitaEffettiva,
@@ -153,6 +154,29 @@ async function getProdottiNonScaricati(sessionId: string, pickingId: number) {
   }
 
   return prodottiNonScaricati;
+}
+
+// Ritorna i product_id che hanno gia' un transfer RESO_ (non cancellato) per questo picking residuo
+async function getProdottiGiaResi(sessionId: string, residualPickingName: string): Promise<Set<number>> {
+  const resi = new Set<number>();
+  try {
+    const returns = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
+      ['picking_type_code', '=', 'internal'],
+      ['origin', 'ilike', residualPickingName],
+      ['state', '!=', 'cancel']
+    ]], { fields: ['move_ids_without_package'] });
+
+    const moveIds = returns.flatMap((r: any) => r.move_ids_without_package || []);
+    if (moveIds.length === 0) return resi;
+
+    const moves = await callOdoo(sessionId, 'stock.move', 'read', [moveIds], { fields: ['product_id'] });
+    for (const m of moves) {
+      if (m.product_id) resi.add(m.product_id[0]);
+    }
+  } catch (error) {
+    console.log('   ⚠️  Errore lettura resi esistenti:', error);
+  }
+  return resi;
 }
 
 
@@ -255,15 +279,19 @@ export async function GET(request: NextRequest) {
         const batchId = pickingResiduo.batch_id ? pickingResiduo.batch_id[0] : null;
         const locationName = pickingResiduo.location_id ? pickingResiduo.location_id[1] : null;
 
-        // Fase 1: 4 query in parallelo
-        const [outCompletato, { autista, veicolo }, returnCreated, prodottiNonScaricati] = await Promise.all([
+        // Fase 1: 5 query in parallelo
+        const [outCompletato, { autista, veicolo }, returnCreated, prodottiNonScaricatiRaw, prodottiGiaResi] = await Promise.all([
           trovaOutCompletato(sessionId, salesOrderName),
           getAutistaEVeicolo(sessionId, pickingResiduo.id, batchId, locationName),
           checkReturnCreated(sessionId, pickingResiduo.name),
-          getProdottiNonScaricati(sessionId, pickingResiduo.id)
+          getProdottiNonScaricati(sessionId, pickingResiduo.id),
+          getProdottiGiaResi(sessionId, pickingResiduo.name)
         ]);
 
-        // FILTRO 1: almeno 1 prodotto nel furgone
+        // Escludi i prodotti che hanno gia' un reso creato
+        const prodottiNonScaricati = prodottiNonScaricatiRaw.filter((p: any) => !prodottiGiaResi.has(p.productId));
+
+        // FILTRO 1: almeno 1 prodotto ancora da gestire nel furgone
         if (prodottiNonScaricati.length === 0) return null;
         // FILTRO 2: deve avere OUT completato (scarico parziale precedente)
         if (!outCompletato) return null;
