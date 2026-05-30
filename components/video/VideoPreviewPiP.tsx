@@ -93,7 +93,7 @@ export function VideoPreviewPiP({
         <div className="relative w-36 h-28 rounded-xl overflow-hidden shadow-2xl border-2 border-white/30 bg-black">
           {/* Video preview */}
           <video
-            ref={videoRef}
+            ref={setVideoNode}
             autoPlay
             muted
             playsInline
