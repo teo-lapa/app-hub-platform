@@ -49,10 +49,9 @@ export function ProductEditModal({
 
       setQuantity(calculatorValue || product.countedQuantity.toString());
       setLotName(product.lot?.name || '');
-      // Formatta la data per input type="date" (YYYY-MM-DD)
+      // Formatta la data per input type="date" (YYYY-MM-DD) senza shift di fuso orario
       if (product.lot?.expiration_date) {
-        const date = new Date(product.lot.expiration_date);
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = String(product.lot.expiration_date).split('T')[0].split(' ')[0];
         setExpiryDate(formattedDate);
         console.log('📅 [ProductEditModal] Scadenza formattata:', formattedDate);
       } else {
@@ -70,7 +69,8 @@ export function ProductEditModal({
   }, [calculatorValue]);
 
   const handleConfirm = () => {
-    const qty = parseFloat(quantity) || 0;
+    // Normalizza la virgola decimale (formato IT) in punto
+    const qty = parseFloat(String(quantity).replace(',', '.')) || 0;
     onConfirm({
       quantity: qty,
       lotName: lotName.trim(),
@@ -219,7 +219,7 @@ export function ProductEditModal({
             <div className="flex gap-3">
               <button
                 onClick={handleConfirm}
-                disabled={!quantity || parseFloat(quantity) < 0}
+                disabled={!quantity || isNaN(parseFloat(String(quantity).replace(',', '.'))) || parseFloat(String(quantity).replace(',', '.')) < 0}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-lg hover:shadow-blue-500/25"
               >
                 ✓ Conferma Conteggio

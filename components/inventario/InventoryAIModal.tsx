@@ -99,6 +99,7 @@ export function InventoryAIModal({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -130,15 +131,27 @@ export function InventoryAIModal({
       });
 
       setStream(mediaStream);
+      streamRef.current = mediaStream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
 
-      // Start recording
-      const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: 'video/webm;codecs=vp9'
-      });
+      // Scegli un codec supportato dal browser (iOS/Safari non supporta vp9)
+      const candidateTypes = [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm',
+        'video/mp4'
+      ];
+      const supportedType = candidateTypes.find(
+        t => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)
+      );
+
+      // Start recording (senza mimeType esplicito se nessuno è supportato → usa il default del browser)
+      const mediaRecorder = supportedType
+        ? new MediaRecorder(mediaStream, { mimeType: supportedType })
+        : new MediaRecorder(mediaStream);
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -162,8 +175,11 @@ export function InventoryAIModal({
   };
 
   const stopRecording = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    // Usa il ref (sempre aggiornato) per fermare i track anche all'unmount
+    const activeStream = streamRef.current || stream;
+    if (activeStream) {
+      activeStream.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
       setStream(null);
     }
 
@@ -231,6 +247,10 @@ export function InventoryAIModal({
 
       if (!data.success) {
         throw new Error(data.error || 'Errore analisi AI');
+      }
+
+      if (!data.analysis || !Array.isArray(data.analysis.matches)) {
+        throw new Error('Risposta AI non valida o vuota');
       }
 
       setProcessingProgress(100);
@@ -301,65 +321,26 @@ export function InventoryAIModal({
 
     } catch (error: any) {
       console.error('❌ Error processing video:', error);
-      alert('Errore durante l\'analisi AI: ' + error.message);
-      // Fallback to mock results for testing
-      generateMockResults();
-      setModalState('results');
+      alert('Errore durante l\'analisi AI: ' + error.message + '\n\nRiprova a registrare il video.');
+      // NON generare dati finti: torna alla registrazione senza scrivere risultati casuali in Odoo
+      setResults([]);
+      setModalState('recording');
+      setProcessingProgress(0);
     }
   };
 
   const simulateAIProcessing = () => {
-    // Use real AI if we have video chunks, otherwise simulate
+    // Analizza solo se c'è un video reale registrato
     if (chunksRef.current.length > 0) {
-      const videoBlob = new Blob(chunksRef.current, { type: 'video/webm' });
+      const blobType = mediaRecorderRef.current?.mimeType || 'video/webm';
+      const videoBlob = new Blob(chunksRef.current, { type: blobType });
       processVideoWithAI(videoBlob);
     } else {
-      // Fallback: Simulate AI processing with progress
-      let progress = 0;
-      const progressInterval = setInterval(() => {
-        progress += 10;
-        setProcessingProgress(progress);
-
-        if (progress >= 100) {
-          clearInterval(progressInterval);
-          generateMockResults();
-          setModalState('results');
-        }
-      }, 300);
+      // Nessun video registrato: niente dati finti, torna alla registrazione
+      alert('Nessun video registrato. Riprova.');
+      setModalState('recording');
+      setProcessingProgress(0);
     }
-  };
-
-  const generateMockResults = () => {
-    // Generate mock AI results based on products
-    const mockResults: AIResult[] = products.map((product, index) => {
-      const statuses: MatchStatus[] = ['match', 'difference', 'not_found'];
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-
-      let videoQuantity = product.quantity;
-      if (randomStatus === 'difference') {
-        videoQuantity = product.quantity + Math.floor(Math.random() * 10) - 5;
-      } else if (randomStatus === 'not_found') {
-        videoQuantity = 0;
-      }
-
-      return {
-        productId: product.id,
-        quantId: product.quant_id,
-        name: product.name,
-        code: product.code,
-        image: product.image,
-        odooQuantity: product.quantity,
-        videoQuantity: Math.max(0, videoQuantity),
-        uom: product.uom,
-        status: randomStatus,
-        lotName: product.lot_name,
-        expiryDate: product.lot_expiration_date,
-        action: randomStatus === 'match' ? 'skip' : 'update'
-      };
-    });
-
-    // Non aggiungiamo più prodotti "nuovi" mock
-    setResults(mockResults);
   };
 
   const resetModal = () => {

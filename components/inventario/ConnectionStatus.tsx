@@ -9,15 +9,17 @@ export function ConnectionStatus() {
   const [showStatus, setShowStatus] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     const checkConnection = async () => {
       try {
         const response = await fetch('/api/health', {
           method: 'HEAD',
-          cache: 'no-cache'
+          cache: 'no-cache',
+          credentials: 'include'
         });
-        setIsOnline(response.ok);
+        if (mounted) setIsOnline(response.ok);
       } catch {
-        setIsOnline(false);
+        if (mounted) setIsOnline(false);
       }
     };
 
@@ -43,6 +45,7 @@ export function ConnectionStatus() {
     const interval = setInterval(checkConnection, 30000);
 
     return () => {
+      mounted = false;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);

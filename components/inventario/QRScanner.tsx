@@ -109,6 +109,21 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
     setTorchEnabled(false);
   };
 
+  const toggleTorch = async () => {
+    if (!scannerRef.current) return;
+    try {
+      const hasFlash = await scannerRef.current.hasFlash();
+      if (!hasFlash) {
+        console.log('Flash non disponibile su questo dispositivo');
+        return;
+      }
+      await scannerRef.current.toggleFlash();
+      setTorchEnabled(scannerRef.current.isFlashOn());
+    } catch (err) {
+      console.error('Errore torcia:', err);
+    }
+  };
+
   const handleManualInput = () => {
     const input = prompt('Inserisci codice manualmente:');
     if (input && input.trim()) {
@@ -184,7 +199,7 @@ export function QRScanner({ isOpen, onClose, onScan, title = "Scanner QR/Barcode
                     </div>
 
                     <button
-                      onClick={() => console.log('Flash non disponibile')}
+                      onClick={toggleTorch}
                       className="glass p-2 rounded-full hover:bg-white/20 transition-colors pointer-events-auto"
                       disabled={!scanning}
                     >

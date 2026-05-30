@@ -70,7 +70,7 @@ export function WasteTransferModal({ isOpen, onClose, onSuccess }: WasteTransfer
   async function loadLocationProducts() {
     setLoadingProducts(true);
     try {
-      const response = await fetch(`/api/waste/location-products?locationId=${selectedLocation.id}`);
+      const response = await fetch(`/api/waste/location-products?locationId=${selectedLocation.id}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to load products');
       const data = await response.json();
       setProducts(data.products || []);

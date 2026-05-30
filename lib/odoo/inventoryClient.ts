@@ -330,7 +330,7 @@ export class InventoryOdooClient {
   async getProductLots(productId: number): Promise<OdooLot[]> {
     try {
       return await this.searchRead(
-        'stock.production.lot',
+        'stock.lot',
         [['product_id', '=', productId]],
         ['id', 'name', 'product_id', 'expiration_date', 'use_date', 'removal_date', 'alert_date']
       );
@@ -352,7 +352,7 @@ export class InventoryOdooClient {
         lotData.expiration_date = expirationDate;
       }
 
-      const lotId = await this.rpc('stock.production.lot', 'create', [lotData]);
+      const lotId = await this.rpc('stock.lot', 'create', [lotData]);
       return lotId;
     } catch (error) {
       console.error('Errore creazione lotto:', error);
