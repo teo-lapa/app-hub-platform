@@ -5,6 +5,16 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/authStore';
 
+type Balance = {
+  year: number;
+  matured: number;
+  entitlementYear: number;
+  taken: number;
+  pending: number;
+  remaining: number;
+  remainingYear: number;
+  accrualStart: string;
+};
 type LeaveType = { id: number; name: string };
 type MyLeave = {
   id: number;
@@ -69,6 +79,7 @@ export default function FeriePage() {
   const router = useRouter();
 
   const [employee, setEmployee] = useState<{ id: number; name: string } | null>(null);
+  const [balance, setBalance] = useState<Balance | null>(null);
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [myLeaves, setMyLeaves] = useState<MyLeave[]>([]);
   const [calLeaves, setCalLeaves] = useState<CalLeave[]>([]);
@@ -98,6 +109,7 @@ export default function FeriePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore');
       setEmployee(data.employee);
+      setBalance(data.balance || null);
       setTypes(data.types);
       setMyLeaves(data.leaves);
       if (data.types?.length && !typeId) setTypeId(data.types[0].id);
@@ -251,6 +263,35 @@ export default function FeriePage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        {/* Saldo ferie */}
+        {balance && (
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Saldo ferie {balance.year}</h2>
+              <span className="text-xs text-white/50">spettanti a fine anno: <b className="text-white/80">{balance.entitlementYear}</b> gg</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl py-3">
+                <div className="text-2xl font-bold text-blue-300">{balance.matured}</div>
+                <div className="text-xs text-white/60 mt-0.5">Maturati a oggi</div>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-400/30 rounded-xl py-3">
+                <div className="text-2xl font-bold text-purple-300">{balance.taken}</div>
+                <div className="text-xs text-white/60 mt-0.5">Fatte (approvate)</div>
+              </div>
+              <div className="bg-green-500/10 border border-green-400/30 rounded-xl py-3">
+                <div className="text-2xl font-bold text-green-300">{balance.remaining}</div>
+                <div className="text-xs text-white/60 mt-0.5">Disponibili ora</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-white/50">
+              {balance.pending > 0 && <span>In attesa di approvazione: <b className="text-yellow-300">{balance.pending}</b> gg</span>}
+              <span>Ancora da fare entro fine anno: <b className="text-white/80">{balance.remainingYear}</b> gg</span>
+              <span>Conteggio dal {formatIT(balance.accrualStart)}</span>
+            </div>
+          </section>
+        )}
+
         {/* Calendario */}
         <section className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">

@@ -20,6 +20,15 @@ type Leave = {
   created: string;
 };
 
+type EmpBalance = {
+  year: number;
+  matured: number;
+  entitlementYear: number;
+  taken: number;
+  remaining: number;
+  remainingYear: number;
+};
+
 const ADMIN_EMAILS = ['paul@lapa.ch', 'laura@lapa.ch'];
 
 const STATE_COLOR: Record<string, string> = {
@@ -42,6 +51,7 @@ export default function FerieAdminPage() {
 
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
   const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [balances, setBalances] = useState<Record<number, EmpBalance>>({});
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
 
@@ -72,6 +82,7 @@ export default function FerieAdminPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore');
       setLeaves(data.leaves);
+      setBalances(data.balances || {});
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -199,9 +210,19 @@ export default function FerieAdminPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {grouped.map(([emp, items]) => (
+            {grouped.map(([emp, items]) => {
+              const bal = balances[items[0]?.employee_id];
+              return (
               <div key={emp}>
-                <h3 className="text-lg font-semibold mb-2 text-white/90">{emp}</h3>
+                <h3 className="text-lg font-semibold mb-1 text-white/90">{emp}</h3>
+                {bal && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
+                    <span className="text-white/60">Disponibili: <b className="text-green-300">{bal.remaining}</b> gg</span>
+                    <span className="text-white/60">Fatte {bal.year}: <b className="text-purple-300">{bal.taken}</b> gg</span>
+                    <span className="text-white/60">Ancora da fare: <b className="text-white/80">{bal.remainingYear}</b> gg</span>
+                    <span className="text-white/40">(maturati a oggi {bal.matured} · spettanti anno {bal.entitlementYear})</span>
+                  </div>
+                )}
                 <div className="space-y-2">
                   {items.map(l => (
                     <div key={l.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
@@ -240,7 +261,8 @@ export default function FerieAdminPage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
