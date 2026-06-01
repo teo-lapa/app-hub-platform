@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 import { getUserFromRequest } from '@/lib/auth-helpers';
+import { computeBalance, sumPaidLeaveDays, PAID_LEAVE_TYPE_ID } from '@/lib/ferie/balance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -49,7 +50,34 @@ export async function GET(request: NextRequest) {
       limit: 200,
     });
 
+    // Saldo ferie per ogni dipendente coinvolto nelle richieste mostrate
+    const empIds = Array.from(new Set(leaves.map((l: any) => l.employee_id?.[0]).filter(Boolean)));
+    const balances: Record<number, any> = {};
+    if (empIds.length > 0) {
+      const year = new Date().getFullYear();
+      const emps = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['id', 'in', empIds]],
+        fields: ['id', 'first_contract_date', 'x_ferie_start_date'],
+      });
+      const yearLeaves = await callOdoo(cookies, 'hr.leave', 'search_read', [], {
+        domain: [
+          ['employee_id', 'in', empIds],
+          ['holiday_status_id', '=', PAID_LEAVE_TYPE_ID],
+          ['request_date_from', '>=', `${year}-01-01`],
+          ['request_date_from', '<=', `${year}-12-31`],
+        ],
+        fields: ['employee_id', 'holiday_status_id', 'number_of_days', 'state', 'request_date_from'],
+      });
+      for (const e of emps) {
+        const mine = yearLeaves.filter((l: any) => l.employee_id?.[0] === e.id);
+        const taken = sumPaidLeaveDays(mine, ['validate'], year);
+        const pending = sumPaidLeaveDays(mine, ['confirm', 'validate1'], year);
+        balances[e.id] = computeBalance({ anchorDate: e.x_ferie_start_date || e.first_contract_date || null, takenDays: taken, pendingDays: pending });
+      }
+    }
+
     return NextResponse.json({
+      balances,
       leaves: leaves.map((l: any) => ({
         id: l.id,
         employee_id: l.employee_id?.[0],
