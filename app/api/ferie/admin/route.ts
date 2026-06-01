@@ -76,6 +76,35 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Sovrapposizioni con le ferie di altri dipendenti (per vedere a colpo d'occhio i giorni che si intercalano)
+    const overlapsByLeave: Record<number, Array<{ employee_name: string; from: string; to: string; state: string }>> = {};
+    const dated = leaves.filter((l: any) => l.request_date_from && l.request_date_to);
+    if (dated.length > 0) {
+      const minFrom = dated.reduce((m: string, l: any) => (l.request_date_from < m ? l.request_date_from : m), dated[0].request_date_from);
+      const maxTo = dated.reduce((m: string, l: any) => (l.request_date_to > m ? l.request_date_to : m), dated[0].request_date_to);
+      const context = await callOdoo(cookies, 'hr.leave', 'search_read', [], {
+        domain: [
+          ['state', 'in', ['confirm', 'validate1', 'validate']],
+          ['request_date_from', '<=', maxTo],
+          ['request_date_to', '>=', minFrom],
+        ],
+        fields: ['id', 'employee_id', 'request_date_from', 'request_date_to', 'state'],
+      });
+      for (const l of dated) {
+        const empId = l.employee_id?.[0];
+        const ovs = [];
+        for (const c of context) {
+          if (c.id === l.id || c.employee_id?.[0] === empId) continue;
+          const start = l.request_date_from > c.request_date_from ? l.request_date_from : c.request_date_from;
+          const end = l.request_date_to < c.request_date_to ? l.request_date_to : c.request_date_to;
+          if (start <= end) {
+            ovs.push({ employee_name: c.employee_id?.[1] || '—', from: start, to: end, state: c.state });
+          }
+        }
+        if (ovs.length) overlapsByLeave[l.id] = ovs;
+      }
+    }
+
     return NextResponse.json({
       balances,
       leaves: leaves.map((l: any) => ({
@@ -91,6 +120,7 @@ export async function GET(request: NextRequest) {
         state_label: STATE_LABELS[l.state] || l.state,
         note: l.name || '',
         created: l.create_date,
+        overlaps: overlapsByLeave[l.id] || [],
       })),
     });
   } catch (e: any) {

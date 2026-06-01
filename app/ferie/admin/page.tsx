@@ -18,6 +18,7 @@ type Leave = {
   state_label: string;
   note: string;
   created: string;
+  overlaps?: Array<{ employee_name: string; from: string; to: string; state: string }>;
 };
 
 type EmpBalance = {
@@ -231,6 +232,19 @@ export default function FerieAdminPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${STATE_COLOR[l.state] || ''}`}>{l.state_label}</span>
                         <span className="text-sm text-white/70 ml-auto">{formatIT(l.date_from)} → {formatIT(l.date_to)} <span className="text-white/50">({l.days} gg)</span></span>
                       </div>
+                      {l.overlaps && l.overlaps.length > 0 && (
+                        <div className="text-xs bg-orange-500/10 border border-orange-500/30 rounded-lg p-2 mb-2 text-orange-200">
+                          ⚠️ Si sovrappone con:
+                          <ul className="mt-1 space-y-0.5">
+                            {l.overlaps.map((o, i) => (
+                              <li key={i}>
+                                <b>{o.employee_name}</b> — {formatIT(o.from)}{o.from !== o.to ? ` → ${formatIT(o.to)}` : ''}
+                                <span className="text-orange-300/70"> ({o.state === 'validate' ? 'approvata' : 'in attesa'})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       {l.note && <div className="text-xs text-white/60 mb-2">"{l.note}"</div>}
                       {['confirm', 'validate1'].includes(l.state) && (
                         <div className="flex flex-wrap gap-2">
