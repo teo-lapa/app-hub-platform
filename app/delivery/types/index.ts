@@ -55,7 +55,7 @@ export interface Product {
 export interface Attachment {
   id?: number;
   picking_id: number;
-  context: 'signature' | 'photo' | 'payment' | 'reso';
+  context: 'signature' | 'photo' | 'payment' | 'reso' | 'note';
   data: string;
   timestamp: Date;
   uploaded: boolean;
@@ -64,7 +64,7 @@ export interface Attachment {
 
 export interface OfflineAction {
   id?: number;
-  action_type: 'validate' | 'payment' | 'reso';
+  action_type: 'validate' | 'payment' | 'reso' | 'note';
   payload: any;
   timestamp: Date;
   synced: boolean;

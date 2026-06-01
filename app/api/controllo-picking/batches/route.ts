@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
     const batches = await client.searchRead(
       'stock.picking.batch',
       [
-        ['scheduled_date', '=', date],
+        ['scheduled_date', '>=', `${date} 00:00:00`],
+        ['scheduled_date', '<=', `${date} 23:59:59`],
         ['state', 'in', ['done', 'in_progress']]
       ],
       ['id', 'name', 'state', 'scheduled_date', 'picking_ids', 'move_line_ids'],
