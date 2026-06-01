@@ -76,7 +76,7 @@ export default function UbicazioniPage() {
   const { user } = useAuthStore();
 
   // Stati principali
-  const [currentOperation, setCurrentOperation] = useState<'buffer' | null>(null);
+  const [currentOperation, setCurrentOperation] = useState<'buffer' | 'sposta' | 'rientro' | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [bufferProducts, setBufferProducts] = useState<BufferProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<BufferProduct | null>(null);
@@ -99,7 +99,14 @@ export default function UbicazioniPage() {
   const [showLocationScanner, setShowLocationScanner] = useState(false);
   const [showWasteTransferModal, setShowWasteTransferModal] = useState(false);
 
+  // Stati spostamento ubicazione → ubicazione
+  const [sourceLocationCode, setSourceLocationCode] = useState('');
+  const [sourceLocationData, setSourceLocationData] = useState<any>(null);
+  const [sourceProducts, setSourceProducts] = useState<BufferProduct[]>([]);
+  const [showSourceScanner, setShowSourceScanner] = useState(false);
+
   const locationInputRef = useRef<HTMLInputElement>(null);
+  const sourceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkConnection();
@@ -141,8 +148,114 @@ export default function UbicazioniPage() {
     }
   };
 
-  const selectOperation = () => {
-    setCurrentOperation('buffer');
+  const selectOperation = (op: 'buffer' | 'sposta' | 'rientro' = 'buffer') => {
+    setCurrentOperation(op);
+  };
+
+  // Seleziona il buffer di destinazione (Ubicazione → Buffer)
+  const selectBufferDest = (zone: typeof ZONES[number]) => {
+    setLocationData({ id: zone.bufferId, name: zone.bufferName, complete_name: zone.bufferName });
+    toast.success(`Buffer: ${zone.bufferName}`);
+  };
+
+  // Mappa un item dell'inventario (endpoint /api/inventory/location) nello shape BufferProduct
+  const mapInventoryItem = (it: any): BufferProduct => ({
+    id: it.product_id,
+    name: it.product_name,
+    code: it.default_code || '',
+    barcode: it.barcode || '',
+    image: it.image_128 ? `data:image/jpeg;base64,${it.image_128}` : undefined,
+    quantity: it.quantity || 0,
+    uom: it.uom_id ? it.uom_id[1] : 'PZ',
+    lot_id: it.lot_id || undefined,
+    lot_name: it.lot_name || undefined,
+    expiration_date: it.lot_expiration_date || undefined
+  });
+
+  // Carica ubicazione di PARTENZA + prodotti presenti
+  const loadSourceLocation = async (code: string) => {
+    if (!code) return;
+    setLoading(true);
+    try {
+      const response = await fetch('/api/inventory/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ locationCode: code })
+      });
+      const data = await response.json();
+      if (data.success && data.location) {
+        setSourceLocationData(data.location);
+        const items = (data.inventory || [])
+          .filter((it: any) => !it._catalog_item && (it.quantity || 0) > 0)
+          .map(mapInventoryItem);
+        setSourceProducts(items);
+        // reset selezione precedente
+        setSelectedProduct(null);
+        setLocationData(null);
+        toast.success(`Partenza: ${data.location.complete_name} — ${items.length} prodotti`);
+      } else {
+        toast.error('Ubicazione non trovata');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setLoading(false);
+      setSourceLocationCode('');
+    }
+  };
+
+  // Conferma spostamento ubicazione → ubicazione
+  const confirmSposta = async () => {
+    if (!selectedProduct || !sourceLocationData || !locationData) {
+      toast.error('Compila tutti i campi');
+      return;
+    }
+    if (sourceLocationData.id === locationData.id) {
+      toast.error('Partenza e destinazione coincidono');
+      return;
+    }
+    if (parseFloat(quantity) > selectedProduct.quantity) {
+      toast.error(`Quantità massima disponibile: ${selectedProduct.quantity}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/ubicazioni/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          productId: selectedProduct.id,
+          sourceLocationId: sourceLocationData.id,
+          destLocationId: locationData.id,
+          quantity: parseFloat(quantity),
+          lotName: lotNumber,
+          lotId: selectedProduct.lot_id,
+          expiryDate: expiryDate || null,
+          isFromCatalog: false
+        })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('✅ Spostamento completato!');
+        const reloadCode = sourceLocationData.barcode || sourceLocationData.name;
+        setSelectedProduct(null);
+        setLocationData(null);
+        setLotNumber('');
+        setExpiryDate('');
+        setQuantity('1');
+        if (reloadCode) await loadSourceLocation(reloadCode);
+      } else {
+        toast.error(data.error || 'Errore spostamento');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectZone = async (zoneId: string) => {
@@ -336,6 +449,9 @@ export default function UbicazioniPage() {
     setSelectedProduct(null);
     setLocationData(null);
     setBufferProducts([]);
+    setSourceLocationData(null);
+    setSourceProducts([]);
+    setSourceLocationCode('');
   };
 
   const backToZoneSelection = () => {
@@ -396,34 +512,78 @@ export default function UbicazioniPage() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Selezione Operazione */}
         {!currentOperation && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-strong rounded-3xl p-8 cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={selectOperation}
-          >
-            <div className="relative">
-              <div className="absolute -top-4 -right-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-lg shadow-lg">
-                {Object.values(zoneCounts).reduce((a, b) => a + b, 0)}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-strong rounded-3xl p-8 cursor-pointer hover:scale-[1.02] transition-transform"
+              onClick={() => selectOperation('buffer')}
+            >
+              <div className="relative">
+                <div className="absolute -top-4 -right-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-lg shadow-lg">
+                  {Object.values(zoneCounts).reduce((a, b) => a + b, 0)}
+                </div>
+
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-blue-500 rounded-2xl flex items-center justify-center text-4xl">
+                  📥
+                </div>
+
+                <h2 className="text-2xl font-bold text-center mb-3">
+                  Buffer → Ubicazioni
+                </h2>
+
+                <p className="text-muted-foreground text-center">
+                  Trasferisci prodotti dal buffer di ricevimento alle ubicazioni di stoccaggio
+                </p>
               </div>
+            </motion.div>
 
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-blue-500 rounded-2xl flex items-center justify-center text-4xl">
-                📥
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-strong rounded-3xl p-8 cursor-pointer hover:scale-[1.02] transition-transform"
+              onClick={() => selectOperation('sposta')}
+            >
+              <div className="relative">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-4xl">
+                  🔄
+                </div>
+
+                <h2 className="text-2xl font-bold text-center mb-3">
+                  Sposta tra Ubicazioni
+                </h2>
+
+                <p className="text-muted-foreground text-center">
+                  Sposta un prodotto da un'ubicazione a un'altra scegliendo quantità e lotto
+                </p>
               </div>
+            </motion.div>
 
-              <h2 className="text-2xl font-bold text-center mb-3">
-                Buffer → Ubicazioni
-              </h2>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-strong rounded-3xl p-8 cursor-pointer hover:scale-[1.02] transition-transform"
+              onClick={() => selectOperation('rientro')}
+            >
+              <div className="relative">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center text-4xl">
+                  📦
+                </div>
 
-              <p className="text-muted-foreground text-center">
-                Trasferisci prodotti dal buffer di ricevimento alle ubicazioni di stoccaggio
-              </p>
-            </div>
-          </motion.div>
+                <h2 className="text-2xl font-bold text-center mb-3">
+                  Rimetti nel Buffer
+                </h2>
+
+                <p className="text-muted-foreground text-center">
+                  Riporta un prodotto da un'ubicazione al buffer, scegliendo quantità e zona
+                </p>
+              </div>
+            </motion.div>
+          </div>
         )}
 
         {/* Selezione Zona */}
-        {currentOperation && !selectedZone && (
+        {currentOperation === 'buffer' && !selectedZone && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -763,6 +923,374 @@ export default function UbicazioniPage() {
             </div>
           </motion.div>
         )}
+
+        {/* Workflow Spostamento Ubicazione → Ubicazione */}
+        {currentOperation === 'sposta' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <button
+              onClick={backToOperationSelection}
+              className="mb-6 glass-strong px-6 py-3 rounded-xl hover:bg-white/20 transition-colors"
+            >
+              ← Torna indietro
+            </button>
+
+            <div className="glass-strong rounded-xl p-6">
+              {/* Step 1: Ubicazione di partenza */}
+              <h4 className="text-lg font-semibold mb-3 text-purple-400">
+                1️⃣ Ubicazione di Partenza
+              </h4>
+              <div className="flex gap-3 mb-2">
+                <input
+                  ref={sourceInputRef}
+                  type="text"
+                  value={sourceLocationCode}
+                  onChange={(e) => setSourceLocationCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') loadSourceLocation(sourceLocationCode);
+                  }}
+                  placeholder="Scansiona l'ubicazione di partenza..."
+                  className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-purple-500 focus:outline-none text-base"
+                  inputMode="text"
+                />
+                <button
+                  onClick={() => setShowSourceScanner(true)}
+                  className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 active:scale-95 transition-all flex items-center gap-2 touch-manipulation"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span className="hidden sm:inline">Camera</span>
+                </button>
+              </div>
+
+              {sourceLocationData && (
+                <div className="mb-6 glass p-4 rounded-lg border-l-4 border-purple-500">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-purple-400" />
+                    <span className="font-semibold">Partenza:</span>
+                    <span className="font-bold">{sourceLocationData.complete_name || sourceLocationData.name}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Griglia prodotti presenti nell'ubicazione di partenza */}
+              {sourceLocationData && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-3 text-purple-400">
+                    2️⃣ Scegli il Prodotto da Spostare
+                  </h4>
+                  {sourceProducts.length === 0 ? (
+                    <p className="text-muted-foreground glass p-4 rounded-lg">
+                      Nessun prodotto disponibile in questa ubicazione.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {sourceProducts.map((product) => (
+                        <div
+                          key={`${product.id}-${product.lot_name}`}
+                          className={`glass p-3 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation ${
+                            selectedProduct && selectedProduct.id === product.id && selectedProduct.lot_name === product.lot_name
+                              ? 'ring-2 ring-purple-500'
+                              : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setLotNumber(product.lot_name || '');
+                            setExpiryDate(product.expiration_date ? product.expiration_date.split(' ')[0] : '');
+                            setQuantity(product.quantity?.toString() || '1');
+                            setIsFromCatalog(false);
+                            toast.success(`Prodotto: ${product.name}`);
+                            setTimeout(() => locationInputRef.current?.focus(), 300);
+                          }}
+                        >
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-16 h-16 object-cover rounded-lg mb-2 mx-auto" />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                              <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="text-sm font-semibold line-clamp-2 mb-1">{product.name}</div>
+                          <div className="text-xs text-muted-foreground mb-1">{product.code}</div>
+                          <div className="text-sm font-bold text-green-400">{product.quantity} {product.uom}</div>
+                          {product.lot_name && (
+                            <div className="text-xs text-blue-400 mt-1">Lotto: {product.lot_name}</div>
+                          )}
+                          {product.expiration_date && (
+                            <div className="text-xs text-orange-400 mt-1">
+                              Scad: {new Date(product.expiration_date).toLocaleDateString('it-IT')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Prodotto selezionato: quantità */}
+              {selectedProduct && (
+                <div className="glass p-6 rounded-xl mb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h4 className="text-lg font-bold">{selectedProduct.name}</h4>
+                    {selectedProduct.lot_name && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                        Lotto {selectedProduct.lot_name}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-2">
+                      QUANTITÀ DA SPOSTARE (max {selectedProduct.quantity})
+                    </label>
+                    <div className="flex gap-2 max-w-xs">
+                      <button
+                        onClick={() => setShowCalculator(true)}
+                        className="flex-1 glass px-4 py-2 rounded-lg border border-purple-500/50 hover:border-purple-500 hover:bg-white/10 transition-colors text-left font-mono text-lg"
+                      >
+                        {quantity}
+                      </button>
+                      <span className="glass px-4 py-2 rounded-lg font-semibold">{selectedProduct.uom}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Ubicazione di destinazione */}
+              {selectedProduct && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-3 text-purple-400">
+                    3️⃣ Ubicazione di Destinazione
+                  </h4>
+                  <div className="flex gap-3">
+                    <input
+                      ref={locationInputRef}
+                      type="text"
+                      value={locationCode}
+                      onChange={(e) => setLocationCode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleLocationScan(locationCode);
+                      }}
+                      placeholder="Scansiona l'ubicazione di destinazione..."
+                      className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-purple-500 focus:outline-none text-base"
+                      inputMode="text"
+                    />
+                    <button
+                      onClick={() => setShowLocationScanner(true)}
+                      className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 active:scale-95 transition-all flex items-center gap-2 touch-manipulation"
+                    >
+                      <Camera className="w-5 h-5" />
+                      <span className="hidden sm:inline">Camera</span>
+                    </button>
+                  </div>
+
+                  {locationData && (
+                    <div className="mt-4 glass p-4 rounded-lg border-l-4 border-green-500">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-green-400" />
+                        <span className="font-semibold">Destinazione:</span>
+                        <span className="font-bold">{locationData.complete_name || locationData.name}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Conferma */}
+              {selectedProduct && locationData && (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={confirmSposta}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 px-6 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 active:scale-95 touch-manipulation"
+                >
+                  🔄 CONFERMA SPOSTAMENTO
+                  <ArrowRight className="w-5 h-5" />
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Workflow Rimetti nel Buffer (Ubicazione → Buffer) */}
+        {currentOperation === 'rientro' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <button
+              onClick={backToOperationSelection}
+              className="mb-6 glass-strong px-6 py-3 rounded-xl hover:bg-white/20 transition-colors"
+            >
+              ← Torna indietro
+            </button>
+
+            <div className="glass-strong rounded-xl p-6">
+              {/* Step 1: Ubicazione di partenza */}
+              <h4 className="text-lg font-semibold mb-3 text-amber-400">
+                1️⃣ Ubicazione di Partenza
+              </h4>
+              <div className="flex gap-3 mb-2">
+                <input
+                  ref={sourceInputRef}
+                  type="text"
+                  value={sourceLocationCode}
+                  onChange={(e) => setSourceLocationCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') loadSourceLocation(sourceLocationCode);
+                  }}
+                  placeholder="Scansiona l'ubicazione di partenza..."
+                  className="flex-1 glass px-4 py-3 rounded-xl border-2 border-white/20 focus:border-amber-500 focus:outline-none text-base"
+                  inputMode="text"
+                />
+                <button
+                  onClick={() => setShowSourceScanner(true)}
+                  className="glass-strong px-4 py-3 rounded-xl hover:bg-white/20 active:scale-95 transition-all flex items-center gap-2 touch-manipulation"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span className="hidden sm:inline">Camera</span>
+                </button>
+              </div>
+
+              {sourceLocationData && (
+                <div className="mb-6 glass p-4 rounded-lg border-l-4 border-amber-500">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-amber-400" />
+                    <span className="font-semibold">Partenza:</span>
+                    <span className="font-bold">{sourceLocationData.complete_name || sourceLocationData.name}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Griglia prodotti presenti nell'ubicazione di partenza */}
+              {sourceLocationData && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-3 text-amber-400">
+                    2️⃣ Scegli il Prodotto da Riportare
+                  </h4>
+                  {sourceProducts.length === 0 ? (
+                    <p className="text-muted-foreground glass p-4 rounded-lg">
+                      Nessun prodotto disponibile in questa ubicazione.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {sourceProducts.map((product) => (
+                        <div
+                          key={`${product.id}-${product.lot_name}`}
+                          className={`glass p-3 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation ${
+                            selectedProduct && selectedProduct.id === product.id && selectedProduct.lot_name === product.lot_name
+                              ? 'ring-2 ring-amber-500'
+                              : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setLotNumber(product.lot_name || '');
+                            setExpiryDate(product.expiration_date ? product.expiration_date.split(' ')[0] : '');
+                            setQuantity(product.quantity?.toString() || '1');
+                            setIsFromCatalog(false);
+                            setLocationData(null);
+                            toast.success(`Prodotto: ${product.name}`);
+                          }}
+                        >
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-16 h-16 object-cover rounded-lg mb-2 mx-auto" />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                              <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="text-sm font-semibold line-clamp-2 mb-1">{product.name}</div>
+                          <div className="text-xs text-muted-foreground mb-1">{product.code}</div>
+                          <div className="text-sm font-bold text-green-400">{product.quantity} {product.uom}</div>
+                          {product.lot_name && (
+                            <div className="text-xs text-blue-400 mt-1">Lotto: {product.lot_name}</div>
+                          )}
+                          {product.expiration_date && (
+                            <div className="text-xs text-orange-400 mt-1">
+                              Scad: {new Date(product.expiration_date).toLocaleDateString('it-IT')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Prodotto selezionato: quantità */}
+              {selectedProduct && (
+                <div className="glass p-6 rounded-xl mb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h4 className="text-lg font-bold">{selectedProduct.name}</h4>
+                    {selectedProduct.lot_name && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                        Lotto {selectedProduct.lot_name}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-2">
+                      QUANTITÀ DA RIPORTARE (max {selectedProduct.quantity})
+                    </label>
+                    <div className="flex gap-2 max-w-xs">
+                      <button
+                        onClick={() => setShowCalculator(true)}
+                        className="flex-1 glass px-4 py-2 rounded-lg border border-amber-500/50 hover:border-amber-500 hover:bg-white/10 transition-colors text-left font-mono text-lg"
+                      >
+                        {quantity}
+                      </button>
+                      <span className="glass px-4 py-2 rounded-lg font-semibold">{selectedProduct.uom}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Buffer di destinazione */}
+              {selectedProduct && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-3 text-amber-400">
+                    3️⃣ Scegli il Buffer di Destinazione
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {ZONES.map((zone) => (
+                      <button
+                        key={zone.id}
+                        onClick={() => selectBufferDest(zone)}
+                        className={`glass p-4 rounded-xl cursor-pointer active:scale-95 hover:scale-105 transition-transform touch-manipulation text-center ${
+                          locationData && locationData.id === zone.bufferId ? 'ring-2 ring-amber-500' : ''
+                        }`}
+                      >
+                        <div className="text-3xl mb-2">{zone.icon}</div>
+                        <div className="font-bold">{zone.name}</div>
+                        <div className="text-xs text-muted-foreground">{zone.bufferName}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {locationData && (
+                    <div className="mt-4 glass p-4 rounded-lg border-l-4 border-green-500">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-green-400" />
+                        <span className="font-semibold">Destinazione:</span>
+                        <span className="font-bold">{locationData.complete_name || locationData.name}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Conferma */}
+              {selectedProduct && locationData && (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={confirmSposta}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 px-6 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 active:scale-95 touch-manipulation"
+                >
+                  📦 RIMETTI NEL BUFFER
+                  <ArrowRight className="w-5 h-5" />
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* QR Scanner per ubicazioni */}
@@ -775,6 +1303,17 @@ export default function UbicazioniPage() {
           handleLocationScan(code);
         }}
         title="Scanner Ubicazione"
+      />
+
+      {/* QR Scanner ubicazione di partenza (spostamento) */}
+      <QRScanner
+        isOpen={showSourceScanner}
+        onClose={() => setShowSourceScanner(false)}
+        onScan={(code) => {
+          setShowSourceScanner(false);
+          loadSourceLocation(code);
+        }}
+        title="Scanner Ubicazione Partenza"
       />
 
       {/* Ricerca prodotti dal catalogo */}
