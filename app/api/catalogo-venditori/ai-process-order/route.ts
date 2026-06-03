@@ -89,7 +89,7 @@ async function extractTextFromMedia(
 
       try {
         console.log(`📤 [GEMINI] Sending PDF to Gemini...`);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const result = await model.generateContent([
           {
@@ -181,7 +181,7 @@ async function extractTextFromMedia(
       if (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY) {
         try {
           console.log(`📤 [GEMINI-FALLBACK] Using Gemini for image OCR...`);
-          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
           const result = await model.generateContent([
             {
@@ -275,7 +275,7 @@ async function extractTextFromMedia(
 
       try {
         console.log(`📤 [GEMINI] Sending document to Gemini...`);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const result = await model.generateContent([
           {
