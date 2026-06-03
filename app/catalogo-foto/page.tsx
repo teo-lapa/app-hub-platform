@@ -20,6 +20,9 @@ import {
   MapPin,
   Send,
   Trash2,
+  Snowflake,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
@@ -50,6 +53,21 @@ interface LocationProduct {
   catalogato: boolean;
 }
 
+interface MapBin {
+  id: number;
+  name: string;
+  barcode: string;
+  count: number;
+}
+
+interface MapZone {
+  id: number;
+  name: string;
+  label: string;
+  count: number;
+  bins: MapBin[];
+}
+
 type TabType = 'scatta' | 'ubicazione' | 'risultati';
 type FilterType = 'tutti' | 'completati' | 'review' | 'pending';
 
@@ -72,6 +90,12 @@ export default function CatalogoFotoPage() {
   const [locationProducts, setLocationProducts] = useState<LocationProduct[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationFilter, setLocationFilter] = useState<'tutti' | 'da_fare' | 'fatti'>('tutti');
+
+  // Mappa zone/bin (navigazione "dove devo andare")
+  const [mapZones, setMapZones] = useState<MapZone[]>([]);
+  const [isLoadingMap, setIsLoadingMap] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<MapZone | null>(null);
+  const [pendingBin, setPendingBin] = useState<MapBin | null>(null);
 
   // Risultati tab state
   const [jobs, setJobs] = useState<JobItem[]>([]);
@@ -276,6 +300,54 @@ export default function CatalogoFotoPage() {
     }
   };
 
+  // Carica la mappa zone -> bin con i conteggi "da fare"
+  const fetchLocationMap = async () => {
+    setIsLoadingMap(true);
+    try {
+      const res = await fetch('/api/catalogo-foto/location-map', { credentials: 'include' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setMapZones(data.zones || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Errore caricamento mappa');
+    } finally {
+      setIsLoadingMap(false);
+    }
+  };
+
+  // Tap su un bin: per aprire i prodotti DEVE scansionare il QR di QUEL bin
+  const handleSelectBin = (bin: MapBin) => {
+    if (!bin.barcode) {
+      toast.error('Questa ubicazione non ha un QR collegato');
+      return;
+    }
+    setPendingBin(bin);
+    setShowLocationScanner(true);
+  };
+
+  // Risultato scansione: se arrivo da un bin, il QR deve combaciare
+  const handleScanResult = (code: string) => {
+    if (pendingBin) {
+      const norm = (s: string) => (s || '').trim().toUpperCase();
+      if (norm(code) !== norm(pendingBin.barcode)) {
+        toast.error(`QR sbagliato: hai scansionato "${code}" ma devi essere su ${pendingBin.name}`);
+        setPendingBin(null);
+        return;
+      }
+      setLocationFilter('da_fare');
+    }
+    handleLocationScan(code);
+  };
+
+  // Torna alla mappa dalla vista prodotti (e aggiorna i conteggi)
+  const backToMap = () => {
+    setLocationName('');
+    setLocationProducts([]);
+    setPendingBin(null);
+    setLocationFilter('tutti');
+    fetchLocationMap();
+  };
+
   const handleSelectProductFromLocation = (product: LocationProduct) => {
     setNotes(`Sistema prodotto: ${product.name} (ID: ${product.id})`);
     setActiveTab('scatta');
@@ -294,6 +366,15 @@ export default function CatalogoFotoPage() {
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     if (tab === 'risultati') fetchJobs();
+    if (tab === 'ubicazione' && !locationName) fetchLocationMap();
+  };
+
+  // Icona per zona in base al nome
+  const zoneIcon = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes('frigo') || l.includes('congelatore') || l.includes('pingu')) return Snowflake;
+    if (l.includes('secco')) return Package;
+    return MapPin;
   };
 
   // Filter jobs
@@ -480,119 +561,207 @@ export default function CatalogoFotoPage() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-5"
             >
-              {/* Scan button */}
-              <button
-                onClick={() => setShowLocationScanner(true)}
-                className="w-full min-h-[72px] rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-3 text-xl font-bold"
-              >
-                <MapPin className="h-7 w-7" />
-                SCANSIONA UBICAZIONE
-              </button>
+              {(locationName || isLoadingLocation) ? (
+                /* ===== LIVELLO 2: prodotti dell'ubicazione (dopo scan QR valido) ===== */
+                <>
+                  <button
+                    onClick={backToMap}
+                    className="inline-flex items-center gap-2 text-slate-300 hover:text-white text-sm font-semibold"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Mappa
+                  </button>
 
-              {/* Location info */}
-              {locationName && (
-                <div className="rounded-xl bg-slate-800 border border-blue-500/30 p-4 flex items-center gap-3">
-                  <MapPin className="h-5 w-5 text-blue-400 shrink-0" />
-                  <div>
-                    <p className="text-sm text-slate-400">Ubicazione</p>
-                    <p className="font-bold text-white">{locationName}</p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <p className="text-sm text-slate-400">{locationProducts.length} prodotti</p>
-                    <p className="text-xs text-emerald-400">
-                      {locationProducts.filter(p => p.catalogato).length} fatti
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Loading */}
-              {isLoadingLocation && (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <Loader2 className="h-10 w-10 animate-spin mb-3" />
-                  <p>Caricamento prodotti...</p>
-                </div>
-              )}
-
-              {/* Product filters */}
-              {locationProducts.length > 0 && (
-                <div className="flex items-center gap-2">
-                  {([
-                    { key: 'tutti' as const, label: `Tutti (${locationProducts.length})` },
-                    { key: 'da_fare' as const, label: `Da fare (${locationProducts.filter(p => !p.catalogato).length})` },
-                    { key: 'fatti' as const, label: `Fatti (${locationProducts.filter(p => p.catalogato).length})` },
-                  ]).map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => setLocationFilter(f.key)}
-                      className={`px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                        locationFilter === f.key
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Product list */}
-              {locationProducts.length > 0 && !isLoadingLocation && (
-                <div className="space-y-3">
-                  {filteredLocationProducts.map((product) => (
-                    <motion.div
-                      key={product.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={() => handleSelectProductFromLocation(product)}
-                      className="rounded-xl bg-slate-800 border border-slate-700 p-4 hover:border-slate-500 active:scale-[0.98] transition-all cursor-pointer"
-                    >
-                      <div className="flex gap-3 items-center">
-                        {/* Thumbnail */}
-                        <div className="h-14 w-14 rounded-lg bg-slate-700 overflow-hidden shrink-0">
-                          {product.image ? (
-                            <img src={product.image} alt={product.name} className="object-cover h-full w-full" />
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <Package className="h-5 w-5 text-slate-500" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-white text-sm truncate">{product.name}</p>
-                          {product.code && (
-                            <p className="text-xs text-slate-400">{product.code}</p>
-                          )}
-                        </div>
-
-                        {/* Status badge */}
-                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-                          product.catalogato
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {product.catalogato ? (
-                            <><Check className="h-3.5 w-3.5" /> Fatto</>
-                          ) : (
-                            <><Camera className="h-3.5 w-3.5" /> Da fare</>
-                          )}
-                        </span>
+                  {/* Location info */}
+                  {locationName && (
+                    <div className="rounded-xl bg-slate-800 border border-blue-500/30 p-4 flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-blue-400 shrink-0" />
+                      <div>
+                        <p className="text-sm text-slate-400">Ubicazione</p>
+                        <p className="font-bold text-white">{locationName}</p>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                      <div className="ml-auto text-right">
+                        <p className="text-sm text-slate-400">{locationProducts.length} prodotti</p>
+                        <p className="text-xs text-emerald-400">
+                          {locationProducts.filter(p => p.catalogato).length} fatti
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Empty state */}
-              {!isLoadingLocation && !locationName && (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <MapPin className="h-12 w-12 mb-3" />
-                  <p className="text-lg font-semibold">Scansiona un'ubicazione</p>
-                  <p className="text-sm">Vedrai i prodotti presenti e il loro stato</p>
-                </div>
+                  {/* Loading */}
+                  {isLoadingLocation && (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                      <Loader2 className="h-10 w-10 animate-spin mb-3" />
+                      <p>Caricamento prodotti...</p>
+                    </div>
+                  )}
+
+                  {/* Product filters */}
+                  {locationProducts.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      {([
+                        { key: 'tutti' as const, label: `Tutti (${locationProducts.length})` },
+                        { key: 'da_fare' as const, label: `Da fare (${locationProducts.filter(p => !p.catalogato).length})` },
+                        { key: 'fatti' as const, label: `Fatti (${locationProducts.filter(p => p.catalogato).length})` },
+                      ]).map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => setLocationFilter(f.key)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+                            locationFilter === f.key
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Product list */}
+                  {locationProducts.length > 0 && !isLoadingLocation && (
+                    <div className="space-y-3">
+                      {filteredLocationProducts.map((product) => (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          onClick={() => handleSelectProductFromLocation(product)}
+                          className="rounded-xl bg-slate-800 border border-slate-700 p-4 hover:border-slate-500 active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                          <div className="flex gap-3 items-center">
+                            {/* Thumbnail */}
+                            <div className="h-14 w-14 rounded-lg bg-slate-700 overflow-hidden shrink-0">
+                              {product.image ? (
+                                <img src={product.image} alt={product.name} className="object-cover h-full w-full" />
+                              ) : (
+                                <div className="flex items-center justify-center h-full">
+                                  <Package className="h-5 w-5 text-slate-500" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-white text-sm truncate">{product.name}</p>
+                              {product.code && (
+                                <p className="text-xs text-slate-400">{product.code}</p>
+                              )}
+                            </div>
+
+                            {/* Status badge */}
+                            <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                              product.catalogato
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {product.catalogato ? (
+                                <><Check className="h-3.5 w-3.5" /> Fatto</>
+                              ) : (
+                                <><Camera className="h-3.5 w-3.5" /> Da fare</>
+                              )}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : selectedZone ? (
+                /* ===== LIVELLO 1: le ubicazioni (bin) della zona, solo quelle da fare ===== */
+                <>
+                  <button
+                    onClick={() => setSelectedZone(null)}
+                    className="inline-flex items-center gap-2 text-slate-300 hover:text-white text-sm font-semibold"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Zone
+                  </button>
+
+                  <div className="rounded-xl bg-slate-800 border border-blue-500/30 p-4 flex items-center gap-3">
+                    {(() => { const Icon = zoneIcon(selectedZone.label); return <Icon className="h-6 w-6 text-blue-400 shrink-0" />; })()}
+                    <div>
+                      <p className="text-sm text-slate-400">Zona</p>
+                      <p className="font-bold text-white">{selectedZone.label}</p>
+                    </div>
+                    <p className="ml-auto text-right text-sm font-bold text-red-400">{selectedZone.count} da fare</p>
+                  </div>
+
+                  <p className="text-xs text-slate-500">Vai su queste ubicazioni e flasha il QR per vedere i prodotti</p>
+
+                  <div className="space-y-3">
+                    {selectedZone.bins.map((bin) => (
+                      <button
+                        key={bin.id}
+                        onClick={() => handleSelectBin(bin)}
+                        className="w-full rounded-xl bg-slate-800 border border-slate-700 p-4 flex items-center gap-3 hover:border-slate-500 active:scale-[0.98] transition-all"
+                      >
+                        <MapPin className="h-5 w-5 text-blue-400 shrink-0" />
+                        <span className="flex-1 text-left font-semibold text-white text-sm truncate">{bin.name}</span>
+                        <span className="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400">
+                          {bin.count} da fare
+                        </span>
+                        <ChevronRight className="h-5 w-5 text-slate-500 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                /* ===== LIVELLO 0: la mappa delle zone ===== */
+                <>
+                  {/* Scorciatoia: scansiona direttamente un'ubicazione */}
+                  <button
+                    onClick={() => { setPendingBin(null); setShowLocationScanner(true); }}
+                    className="w-full min-h-[64px] rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-3 text-lg font-bold"
+                  >
+                    <MapPin className="h-6 w-6" />
+                    SCANSIONA UBICAZIONE
+                  </button>
+
+                  {isLoadingMap ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                      <Loader2 className="h-10 w-10 animate-spin mb-3" />
+                      <p>Calcolo prodotti da fare...</p>
+                    </div>
+                  ) : mapZones.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                      <Check className="h-12 w-12 mb-3 text-emerald-500" />
+                      <p className="text-lg font-semibold">Tutto fotografato!</p>
+                      <p className="text-sm">Nessun prodotto con giacenza da fare</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-slate-400">Dove andare a fotografare</p>
+                        <button
+                          onClick={fetchLocationMap}
+                          className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition-colors"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {mapZones.map((zone) => {
+                          const Icon = zoneIcon(zone.label);
+                          return (
+                            <button
+                              key={zone.id}
+                              onClick={() => setSelectedZone(zone)}
+                              className="rounded-2xl bg-slate-800 border border-slate-700 p-5 flex flex-col items-start gap-2 hover:border-blue-500/50 active:scale-[0.98] transition-all text-left"
+                            >
+                              <Icon className="h-7 w-7 text-blue-400" />
+                              <p className="font-bold text-white">{zone.label}</p>
+                              <p className="text-sm">
+                                <span className="text-2xl font-extrabold text-red-400">{zone.count}</span>{' '}
+                                <span className="text-slate-400">da fare</span>
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </motion.div>
           )}
@@ -765,8 +934,8 @@ export default function CatalogoFotoPage() {
       <QRScanner
         isOpen={showLocationScanner}
         onClose={() => setShowLocationScanner(false)}
-        onScan={handleLocationScan}
-        title="Scanner Ubicazione"
+        onScan={handleScanResult}
+        title={pendingBin ? `Flasha ${pendingBin.name}` : 'Scanner Ubicazione'}
       />
 
       <MobileHomeButton />
