@@ -43,9 +43,11 @@ export async function GET(_request: NextRequest) {
     const depositoId = depots[0].id;
 
     // 2. Tutte le ubicazioni sotto il deposito (per ricostruire l'albero zona/bin)
+    // Prendo anche le non-internal (es. "Produzione combo" usage=production) solo per
+    // avere nome/gerarchia; in fase di conteggio escludo i bin non-internal.
     const locs = await callKw(odooUrl!, sessionId, 'stock.location', 'search_read',
-      [[['id', 'child_of', depositoId], ['usage', '=', 'internal']]],
-      injectLangContext({ fields: ['id', 'name', 'complete_name', 'location_id', 'barcode'], limit: 5000 }));
+      [[['id', 'child_of', depositoId]]],
+      injectLangContext({ fields: ['id', 'name', 'complete_name', 'location_id', 'barcode', 'usage'], limit: 5000 }));
     const locById = new Map<number, any>();
     const parentOf = new Map<number, number | null>();
     for (const l of locs) {
@@ -88,6 +90,9 @@ export async function GET(_request: NextRequest) {
     const binDaFare = new Map<number, Set<number>>(); // binId -> set tmplId
     for (const q of quants) {
       const binId = q.location_id[0];
+      const binLoc = locById.get(binId);
+      // solo ubicazioni fisiche di stoccaggio: escludo produzione/transito/view
+      if (!binLoc || binLoc.usage !== 'internal') continue;
       const tmplId = tmplOf.get(q.product_id[0]);
       if (tmplId == null || catalogati.has(tmplId)) continue;
       if (!binDaFare.has(binId)) binDaFare.set(binId, new Set());
