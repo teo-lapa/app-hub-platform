@@ -52,7 +52,7 @@ export async function analyzeAttachment(attachment: Attachment): Promise<Analyze
 
   try {
     const genAI = await getGemini();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Prompt specifico per analisi immagini/documenti nel contesto customer service
     const prompt = `Analizza questa immagine/documento nel contesto di un servizio clienti per LAPA, un distributore di prodotti alimentari italiani in Svizzera.

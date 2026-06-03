@@ -47,7 +47,7 @@ function getBufferLocationFromCategory(categoryName: string | null): { name: str
 
 async function analyzePhotoWithAI(photoBase64: string, expectedProduct: string): Promise<{ match: boolean; labelText: string; confidence: string }> {
   const response = await genai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     contents: [{
       role: 'user',
       parts: [
