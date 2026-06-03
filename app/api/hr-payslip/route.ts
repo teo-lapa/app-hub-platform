@@ -791,29 +791,78 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Errore creazione busta paga' }, { status: 500 });
       }
 
-      // STEP 2: Chiama compute_sheet - Odoo crea le righe dalla struttura stipendio
-      // Questo è equivalente al bottone "Foglio di calcolo" nell'interfaccia
-      await callOdoo(cookies, 'hr.payslip', 'compute_sheet', [[payslipId]]);
-      console.log('[create-payslip] compute_sheet eseguito');
+      // STEP 2: Chiama compute_sheet - Odoo crea le righe dalla struttura stipendio.
+      // NON deve bloccare: se Odoo si lamenta delle ferie (es. ferie a cavallo di due
+      // mesi → "tempo libero rimanente da differire") l'app deve comunque scrivere il
+      // valore del PDF e andare avanti. Le ferie le gestiamo a parte. Ignoriamo l'errore.
+      try {
+        await callOdoo(cookies, 'hr.payslip', 'compute_sheet', [[payslipId]]);
+        console.log('[create-payslip] compute_sheet eseguito');
+      } catch (e: any) {
+        console.warn('[create-payslip] compute_sheet ignorato (es. ferie):', e?.message);
+      }
 
-      // STEP 3: Trova la riga NET creata da compute_sheet e aggiornala con il valore dal PDF
+      // La riga NET deve contenere il TOTALE della busta paga (AUSZAHLUNG completo).
+      // Il bonus (Pauschalspesen) è già incluso nel totale, la riga BONUS è solo per tracking.
+      // NET = netAmount + bonusAmount = AUSZAHLUNG originale
+      const netTotal = netAmount + (bonusAmount || 0);
+
+      // STEP 3: Trova la riga NET. Se compute_sheet l'ha creata la aggiorniamo col valore
+      // dal PDF; se compute_sheet è stato saltato e la riga non c'è, la creiamo a mano.
       const netLines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
         domain: [['slip_id', '=', payslipId], ['code', '=', 'NET']],
         fields: ['id', 'name', 'code', 'amount', 'total'],
       });
 
       if (netLines && netLines.length > 0) {
-        // La riga NET deve contenere il TOTALE della busta paga (AUSZAHLUNG completo).
-        // Il bonus (Pauschalspesen) è già incluso nel totale, la riga BONUS è solo per tracking.
-        // NET = netAmount + bonusAmount = AUSZAHLUNG originale
-        const netTotal = netAmount + (bonusAmount || 0);
         await callOdoo(cookies, 'hr.payslip.line', 'write', [
           [netLines[0].id],
           { amount: netTotal, total: netTotal }
         ]);
         console.log('[create-payslip] NET aggiornato:', netLines[0].id, '→', netTotal, '(netto', netAmount, '+ bonus', bonusAmount || 0, ')');
       } else {
-        console.warn('[create-payslip] Riga NET non trovata dopo compute_sheet');
+        // compute_sheet saltato: creiamo la riga NET manualmente dalla struttura del payslip
+        const psInfo = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+          domain: [['id', '=', payslipId]],
+          fields: ['struct_id', 'contract_id'],
+        });
+        const structId = psInfo[0]?.struct_id?.[0];
+        const contractId = psInfo[0]?.contract_id?.[0];
+
+        // Regola NET della struttura del payslip (fallback: prima regola NET disponibile)
+        let netRule = structId
+          ? await callOdoo(cookies, 'hr.salary.rule', 'search_read', [], {
+              domain: [['code', '=', 'NET'], ['struct_id', '=', structId]],
+              fields: ['id', 'category_id'],
+            })
+          : [];
+        if (!netRule || netRule.length === 0) {
+          netRule = await callOdoo(cookies, 'hr.salary.rule', 'search_read', [], {
+            domain: [['code', '=', 'NET']],
+            fields: ['id', 'category_id'],
+            limit: 1,
+          });
+        }
+
+        if (netRule && netRule.length > 0) {
+          const netLineData: any = {
+            slip_id: payslipId,
+            name: 'Salario netto',
+            code: 'NET',
+            category_id: netRule[0].category_id[0],
+            salary_rule_id: netRule[0].id,
+            amount: netTotal,
+            quantity: 1,
+            rate: 100,
+            total: netTotal,
+            sequence: 50,
+          };
+          if (contractId) netLineData.contract_id = contractId;
+          const netLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [netLineData]);
+          console.log('[create-payslip] NET creato manualmente:', netLineId, '→', netTotal);
+        } else {
+          console.warn('[create-payslip] Nessuna regola NET trovata, riga netta non creata');
+        }
       }
 
       // STEP 4: Se c'è bonus, aggiungi una riga BONUS_VENDITE
