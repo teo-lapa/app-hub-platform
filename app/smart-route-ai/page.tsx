@@ -77,6 +77,15 @@ export default function SmartRouteAIPage() {
   const [batchPickings, setBatchPickings] = useState<Array<{id: number, name: string, partnerName: string, scheduledDate: string, weight: number, products: Array<{id: number, productName: string, quantity: number, uom: string, weight: number}>}>>([]);
   const [expandedPickingId, setExpandedPickingId] = useState<number | null>(null);
   const [loadingPickings, setLoadingPickings] = useState(false);
+  // Cambio autista/auto su un giro esistente (anche dopo la conferma)
+  const [showEditAssignModal, setShowEditAssignModal] = useState(false);
+  const [editAssignBatchId, setEditAssignBatchId] = useState<number | null>(null);
+  // Preventivi (sale.order non confermati)
+  const [showQuotationsModal, setShowQuotationsModal] = useState(false);
+  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [quotations, setQuotations] = useState<{ ecommerce: any[]; altri: any[] }>({ ecommerce: [], altri: [] });
+  const [expandedQuotationId, setExpandedQuotationId] = useState<number | null>(null);
+  const [confirmingQuotationId, setConfirmingQuotationId] = useState<number | null>(null);
 
   // Expired products modal state
   const [showExpiredModal, setShowExpiredModal] = useState(false);
@@ -384,8 +393,8 @@ export default function SmartRouteAIPage() {
       if (!response.ok) throw new Error('Error assigning vehicle');
 
       debugLog('Vehicle assigned to batch successfully', 'success');
-      showToast('Veicolo assegnato al batch', 'success');
-      
+      showToast('Autista e auto salvati sul giro', 'success');
+
       // Mark vehicle as selected
       setVehicles(prev => prev.map(v =>
         v.id === vehicleId ? { ...v, selected: true } : v
@@ -393,12 +402,58 @@ export default function SmartRouteAIPage() {
 
       setShowVehicleBatchModal(false);
       setSelectedVehicleForBatch(null);
+      setShowEditAssignModal(false);
+      setEditAssignBatchId(null);
+
+      // Ricarica i batch cosi' l'autista/auto salvato appare subito nella UI
+      if (dateFrom) await loadBatches(dateFrom);
 
     } catch (error: any) {
       debugLog(`Error assigning vehicle: ${error.message}`, 'error');
       showToast('Errore assegnazione veicolo', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Preventivi: carica sale.order non confermati (divisi e-commerce / altri)
+  async function loadQuotations() {
+    try {
+      setLoadingQuotations(true);
+      setShowQuotationsModal(true);
+      const res = await fetch('/api/smart-route-ai/quotations');
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Errore');
+      setQuotations({ ecommerce: data.ecommerce || [], altri: data.altri || [] });
+    } catch (error: any) {
+      showToast(`Errore preventivi: ${error.message}`, 'error');
+      setQuotations({ ecommerce: [], altri: [] });
+    } finally {
+      setLoadingQuotations(false);
+    }
+  }
+
+  // Preventivi: convalida (action_confirm) -> diventa ordine
+  async function confirmQuotation(orderId: number) {
+    try {
+      setConfirmingQuotationId(orderId);
+      const res = await fetch('/api/smart-route-ai/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Errore');
+      showToast('Preventivo convalidato', 'success');
+      // Rimuovi dalla lista
+      setQuotations(prev => ({
+        ecommerce: prev.ecommerce.filter(o => o.id !== orderId),
+        altri: prev.altri.filter(o => o.id !== orderId),
+      }));
+    } catch (error: any) {
+      showToast(`Errore convalida: ${error.message}`, 'error');
+    } finally {
+      setConfirmingQuotationId(null);
     }
   }
 
@@ -806,6 +861,16 @@ export default function SmartRouteAIPage() {
               <span className="hidden sm:inline">{odooConnected ? 'Connesso' : 'Non connesso'}</span>
             </div>
 
+            {/* Preventivi */}
+            <button
+              onClick={loadQuotations}
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors"
+              title="Preventivi da convalidare"
+            >
+              <span>📄</span>
+              <span className="hidden sm:inline">Preventivi</span>
+            </button>
+
             {/* Stats Bar */}
             <div className="flex gap-2 sm:gap-4 text-[10px] sm:text-xs">
               <div className="text-center">
@@ -1159,6 +1224,17 @@ export default function SmartRouteAIPage() {
                         </div>
                       )}
 
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditAssignBatchId(batch.id);
+                          setShowEditAssignModal(true);
+                        }}
+                        className="w-full mt-1 text-xs px-2 py-1.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                      >
+                        ✏️ Cambia autista/auto
+                      </button>
+
                       <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
                         {batch.pickingCount} consegne • Clicca per avanzare
                       </div>
@@ -1369,6 +1445,131 @@ export default function SmartRouteAIPage() {
             >
               Annulla
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cambia autista/auto su un giro (anche dopo la conferma) */}
+      {showEditAssignModal && editAssignBatchId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4" onClick={() => setShowEditAssignModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Cambia autista/auto</h3>
+              <button onClick={() => setShowEditAssignModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="text-sm text-gray-600 mb-3">
+              Giro: <span className="font-semibold text-gray-900">{batches.find(b => b.id === editAssignBatchId)?.name}</span>
+              <div className="text-xs text-gray-500 mt-1">Seleziona il veicolo (l'autista è abbinato). Si può cambiare anche dopo la conferma.</div>
+            </div>
+            <div className="max-h-72 overflow-y-auto space-y-2">
+              {vehicles.length === 0 ? (
+                <div className="text-center text-gray-500 py-8 text-sm">Nessun veicolo disponibile</div>
+              ) : (
+                vehicles.map(vehicle => {
+                  const nameParts = vehicle.name.split('/');
+                  const model = nameParts[0]?.trim() || 'Veicolo';
+                  const parts = vehicle.driver.split(',');
+                  const driverName = parts.length > 1 ? parts[1].trim() : vehicle.driver;
+                  return (
+                    <button
+                      key={vehicle.id}
+                      disabled={loading}
+                      onClick={() => assignVehicleToBatch(editAssignBatchId, vehicle.id, vehicle.driverId, vehicle.employeeId)}
+                      className="w-full p-3 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-all disabled:opacity-50"
+                    >
+                      <div className="font-semibold text-sm text-gray-900">{model} {vehicle.plate}</div>
+                      <div className="text-xs text-gray-600">👤 {driverName}</div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <button
+              onClick={() => setShowEditAssignModal(false)}
+              className="w-full mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Preventivi da convalidare */}
+      {showQuotationsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4" onClick={() => setShowQuotationsModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">📄 Preventivi da convalidare</h3>
+              <button onClick={() => setShowQuotationsModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {loadingQuotations ? (
+              <div className="text-center text-gray-500 py-12">Caricamento preventivi…</div>
+            ) : (
+              <div className="overflow-y-auto space-y-5">
+                {([
+                  { key: 'altri', label: '🧾 Clienti (non e-commerce)', list: quotations.altri },
+                  { key: 'ecommerce', label: '🛒 E-commerce', list: quotations.ecommerce },
+                ] as const).map(group => (
+                  <div key={group.key}>
+                    <div className="text-sm font-bold text-gray-700 mb-2 sticky top-0 bg-white py-1">
+                      {group.label} <span className="text-gray-400 font-normal">({group.list.length})</span>
+                    </div>
+                    {group.list.length === 0 ? (
+                      <div className="text-xs text-gray-400 py-2">Nessun preventivo</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {group.list.map((q: any) => (
+                          <div key={q.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div
+                              className="p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50"
+                              onClick={() => setExpandedQuotationId(expandedQuotationId === q.id ? null : q.id)}
+                            >
+                              <div className="min-w-0">
+                                <div className="font-semibold text-sm text-gray-900 truncate">{q.name} · {q.customer}</div>
+                                <div className="text-xs text-gray-500">
+                                  {q.state === 'sent' ? 'Inviato' : 'Bozza'} · CHF {q.amount.toFixed(2)}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmQuotation(q.id); }}
+                                disabled={confirmingQuotationId === q.id}
+                                className="shrink-0 text-xs px-3 py-1.5 rounded bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50"
+                              >
+                                {confirmingQuotationId === q.id ? '…' : '✅ Convalida'}
+                              </button>
+                            </div>
+                            {expandedQuotationId === q.id && (
+                              <div className="px-3 pb-3 pt-1 bg-gray-50 border-t border-gray-200">
+                                {q.lines.length === 0 ? (
+                                  <div className="text-xs text-gray-400">Nessuna riga</div>
+                                ) : (
+                                  <table className="w-full text-xs">
+                                    <tbody>
+                                      {q.lines.map((l: any) => (
+                                        <tr key={l.id} className="border-b border-gray-100 last:border-0">
+                                          <td className="py-1 pr-2 text-gray-800">{l.name}</td>
+                                          <td className="py-1 px-1 text-right text-gray-600 whitespace-nowrap">{l.qty} ×</td>
+                                          <td className="py-1 pl-1 text-right text-gray-800 whitespace-nowrap">CHF {l.subtotal.toFixed(2)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

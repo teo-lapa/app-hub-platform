@@ -233,10 +233,36 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Smart Route AI] Successfully advanced batch ${batchId} to ${newState}`);
 
+    // Quando il giro passa bozza -> pronto, lancia "Controlla disponibilità"
+    // (action_assign) su ogni pick: aggancia/riserva le quantità disponibili.
+    let availabilityChecked = 0;
+    if (newState === 'in_progress') {
+      try {
+        const batchPickings = await rpcClient.searchRead(
+          'stock.picking',
+          [['batch_id', '=', batchId], ['state', 'not in', ['done', 'cancel']]],
+          ['id'],
+          200
+        );
+        for (const p of batchPickings) {
+          try {
+            await rpcClient.callKw('stock.picking', 'action_assign', [[p.id]]);
+            availabilityChecked++;
+          } catch (assignErr: any) {
+            console.warn(`[Smart Route AI] action_assign fallito per picking ${p.id}: ${assignErr.message}`);
+          }
+        }
+        console.log(`[Smart Route AI] Controlla disponibilità: ${availabilityChecked}/${batchPickings.length} pick`);
+      } catch (availErr: any) {
+        console.warn(`[Smart Route AI] Controlla disponibilità non eseguito: ${availErr.message}`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: `Batch state updated to ${newState}`,
-      newState
+      newState,
+      availabilityChecked
     });
 
   } catch (error: any) {

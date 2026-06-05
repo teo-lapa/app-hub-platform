@@ -57,38 +57,39 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Smart Route AI] Found ${batches.length} batches`);
 
-    // Calculate total weight for each batch
-    const batchesWithWeights = await Promise.all(
-      batches.map(async (b: any) => {
-        let totalWeight = 0;
-
-        if (b.picking_ids && b.picking_ids.length > 0) {
-          // Fetch all pickings with weight
-          const pickings = await rpcClient.callKw(
-            'stock.picking',
-            'read',
-            [b.picking_ids, ['id', 'weight']]
-          );
-
-          // Sum weights from pickings
-          totalWeight = pickings.reduce((sum: number, picking: any) => sum + (picking.weight || 0), 0);
-        }
-
-        return {
-          id: b.id,
-          name: b.name,
-          state: b.state,
-          scheduledDate: b.scheduled_date,
-          pickingIds: b.picking_ids || [],
-          pickingCount: (b.picking_ids || []).length,
-          userId: b.user_id ? b.user_id[0] : null,
-          userName: b.user_id ? b.user_id[1] : null,
-          vehicleName: b.x_studio_auto_del_giro ? b.x_studio_auto_del_giro[1] : null,
-          driverName: b.x_studio_autista_del_giro ? b.x_studio_autista_del_giro[1] : null,
-          totalWeight: Math.round(totalWeight)
-        };
-      })
+    // Pesi di TUTTI i picking in UNA sola query (invece di una per batch)
+    const allPickingIds = Array.from(
+      new Set(batches.flatMap((b: any) => b.picking_ids || []))
     );
+    const weightByPicking = new Map<number, number>();
+    if (allPickingIds.length > 0) {
+      const allPickings = await rpcClient.callKw(
+        'stock.picking',
+        'read',
+        [allPickingIds, ['id', 'weight']]
+      );
+      allPickings.forEach((p: any) => weightByPicking.set(p.id, p.weight || 0));
+    }
+
+    const batchesWithWeights = batches.map((b: any) => {
+      const totalWeight = (b.picking_ids || []).reduce(
+        (sum: number, pid: number) => sum + (weightByPicking.get(pid) || 0),
+        0
+      );
+      return {
+        id: b.id,
+        name: b.name,
+        state: b.state,
+        scheduledDate: b.scheduled_date,
+        pickingIds: b.picking_ids || [],
+        pickingCount: (b.picking_ids || []).length,
+        userId: b.user_id ? b.user_id[0] : null,
+        userName: b.user_id ? b.user_id[1] : null,
+        vehicleName: b.x_studio_auto_del_giro ? b.x_studio_auto_del_giro[1] : null,
+        driverName: b.x_studio_autista_del_giro ? b.x_studio_autista_del_giro[1] : null,
+        totalWeight: Math.round(totalWeight * 10) / 10
+      };
+    });
 
     return NextResponse.json({
       success: true,
