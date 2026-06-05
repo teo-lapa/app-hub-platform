@@ -115,15 +115,15 @@ export default function MappaConsegnePage() {
             {loading ? '…' : 'Carica'}
           </button>
           <div className="flex gap-1">
-            <button onClick={() => setRange(today(), today())} className="text-xs border rounded px-2 py-1 hover:bg-gray-100">Oggi</button>
-            <button onClick={() => setRange(daysAgo(1), daysAgo(1))} className="text-xs border rounded px-2 py-1 hover:bg-gray-100">Ieri</button>
-            <button onClick={() => setRange(daysAgo(6), today())} className="text-xs border rounded px-2 py-1 hover:bg-gray-100">7 giorni</button>
-            <button onClick={() => setRange(daysAgo(29), today())} className="text-xs border rounded px-2 py-1 hover:bg-gray-100">30 giorni</button>
+            <button onClick={() => setRange(today(), today())} className="text-xs border rounded px-2 py-1 bg-white text-gray-700 hover:bg-gray-100">Oggi</button>
+            <button onClick={() => setRange(daysAgo(1), daysAgo(1))} className="text-xs border rounded px-2 py-1 bg-white text-gray-700 hover:bg-gray-100">Ieri</button>
+            <button onClick={() => setRange(daysAgo(6), today())} className="text-xs border rounded px-2 py-1 bg-white text-gray-700 hover:bg-gray-100">7 giorni</button>
+            <button onClick={() => setRange(daysAgo(29), today())} className="text-xs border rounded px-2 py-1 bg-white text-gray-700 hover:bg-gray-100">30 giorni</button>
           </div>
 
           {giri.length > 0 && (
             <select value={selGiro} onChange={(e) => setSelGiro(e.target.value)}
-              className="border rounded px-2 py-1 text-sm ml-auto">
+              className="border rounded px-2 py-1 text-sm ml-auto bg-white text-gray-700">
               <option value="">Tutti i giri</option>
               {giri.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -137,7 +137,7 @@ export default function MappaConsegnePage() {
               const active = selDrivers.size === 0 || selDrivers.has(d.id);
               return (
                 <button key={d.id} onClick={() => toggleDriver(d.id)}
-                  className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition ${active ? 'bg-gray-100' : 'opacity-40'}`}>
+                  className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border bg-white text-gray-700 transition ${active ? 'bg-gray-100' : 'opacity-40'}`}>
                   <span className="w-3 h-3 rounded-full" style={{ background: colorByDriver[d.id] }} />
                   {d.name}
                 </button>
