@@ -94,7 +94,13 @@ export default function MappaConsegnePage() {
       {/* Header filtri */}
       <div className="bg-white border-b border-gray-200 p-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-xl font-bold text-gray-900">🗺️ Mappa Consegne Autisti</h1>
+          <div className="flex items-center gap-3">
+            <a href="/dashboard" title="Torna alla home"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition shrink-0 text-lg">
+              ←
+            </a>
+            <h1 className="text-xl font-bold text-gray-900">🗺️ Mappa Consegne Autisti</h1>
+          </div>
           <div className="text-sm text-gray-600">
             <span className="text-green-700 font-medium">{filtered.filter((d) => d.status === 'done').length} fatte</span>
             {' · '}
