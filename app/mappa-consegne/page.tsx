@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { Delivery } from './MapView';
+import type { Delivery, Depot } from './MapView';
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -28,6 +28,7 @@ export default function MappaConsegnePage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [drivers, setDrivers] = useState<{ id: number; name: string }[]>([]);
   const [giri, setGiri] = useState<string[]>([]);
+  const [depot, setDepot] = useState<Depot | null>(null);
   const [missing, setMissing] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,6 +46,7 @@ export default function MappaConsegnePage() {
       setDeliveries(data.deliveries);
       setDrivers(data.drivers);
       setGiri(data.giri);
+      setDepot(data.depot || null);
       setMissing(data.missing);
       setSelDrivers(new Set());
       setSelGiro('');
@@ -154,7 +156,7 @@ export default function MappaConsegnePage() {
             {error}
           </div>
         )}
-        <MapView deliveries={filtered} colorByDriver={colorByDriver} />
+        <MapView deliveries={filtered} colorByDriver={colorByDriver} depot={depot} />
       </div>
     </div>
   );

@@ -51,9 +51,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ deliveries: [], drivers: [], giri: [], missing: 0 });
     }
 
-    // Coordinate dei clienti
+    // Coordinate dei clienti (+ id 1 = deposito LAPA Embrach, punto di partenza)
+    const DEPOT_PARTNER_ID = 1;
     const partnerIds = Array.from(
-      new Set(pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean))
+      new Set([
+        DEPOT_PARTNER_ID,
+        ...pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean),
+      ])
     );
 
     const partners = await callOdoo(
@@ -69,6 +73,41 @@ export async function GET(request: NextRequest) {
 
     const partnerMap = new Map<number, any>();
     partners.forEach((p: any) => partnerMap.set(p.id, p));
+
+    // Feedback autisti dal chatter: resi, scarichi parziali, prodotti non scaricati
+    const pickingIds = pickings.map((p: any) => p.id);
+    const messages = await callOdoo(
+      cookies,
+      'mail.message',
+      'search_read',
+      [],
+      {
+        domain: [
+          ['model', '=', 'stock.picking'],
+          ['res_id', 'in', pickingIds],
+          '|', '|',
+          ['body', 'ilike', 'RESO REGISTRATO'],
+          ['body', 'ilike', 'SCARICO PARZIALE'],
+          ['body', 'ilike', 'NON SCARICATO'],
+        ],
+        fields: ['res_id', 'body', 'date'],
+      }
+    );
+
+    const stripHtml = (s: string) =>
+      (s || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+    const feedbackMap = new Map<number, any[]>();
+    (messages || []).forEach((m: any) => {
+      const body = m.body || '';
+      let type = 'Feedback';
+      if (body.includes('RESO REGISTRATO')) type = 'Reso';
+      else if (body.includes('SCARICO PARZIALE')) type = 'Scarico parziale';
+      else if (body.includes('NON SCARICATO')) type = 'Non scaricato';
+      const entry = { type, text: stripHtml(body), date: m.date };
+      if (!feedbackMap.has(m.res_id)) feedbackMap.set(m.res_id, []);
+      feedbackMap.get(m.res_id)!.push(entry);
+    });
 
     let missing = 0;
     const deliveries = pickings
@@ -97,6 +136,7 @@ export async function GET(request: NextRequest) {
           time: p.date_done,
           saleId: p.sale_id?.[0] || null,
           saleName: p.origin || p.sale_id?.[1] || '',
+          feedback: feedbackMap.get(p.id) || [],
         };
       })
       .filter(Boolean);
@@ -109,7 +149,17 @@ export async function GET(request: NextRequest) {
       new Set(deliveries.map((d: any) => d.giro).filter(Boolean))
     );
 
-    return NextResponse.json({ deliveries, drivers, giri, missing });
+    const dp = partnerMap.get(DEPOT_PARTNER_ID);
+    const depot = dp && dp.partner_latitude && dp.partner_longitude
+      ? {
+          lat: dp.partner_latitude,
+          lng: dp.partner_longitude,
+          name: 'Deposito LAPA Embrach',
+          address: [dp.street, dp.zip, dp.city].filter(Boolean).join(', '),
+        }
+      : null;
+
+    return NextResponse.json({ deliveries, drivers, giri, missing, depot });
   } catch (error: any) {
     console.error('Errore mappa consegne:', error);
     return NextResponse.json(
