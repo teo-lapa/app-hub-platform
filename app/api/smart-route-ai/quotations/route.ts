@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * POST /api/smart-route-ai/quotations  body: { orderId }
  * Convalida il preventivo (action_confirm) -> diventa ordine confermato.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('odoo_session_id');
@@ -21,14 +21,25 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'No Odoo session' }, { status: 401 });
     }
 
+    // Filtro per DATA DI CONSEGNA (commitment_date), agganciata alla data scelta
+    // nell'Importa. Esclude automaticamente i preventivi senza data (false/1970).
+    const sp = request.nextUrl.searchParams;
+    const today = new Date().toISOString().slice(0, 10);
+    const from = sp.get('from') || today;
+    const to = sp.get('to') || from;
+
     const rpcClient = createOdooRPCClient(sessionCookie.value);
 
     const orders = await rpcClient.searchRead(
       'sale.order',
-      [['state', 'in', ['draft', 'sent']]],
-      ['id', 'name', 'partner_id', 'date_order', 'amount_total', 'state', 'website_id', 'order_line'],
+      [
+        ['state', 'in', ['draft', 'sent']],
+        ['commitment_date', '>=', `${from} 00:00:00`],
+        ['commitment_date', '<=', `${to} 23:59:59`],
+      ],
+      ['id', 'name', 'partner_id', 'date_order', 'commitment_date', 'amount_total', 'state', 'website_id', 'order_line'],
       300,
-      'date_order desc'
+      'commitment_date asc'
     );
 
     // Righe in bulk per il dettaglio al clic
@@ -58,6 +69,7 @@ export async function GET() {
       name: o.name,
       customer: o.partner_id ? o.partner_id[1] : 'N/A',
       date: o.date_order,
+      deliveryDate: o.commitment_date || null,
       amount: o.amount_total || 0,
       state: o.state,
       isEcommerce: !!o.website_id,

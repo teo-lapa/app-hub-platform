@@ -421,7 +421,8 @@ export default function SmartRouteAIPage() {
     try {
       setLoadingQuotations(true);
       setShowQuotationsModal(true);
-      const res = await fetch('/api/smart-route-ai/quotations');
+      const qs = dateFrom ? `?from=${dateFrom}&to=${dateTo || dateFrom}` : '';
+      const res = await fetch(`/api/smart-route-ai/quotations${qs}`);
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Errore');
       setQuotations({ ecommerce: data.ecommerce || [], altri: data.altri || [] });
@@ -1500,8 +1501,15 @@ export default function SmartRouteAIPage() {
       {showQuotationsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4" onClick={() => setShowQuotationsModal(false)}>
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">📄 Preventivi da convalidare</h3>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">📄 Preventivi da convalidare</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Consegna del {dateFrom ? new Date(dateFrom).toLocaleDateString('it-CH') : 'oggi'}
+                  {dateTo && dateTo !== dateFrom ? ` → ${new Date(dateTo).toLocaleDateString('it-CH')}` : ''}
+                  {' '}· solo con data di consegna
+                </p>
+              </div>
               <button onClick={() => setShowQuotationsModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
               </button>
@@ -1533,6 +1541,9 @@ export default function SmartRouteAIPage() {
                                 <div className="font-semibold text-sm text-gray-900 truncate">{q.name} · {q.customer}</div>
                                 <div className="text-xs text-gray-500">
                                   {q.state === 'sent' ? 'Inviato' : 'Bozza'} · CHF {q.amount.toFixed(2)}
+                                  {q.deliveryDate && (
+                                    <span> · 🚚 {new Date(q.deliveryDate.replace(' ', 'T')).toLocaleString('it-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                  )}
                                 </div>
                               </div>
                               <button
