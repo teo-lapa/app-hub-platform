@@ -49,14 +49,15 @@ export async function GET(request: NextRequest) {
       const lines = await rpcClient.callKw(
         'sale.order.line',
         'read',
-        [allLineIds, ['id', 'order_id', 'name', 'product_uom_qty', 'price_unit', 'price_subtotal']]
+        [allLineIds, ['id', 'order_id', 'name', 'product_id', 'product_uom_qty', 'price_unit', 'price_subtotal']]
       );
       lines.forEach((l: any) => {
         const oid = l.order_id ? l.order_id[0] : 0;
         if (!linesByOrder.has(oid)) linesByOrder.set(oid, []);
+        // Solo il NOME del prodotto, non la descrizione (l.name = testo lungo)
         linesByOrder.get(oid)!.push({
           id: l.id,
-          name: l.name,
+          name: l.product_id ? l.product_id[1] : (l.name || '').split('\n')[0],
           qty: l.product_uom_qty,
           price: l.price_unit,
           subtotal: l.price_subtotal,
