@@ -40,15 +40,41 @@ export async function GET(request: NextRequest) {
           ['date_done', '<=', endDate],
         ],
         fields: [
-          'name', 'partner_id', 'date_done', 'driver_id', 'vehicle_id',
+          'name', 'partner_id', 'date_done', 'scheduled_date', 'driver_id', 'vehicle_id',
           'carrier_id', 'x_studio_cantone', 'weight', 'sale_id', 'origin',
         ],
         order: 'date_done asc',
       }
     );
 
-    if (!pickings || pickings.length === 0) {
-      return NextResponse.json({ deliveries: [], drivers: [], giri: [], missing: 0 });
+    // Consegne ancora DA FARE (non completate) programmate nell'intervallo
+    const todoPickings = await callOdoo(
+      cookies,
+      'stock.picking',
+      'search_read',
+      [],
+      {
+        domain: [
+          ['picking_type_code', '=', 'outgoing'],
+          ['state', 'in', ['assigned', 'confirmed', 'waiting']],
+          ['scheduled_date', '>=', startDate],
+          ['scheduled_date', '<=', endDate],
+        ],
+        fields: [
+          'name', 'partner_id', 'date_done', 'scheduled_date', 'driver_id', 'vehicle_id',
+          'carrier_id', 'x_studio_cantone', 'weight', 'sale_id', 'origin',
+        ],
+        order: 'scheduled_date asc',
+      }
+    );
+
+    const allPickings = [
+      ...(pickings || []).map((p: any) => ({ ...p, _status: 'done' })),
+      ...(todoPickings || []).map((p: any) => ({ ...p, _status: 'todo' })),
+    ];
+
+    if (allPickings.length === 0) {
+      return NextResponse.json({ deliveries: [], drivers: [], giri: [], missing: 0, depot: null });
     }
 
     // Coordinate dei clienti (+ id 1 = deposito LAPA Embrach, punto di partenza)
@@ -56,7 +82,7 @@ export async function GET(request: NextRequest) {
     const partnerIds = Array.from(
       new Set([
         DEPOT_PARTNER_ID,
-        ...pickings.map((p: any) => p.partner_id?.[0]).filter(Boolean),
+        ...allPickings.map((p: any) => p.partner_id?.[0]).filter(Boolean),
       ])
     );
 
@@ -75,7 +101,7 @@ export async function GET(request: NextRequest) {
     partners.forEach((p: any) => partnerMap.set(p.id, p));
 
     // Feedback autisti dal chatter: resi, scarichi parziali, prodotti non scaricati
-    const pickingIds = pickings.map((p: any) => p.id);
+    const pickingIds = allPickings.map((p: any) => p.id);
     const messages = await callOdoo(
       cookies,
       'mail.message',
@@ -110,7 +136,7 @@ export async function GET(request: NextRequest) {
     });
 
     let missing = 0;
-    const deliveries = pickings
+    const deliveries = allPickings
       .map((p: any) => {
         const partner = partnerMap.get(p.partner_id?.[0]);
         const lat = partner?.partner_latitude;
@@ -133,7 +159,8 @@ export async function GET(request: NextRequest) {
           giro: p.carrier_id?.[1] || '',
           cantone: p.x_studio_cantone || '',
           weight: p.weight || 0,
-          time: p.date_done,
+          status: p._status,
+          time: p._status === 'done' ? p.date_done : p.scheduled_date,
           saleId: p.sale_id?.[0] || null,
           saleName: p.origin || p.sale_id?.[1] || '',
           feedback: feedbackMap.get(p.id) || [],

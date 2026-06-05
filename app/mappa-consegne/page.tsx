@@ -96,7 +96,9 @@ export default function MappaConsegnePage() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-bold text-gray-900">🗺️ Mappa Consegne Autisti</h1>
           <div className="text-sm text-gray-600">
-            {filtered.length} consegne
+            <span className="text-green-700 font-medium">{filtered.filter((d) => d.status === 'done').length} fatte</span>
+            {' · '}
+            <span className="text-blue-700 font-medium">{filtered.filter((d) => d.status === 'todo').length} da fare</span>
             {missing > 0 && <span className="text-amber-600"> · {missing} senza GPS</span>}
           </div>
         </div>

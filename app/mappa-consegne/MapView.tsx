@@ -18,6 +18,7 @@ export interface Delivery {
   cantone: string;
   weight: number;
   time: string;
+  status: 'done' | 'todo';
   saleName: string;
   feedback: { type: string; text: string; date: string }[];
 }
@@ -46,6 +47,17 @@ function numberedIcon(color: string, n: number, alert: boolean, last: boolean) {
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;background:${color};color:#fff;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);${ring}box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;"><span style="transform:rotate(45deg)">${n}</span>${alertBadge}${lastBadge}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -26],
+  });
+}
+
+// Consegna ancora da fare: marker vuoto (bordo colorato, sfondo bianco) con clessidra
+function todoIcon(color: string, n: number) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="position:relative;background:#fff;color:${color};width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px dashed ${color};box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;"><span style="transform:rotate(45deg)">${n}</span><div style="position:absolute;top:-9px;left:-9px;font-size:13px;transform:rotate(45deg);text-shadow:0 0 2px #fff,0 0 2px #fff;">⏳</div></div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     popupAnchor: [0, -26],
@@ -120,54 +132,82 @@ export default function MapView({ deliveries, colorByDriver, depot }: Props) {
       )}
       {Array.from(byDriver.entries()).map(([driverId, stops]) => {
         const color = colorByDriver[driverId] || '#3b82f6';
-        const stopPath = stops.map((s) => [s.lat, s.lng] as [number, number]);
-        // Il tragitto parte dal deposito
-        const path = depot ? [[depot.lat, depot.lng] as [number, number], ...stopPath] : stopPath;
-        const lastIndex = stops.length - 1;
+        const done = stops.filter((s) => s.status === 'done');
+        const todo = stops.filter((s) => s.status === 'todo');
+        const depotPt: [number, number][] = depot ? [[depot.lat, depot.lng]] : [];
+        // Linea continua: deposito → consegne fatte
+        const donePath: [number, number][] = [...depotPt, ...done.map((s) => [s.lat, s.lng] as [number, number])];
+        // Linea tratteggiata: ultima fatta (o deposito) → consegne da fare
+        const todoStart: [number, number][] = done.length
+          ? [[done[done.length - 1].lat, done[done.length - 1].lng]]
+          : depotPt;
+        const todoPath: [number, number][] = [...todoStart, ...todo.map((s) => [s.lat, s.lng] as [number, number])];
+        const lastDoneIdx = done.length - 1;
         return (
           <div key={driverId}>
-            {path.length > 1 && (
-              <Polyline positions={path} pathOptions={{ color, weight: 3, opacity: 0.7 }} />
+            {donePath.length > 1 && (
+              <Polyline positions={donePath} pathOptions={{ color, weight: 3, opacity: 0.7 }} />
             )}
-            {/* Frecce di direzione a metà di ogni segmento */}
-            {path.slice(0, -1).map((p, i) => {
-              const next = path[i + 1];
-              const mid: [number, number] = [(p[0] + next[0]) / 2, (p[1] + next[1]) / 2];
+            {todoPath.length > 1 && (
+              <Polyline positions={todoPath} pathOptions={{ color, weight: 3, opacity: 0.6, dashArray: '8 8' }} />
+            )}
+            {/* Frecce di direzione a metà di ogni segmento (continua + tratteggiata) */}
+            {[donePath, todoPath].flatMap((pth, pi) =>
+              pth.slice(0, -1).map((p, i) => {
+                const next = pth[i + 1];
+                const mid: [number, number] = [(p[0] + next[0]) / 2, (p[1] + next[1]) / 2];
+                return (
+                  <Marker
+                    key={`arr-${driverId}-${pi}-${i}`}
+                    position={mid}
+                    icon={arrowIcon(color, bearing(p, next))}
+                    interactive={false}
+                  />
+                );
+              })
+            )}
+            {stops.map((d, i) => {
+              const isDone = d.status === 'done';
+              const seq = i + 1;
+              const isLastDone = isDone && i === lastDoneIdx;
               return (
                 <Marker
-                  key={`arr-${driverId}-${i}`}
-                  position={mid}
-                  icon={arrowIcon(color, bearing(p, next))}
-                  interactive={false}
-                />
+                  key={d.id}
+                  position={[d.lat, d.lng]}
+                  icon={isDone ? numberedIcon(color, seq, d.feedback.length > 0, isLastDone) : todoIcon(color, seq)}
+                >
+                  <Popup>
+                    <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                      {isDone ? (
+                        <>
+                          <strong>#{seq} · {fmtTime(d.time)}</strong>
+                          {isLastDone && <span> · 🏁 <strong>Ultima</strong></span>}<br />
+                        </>
+                      ) : (
+                        <><strong style={{ color }}>⏳ Da consegnare</strong> · previsto {fmtTime(d.time)}<br /></>
+                      )}
+                      <strong>{d.customer}</strong><br />
+                      {d.address && <span>{d.address}<br /></span>}
+                      👤 {d.driverName}<br />
+                      {d.giro && <span>🛣️ {d.giro}<br /></span>}
+                      {d.vehicle && <span>🚚 {d.vehicle}<br /></span>}
+                      {d.weight > 0 && <span>⚖️ {d.weight.toFixed(2)} kg<br /></span>}
+                      {d.saleName && <span>📄 {d.saleName} · </span>}{d.name}
+                      {d.feedback.length > 0 && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #eee' }}>
+                          {d.feedback.map((f, fi) => (
+                            <div key={fi} style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '6px 8px', marginTop: fi ? 6 : 0 }}>
+                              <strong style={{ color: '#dc2626' }}>⚠️ {f.type}</strong><br />
+                              <span style={{ color: '#7f1d1d' }}>{f.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
               );
             })}
-            {stops.map((d, i) => (
-              <Marker key={d.id} position={[d.lat, d.lng]} icon={numberedIcon(color, i + 1, d.feedback.length > 0, i === lastIndex)}>
-                <Popup>
-                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                    <strong>#{i + 1} · {fmtTime(d.time)}</strong>{i === lastIndex && <span> · 🏁 <strong>Ultima</strong></span>}<br />
-                    <strong>{d.customer}</strong><br />
-                    {d.address && <span>{d.address}<br /></span>}
-                    👤 {d.driverName}<br />
-                    {d.giro && <span>🛣️ {d.giro}<br /></span>}
-                    {d.vehicle && <span>🚚 {d.vehicle}<br /></span>}
-                    {d.weight > 0 && <span>⚖️ {d.weight.toFixed(2)} kg<br /></span>}
-                    {d.saleName && <span>📄 {d.saleName} · </span>}{d.name}
-                    {d.feedback.length > 0 && (
-                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #eee' }}>
-                        {d.feedback.map((f, fi) => (
-                          <div key={fi} style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '6px 8px', marginTop: fi ? 6 : 0 }}>
-                            <strong style={{ color: '#dc2626' }}>⚠️ {f.type}</strong><br />
-                            <span style={{ color: '#7f1d1d' }}>{f.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
           </div>
         );
       })}
