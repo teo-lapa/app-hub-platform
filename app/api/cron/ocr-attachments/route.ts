@@ -21,6 +21,12 @@ export const maxDuration = 300;
 
 const LOOKBACK_DAYS = parseInt(process.env.OCR_CRON_LOOKBACK_DAYS || '30', 10);
 const MAX_TASKS_PER_RUN = parseInt(process.env.OCR_CRON_MAX_TASKS || '50', 10);
+// Modelli extra (oltre alle email) processati cercando direttamente gli allegati.
+const EXTRA_MODELS = (process.env.OCR_CRON_MODELS || 'purchase.order,stock.picking')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const MAX_RECORDS_PER_MODEL = parseInt(process.env.OCR_CRON_MAX_RECORDS || '20', 10);
 const SOFT_DEADLINE_MS = 240_000;
 
 const JOB_PREFIX = 'OCR_JOB:';
@@ -34,22 +40,62 @@ async function ensureTag(name: string): Promise<number> {
   return await callOdoo(null, 'project.tags', 'create', [{ name }]);
 }
 
-async function searchCandidateTasks(doneTagId: number, failedTagId: number): Promise<number[]> {
-  const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
+function sinceIso(): string {
+  return new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 19)
     .replace('T', ' ');
+}
+
+async function searchCandidateTasks(doneTagId: number, failedTagId: number): Promise<number[]> {
   return (await callOdoo(
     null,
     'project.task',
     'search',
     [[
       ['project_id', 'in', EMAIL_PROJECT_IDS],
-      ['create_date', '>=', since],
+      ['create_date', '>=', sinceIso()],
       ['tag_ids', 'not in', [doneTagId, failedTagId]],
     ]],
     { limit: MAX_TASKS_PER_RUN, order: 'create_date desc' },
   )) as number[];
+}
+
+// Modelli senza tagging (purchase.order, stock.picking, ...): cerco direttamente gli
+// allegati PDF/immagine recenti e li raggruppo per record padre.
+async function searchCandidateRecords(resModel: string): Promise<Map<number, any[]>> {
+  const grouped = new Map<number, any[]>();
+  const cand: any[] = await callOdoo(
+    null,
+    'ir.attachment',
+    'search_read',
+    [
+      [
+        ['res_model', '=', resModel],
+        ['create_date', '>=', sinceIso()],
+        '|',
+        ['mimetype', '=', 'application/pdf'],
+        ['mimetype', '=like', 'image/%'],
+      ],
+      ['res_id'],
+    ],
+    { order: 'create_date desc', limit: MAX_RECORDS_PER_MODEL },
+  );
+  const resIds = Array.from(new Set(cand.map((c: any) => c.res_id).filter(Boolean)));
+  if (resIds.length === 0) return grouped;
+  // Tutti gli allegati di quei record (serve il check companion .md + stato job).
+  const all: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
+    [
+      ['res_model', '=', resModel],
+      ['res_id', 'in', resIds],
+    ],
+    ['id', 'name', 'mimetype', 'file_size', 'description', 'res_id'],
+  ]);
+  for (const a of all) {
+    if (!grouped.has(a.res_id)) grouped.set(a.res_id, []);
+    grouped.get(a.res_id)!.push(a);
+  }
+  return grouped;
 }
 
 interface AttachState {
@@ -62,25 +108,18 @@ interface AttachState {
   detail: string;
 }
 
-async function processTask(taskId: number, tagDoneId: number, tagFailedId: number) {
+// Core riusabile: processa gli allegati di UN record qualsiasi (model-agnostico).
+// Non fa tagging. Crea l'MD compagno e posta nel chatter del record.
+async function processAttachmentList(
+  resModel: string,
+  resId: number,
+  allAttachments: any[],
+): Promise<AttachState[]> {
   const states: AttachState[] = [];
-  // Carico tutti gli attachment del task (anche .md per check companion)
-  const allAttachments: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
-    [
-      ['res_model', '=', 'project.task'],
-      ['res_id', '=', taskId],
-    ],
-    ['id', 'name', 'mimetype', 'file_size', 'description'],
-  ]);
   const allNames = allAttachments.map((a: any) => a.name);
   const attachments = allAttachments.filter((a: any) =>
     a.mimetype === 'application/pdf' || (a.mimetype || '').startsWith('image/'),
   );
-
-  if (attachments.length === 0) {
-    await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
-    return { processed: 0, skipped: 0, failed: 0, pending: 0, details: ['Nessun allegato candidato'] };
-  }
 
   for (const att of attachments) {
     const description = att.description || '';
@@ -116,7 +155,7 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
         }
         if (status.status === 'failed') {
           await callOdoo(null, 'ir.attachment', 'write', [[att.id], { description: '' }]);
-          await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
+          await callOdoo(null, resModel, 'message_post', [[resId]], {
             body: buildChatterHtml({ status: 'failed', attachmentName: att.name, errorMessage: status.error || 'unknown' }),
             message_type: 'comment',
             subtype_xmlid: 'mail.mt_note',
@@ -145,13 +184,13 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
         const mdBase64 = Buffer.from(cleanedMd, 'utf-8').toString('base64');
         const mdAttachmentId = await callOdoo(null, 'ir.attachment', 'create', [{
           name: mdName,
-          res_model: 'project.task',
-          res_id: taskId,
+          res_model: resModel,
+          res_id: resId,
           type: 'binary',
           datas: mdBase64,
           mimetype: 'text/markdown',
         }]);
-        await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
+        await callOdoo(null, resModel, 'message_post', [[resId]], {
           body: buildChatterHtml({
             status: 'ok',
             attachmentName: att.name,
@@ -189,7 +228,7 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
       states.push({ ...baseState, outcome: 'pending', detail: `START ${att.name} job=${start.job_id}` });
     } catch (err: any) {
       const errMsg = err?.message || String(err);
-      await callOdoo(null, 'project.task', 'message_post', [[taskId]], {
+      await callOdoo(null, resModel, 'message_post', [[resId]], {
         body: buildChatterHtml({ status: 'failed', attachmentName: att.name, errorMessage: errMsg }),
         message_type: 'comment',
         subtype_xmlid: 'mail.mt_note',
@@ -198,32 +237,50 @@ async function processTask(taskId: number, tagDoneId: number, tagFailedId: numbe
     }
   }
 
-  // Tag finale: solo se NESSUN allegato e' pending
-  const pending = states.filter((s) => s.outcome === 'pending').length;
-  const done = states.filter((s) => s.outcome === 'done').length;
-  const failed = states.filter((s) => s.outcome === 'failed').length;
-  const skipped = states.filter((s) => s.outcome === 'skipped').length;
+  return states;
+}
 
-  if (pending === 0) {
-    // Tag done solo se abbiamo davvero creato almeno un MD o se non c'erano candidati reali.
-    // Tag failed se c'erano candidati e tutti hanno fallito.
+function summarize(states: AttachState[]) {
+  return {
+    processed: states.filter((s) => s.outcome === 'done').length,
+    skipped: states.filter((s) => s.outcome === 'skipped').length,
+    failed: states.filter((s) => s.outcome === 'failed').length,
+    pending: states.filter((s) => s.outcome === 'pending').length,
+    details: states.map((s) => s.detail),
+  };
+}
+
+// project.task (email): carica allegati, processa, applica il tag finale.
+async function processTask(taskId: number, tagDoneId: number, tagFailedId: number) {
+  const allAttachments: any[] = await callOdoo(null, 'ir.attachment', 'search_read', [
+    [
+      ['res_model', '=', 'project.task'],
+      ['res_id', '=', taskId],
+    ],
+    ['id', 'name', 'mimetype', 'file_size', 'description'],
+  ]);
+  const hasCandidate = allAttachments.some(
+    (a: any) => a.mimetype === 'application/pdf' || (a.mimetype || '').startsWith('image/'),
+  );
+  if (!hasCandidate) {
+    await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
+    return { processed: 0, skipped: 0, failed: 0, pending: 0, details: ['Nessun allegato candidato'] };
+  }
+
+  const states = await processAttachmentList('project.task', taskId, allAttachments);
+  const sum = summarize(states);
+
+  if (sum.pending === 0) {
     const candidatesReali = states.filter((s) => s.outcome === 'done' || s.outcome === 'failed').length;
     if (candidatesReali === 0) {
-      // tutti skipped (loghi) -> done (non c'e nulla da fare)
       await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagDoneId]] }]);
     } else {
-      const tagId = failed > 0 && done === 0 ? tagFailedId : tagDoneId;
+      const tagId = sum.failed > 0 && sum.processed === 0 ? tagFailedId : tagDoneId;
       await callOdoo(null, 'project.task', 'write', [[taskId], { tag_ids: [[4, tagId]] }]);
     }
   }
 
-  return {
-    processed: done,
-    skipped,
-    failed,
-    pending,
-    details: states.map((s) => s.detail),
-  };
+  return sum;
 }
 
 export async function GET(request: NextRequest) {
@@ -243,24 +300,40 @@ export async function GET(request: NextRequest) {
     log.tag_done_id = tagDoneId;
     log.tag_failed_id = tagFailedId;
 
-    const taskIds = await searchCandidateTasks(tagDoneId, tagFailedId);
-    log.candidates = taskIds.length;
-
-    let totals = { processed: 0, skipped: 0, failed: 0, pending: 0 };
+    const totals = { processed: 0, skipped: 0, failed: 0, pending: 0 };
     let stoppedForTime = false;
 
+    // 1. Email (project.task)
+    const taskIds = await searchCandidateTasks(tagDoneId, tagFailedId);
+    log.candidates = taskIds.length;
     for (const taskId of taskIds) {
-      if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
-        stoppedForTime = true;
-        break;
-      }
+      if (Date.now() - startedAt > SOFT_DEADLINE_MS) { stoppedForTime = true; break; }
       const t0 = Date.now();
       const r = await processTask(taskId, tagDoneId, tagFailedId);
       totals.processed += r.processed;
       totals.skipped += r.skipped;
       totals.failed += r.failed;
       totals.pending += r.pending;
-      log.tasks.push({ task_id: taskId, wall_ms: Date.now() - t0, ...r });
+      log.tasks.push({ model: 'project.task', task_id: taskId, wall_ms: Date.now() - t0, ...r });
+    }
+
+    // 2. Modelli extra (purchase.order, stock.picking, ...)
+    log.models = {};
+    for (const resModel of EXTRA_MODELS) {
+      if (stoppedForTime || Date.now() - startedAt > SOFT_DEADLINE_MS) { stoppedForTime = true; break; }
+      const grouped = await searchCandidateRecords(resModel);
+      log.models[resModel] = grouped.size;
+      for (const [resId, atts] of Array.from(grouped.entries())) {
+        if (Date.now() - startedAt > SOFT_DEADLINE_MS) { stoppedForTime = true; break; }
+        const t0 = Date.now();
+        const states = await processAttachmentList(resModel, resId, atts);
+        const r = summarize(states);
+        totals.processed += r.processed;
+        totals.skipped += r.skipped;
+        totals.failed += r.failed;
+        totals.pending += r.pending;
+        log.tasks.push({ model: resModel, res_id: resId, wall_ms: Date.now() - t0, ...r });
+      }
     }
 
     log.totals = totals;
