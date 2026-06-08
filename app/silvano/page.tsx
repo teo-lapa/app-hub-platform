@@ -23,6 +23,8 @@ export default function CatalogoPage() {
 
   const [q, setQ] = useState('');
   const [onlyAvail, setOnlyAvail] = useState(false);
+  const [categ, setCateg] = useState('');
+  const [categorie, setCategorie] = useState<{ id: number; name: string }[]>([]);
   const [boughtOnly, setBoughtOnly] = useState(false);
   const [boughtIds, setBoughtIds] = useState<Set<number>>(new Set());
   const [prods, setProds] = useState<Prod[]>([]);
@@ -54,17 +56,23 @@ export default function CatalogoPage() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (onlyAvail) params.set('onlyAvailable', '1');
+    if (categ) params.set('categ', categ);
     if (cliente) params.set('clientId', String(cliente.id));
     const r = await fetch(`/api/silvano/catalog?${params}`);
     const d = await r.json();
     if (d.success) setProds(d.items);
     setLoading(false);
-  }, [q, onlyAvail, cliente]);
+  }, [q, onlyAvail, categ, cliente]);
 
   useEffect(() => {
     const t = setTimeout(loadCatalog, 250);
     return () => clearTimeout(t);
   }, [loadCatalog]);
+
+  // categorie (reparti) per la tendina
+  useEffect(() => {
+    fetch('/api/silvano/categorie').then((r) => r.json()).then((d) => { if (d.success) setCategorie(d.categorie); }).catch(() => {});
+  }, []);
 
   // --- prodotti già comprati ---
   const loadBought = useCallback(async (c: Cliente) => {
@@ -161,6 +169,11 @@ export default function CatalogoPage() {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca prodotto o codice…"
               className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-400" />
           </div>
+          <select value={categ} onChange={(e) => setCateg(e.target.value)}
+            className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-emerald-400">
+            <option value="">Tutti i reparti</option>
+            {categorie.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <button onClick={() => setOnlyAvail((v) => !v)}
             className={`rounded-xl px-3 py-2.5 text-sm font-medium ${onlyAvail ? 'bg-emerald-500/20 text-emerald-200' : 'bg-white/5 text-slate-300'}`}>
             Solo disponibili
@@ -195,9 +208,6 @@ export default function CatalogoPage() {
                   {p.code && <div className="text-[11px] text-slate-500">{p.code}</div>}
                   <div className="mt-auto pt-2">
                     <div className="text-base font-bold text-emerald-300">{fmtCHF(p.base)}{p.uom && <span className="ml-1 text-xs font-normal text-slate-400">/ {p.uom}</span>}</div>
-                    {cliente && p.quota != null && !p.anomaly && (
-                      <div className="text-[11px] text-slate-400">margine fino a {fmtCHF(p.quota)}</div>
-                    )}
                   </div>
                 </div>
               </button>

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const q = (sp.get('q') || '').trim();
     const clientId = sp.get('clientId') ? Number(sp.get('clientId')) : null;
     const onlyAvailable = sp.get('onlyAvailable') === '1';
+    const categ = sp.get('categ') ? Number(sp.get('categ')) : null;
     const limit = Math.min(Number(sp.get('limit') || 48), 80);
 
     const domain: any[] = [['sale_ok', '=', true], ['active', '=', true]];
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
       domain.push('|', ['name', 'ilike', q], ['default_code', 'ilike', q]);
     }
     if (onlyAvailable) domain.push(['qty_available', '>', 0]);
+    if (categ) domain.push(['categ_id', 'child_of', categ]);
 
     const products = await callOdooAsAdmin('product.product', 'search_read', [], {
       domain,
@@ -31,6 +33,7 @@ export async function GET(request: NextRequest) {
       ],
       limit,
       order: 'name asc',
+      context: { lang: 'it_IT' },
     });
 
     let pricelistId: number | null = null;
