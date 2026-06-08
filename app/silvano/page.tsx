@@ -6,10 +6,13 @@ import { Card, Badge, Spinner, Empty, fmtCHF } from './_components/ui';
 
 interface Cliente { id: number; name: string; city?: string }
 interface Prod {
-  id: number; name: string; code: string; uom: string; image: string | null;
+  id: number; name: string; code: string; description?: string; uom: string; image: string | null;
   qtyAvailable: number; incomingQty: number; listPrice: number; cost: number;
   base: number; floor: number | null; quota: number | null; anomaly: boolean;
 }
+
+// badge pieni, colore profondo, ben leggibili sopra la foto bianca
+const pill = 'inline-block rounded-md px-2 py-0.5 text-[11px] font-bold text-white shadow-md';
 interface CartItem { id: number; name: string; code: string; qty: number; price: number; floor: number; base: number; }
 
 export default function CatalogoPage() {
@@ -174,18 +177,18 @@ export default function CatalogoPage() {
         {loading ? <Spinner /> : !visibleProds.length ? <Empty>Nessun prodotto</Empty> : (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {visibleProds.map((p) => (
-              <button key={p.id} onClick={() => (cliente ? setModal(p) : setToast('Seleziona prima un cliente'))}
+              <button key={p.id} onClick={() => setModal(p)}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-emerald-400/50 hover:bg-white/10">
                 <div className="relative aspect-square bg-white p-2">
                   {p.image ? <img src={p.image} alt="" loading="lazy" className="h-full w-full object-contain" />
                     : <div className="flex h-full items-center justify-center text-slate-600"><Package size={40} /></div>}
-                  <div className="absolute left-1.5 top-1.5 flex flex-col gap-1">
+                  <div className="absolute left-1.5 top-1.5 flex flex-col items-start gap-1">
                     {p.qtyAvailable > 0
-                      ? <Badge color="green">{Math.round(p.qtyAvailable)} disp.</Badge>
-                      : <Badge color="red">esaurito</Badge>}
-                    {p.incomingQty > 0 && <Badge color="amber">in arrivo {Math.round(p.incomingQty)}</Badge>}
+                      ? <span className={`${pill} bg-emerald-600`}>{Math.round(p.qtyAvailable)} disp.</span>
+                      : <span className={`${pill} bg-red-600`}>esaurito</span>}
+                    {p.incomingQty > 0 && <span className={`${pill} bg-amber-500`}>in arrivo {Math.round(p.incomingQty)}</span>}
                   </div>
-                  {boughtIds.has(p.id) && <div className="absolute right-1.5 top-1.5"><Badge color="blue">★ già comprato</Badge></div>}
+                  {boughtIds.has(p.id) && <div className="absolute right-1.5 top-1.5"><span className={`${pill} bg-blue-600`}>★ già comprato</span></div>}
                 </div>
                 <div className="flex flex-1 flex-col p-2.5">
                   <div className="line-clamp-2 text-sm font-medium text-white">{p.name}</div>
@@ -269,7 +272,8 @@ export default function CatalogoPage() {
       </div>
 
       {/* ===== Modal prodotto ===== */}
-      {modal && <ProductModal p={modal} onClose={() => setModal(null)} onAdd={addToCart} />}
+      {modal && <ProductModal p={modal} hasClient={!!cliente} onClose={() => setModal(null)} onAdd={addToCart}
+        onSelectClient={() => { setModal(null); setShowClientPicker(true); }} />}
 
       {/* ===== Toast ===== */}
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm text-white shadow-xl">{toast}</div>}
@@ -277,8 +281,11 @@ export default function CatalogoPage() {
   );
 }
 
-/* ====================== Modal con margine live ====================== */
-function ProductModal({ p, onClose, onAdd }: { p: Prod; onClose: () => void; onAdd: (p: Prod, qty: number, price: number) => void }) {
+/* ====================== Modal prodotto (info + margine live) ====================== */
+function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
+  p: Prod; hasClient: boolean; onClose: () => void;
+  onAdd: (p: Prod, qty: number, price: number) => void; onSelectClient: () => void;
+}) {
   const floor = p.floor ?? p.cost;
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState(p.base || 0);
@@ -290,60 +297,73 @@ function ProductModal({ p, onClose, onAdd }: { p: Prod; onClose: () => void; onA
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white p-1">
-              {p.image ? <img src={p.image} alt="" loading="lazy" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-slate-600"><Package size={28} /></div>}
+            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white p-1.5">
+              {p.image ? <img src={p.image} alt="" loading="lazy" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-slate-400"><Package size={28} /></div>}
             </div>
             <div>
               <div className="font-semibold text-white">{p.name}</div>
               {p.code && <div className="text-xs text-slate-500">{p.code}</div>}
-              <div className="mt-1 flex gap-1.5">
-                {p.qtyAvailable > 0 ? <Badge color="green">{Math.round(p.qtyAvailable)} disp.</Badge> : <Badge color="red">esaurito</Badge>}
-                {p.incomingQty > 0 && <Badge color="amber">in arrivo {Math.round(p.incomingQty)}</Badge>}
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {p.qtyAvailable > 0 ? <span className={`${pill} bg-emerald-600`}>{Math.round(p.qtyAvailable)} disp.</span> : <span className={`${pill} bg-red-600`}>esaurito</span>}
+                {p.incomingQty > 0 && <span className={`${pill} bg-amber-500`}>in arrivo {Math.round(p.incomingQty)}</span>}
               </div>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
         </div>
 
-        {p.anomaly && <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300">⚠️ Listino sotto o pari al costo: margine non disponibile, prezzo minimo = costo.</div>}
+        {p.description && (
+          <div className="mt-3 max-h-32 overflow-auto whitespace-pre-line rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-300">{p.description}</div>
+        )}
 
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Listino</div><div className="font-semibold text-white">{fmtCHF(p.base)}</div></div>
-          <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Minimo</div><div className="font-semibold text-amber-300">{fmtCHF(floor)}</div></div>
-          <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Margine pieno</div><div className="font-semibold text-emerald-300">{fmtCHF(p.quota ?? 0)}</div></div>
-        </div>
-
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-300">Prezzo di vendita</span>
-            <input type="number" step="0.01" value={price}
-              onChange={(e) => setPrice(Math.max(floor, parseFloat(e.target.value) || 0))}
-              className="w-28 rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-right text-white" />
+        {!hasClient ? (
+          <div className="mt-4 rounded-xl bg-emerald-500/10 px-4 py-4 text-center">
+            <div className="text-sm text-slate-300">Seleziona un cliente per vedere <b className="text-white">prezzo e margine</b> e aggiungere al preventivo.</div>
+            <button onClick={onSelectClient} className="mt-3 rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400">Seleziona cliente</button>
           </div>
-          <input type="range" min={floor} max={sliderMax} step="0.05" value={Math.min(price, sliderMax)}
-            onChange={(e) => setPrice(parseFloat(e.target.value))}
-            className="mt-2 w-full accent-emerald-500" />
-          <div className="flex justify-between text-[11px] text-slate-500"><span>min {fmtCHF(floor)}</span><span>listino {fmtCHF(p.base)}</span></div>
-        </div>
+        ) : (
+          <>
+            {p.anomaly && <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300">⚠️ Listino sotto o pari al costo: margine non disponibile, prezzo minimo = costo.</div>}
 
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3">
-          <span className="text-sm text-slate-300">Il tuo margine</span>
-          <span className={`text-lg font-bold ${below ? 'text-red-400' : 'text-emerald-300'}`}>{fmtCHF(margine)}</span>
-        </div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Listino</div><div className="font-semibold text-white">{fmtCHF(p.base)}</div></div>
+              <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Minimo</div><div className="font-semibold text-amber-300">{fmtCHF(floor)}</div></div>
+              <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Margine pieno</div><div className="font-semibold text-emerald-300">{fmtCHF(p.quota ?? 0)}</div></div>
+            </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="rounded-lg bg-white/10 p-2"><Minus size={16} /></button>
-            <span className="w-10 text-center font-medium">{qty}</span>
-            <button onClick={() => setQty((q) => q + 1)} className="rounded-lg bg-white/10 p-2"><Plus size={16} /></button>
-          </div>
-          <button onClick={() => onAdd(p, qty, price)} disabled={below}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-2.5 font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-50">
-            <Plus size={18} /> Aggiungi al carrello
-          </button>
-        </div>
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-300">Prezzo di vendita</span>
+                <input type="number" step="0.01" value={price}
+                  onChange={(e) => setPrice(Math.max(floor, parseFloat(e.target.value) || 0))}
+                  className="w-28 rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-right text-white" />
+              </div>
+              <input type="range" min={floor} max={sliderMax} step="0.05" value={Math.min(price, sliderMax)}
+                onChange={(e) => setPrice(parseFloat(e.target.value))}
+                className="mt-2 w-full accent-emerald-500" />
+              <div className="flex justify-between text-[11px] text-slate-500"><span>min {fmtCHF(floor)}</span><span>listino {fmtCHF(p.base)}</span></div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3">
+              <span className="text-sm text-slate-300">Il tuo margine</span>
+              <span className={`text-lg font-bold ${below ? 'text-red-400' : 'text-emerald-300'}`}>{fmtCHF(margine)}</span>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="rounded-lg bg-white/10 p-2"><Minus size={16} /></button>
+                <span className="w-10 text-center font-medium">{qty}</span>
+                <button onClick={() => setQty((q) => q + 1)} className="rounded-lg bg-white/10 p-2"><Plus size={16} /></button>
+              </div>
+              <button onClick={() => onAdd(p, qty, price)} disabled={below}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-2.5 font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-50">
+                <Plus size={18} /> Aggiungi al carrello
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
