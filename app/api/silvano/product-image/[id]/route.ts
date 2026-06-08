@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminSession } from '@/lib/odoo/admin-session';
+import { getAdminSession, callOdooAsAdmin } from '@/lib/odoo/admin-session';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -19,17 +19,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const s = request.nextUrl.searchParams.get('s') || '1024';
     const field = SIZES.includes(s) ? `image_${s}` : 'image_1024';
 
-    const { sessionId } = await getAdminSession();
-    const url = `${ODOO_URL}/web/image/product.product/${id}/${field}`;
-    const res = await fetch(url, { headers: { Cookie: `session_id=${sessionId}` } });
-    if (!res.ok) return new NextResponse(null, { status: 404 });
+    const cache = 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
 
-    const buf = await res.arrayBuffer();
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': res.headers.get('content-type') || 'image/png',
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
-      },
+    // 1) prova l'endpoint immagine nativo di Odoo (alta risoluzione, leggero)
+    try {
+      const { sessionId } = await getAdminSession();
+      const url = `${ODOO_URL}/web/image/product.product/${id}/${field}`;
+      const res = await fetch(url, { headers: { Cookie: `session_id=${sessionId}` } });
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.startsWith('image/')) {
+        const buf = await res.arrayBuffer();
+        return new NextResponse(buf, { headers: { 'Content-Type': ct, 'Cache-Control': cache } });
+      }
+    } catch { /* fallback sotto */ }
+
+    // 2) fallback: base64 via sessione admin (image_512)
+    const rec = await callOdooAsAdmin('product.product', 'read', [[id], ['image_512']], {});
+    const b64 = rec?.[0]?.image_512;
+    if (!b64) return new NextResponse(null, { status: 404 });
+    return new NextResponse(Buffer.from(b64, 'base64'), {
+      headers: { 'Content-Type': 'image/png', 'Cache-Control': cache },
     });
   } catch (error: any) {
     console.error('💥 [SILVANO/product-image]', error?.message);
