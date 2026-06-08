@@ -176,7 +176,7 @@ export default function CatalogoPage() {
             {visibleProds.map((p) => (
               <button key={p.id} onClick={() => (cliente ? setModal(p) : setToast('Seleziona prima un cliente'))}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-emerald-400/50 hover:bg-white/10">
-                <div className="relative aspect-square bg-slate-800/50">
+                <div className="relative aspect-square bg-white p-2">
                   {p.image ? <img src={p.image} alt="" className="h-full w-full object-contain" />
                     : <div className="flex h-full items-center justify-center text-slate-600"><Package size={40} /></div>}
                   <div className="absolute left-1.5 top-1.5 flex flex-col gap-1">
@@ -292,7 +292,7 @@ function ProductModal({ p, onClose, onAdd }: { p: Prod; onClose: () => void; onA
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div className="flex gap-3">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-800">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white p-1">
               {p.image ? <img src={p.image} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-slate-600"><Package size={28} /></div>}
             </div>
             <div>
