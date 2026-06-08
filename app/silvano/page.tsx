@@ -13,7 +13,7 @@ interface Prod {
 
 // badge pieni, colore profondo, ben leggibili sopra la foto bianca
 const pill = 'inline-block rounded-md px-2 py-0.5 text-[11px] font-bold text-white shadow-md';
-interface CartItem { id: number; name: string; code: string; qty: number; price: number; floor: number; base: number; }
+interface CartItem { id: number; name: string; code: string; qty: number; price: number; floor: number; base: number; uom: string; }
 
 export default function CatalogoPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
@@ -93,7 +93,7 @@ export default function CatalogoPage() {
     setCart((prev) => {
       const ex = prev.find((i) => i.id === p.id);
       if (ex) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + qty, price } : i));
-      return [...prev, { id: p.id, name: p.name, code: p.code, qty, price, floor, base: p.base }];
+      return [...prev, { id: p.id, name: p.name, code: p.code, qty, price, floor, base: p.base, uom: p.uom }];
     });
     setModal(null);
     setToast(`${p.name} aggiunto`);
@@ -194,7 +194,7 @@ export default function CatalogoPage() {
                   <div className="line-clamp-2 text-sm font-medium text-white">{p.name}</div>
                   {p.code && <div className="text-[11px] text-slate-500">{p.code}</div>}
                   <div className="mt-auto pt-2">
-                    <div className="text-base font-bold text-emerald-300">{fmtCHF(p.base)}</div>
+                    <div className="text-base font-bold text-emerald-300">{fmtCHF(p.base)}{p.uom && <span className="ml-1 text-xs font-normal text-slate-400">/ {p.uom}</span>}</div>
                     {cliente && p.quota != null && !p.anomaly && (
                       <div className="text-[11px] text-slate-400">margine fino a {fmtCHF(p.quota)}</div>
                     )}
@@ -238,6 +238,7 @@ export default function CatalogoPage() {
                         <button onClick={() => setCart((c) => c.map((x) => x.id === i.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x))} className="rounded-lg bg-white/10 p-1"><Minus size={13} /></button>
                         <span className="w-8 text-center text-sm">{i.qty}</span>
                         <button onClick={() => setCart((c) => c.map((x) => x.id === i.id ? { ...x, qty: x.qty + 1 } : x))} className="rounded-lg bg-white/10 p-1"><Plus size={13} /></button>
+                        {i.uom && <span className="ml-1 text-[11px] text-slate-400">{i.uom}</span>}
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-emerald-300">{fmtCHF(i.price * i.qty)}</div>
@@ -331,7 +332,7 @@ function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
 
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-300">Prezzo di vendita</span>
+                <span className="text-slate-300">Prezzo di vendita{p.uom ? ` / ${p.uom}` : ''}</span>
                 <input type="number" step="0.01" value={price}
                   onChange={(e) => setPrice(Math.max(floor, parseFloat(e.target.value) || 0))}
                   className="w-28 rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-right text-white" />
@@ -352,6 +353,7 @@ function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
                 <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="rounded-lg bg-white/10 p-2"><Minus size={16} /></button>
                 <span className="w-10 text-center font-medium">{qty}</span>
                 <button onClick={() => setQty((q) => q + 1)} className="rounded-lg bg-white/10 p-2"><Plus size={16} /></button>
+                {p.uom && <span className="ml-1 text-sm text-slate-400">{p.uom}</span>}
               </div>
               <button onClick={() => onAdd(p, qty, price)} disabled={below}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-2.5 font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-50">
