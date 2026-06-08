@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         id: l.id,
         productId: pid,
         code: prod?.default_code || '',
-        name: l.name || (l.product_id ? l.product_id[1] : ''),
+        name: (l.product_id ? l.product_id[1] : (l.name || '').split('\n')[0]),
         qtyOrdered: l.product_uom_qty || 0,
         qtyDelivered: l.qty_delivered || 0,
         priceUnit: l.price_unit || 0,

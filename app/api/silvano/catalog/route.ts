@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       domain,
       fields: [
         'id', 'name', 'default_code', 'list_price', 'standard_price',
-        'image_128', 'qty_available', 'incoming_qty', 'uom_id', 'description_sale',
+        'image_128', 'qty_available', 'incoming_qty', 'uom_id',
       ],
       limit,
       order: 'name asc',
@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
       id: p.id,
       name: p.name,
       code: p.default_code || '',
-      description: p.description_sale || '',
       uom: p.uom_id ? p.uom_id[1] : '',
       image: p.image_128 ? `/api/silvano/product-image/${p.id}?s=1024` : null,
       qtyAvailable: p.qty_available || 0,
