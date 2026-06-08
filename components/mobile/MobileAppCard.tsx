@@ -32,6 +32,7 @@ export function MobileAppCard({ app, index }: MobileAppCardProps) {
       (requiredRole === 'cliente_gratuito' && ['cliente_gratuito', 'cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
       (requiredRole === 'cliente_premium' && ['cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
       (requiredRole === 'dipendente' && ['dipendente', 'admin'].includes(userRole)) ||
+      (requiredRole === 'agente' && ['agente', 'dipendente', 'admin'].includes(userRole)) ||
       (requiredRole === 'admin' && userRole === 'admin');
 
     if (!hasAccess) {
