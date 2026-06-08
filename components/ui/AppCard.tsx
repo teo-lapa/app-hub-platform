@@ -26,6 +26,7 @@ export function AppCard({ app, index }: AppCardProps) {
     (app.requiredRole === 'cliente_gratuito' && ['cliente_gratuito', 'cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
     (app.requiredRole === 'cliente_premium' && ['cliente_premium', 'dipendente', 'admin'].includes(userRole)) ||
     (app.requiredRole === 'dipendente' && ['dipendente', 'admin'].includes(userRole)) ||
+    (app.requiredRole === 'agente' && ['agente', 'dipendente', 'admin'].includes(userRole)) ||
     (app.requiredRole === 'admin' && userRole === 'admin');
 
   const handleClick = () => {
