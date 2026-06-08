@@ -314,10 +314,6 @@ function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
         </div>
 
-        {p.description && (
-          <div className="mt-3 max-h-32 overflow-auto whitespace-pre-line rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-300">{p.description}</div>
-        )}
-
         {!hasClient ? (
           <div className="mt-4 rounded-xl bg-emerald-500/10 px-4 py-4 text-center">
             <div className="text-sm text-slate-300">Seleziona un cliente per vedere <b className="text-white">prezzo e margine</b> e aggiungere al preventivo.</div>

@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       await callOdooAsAdmin('sale.order.line', 'create', [{
         order_id: orderId,
         product_id: l.product_id,
+        name: prod.name, // solo nome prodotto, niente descrizione
         product_uom_qty: l.qty || 1,
         price_unit: price,
         company_id: LAPA_COMPANY_ID,
