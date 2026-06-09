@@ -17,7 +17,7 @@ interface Contatto { id: number; name: string; type: string; address?: string; p
 interface Fattura { id: number; name: string; date?: string; dueDate?: string; total: number; residual: number; paymentState: string }
 interface Ordine { id: number; name: string; date?: string | null; total: number }
 interface ProdStorico {
-  id: number; name: string; timesBought: number; lastDate?: string | null; lastQty: number;
+  id: number; name: string; timesBought: number; lastDate?: string | null; lastQty: number; lastPrice: number;
   totalQty: number; cadenceDays: number; daysSinceLast: number | null; recurring: boolean; lapsed: boolean;
 }
 interface Scheda { cliente: Anagrafica; contatti: Contatto[]; fatture: Fattura[]; ordini: Ordine[]; prodotti: ProdStorico[] }
@@ -140,8 +140,18 @@ function Collapsible({ title, icon, count, defaultOpen = false, children }: {
   );
 }
 
+function Stat({ l, v }: { l: string; v: string }) {
+  return (
+    <div className="rounded-lg bg-white/5 px-3 py-2">
+      <div className="text-[11px] text-slate-400">{l}</div>
+      <div className="text-sm font-medium text-white">{v}</div>
+    </div>
+  );
+}
+
 function SchedaCliente({ scheda }: { scheda: Scheda }) {
   const { cliente: c, contatti, fatture, ordini, prodotti } = scheda;
+  const [selProd, setSelProd] = useState<ProdStorico | null>(null);
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400">
@@ -157,7 +167,13 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
           <Row icon={<FileText size={15} />} label="P.IVA" value={c.vat} />
           <Row icon={<MapPin size={15} />} label="Indirizzo" value={c.address} />
           <Row icon={<Mail size={15} />} label="Email" value={c.email} />
-          <Row icon={<Phone size={15} />} label="Telefono" value={c.phone} />
+          {c.phone && (
+            <div className="flex items-start gap-2.5 text-sm">
+              <span className="mt-0.5 text-slate-500"><Phone size={15} /></span>
+              <span className="text-slate-400">Telefono</span>
+              <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="ml-auto text-right font-medium text-emerald-300 hover:underline">{c.phone}</a>
+            </div>
+          )}
           <Row icon={<Receipt size={15} />} label="Listino" value={c.pricelist} />
           <Row icon={<Receipt size={15} />} label="Termini" value={c.paymentTerm} />
           <Row icon={<User size={15} />} label="Venditore" value={c.salesperson} />
@@ -198,12 +214,13 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
       </Card>
 
       {/* Ultimi prodotti acquistati (ricorrenza) */}
-      <Collapsible title="Ultimi prodotti acquistati" icon={<History size={18} />} count={prodotti.length} defaultOpen>
+      <Collapsible title="Ultimi prodotti acquistati" icon={<History size={18} />} count={prodotti.length}>
         {!prodotti.length ? <Empty>Nessun prodotto</Empty> : (
           <div className="space-y-1.5">
             <div className="mb-2 text-[11px] text-slate-500">🔴 in rosso = prodotto ricorrente che il cliente ha saltato (da controllare)</div>
             {prodotti.map((p) => (
-              <div key={p.id} className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 ${p.lapsed ? 'border border-red-500/40 bg-red-500/15' : 'bg-white/5'}`}>
+              <button key={p.id} onClick={() => setSelProd(p)}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition ${p.lapsed ? 'border border-red-500/40 bg-red-500/15 hover:bg-red-500/25' : 'bg-white/5 hover:bg-white/10'}`}>
                 <div className="min-w-0">
                   <div className="truncate text-sm text-white">{p.name}</div>
                   <div className="text-[11px] text-slate-400">
@@ -216,7 +233,7 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
                     ? <span className="rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">⚠ {p.daysSinceLast}gg fa</span>
                     : <span className="text-[11px] text-slate-500">{p.daysSinceLast != null ? `${p.daysSinceLast}gg fa` : ''}</span>}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -284,6 +301,32 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
           </div>
         )}
       </Collapsible>
+
+      {selProd && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setSelProd(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-semibold text-white">{selProd.name}</div>
+              <button onClick={() => setSelProd(null)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+            </div>
+            {selProd.lapsed && (
+              <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-2 text-xs text-red-300">
+                ⚠ Prodotto ricorrente che il cliente ha smesso di ordinare — non ordina da {selProd.daysSinceLast} giorni (cadenza ~{selProd.cadenceDays}gg).
+              </div>
+            )}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Stat l="Ultimo prezzo" v={fmtCHF(selProd.lastPrice)} />
+              <Stat l="Ultimo ordine" v={fmtDate(selProd.lastDate)} />
+              <Stat l="Volte acquistato" v={`${selProd.timesBought}×`} />
+              <Stat l="Ultima quantità" v={fmtNum(selProd.lastQty)} />
+              <Stat l="Quantità totale" v={fmtNum(selProd.totalQty)} />
+              <Stat l="Cadenza media" v={selProd.cadenceDays > 0 ? `~${selProd.cadenceDays} giorni` : '—'} />
+              <Stat l="Ultimo acquisto" v={selProd.daysSinceLast != null ? `${selProd.daysSinceLast} giorni fa` : '—'} />
+              <Stat l="Ricorrente" v={selProd.recurring ? 'Sì' : 'No'} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

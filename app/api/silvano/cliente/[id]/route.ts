@@ -61,15 +61,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const histLines = orderIds.length ? await callOdooAsAdmin('sale.order.line', 'search_read', [], {
       domain: [['order_id', 'in', orderIds], ['display_type', '=', false], ['product_id', '!=', false]],
-      fields: ['product_id', 'product_uom_qty', 'order_id'],
+      fields: ['product_id', 'product_uom_qty', 'price_unit', 'order_id'],
     }) : [];
 
-    const byProd = new Map<number, { id: number; name: string; entries: { date: string; qty: number }[] }>();
+    const byProd = new Map<number, { id: number; name: string; entries: { date: string; qty: number; price: number }[] }>();
     for (const l of histLines as any[]) {
       const pid = l.product_id[0];
       const date = dateById.get(l.order_id[0]) || '';
       if (!byProd.has(pid)) byProd.set(pid, { id: pid, name: l.product_id[1], entries: [] });
-      byProd.get(pid)!.entries.push({ date, qty: l.product_uom_qty || 0 });
+      byProd.get(pid)!.entries.push({ date, qty: l.product_uom_qty || 0, price: l.price_unit || 0 });
     }
 
     const DAY = 86400000;
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       const totalQty = p.entries.reduce((s, e) => s + (e.qty || 0), 0);
       return {
         id: p.id, name: p.name, timesBought,
-        lastDate: lastEntry?.date || null, lastQty: lastEntry?.qty || 0, totalQty,
+        lastDate: lastEntry?.date || null, lastQty: lastEntry?.qty || 0, lastPrice: lastEntry?.price || 0, totalQty,
         cadenceDays: Math.round(cadence), daysSinceLast, recurring, lapsed,
       };
     }).sort((a, b) => {
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         id: p.id,
         name: p.name,
         email: p.email || '',
-        phone: p.phone || p.mobile || '',
+        phone: p.phone || p.mobile || (children.find((c: any) => c.phone)?.phone) || '',
         vat: p.vat || '',
         address: [p.street, p.street2, [p.zip, p.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
         note: p.comment || '',
