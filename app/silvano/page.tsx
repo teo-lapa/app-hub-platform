@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package, Eye, EyeOff } from 'lucide-react';
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate } from './_components/ui';
 
 interface Cliente { id: number; name: string; city?: string }
@@ -48,6 +48,7 @@ export default function CatalogoPage() {
   const [done, setDone] = useState<{ orderId: number; orderName: string; margine: number } | null>(null);
   const [toast, setToast] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
+  const [hidePrices, setHidePrices] = useState(false);
 
   // --- clienti search ---
   useEffect(() => {
@@ -185,6 +186,11 @@ export default function CatalogoPage() {
             className={`rounded-xl px-3 py-2.5 text-sm font-medium ${onlyAvail ? 'bg-emerald-500/20 text-emerald-200' : 'bg-white/5 text-slate-300'}`}>
             Solo disponibili
           </button>
+          <button onClick={() => setHidePrices((v) => !v)}
+            title={hidePrices ? 'Mostra i prezzi' : 'Nascondi i prezzi (davanti al cliente)'}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium ${hidePrices ? 'bg-amber-500/20 text-amber-200' : 'bg-white/5 text-slate-300'}`}>
+            {hidePrices ? <EyeOff size={15} /> : <Eye size={15} />} Prezzi
+          </button>
           {cliente && (
             <button onClick={() => setBoughtOnly((v) => !v)}
               className={`flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium ${boughtOnly ? 'bg-blue-500/20 text-blue-200' : 'bg-white/5 text-slate-300'}`}>
@@ -224,7 +230,11 @@ export default function CatalogoPage() {
                   <div className="line-clamp-2 text-sm font-medium text-white">{p.name}</div>
                   {p.code && <div className="text-[11px] text-slate-500">{p.code}</div>}
                   <div className="mt-auto pt-2">
-                    <div className="text-base font-bold text-emerald-300">{fmtCHF(p.base)}{p.uom && <span className="ml-1 text-xs font-normal text-slate-400">/ {p.uom}</span>}</div>
+                    {hidePrices ? (
+                      <div className="text-base font-bold text-slate-600">•••{p.uom && <span className="ml-1 text-xs font-normal text-slate-500">/ {p.uom}</span>}</div>
+                    ) : (
+                      <div className="text-base font-bold text-emerald-300">{fmtCHF(p.base)}{p.uom && <span className="ml-1 text-xs font-normal text-slate-400">/ {p.uom}</span>}</div>
+                    )}
                   </div>
                 </div>
               </button>
