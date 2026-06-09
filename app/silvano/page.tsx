@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package, Eye, EyeOff, Info } from 'lucide-react';
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate } from './_components/ui';
 
 interface Cliente { id: number; name: string; city?: string }
@@ -332,6 +332,7 @@ function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState(p.base || 0);
   const [lastBuy, setLastBuy] = useState<string | null | undefined>(undefined); // undefined = caricamento
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
@@ -348,6 +349,7 @@ function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }
   const sliderMax = Math.max(p.base * 1.5, floor + 1);
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
@@ -362,6 +364,10 @@ function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }
                 {p.qtyAvailable > 0 ? <span className={`${pill} bg-emerald-600`}>{Math.round(p.qtyAvailable)} disp.</span> : <span className={`${pill} bg-red-600`}>esaurito</span>}
                 {p.incomingQty > 0 && <span className={`${pill} bg-amber-500`}>in arrivo {Math.round(p.incomingQty)}</span>}
               </div>
+              <button onClick={() => setInfoOpen(true)}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-white/20">
+                <Info size={13} /> Dettagli e specifiche
+              </button>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
@@ -422,6 +428,58 @@ function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }
           </>
         )}
       </div>
+    </div>
+    {infoOpen && <InfoModal productId={p.id} name={p.name} onClose={() => setInfoOpen(false)} />}
+    </>
+  );
+}
+
+/* ====================== Modal dettagli/specifiche prodotto (da sito) ====================== */
+function InfoModal({ productId, name, onClose }: { productId: number; name: string; onClose: () => void }) {
+  const [info, setInfo] = useState<any | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/silvano/prodotto-info/${productId}`)
+      .then((r) => r.json())
+      .then((d) => { if (alive) setInfo(d.success ? d.info : null); })
+      .catch(() => { if (alive) setInfo(null); });
+    return () => { alive = false; };
+  }, [productId]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+      onClick={(e) => { e.stopPropagation(); onClose(); }}>
+      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 p-4">
+          <div className="font-semibold text-white">{name}</div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="overflow-auto p-5">
+          {info === undefined ? <Spinner /> : !info ? <Empty>Nessun dettaglio</Empty> : (
+            <>
+              <div className="mb-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                {info.code && <Spec l="Codice" v={info.code} />}
+                {info.barcode && <Spec l="Barcode" v={info.barcode} />}
+                {info.weight ? <Spec l="Peso" v={`${info.weight} kg`} /> : null}
+                {info.origin && <Spec l="Origine" v={info.origin} />}
+              </div>
+              {info.html
+                ? <div className="max-w-none text-sm leading-relaxed text-slate-200 [&_a]:text-emerald-300 [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_img]:my-2 [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-4 [&_li]:list-disc [&_p]:mb-2 [&_table]:w-full [&_td]:border [&_td]:border-white/10 [&_td]:px-2 [&_td]:py-1"
+                    dangerouslySetInnerHTML={{ __html: info.html }} />
+                : <Empty>Nessuna descrizione disponibile sul sito</Empty>}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Spec({ l, v }: { l: string; v: string }) {
+  return (
+    <div className="rounded-lg bg-white/5 px-2.5 py-1.5">
+      <div className="text-slate-400">{l}</div>
+      <div className="font-medium text-white">{v}</div>
     </div>
   );
 }
