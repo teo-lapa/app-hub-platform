@@ -32,14 +32,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }) : [];
     const t: any = tmpls?.[0] || {};
 
-    const html = t.description_ecommerce || t.website_description
+    const html = t.description_ecommerce
       || (t.description_sale ? `<p>${String(t.description_sale).replace(/\n/g, '<br/>')}</p>` : '');
+    const specs = t.website_description || '';
 
     return NextResponse.json({
       success: true,
       info: {
         name: t.name || p.name,
         html: html || '',
+        specs: specs || '',
         code: p.default_code || t.default_code || '',
         barcode: p.barcode || t.barcode || '',
         weight: t.weight || p.weight || 0,

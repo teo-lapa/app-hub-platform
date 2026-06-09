@@ -22,6 +22,8 @@ const REPARTO_ICON: Record<string, { e: string; l: string }> = {
   nonfood: { e: '🧴', l: 'Non Food' },
 };
 const PAGE_SIZE = 48;
+// stile per il contenuto HTML (descrizione + specifiche) dal sito
+const PROSE = 'max-w-none text-sm leading-relaxed text-slate-200 [&_a]:text-emerald-300 [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-emerald-300 [&_img]:my-2 [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-4 [&_li]:list-disc [&_p]:mb-2 [&_table]:w-full [&_td]:border [&_td]:border-white/10 [&_td]:px-2 [&_td]:py-1 [&_ul]:space-y-1';
 // lista pagine con ellissi (1 … 4 5 6 … 71)
 function pageList(cur: number, totalP: number): (number | string)[] {
   const out: (number | string)[] = [];
@@ -500,10 +502,9 @@ function InfoModal({ productId, name, onClose }: { productId: number; name: stri
                 {info.weight ? <Spec l="Peso" v={`${info.weight} kg`} /> : null}
                 {info.origin && <Spec l="Origine" v={info.origin} />}
               </div>
-              {info.html
-                ? <div className="max-w-none text-sm leading-relaxed text-slate-200 [&_a]:text-emerald-300 [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_img]:my-2 [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-4 [&_li]:list-disc [&_p]:mb-2 [&_table]:w-full [&_td]:border [&_td]:border-white/10 [&_td]:px-2 [&_td]:py-1"
-                    dangerouslySetInnerHTML={{ __html: info.html }} />
-                : <Empty>Nessuna descrizione disponibile sul sito</Empty>}
+              {info.html && <div className={PROSE} dangerouslySetInnerHTML={{ __html: info.html }} />}
+              {info.specs && <div className={`mt-4 border-t border-white/10 pt-4 ${PROSE}`} dangerouslySetInnerHTML={{ __html: info.specs }} />}
+              {!info.html && !info.specs && <Empty>Nessuna descrizione disponibile sul sito</Empty>}
             </>
           )}
         </div>

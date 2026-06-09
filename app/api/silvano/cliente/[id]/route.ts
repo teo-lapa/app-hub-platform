@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Sotto-contatti / indirizzi di consegna (figli)
     const children = await callOdooAsAdmin('res.partner', 'search_read', [], {
       domain: [['parent_id', '=', id]],
-      fields: ['id', 'name', 'type', 'street', 'city', 'zip', 'phone', 'email'],
+      fields: ['id', 'name', 'type', 'street', 'city', 'zip', 'phone', 'mobile', 'email'],
       order: 'type asc, name asc',
     });
 
@@ -109,7 +109,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         id: p.id,
         name: p.name,
         email: p.email || '',
-        phone: p.phone || p.mobile || (children.find((c: any) => c.phone)?.phone) || '',
+        phone: p.phone || (children.find((c: any) => c.phone)?.phone) || '',
+        mobile: p.mobile || (children.find((c: any) => c.mobile)?.mobile) || '',
         vat: p.vat || '',
         address: [p.street, p.street2, [p.zip, p.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
         note: p.comment || '',

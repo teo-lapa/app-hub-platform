@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Search, X, User, Mail, Phone, MapPin, FileText, Wallet, Receipt, Contact, Lock, ChevronDown, History, ShoppingCart } from 'lucide-react';
+import { Search, X, User, Mail, Phone, Smartphone, MapPin, FileText, Wallet, Receipt, Contact, Lock, ChevronDown, History, ShoppingCart } from 'lucide-react';
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate, fmtNum } from '../_components/ui';
 
 interface ClienteRow {
@@ -9,7 +9,7 @@ interface ClienteRow {
   totalInvoiced: number; credit: number;
 }
 interface Anagrafica {
-  id: number; name: string; email?: string; phone?: string; vat?: string;
+  id: number; name: string; email?: string; phone?: string; mobile?: string; vat?: string;
   address?: string; note?: string; pricelist?: string; paymentTerm?: string;
   salesperson?: string; totalInvoiced: number; credit: number;
 }
@@ -172,6 +172,13 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
               <span className="mt-0.5 text-slate-500"><Phone size={15} /></span>
               <span className="text-slate-400">Telefono</span>
               <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="ml-auto text-right font-medium text-emerald-300 hover:underline">{c.phone}</a>
+            </div>
+          )}
+          {c.mobile && c.mobile !== c.phone && (
+            <div className="flex items-start gap-2.5 text-sm">
+              <span className="mt-0.5 text-slate-500"><Smartphone size={15} /></span>
+              <span className="text-slate-400">Cellulare</span>
+              <a href={`tel:${c.mobile.replace(/\s/g, '')}`} className="ml-auto text-right font-medium text-emerald-300 hover:underline">{c.mobile}</a>
             </div>
           )}
           <Row icon={<Receipt size={15} />} label="Listino" value={c.pricelist} />
