@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
 
       // ========== STEP 2.5: AGENTI COMMERCIALI — Override ruolo ==========
       const AGENTI_EMAILS: Record<string, string[]> = {
-        'ilaria@lapa.ch': ['profile', 'silvano-app'],
+        'silvano@lapa.ch': ['profile', 'silvano-app'],
       };
       const agentePermessi = AGENTI_EMAILS[email.toLowerCase()];
       if (agentePermessi) {

@@ -19,10 +19,10 @@ export default function CatalogoPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [clientiQ, setClientiQ] = useState('');
   const [clienti, setClienti] = useState<Cliente[]>([]);
-  const [showClientPicker, setShowClientPicker] = useState(true);
+  const [showClientPicker, setShowClientPicker] = useState(false);
 
   const [q, setQ] = useState('');
-  const [onlyAvail, setOnlyAvail] = useState(false);
+  const [onlyAvail, setOnlyAvail] = useState(true);
   const [categ, setCateg] = useState('');
   const [categorie, setCategorie] = useState<{ id: number; name: string }[]>([]);
   const [boughtOnly, setBoughtOnly] = useState(false);
