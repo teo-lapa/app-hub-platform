@@ -47,6 +47,7 @@ export default function CatalogoPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ orderId: number; orderName: string; margine: number } | null>(null);
   const [toast, setToast] = useState('');
+  const [cartOpen, setCartOpen] = useState(false);
 
   // --- clienti search ---
   useEffect(() => {
@@ -133,9 +134,7 @@ export default function CatalogoPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-      {/* ===== Colonna principale ===== */}
-      <div className="space-y-4">
+    <div className="space-y-4">
         {/* Cliente */}
         <Card className="p-4">
           <div className="flex items-center justify-between gap-3">
@@ -192,11 +191,16 @@ export default function CatalogoPage() {
               <History size={15} /> Già comprati
             </button>
           )}
+          <button onClick={() => setCartOpen(true)}
+            className="ml-auto flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-400">
+            <ShoppingCart size={16} /> Preventivo
+            {cart.length > 0 && <span className="rounded-full bg-slate-900/25 px-2 py-0.5 text-xs">{cart.length}</span>}
+          </button>
         </div>
 
         {/* Griglia */}
         {loading ? <Spinner /> : !visibleProds.length ? <Empty>Nessun prodotto</Empty> : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
             {visibleProds.map((p) => (
               <button key={p.id} onClick={() => setModal(p)}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-emerald-400/50 hover:bg-white/10">
@@ -227,14 +231,17 @@ export default function CatalogoPage() {
             ))}
           </div>
         )}
-      </div>
 
-      {/* ===== Carrello ===== */}
-      <div className="lg:sticky lg:top-20 h-fit">
-        <Card className="p-4">
-          <div className="mb-3 flex items-center gap-2 text-white">
-            <ShoppingCart size={18} /> <span className="font-semibold">Preventivo</span>
-            {cart.length > 0 && <Badge color="green">{cart.length}</Badge>}
+      {/* ===== Carrello (drawer) ===== */}
+      {cartOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setCartOpen(false)}>
+          <div className="flex h-full w-full max-w-md flex-col overflow-auto border-l border-white/10 bg-slate-900 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="mb-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2">
+              <ShoppingCart size={18} /> <span className="font-semibold">Preventivo</span>
+              {cart.length > 0 && <Badge color="green">{cart.length}</Badge>}
+            </div>
+            <button onClick={() => setCartOpen(false)} className="text-slate-400 hover:text-white"><X size={20} /></button>
           </div>
 
           {done ? (
@@ -292,8 +299,9 @@ export default function CatalogoPage() {
               </div>
             </>
           )}
-        </Card>
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== Modal prodotto ===== */}
       {modal && <ProductModal p={modal} hasClient={!!cliente} clientId={cliente?.id ?? null} onClose={() => setModal(null)} onAdd={addToCart}
