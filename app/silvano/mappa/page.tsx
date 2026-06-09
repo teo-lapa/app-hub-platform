@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MapPin } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
 import { Card, Spinner, Empty } from '../_components/ui';
 import type { ClienteMappa } from './ClientiMap';
 
