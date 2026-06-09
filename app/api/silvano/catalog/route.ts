@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       domain,
       fields: [
         'id', 'name', 'default_code', 'list_price', 'standard_price',
-        'image_128', 'qty_available', 'incoming_qty', 'uom_id',
+        'image_128', 'qty_available', 'incoming_qty', 'uom_id', 'categ_id',
       ],
       limit,
       order: 'name asc',
@@ -42,6 +42,21 @@ export async function GET(request: NextRequest) {
     const enriched = clientId
       ? await enrichWithMargin(products, pricelistId, clientId)
       : products.map((p: any) => ({ ...p, base: p.list_price || 0 }));
+
+    // Reparto principale (per l'icona sulla card): radice dell'albero categorie.
+    // 6=Frigo, 8=Secco, 11=Congelatore(Pingu), 19=Non Food.
+    const REPARTI: Record<number, string> = { 6: 'frigo', 8: 'secco', 11: 'congelatore', 19: 'nonfood' };
+    const catIds = Array.from(new Set(products.filter((p: any) => p.categ_id).map((p: any) => p.categ_id[0])));
+    const cats = catIds.length
+      ? await callOdooAsAdmin('product.category', 'search_read', [], {
+          domain: [['id', 'in', catIds]], fields: ['id', 'parent_path'],
+        })
+      : [];
+    const catReparto = new Map<number, string | null>();
+    for (const c of cats as any[]) {
+      const root = Number(String(c.parent_path || '').split('/').filter(Boolean)[0]);
+      catReparto.set(c.id, REPARTI[root] || null);
+    }
 
     const items = enriched.map((p: any) => ({
       id: p.id,
@@ -57,6 +72,7 @@ export async function GET(request: NextRequest) {
       floor: p.floor != null ? p.floor : null,
       quota: p.quota != null ? p.quota : null,
       anomaly: p.anomaly || false,
+      reparto: p.categ_id ? (catReparto.get(p.categ_id[0]) || null) : null,
     }));
 
     return NextResponse.json({ success: true, count: items.length, clientId, pricelistId, items });
