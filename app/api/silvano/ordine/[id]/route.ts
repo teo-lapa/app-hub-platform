@@ -32,7 +32,7 @@ async function priceInfo(
 
   let base = prod.list_price || 0;
   if (pricelistId) {
-    const cp = await getClientPrice(pricelistId, productId, qty || 1, partnerId);
+    const cp = await getClientPrice(pricelistId, productId, qty || 1, partnerId || 0);
     if (cp != null) base = cp;
   }
   const info = computeMarginInfo(base, prod.standard_price || 0);

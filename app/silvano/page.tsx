@@ -2,17 +2,25 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package } from 'lucide-react';
-import { Card, Badge, Spinner, Empty, fmtCHF } from './_components/ui';
+import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate } from './_components/ui';
 
 interface Cliente { id: number; name: string; city?: string }
 interface Prod {
   id: number; name: string; code: string; description?: string; uom: string; image: string | null;
   qtyAvailable: number; incomingQty: number; listPrice: number; cost: number;
   base: number; floor: number | null; quota: number | null; anomaly: boolean;
+  reparto?: string | null;
 }
 
 // badge pieni, colore profondo, ben leggibili sopra la foto bianca
 const pill = 'inline-block rounded-md px-2 py-0.5 text-[11px] font-bold text-white shadow-md';
+// icona del reparto principale sulla card
+const REPARTO_ICON: Record<string, { e: string; l: string }> = {
+  frigo: { e: '🧊', l: 'Frigo' },
+  congelatore: { e: '❄️', l: 'Congelatore' },
+  secco: { e: '📦', l: 'Secco' },
+  nonfood: { e: '🧴', l: 'Non Food' },
+};
 interface CartItem { id: number; name: string; code: string; qty: number; price: number; floor: number; base: number; uom: string; }
 
 export default function CatalogoPage() {
@@ -201,7 +209,12 @@ export default function CatalogoPage() {
                       : <span className={`${pill} bg-red-600`}>esaurito</span>}
                     {p.incomingQty > 0 && <span className={`${pill} bg-amber-500`}>in arrivo {Math.round(p.incomingQty)}</span>}
                   </div>
-                  {boughtIds.has(p.id) && <div className="absolute right-1.5 top-1.5"><span className={`${pill} bg-blue-600`}>★ già comprato</span></div>}
+                  <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
+                    {p.reparto && REPARTO_ICON[p.reparto] && (
+                      <span title={REPARTO_ICON[p.reparto].l} className="rounded-md bg-black/55 px-1.5 py-0.5 text-[13px] leading-none shadow-md">{REPARTO_ICON[p.reparto].e}</span>
+                    )}
+                    {boughtIds.has(p.id) && <span className={`${pill} bg-blue-600`}>★ già comprato</span>}
+                  </div>
                 </div>
                 <div className="flex flex-1 flex-col p-2.5">
                   <div className="line-clamp-2 text-sm font-medium text-white">{p.name}</div>
@@ -283,7 +296,7 @@ export default function CatalogoPage() {
       </div>
 
       {/* ===== Modal prodotto ===== */}
-      {modal && <ProductModal p={modal} hasClient={!!cliente} onClose={() => setModal(null)} onAdd={addToCart}
+      {modal && <ProductModal p={modal} hasClient={!!cliente} clientId={cliente?.id ?? null} onClose={() => setModal(null)} onAdd={addToCart}
         onSelectClient={() => { setModal(null); setShowClientPicker(true); }} />}
 
       {/* ===== Toast ===== */}
@@ -293,13 +306,24 @@ export default function CatalogoPage() {
 }
 
 /* ====================== Modal prodotto (info + margine live) ====================== */
-function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
-  p: Prod; hasClient: boolean; onClose: () => void;
+function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }: {
+  p: Prod; hasClient: boolean; clientId: number | null; onClose: () => void;
   onAdd: (p: Prod, qty: number, price: number) => void; onSelectClient: () => void;
 }) {
   const floor = p.floor ?? p.cost;
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState(p.base || 0);
+  const [lastBuy, setLastBuy] = useState<string | null | undefined>(undefined); // undefined = caricamento
+
+  useEffect(() => {
+    if (!clientId) return;
+    let alive = true;
+    fetch(`/api/silvano/ultimo-acquisto?clientId=${clientId}&productId=${p.id}`)
+      .then((r) => r.json())
+      .then((d) => { if (alive) setLastBuy(d.success ? d.lastDate : null); })
+      .catch(() => { if (alive) setLastBuy(null); });
+    return () => { alive = false; };
+  }, [clientId, p.id]);
 
   const margine = (price - floor) * qty;
   const below = price < floor - 0.001;
@@ -333,6 +357,13 @@ function ProductModal({ p, hasClient, onClose, onAdd, onSelectClient }: {
         ) : (
           <>
             {p.anomaly && <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300">⚠️ Listino sotto o pari al costo: margine non disponibile, prezzo minimo = costo.</div>}
+
+            <div className="mt-3 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-xs">
+              <span className="text-slate-400">Ultimo ordine di questo cliente</span>
+              <span className="font-medium text-white">
+                {lastBuy === undefined ? '…' : lastBuy ? fmtDate(lastBuy) : 'Mai ordinato'}
+              </span>
+            </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
               <div className="rounded-xl bg-white/5 p-2"><div className="text-slate-400">Listino</div><div className="font-semibold text-white">{fmtCHF(p.base)}</div></div>

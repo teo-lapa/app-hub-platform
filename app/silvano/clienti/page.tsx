@@ -192,6 +192,7 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
                   <th className="py-2 pr-2 text-right font-medium">Totale</th>
                   <th className="py-2 pr-2 text-right font-medium">Residuo</th>
                   <th className="py-2 font-medium">Stato</th>
+                  <th className="py-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -202,6 +203,12 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
                     <td className="py-2 pr-2 text-right text-white">{fmtCHF(f.total)}</td>
                     <td className="py-2 pr-2 text-right text-amber-300">{fmtCHF(f.residual)}</td>
                     <td className="py-2"><PaymentBadge state={f.paymentState} /></td>
+                    <td className="py-2 pl-2 text-right">
+                      <a href={`/api/silvano/fattura/${f.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-200 hover:bg-emerald-500/30">
+                        <FileText size={13} /> PDF
+                      </a>
+                    </td>
                   </tr>
                 ))}
               </tbody>
