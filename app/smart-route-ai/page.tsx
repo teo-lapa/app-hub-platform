@@ -72,6 +72,7 @@ export default function SmartRouteAIPage() {
   const [showVehicleBatchModal, setShowVehicleBatchModal] = useState(false);
   const [selectedVehicleForBatch, setSelectedVehicleForBatch] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
   const [showBatchStateModal, setShowBatchStateModal] = useState(false);
+  const [showDoubleConfirmModal, setShowDoubleConfirmModal] = useState(false);
   const [selectedBatchForStateChange, setSelectedBatchForStateChange] = useState<{id: number, name: string, currentState: string, nextState: string, hasVehicle: boolean} | null>(null);
   const [selectedVehicleForStateChange, setSelectedVehicleForStateChange] = useState<{id: number, name: string, plate: string, driver: string, driverId: number, employeeId: number | null} | null>(null);
   const [batchPickings, setBatchPickings] = useState<Array<{id: number, name: string, partnerName: string, scheduledDate: string, weight: number, products: Array<{id: number, productName: string, quantity: number, uom: string, weight: number}>}>>([]);
@@ -551,6 +552,28 @@ export default function SmartRouteAIPage() {
     }
   }
 
+  // Click su "Conferma": chiede una SECONDA conferma quando si completa il batch
+  // (In Corso -> Completato), perché è il passaggio che convalida davvero i PICK.
+  function requestConfirmBatchStateChange() {
+    if (!selectedBatchForStateChange) return;
+
+    // Per draft -> in_progress serve un veicolo selezionato
+    if (selectedBatchForStateChange.currentState === 'draft' &&
+        !selectedBatchForStateChange.hasVehicle &&
+        !selectedVehicleForStateChange) {
+      showToast('Seleziona un veicolo prima di confermare', 'warning');
+      return;
+    }
+
+    // Doppia conferma SOLO sul completamento (convalida i PICK)
+    if (selectedBatchForStateChange.currentState === 'in_progress') {
+      setShowDoubleConfirmModal(true);
+      return;
+    }
+
+    confirmBatchStateChange();
+  }
+
   // Confirm batch state change
   async function confirmBatchStateChange() {
     if (!selectedBatchForStateChange) return;
@@ -602,6 +625,7 @@ export default function SmartRouteAIPage() {
         // Show expired products modal
         setExpiredProducts(result.expiredProducts || []);
         setExpiredBatchInfo({ id: result.batchId, name: result.batchName });
+        setShowDoubleConfirmModal(false);
         setShowBatchStateModal(false);
         setShowExpiredModal(true);
 
@@ -617,6 +641,7 @@ export default function SmartRouteAIPage() {
       // Reload batches to reflect new state
       await loadBatches(dateFrom);
 
+      setShowDoubleConfirmModal(false);
       setShowBatchStateModal(false);
       setSelectedBatchForStateChange(null);
       setSelectedVehicleForStateChange(null);
@@ -1770,11 +1795,65 @@ export default function SmartRouteAIPage() {
                 Annulla
               </button>
               <button
-                onClick={confirmBatchStateChange}
+                onClick={requestConfirmBatchStateChange}
                 disabled={loading}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50"
               >
                 Conferma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Doppia conferma prima di completare il batch (convalida PICK) */}
+      {showDoubleConfirmModal && selectedBatchForStateChange && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[2100] p-4 overflow-y-auto" onClick={() => setShowDoubleConfirmModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full my-8 shadow-2xl border-4 border-red-300" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-3">🛑</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Sei sicuro di voler confermare questi PICK?</h3>
+              <div className="text-sm text-gray-600">
+                Stai per <span className="font-bold text-red-600">completare</span> il batch{' '}
+                <span className="font-semibold">{selectedBatchForStateChange.name}</span>.
+                I prelievi qui sotto verranno <span className="font-bold">convalidati definitivamente</span> e la merce
+                risulterà uscita dal magazzino. Conferma solo se è stata <span className="font-bold">davvero prelevata</span>.
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <span>📦</span> Verranno confermati {batchPickings.length} PICK:
+              </div>
+              {batchPickings.length === 0 ? (
+                <div className="text-center text-gray-500 py-4 text-sm">Nessuna consegna in questo batch</div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {batchPickings.map((picking) => (
+                    <div key={picking.id} className="flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg">
+                      <div className="text-sm font-semibold text-gray-900">{picking.partnerName}</div>
+                      <div className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold whitespace-nowrap">
+                        {picking.weight} kg · {picking.products.length} prod.
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDoubleConfirmModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                No, annulla
+              </button>
+              <button
+                onClick={confirmBatchStateChange}
+                disabled={loading}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg font-bold hover:from-red-600 hover:to-rose-700 transition-all disabled:opacity-50"
+              >
+                Sì, conferma i PICK
               </button>
             </div>
           </div>
