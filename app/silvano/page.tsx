@@ -42,7 +42,7 @@ export default function CatalogoPage() {
   const [showClientPicker, setShowClientPicker] = useState(false);
 
   const [q, setQ] = useState('');
-  const [onlyAvail, setOnlyAvail] = useState(true);
+  const [onlyAvail, setOnlyAvail] = useState(false);
   const [categ, setCateg] = useState('');
   const [categorie, setCategorie] = useState<{ id: number; name: string }[]>([]);
   const [boughtOnly, setBoughtOnly] = useState(false);
