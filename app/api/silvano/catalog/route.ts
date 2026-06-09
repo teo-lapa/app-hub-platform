@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
     const clientId = sp.get('clientId') ? Number(sp.get('clientId')) : null;
     const onlyAvailable = sp.get('onlyAvailable') === '1';
     const categ = sp.get('categ') ? Number(sp.get('categ')) : null;
-    const limit = Math.min(Number(sp.get('limit') || 48), 80);
+    const pageSize = Math.min(Number(sp.get('pageSize') || 48), 60);
+    const page = Math.max(1, Number(sp.get('page') || 1));
+    const offset = (page - 1) * pageSize;
 
     const domain: any[] = [['sale_ok', '=', true], ['active', '=', true]];
     if (q) {
@@ -25,13 +27,16 @@ export async function GET(request: NextRequest) {
     if (onlyAvailable) domain.push(['qty_available', '>', 0]);
     if (categ) domain.push(['categ_id', 'child_of', categ]);
 
+    const total = await callOdooAsAdmin('product.product', 'search_count', [], { domain });
+
     const products = await callOdooAsAdmin('product.product', 'search_read', [], {
       domain,
       fields: [
         'id', 'name', 'default_code', 'list_price', 'standard_price',
         'image_128', 'qty_available', 'incoming_qty', 'uom_id', 'categ_id',
       ],
-      limit,
+      offset,
+      limit: pageSize,
       order: 'name asc',
       context: { lang: 'it_IT' },
     });
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
       reparto: p.categ_id ? (catReparto.get(p.categ_id[0]) || null) : null,
     }));
 
-    return NextResponse.json({ success: true, count: items.length, clientId, pricelistId, items });
+    return NextResponse.json({ success: true, count: items.length, total, page, pageSize, clientId, pricelistId, items });
   } catch (error: any) {
     console.error('💥 [SILVANO/catalog]', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

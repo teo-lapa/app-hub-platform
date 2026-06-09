@@ -21,6 +21,16 @@ const REPARTO_ICON: Record<string, { e: string; l: string }> = {
   secco: { e: '📦', l: 'Secco' },
   nonfood: { e: '🧴', l: 'Non Food' },
 };
+const PAGE_SIZE = 48;
+// lista pagine con ellissi (1 … 4 5 6 … 71)
+function pageList(cur: number, totalP: number): (number | string)[] {
+  const out: (number | string)[] = [];
+  for (let n = 1; n <= totalP; n++) {
+    if (n === 1 || n === totalP || (n >= cur - 1 && n <= cur + 1)) out.push(n);
+    else if (out[out.length - 1] !== '...') out.push('...');
+  }
+  return out;
+}
 interface CartItem { id: number; name: string; code: string; qty: number; price: number; floor: number; base: number; uom: string; }
 
 export default function CatalogoPage() {
@@ -37,6 +47,8 @@ export default function CatalogoPage() {
   const [boughtIds, setBoughtIds] = useState<Set<number>>(new Set());
   const [prods, setProds] = useState<Prod[]>([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const [modal, setModal] = useState<Prod | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -68,16 +80,20 @@ export default function CatalogoPage() {
     if (onlyAvail) params.set('onlyAvailable', '1');
     if (categ) params.set('categ', categ);
     if (cliente) params.set('clientId', String(cliente.id));
+    params.set('page', String(page));
     const r = await fetch(`/api/silvano/catalog?${params}`);
     const d = await r.json();
-    if (d.success) setProds(d.items);
+    if (d.success) { setProds(d.items); setTotal(d.total || 0); }
     setLoading(false);
-  }, [q, onlyAvail, categ, cliente]);
+  }, [q, onlyAvail, categ, cliente, page]);
 
   useEffect(() => {
     const t = setTimeout(loadCatalog, 250);
     return () => clearTimeout(t);
   }, [loadCatalog]);
+
+  // i filtri tornano a pagina 1
+  useEffect(() => { setPage(1); }, [q, onlyAvail, categ, cliente]);
 
   // categorie (reparti) per la tendina
   useEffect(() => {
@@ -102,6 +118,12 @@ export default function CatalogoPage() {
     () => (boughtOnly ? prods.filter((p) => boughtIds.has(p.id)) : prods),
     [prods, boughtOnly, boughtIds]
   );
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const goPage = (n: number) => {
+    setPage(Math.min(Math.max(1, n), totalPages));
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartMargine = cart.reduce((s, i) => s + (i.price - i.floor) * i.qty, 0);
@@ -239,6 +261,21 @@ export default function CatalogoPage() {
                 </div>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Paginazione */}
+        {!boughtOnly && totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
+            <button disabled={page <= 1} onClick={() => goPage(page - 1)}
+              className="rounded-lg bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40">‹</button>
+            {pageList(page, totalPages).map((n, i) => n === '...'
+              ? <span key={`e${i}`} className="px-2 text-slate-500">…</span>
+              : <button key={n} onClick={() => goPage(n as number)}
+                  className={`min-w-[38px] rounded-lg px-3 py-2 text-sm font-medium ${n === page ? 'bg-emerald-500 text-slate-900' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>{n}</button>)}
+            <button disabled={page >= totalPages} onClick={() => goPage(page + 1)}
+              className="rounded-lg bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40">›</button>
+            <span className="ml-2 text-xs text-slate-500">{total} prodotti</span>
           </div>
         )}
 
