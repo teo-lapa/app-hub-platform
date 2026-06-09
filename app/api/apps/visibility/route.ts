@@ -206,9 +206,17 @@ export async function GET(request: NextRequest) {
 
       // Se c'è un ruolo specificato, filtra le app in base alla visibilità
       // ✅ Se non ci sono impostazioni (appSettings === undefined), considera l'APP visibile di default
-      const isVisible = userRole
+      let isVisible = userRole
         ? (appSettings ? isAppVisibleForRole(settings, userRole, userEmail) : true)  // Se no settings → visible
         : settings.visible;
+
+      // 🔒 Area Agente (Silvano): non esiste un'allowlist a singolo utente nel sistema,
+      // ma l'unico con ruolo 'agente' è Silvano → blindiamo la card per id.
+      // Visibile SOLO all'agente (Silvano) e all'admin (per gestione/test). Mai agli altri.
+      // Quando userRole è assente (pannello gestione-visibilita) lasciamo invariato.
+      if (userRole && app.id === 'silvano-app') {
+        isVisible = userRole === 'agente' || userRole === 'admin';
+      }
 
       // DEBUG per app "1"
       if (app.id === '1') {
