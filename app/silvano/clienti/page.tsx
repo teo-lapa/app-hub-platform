@@ -184,7 +184,6 @@ function SchedaCliente({ scheda }: { scheda: Scheda }) {
           <Row icon={<Receipt size={15} />} label="Listino" value={c.pricelist} />
           <Row icon={<Receipt size={15} />} label="Termini" value={c.paymentTerm} />
           <Row icon={<User size={15} />} label="Venditore" value={c.salesperson} />
-          {c.note && <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300">{c.note}</div>}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
           <div className="rounded-xl bg-white/5 p-3">
