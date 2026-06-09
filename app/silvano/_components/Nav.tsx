@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Users, ClipboardList, BarChart3, Map } from 'lucide-react';
+import { ShoppingCart, Users, ClipboardList, BarChart3, Map, Home } from 'lucide-react';
 
 const LINKS = [
   { href: '/silvano', label: 'Catalogo', icon: ShoppingCart, exact: true },
@@ -40,6 +40,13 @@ export default function Nav() {
               </Link>
             );
           })}
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+          >
+            <Home size={16} />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
         </nav>
       </div>
     </header>
