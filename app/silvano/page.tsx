@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package, Eye, EyeOff, Info } from 'lucide-react';
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate } from './_components/ui';
 
-interface Cliente { id: number; name: string; city?: string }
+interface Cliente { id: number; name: string; city?: string; privato?: boolean }
 interface SubContatto { id: number; name: string }
 interface Consegna { id: number; name: string; address?: string }
 interface Prod {
@@ -217,8 +217,11 @@ export default function CatalogoPage() {
               <div className="mt-2 max-h-60 overflow-auto rounded-xl border border-white/5">
                 {clienti.map((c) => (
                   <button key={c.id} onClick={() => pickCliente(c)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-white/5">
-                    <span>{c.name}</span>
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-white/5">
+                    <span className="flex items-center gap-2">
+                      {c.name}
+                      {c.privato && <span className="rounded-md bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">privato</span>}
+                    </span>
                     {c.city && <span className="text-xs text-slate-500">{c.city}</span>}
                   </button>
                 ))}

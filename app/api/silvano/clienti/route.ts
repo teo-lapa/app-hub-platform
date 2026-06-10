@@ -17,17 +17,35 @@ export async function GET(request: NextRequest) {
     domain.push(['parent_id', '=', false]); // solo aziende/contatti principali
     if (q) domain.push(['name', 'ilike', q]);
 
+    const FIELDS = [
+      'id', 'name', 'email', 'phone', 'mobile', 'street', 'city', 'zip',
+      'partner_latitude', 'partner_longitude', 'total_invoiced', 'credit',
+    ];
+
     const partners = await callOdooAsAdmin('res.partner', 'search_read', [], {
       domain,
-      fields: [
-        'id', 'name', 'email', 'phone', 'mobile', 'street', 'city', 'zip',
-        'partner_latitude', 'partner_longitude', 'total_invoiced', 'credit',
-      ],
+      fields: FIELDS,
       limit: 300,
       order: 'name asc',
     });
 
-    const clienti = partners.map((p: any) => ({
+    // Clienti privati (persone fisiche) di tutto il DB, solo quando si cerca per nome
+    let privati: any[] = [];
+    if (q) {
+      const seen = new Set(partners.map((p: any) => p.id));
+      privati = (await callOdooAsAdmin('res.partner', 'search_read', [], {
+        domain: [
+          ['customer_rank', '>', 0], ['parent_id', '=', false],
+          ['is_company', '=', false], ['name', 'ilike', q],
+        ],
+        fields: FIELDS,
+        limit: 50,
+        order: 'name asc',
+      })).filter((p: any) => !seen.has(p.id));
+    }
+
+    const clienti = [...partners, ...privati.map((p: any) => ({ ...p, _privato: true }))].map((p: any) => ({
+      privato: p._privato || false,
       id: p.id,
       name: p.name,
       email: p.email || '',
