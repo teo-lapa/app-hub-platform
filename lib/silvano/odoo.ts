@@ -59,11 +59,10 @@ export async function resolveSalesperson(request: NextRequest): Promise<Salesper
   };
 }
 
-/** Domain di base per i clienti del venditore. */
+/** Domain di base per i clienti del venditore (anche chi non ha ancora comprato). */
 export function salespersonPartnerDomain(userId: number): any[] {
-  const d: any[] = [['customer_rank', '>', 0]];
-  if (userId) d.push(['user_id', '=', userId]);
-  return d;
+  if (userId) return [['user_id', '=', userId]];
+  return [['customer_rank', '>', 0]];
 }
 
 /** Listino (pricelist) del cliente. */
