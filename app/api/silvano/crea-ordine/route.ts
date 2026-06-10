@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const seller = await resolveSalesperson(request);
     const body = await request.json();
-    const { clientId, deliveryAddressId, deliveryDate, note } = body || {};
+    const { clientId, contactId, deliveryAddressId, deliveryDate, note } = body || {};
     const lines: InLine[] = body?.lines || [];
 
     if (!clientId || !Array.isArray(lines) || lines.length === 0) {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Crea l'ordine
     const orderData: any = {
-      partner_id: clientId,
+      partner_id: contactId || clientId,
       partner_shipping_id: deliveryAddressId || clientId,
       date_order: new Date().toISOString().slice(0, 19).replace('T', ' '),
       state: 'draft',

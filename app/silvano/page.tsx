@@ -5,6 +5,8 @@ import { Search, Plus, Minus, Trash2, X, ShoppingCart, History, Check, Package, 
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtDate } from './_components/ui';
 
 interface Cliente { id: number; name: string; city?: string }
+interface SubContatto { id: number; name: string }
+interface Consegna { id: number; name: string; address?: string }
 interface Prod {
   id: number; name: string; code: string; description?: string; uom: string; image: string | null;
   qtyAvailable: number; incomingQty: number; listPrice: number; cost: number;
@@ -40,6 +42,10 @@ export default function CatalogoPage() {
   const [clientiQ, setClientiQ] = useState('');
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [contatti, setContatti] = useState<SubContatto[]>([]);
+  const [contattoId, setContattoId] = useState<number>(0); // 0 = azienda
+  const [consegne, setConsegne] = useState<Consegna[]>([]);
+  const [indirizzoId, setIndirizzoId] = useState<number>(0); // 0 = sede principale
 
   const [q, setQ] = useState('');
   const [onlyAvail, setOnlyAvail] = useState(false);
@@ -113,7 +119,15 @@ export default function CatalogoPage() {
     if (cart.length && c.id !== cliente?.id && !confirm('Cambiare cliente svuota il carrello. Continuare?')) return;
     setCliente(c); setShowClientPicker(false); setCart([]); setDone(null);
     setBoughtOnly(false); setBoughtIds(new Set());
+    setContatti([]); setContattoId(0); setConsegne([]); setIndirizzoId(0);
     loadBought(c);
+    fetch(`/api/silvano/clienti/${c.id}`).then((r) => r.json()).then((d) => {
+      if (!d.success) return;
+      setContatti(d.contatti || []);
+      setConsegne(d.consegne || []);
+      // un solo indirizzo di consegna → selezione automatica
+      if ((d.consegne || []).length === 1) setIndirizzoId(d.consegne[0].id);
+    }).catch(() => {});
   };
 
   const visibleProds = useMemo(
@@ -149,6 +163,8 @@ export default function CatalogoPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clientId: cliente.id, deliveryDate, note,
+        contactId: contattoId || undefined,
+        deliveryAddressId: indirizzoId || undefined,
         lines: cart.map((i) => ({ product_id: i.id, qty: i.qty, price: i.price, name: i.name })),
       }),
     });
@@ -160,15 +176,33 @@ export default function CatalogoPage() {
 
   return (
     <div className="space-y-4">
-        {/* Cliente */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-400">Cliente</div>
-              <div className="text-lg font-semibold text-white">{cliente ? cliente.name : 'Nessun cliente selezionato'}</div>
+        {/* Cliente — compatto quando selezionato */}
+        <Card className={cliente ? 'p-3' : 'p-4'}>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1">
+              {!cliente && <div className="text-xs uppercase tracking-wide text-slate-400">Cliente</div>}
+              <div className={`truncate font-semibold text-white ${cliente ? 'text-sm' : 'text-lg'}`}>
+                {cliente ? cliente.name : 'Nessun cliente selezionato'}
+              </div>
             </div>
+            {cliente && contatti.length > 0 && (
+              <select value={contattoId} onChange={(e) => setContattoId(Number(e.target.value))}
+                title="Contatto"
+                className="max-w-[180px] rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-400">
+                <option value={0}>🏢 Azienda</option>
+                {contatti.map((ct) => <option key={ct.id} value={ct.id}>👤 {ct.name}</option>)}
+              </select>
+            )}
+            {cliente && consegne.length > 0 && (
+              <select value={indirizzoId} onChange={(e) => setIndirizzoId(Number(e.target.value))}
+                title="Indirizzo di consegna"
+                className="max-w-[220px] rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-400">
+                <option value={0}>📍 Sede principale</option>
+                {consegne.map((a) => <option key={a.id} value={a.id}>🚚 {a.name}{a.address ? ` — ${a.address}` : ''}</option>)}
+              </select>
+            )}
             <button onClick={() => setShowClientPicker((v) => !v)}
-              className="rounded-xl bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-200 hover:bg-emerald-500/30">
+              className={`rounded-xl bg-emerald-500/20 font-medium text-emerald-200 hover:bg-emerald-500/30 ${cliente ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}`}>
               {cliente ? 'Cambia' : 'Seleziona cliente'}
             </button>
           </div>

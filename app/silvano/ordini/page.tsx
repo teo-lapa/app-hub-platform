@@ -21,6 +21,7 @@ interface OrdineDettaglio {
 }
 interface CatProd {
   id: number; name: string; code: string; uom: string; base: number; floor: number | null; cost: number; qtyAvailable: number;
+  image: string | null;
 }
 // target del modal riga: lineId presente = modifica, assente = aggiunta nuovo prodotto
 interface EditTarget {
@@ -407,8 +408,12 @@ function AddProductModal({ clientId, onClose, onPick }: {
             <div className="px-3 py-4 text-sm text-slate-500">Nessun prodotto</div>
           ) : items.map((p) => (
             <button key={p.id} onClick={() => onPick(p)}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-white/5">
-              <div className="min-w-0">
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-white/5">
+              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white p-0.5">
+                {p.image ? <img src={p.image} alt="" loading="lazy" className="h-full w-full object-contain" />
+                  : <div className="flex h-full items-center justify-center text-slate-400"><Package size={18} /></div>}
+              </div>
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-white">{p.name}</div>
                 {p.code && <div className="text-[11px] text-slate-500">{p.code}</div>}
               </div>
