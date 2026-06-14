@@ -1113,7 +1113,9 @@ export default function ConvalidaResiduiPage() {
     if (m && value > 0) {
       const stock = productStock[m.product_id[0]] || [];
       const selectable = stock.filter((s) => (s.qty - s.reserved) > 0);
-      if (selectable.length >= 2 && !locationChosen.has(moveId)) {
+      // Se la move ha gia' una move.line con ubicazione riservata da Odoo, usa quella (non obbligare a riscegliere)
+      const hasReservedLocation = (lineInfoByMove[moveId] || []).some((li) => li.location);
+      if (selectable.length >= 2 && !locationChosen.has(moveId) && !hasReservedLocation) {
         showToastMessage('Scegli prima l\'ubicazione in "Preleva da"');
         return;
       }
