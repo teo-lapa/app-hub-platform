@@ -33,7 +33,8 @@ interface StockMove {
 interface StockMoveLine {
   id: number;
   move_id: [number, string];
-  qty_done: number;
+  picked: boolean;
+  quantity: number;
   location_id: [number, string] | false;
   lot_id: [number, string] | false;
 }
@@ -158,11 +159,11 @@ async function callKwConvalida<T = any>(
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`HTTP Error: ${response.status}`);
-  }
+  const data = await response.json().catch(() => null);
 
-  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || `HTTP Error: ${response.status}`);
+  }
 
   if (!data.success) {
     throw new Error(data.error || 'Errore RPC');
@@ -522,7 +523,7 @@ export default function ConvalidaResiduiPage() {
         ? await searchReadConvalida<StockMoveLine>(
             'stock.move.line',
             [['move_id', 'in', moveIds]],
-            ['id', 'move_id', 'qty_done', 'location_id', 'lot_id'],
+            ['id', 'move_id', 'picked', 'quantity', 'location_id', 'lot_id'],
             0
           )
         : [];
@@ -534,13 +535,13 @@ export default function ConvalidaResiduiPage() {
       linesData.forEach((l) => {
         const mid = l.move_id && l.move_id[0];
         if (mid) {
-          newDoneByMove[mid] = (newDoneByMove[mid] || 0) + Number(l.qty_done || 0);
+          newDoneByMove[mid] = (newDoneByMove[mid] || 0) + Number(l.picked ? l.quantity : 0);
           if (!newLinesByMove[mid]) newLinesByMove[mid] = [];
           newLinesByMove[mid].push(l.id);
           if (!newLineInfoByMove[mid]) newLineInfoByMove[mid] = [];
           newLineInfoByMove[mid].push({
             id: l.id,
-            qty_done: Number(l.qty_done || 0),
+            qty_done: Number(l.picked ? l.quantity : 0),
             location: l.location_id,
             lot: l.lot_id,
           });
@@ -657,13 +658,13 @@ export default function ConvalidaResiduiPage() {
       const linesData = await searchReadConvalida<any>(
         'stock.move.line',
         [['move_id', 'in', moveIds]],
-        ['id', 'move_id', 'qty_done'],
+        ['id', 'move_id', 'picked', 'quantity'],
         0
       );
       const doneByMoveLocal: Record<number, number> = {};
       linesData.forEach((l: any) => {
         const mid = l.move_id?.[0];
-        if (mid) doneByMoveLocal[mid] = (doneByMoveLocal[mid] || 0) + Number(l.qty_done || 0);
+        if (mid) doneByMoveLocal[mid] = (doneByMoveLocal[mid] || 0) + Number(l.picked ? l.quantity : 0);
       });
 
       const productIds = Array.from(new Set(movesData.map((m: any) => m.product_id[0]))) as number[];
@@ -1058,13 +1059,14 @@ export default function ConvalidaResiduiPage() {
             [moveId]: (prev[moveId] || []).filter((li) => li.id === keepId),
           }));
         }
-        await callKwConvalida('stock.move.line', 'write', [[keepId], { qty_done: value }]);
+        await callKwConvalida('stock.move.line', 'write', [[keepId], { quantity: value, picked: true }]);
       } else {
         const vals = {
           move_id: moveId,
           picking_id: m.picking_id[0],
           product_id: m.product_id[0],
-          qty_done: value,
+          quantity: value,
+          picked: true,
           location_id: m.location_id[0],
           location_dest_id: m.location_dest_id[0],
           product_uom_id: m.product_uom[0],
@@ -2587,7 +2589,8 @@ export default function ConvalidaResiduiPage() {
                           product_uom_id: move.product_uom[0],
                           location_id: newLocId,
                           location_dest_id: move.location_dest_id[0],
-                          qty_done: 0,
+                          quantity: 0,
+                          picked: true,
                         };
                         // Se lo stock selezionato ha un lotto, assegnalo
                         if (selectedStock.lotId) {
