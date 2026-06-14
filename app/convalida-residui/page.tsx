@@ -1824,7 +1824,7 @@ export default function ConvalidaResiduiPage() {
         product_id: selectedSostituto.id,
         product_uom_qty: sostituzioneQty,
       };
-      if (uomId) vals.product_uom = uomId;
+      if (uomId) vals.product_uom_id = uomId;
 
       const newLineId = await callKwConvalida<number>('sale.order.line', 'create', [vals], {});
 
