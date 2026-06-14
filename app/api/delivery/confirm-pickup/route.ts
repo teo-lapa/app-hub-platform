@@ -94,19 +94,19 @@ export async function POST(request: NextRequest) {
       [],
       {
         domain: [['picking_id', '=', picking_id]],
-        fields: ['id', 'quantity', 'qty_done']
+        fields: ['id', 'quantity', 'picked']
       }
     );
 
     console.log('📦 [CONFIRM-PICKUP] Move lines trovate:', moveLines.length);
 
     for (const moveLine of moveLines) {
-      if (moveLine.qty_done < moveLine.quantity) {
+      if (!moveLine.picked) {
         await callOdoo(
           cookies,
           'stock.move.line',
           'write',
-          [[moveLine.id], { qty_done: moveLine.quantity }]
+          [[moveLine.id], { quantity: moveLine.quantity, picked: true }]
         );
       }
     }

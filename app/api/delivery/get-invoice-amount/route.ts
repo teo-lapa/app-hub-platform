@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         [],
         {
           domain: [['picking_id', '=', picking_id]],
-          fields: ['product_id', 'quantity', 'qty_done']
+          fields: ['product_id', 'quantity', 'picked']
         }
       );
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
       let estimatedTotal = 0;
       moveLines.forEach((ml: any) => {
-        const qty = Number(ml.qty_done || ml.quantity || 0);
+        const qty = Number(ml.quantity || 0);
         const price = Number(productPriceMap.get(ml.product_id[0]) || 0);
         estimatedTotal += qty * price;
       });
