@@ -15,7 +15,6 @@ interface StockPicking {
   carrier_id: [number, string] | false;
   sale_id: [number, string] | false;
   origin: string | false;
-  group_id: [number, string] | false;
   scheduled_date: string | false;
   backorder_id: [number, string] | false;
 }
@@ -493,7 +492,7 @@ export default function ConvalidaResiduiPage() {
       const picksData = await searchReadConvalida<StockPicking>(
         'stock.picking',
         domain,
-        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'group_id', 'scheduled_date', 'backorder_id'],
+        ['id', 'name', 'state', 'partner_id', 'driver_id', 'carrier_id', 'sale_id', 'origin', 'scheduled_date', 'backorder_id'],
         0,
         'scheduled_date asc, name asc'
       );
@@ -1182,15 +1181,6 @@ export default function ConvalidaResiduiPage() {
       const o = await searchReadConvalida<SaleOrder>(
         'sale.order',
         [['name', '=', pick.origin]],
-        ['id', 'name', 'pricelist_id', 'partner_id', 'state'],
-        1
-      );
-      if (o.length) return o[0];
-    }
-    if (pick.group_id) {
-      const o = await searchReadConvalida<SaleOrder>(
-        'sale.order',
-        [['procurement_group_id', '=', pick.group_id[0]]],
         ['id', 'name', 'pricelist_id', 'partner_id', 'state'],
         1
       );
