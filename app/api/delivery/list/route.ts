@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['picking_id', 'in', allPickingIds]],
-        fields: ['id', 'product_id', 'quantity', 'qty_done', 'product_uom_id', 'picking_id', 'move_id']
+        fields: ['id', 'product_id', 'quantity', 'picked', 'product_uom_id', 'picking_id', 'move_id']
       }
     ) : [];
 
@@ -325,7 +325,7 @@ export async function GET(request: NextRequest) {
       const products = pickingMoveLines.map((moveLine: any) => {
         const productId = moveLine.product_id?.[0];
         const requestedQty = moveLine.quantity || 0;  // quantity = quantità pianificata
-        const deliveredQty = moveLine.qty_done || 0;  // qty_done = quantità effettiva
+        const deliveredQty = moveLine.picked ? (moveLine.quantity || 0) : 0;  // v19: quantity è l'effettiva, picked indica completato
 
         // Ottieni categoria Odoo e mappa alla categoria dell'app
         const categId = productCategMap.get(productId);

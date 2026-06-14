@@ -159,11 +159,11 @@ async function getProdottiNelFurgone(sessionId: string, pickingId: number) {
       ['picking_id', '=', pickingId],
       ['state', '!=', 'cancel']
     ],
-    fields: ['product_id', 'quantity', 'qty_done', 'product_uom_id', 'lot_id']
+    fields: ['product_id', 'quantity', 'picked', 'product_uom_id', 'lot_id']
   });
 
   return moveLines
-    .filter((ml: any) => ml.qty_done === 0)
+    .filter((ml: any) => !ml.picked)
     .map((ml: any) => ({
       productId: ml.product_id[0],
       nome: ml.product_id[1],

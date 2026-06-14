@@ -104,7 +104,7 @@ export class OdooRPCClient {
       'stock.move.line',
       domain,
       ['id', 'product_id', 'location_id', 'location_dest_id', 'quantity',
-       'qty_done', 'product_uom_id', 'move_id', 'picking_id', 'lot_id'],
+       'picked', 'product_uom_id', 'move_id', 'picking_id', 'lot_id'],
       0,
       'location_id,product_id'
     );
@@ -128,7 +128,7 @@ export class OdooRPCClient {
   // Aggiorna quantità prelevata
   async updateQuantityDone(lineId: number, qtyDone: number): Promise<boolean> {
     try {
-      await this.callKw('stock.move.line', 'write', [[lineId], { qty_done: qtyDone }]);
+      await this.callKw('stock.move.line', 'write', [[lineId], { quantity: qtyDone, picked: true }]);
       return true;
     } catch (error) {
       console.error('Errore aggiornamento quantità:', error);

@@ -38,7 +38,7 @@ interface OdooStockMoveLine {
   expiry_date?: string | false;
   package_id?: [number, string] | false;
   quantity: number;
-  qty_done: number;
+  picked?: boolean;
   product_uom_qty?: number;
   reserved_uom_qty?: number;
   picking_id?: [number, string] | false;
@@ -110,11 +110,16 @@ export class PickingOdooClient {
         })
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const serverMsg = data?.error || data?.message || (data ? JSON.stringify(data) : '');
+        throw new Error(serverMsg || `HTTP Error: ${response.status}`);
       }
 
-      const data = await response.json();
+      if (!data) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
 
       if (!data.success) {
         console.error('❌ [Picking] RPC Error:', data.error);
@@ -191,7 +196,7 @@ export class PickingOdooClient {
       const moveLines = await this.rpc(
         'stock.move.line',
         'search_read',
-        [[['picking_id', '=', pickingId], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done']],
+        [[['picking_id', '=', pickingId], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'picked']],
         {}
       );
 
@@ -208,9 +213,9 @@ export class PickingOdooClient {
         const locationId = line.location_id[0];
         const locationName = line.location_id[1];
         const productName = line.product_id && Array.isArray(line.product_id) ? line.product_id[1] : 'Prodotto sconosciuto';
-        const qtyDone = line.qty_done || 0;
         const quantity = line.quantity || 0;
-        const isCompleted = qtyDone >= quantity;
+        const qtyDone = line.picked ? quantity : 0;
+        const isCompleted = !!line.picked;
 
         if (!sublocationMap.has(locationId)) {
           sublocationMap.set(locationId, {
@@ -319,7 +324,7 @@ export class PickingOdooClient {
           locationId: ml.location_id[0],
           locationName: ml.location_id[1],
           quantity: ml.quantity || 0,
-          qty_done: ml.qty_done || 0,
+          qty_done: ml.picked ? (ml.quantity || 0) : 0,
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
           lot_name: ml.lot_name || undefined,
@@ -328,7 +333,7 @@ export class PickingOdooClient {
           note: picking?.note || '',
           customer: picking?.partner_name || '',
           image: product?.image_128 ? `data:image/png;base64,${product.image_128}` : undefined,
-          isCompleted: ml.qty_done >= (ml.quantity || 0),
+          isCompleted: !!ml.picked,
           needsQRVerification: false,
           scannedQR: false
         };
@@ -506,7 +511,7 @@ export class PickingOdooClient {
 
       const fields = [
         'move_id', 'product_id', 'product_uom_id', 'location_id', 'location_dest_id',
-        'lot_id', 'lot_name', 'package_id', 'quantity', 'qty_done',
+        'lot_id', 'lot_name', 'package_id', 'quantity', 'picked',
         'picking_id', 'state',
         'reference', 'result_package_id', 'owner_id'
       ];
@@ -557,7 +562,7 @@ export class PickingOdooClient {
       const moveLines = await this.rpc(
         'stock.move.line',
         'search_read',
-        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done']],
+        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'picked']],
         {}
       );
 
@@ -600,9 +605,9 @@ export class PickingOdooClient {
         const locationId = line.location_id[0];
         const locationName = line.location_id[1];
         const productName = line.product_id && Array.isArray(line.product_id) ? line.product_id[1] : 'Prodotto sconosciuto';
-        const qtyDone = line.qty_done || 0;
         const quantity = line.quantity || 0;
-        const isCompleted = qtyDone >= quantity;
+        const qtyDone = line.picked ? quantity : 0;
+        const isCompleted = !!line.picked;
 
         if (!sublocationMap.has(locationId)) {
           sublocationMap.set(locationId, {
@@ -620,7 +625,7 @@ export class PickingOdooClient {
         const subloc = sublocationMap.get(locationId);
         subloc.totalOps++;
 
-        // Conta quanti prodotti hanno il check completato (qty_done >= quantity)
+        // Conta quanti prodotti hanno il check completato (picked)
         if (isCompleted) {
           subloc.completedOps++;
         }
@@ -698,7 +703,7 @@ export class PickingOdooClient {
       const moveLines = await this.rpc(
         'stock.move.line',
         'search_read',
-        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'qty_done', 'picking_id', 'product_uom_id', 'move_id']],
+        [[['picking_id', 'in', batch.picking_ids], ['state', 'not in', ['done', 'cancel']]], ['location_id', 'product_id', 'quantity', 'picked', 'picking_id', 'product_uom_id', 'move_id']],
         {}
       );
 
@@ -756,7 +761,7 @@ export class PickingOdooClient {
         const pickingId = line.picking_id ? line.picking_id[0] : 0;
         const moveId = line.move_id ? line.move_id[0] : null;
         const key = `${productId}_${pickingId}`;
-        const qtyDone = line.qty_done || 0;
+        const qtyDone = line.picked ? (line.quantity || 0) : 0;
 
         // Ottieni la quantità richiesta dal move, non dalla move line!
         let move: any = null;
@@ -995,7 +1000,7 @@ export class PickingOdooClient {
           locationId: ml.location_id[0],
           locationName: ml.location_id[1],
           quantity: ml.quantity || 0,
-          qty_done: ml.qty_done || 0,
+          qty_done: ml.picked ? (ml.quantity || 0) : 0,
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
           lot_id: ml.lot_id || undefined,
           lot_name: ml.lot_name || undefined,
@@ -1004,7 +1009,7 @@ export class PickingOdooClient {
           note: picking?.note || '', // Messaggio del CLIENTE dal picking
           customer: picking?.partner_name || '',
           image: product?.image_128 ? `data:image/png;base64,${product.image_128}` : undefined,
-          isCompleted: ml.qty_done >= (ml.quantity || 0),
+          isCompleted: !!ml.picked,
           needsQRVerification: false,
           scannedQR: false
         };
@@ -1022,7 +1027,7 @@ export class PickingOdooClient {
       const result = await this.rpc(
         'stock.move.line',
         'write',
-        [[operationId], { qty_done: qtyDone }]
+        [[operationId], { quantity: qtyDone, picked: true }]
       );
 
       return result === true;
@@ -1176,7 +1181,7 @@ export class PickingOdooClient {
       lot_name: line.lot_name || undefined,
       package_id: line.package_id || undefined,
       quantity: line.quantity || 0,
-      qty_done: line.qty_done || 0,
+      qty_done: line.picked ? (line.quantity || 0) : 0,
       product_uom_qty: line.product_uom_qty,
       reserved_uom_qty: line.reserved_uom_qty,
       picking_id: line.picking_id || undefined,

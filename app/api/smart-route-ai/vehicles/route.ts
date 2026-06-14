@@ -42,13 +42,13 @@ export async function GET(request: NextRequest) {
       }),
     });
 
+    const data = await response.json().catch(() => null);
+
     if (!response.ok) {
-      throw new Error(`Errore HTTP: ${response.status}`);
+      throw new Error(data?.error?.data?.message || `Errore HTTP: ${response.status}`);
     }
 
-    const data = await response.json();
-
-    if (data.error) {
+    if (data?.error) {
       throw new Error(data.error.data?.message || 'Errore Odoo');
     }
 

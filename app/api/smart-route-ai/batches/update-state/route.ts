@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       console.log(`[Smart Route AI] Skipping ${skipExpiredLines.length} expired move lines...`);
       try {
         for (const lineId of skipExpiredLines) {
-          await rpcClient.callKw('stock.move.line', 'write', [[lineId], { qty_done: 0 }]);
+          await rpcClient.callKw('stock.move.line', 'write', [[lineId], { quantity: 0, picked: true }]);
         }
         console.log(`[Smart Route AI] Set qty_done=0 for expired lines`);
       } catch (skipError: any) {

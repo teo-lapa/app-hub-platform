@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         const updateResults = await Promise.allSettled(productsToUpdate.map((product: any) =>
           callOdoo(cookies, 'stock.move.line', 'write', [
             [product.move_line_id],
-            { qty_done: product.delivered }
+            { quantity: product.delivered, picked: true }
           ]).then(() => {
             console.log(`✅ ${product.name}: ${product.delivered} (move_line_id: ${product.move_line_id})`);
           })
