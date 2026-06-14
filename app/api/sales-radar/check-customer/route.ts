@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       'res.partner',
       searchDomain,
       [
-        'id', 'name', 'display_name', 'email', 'phone', 'mobile',
+        'id', 'name', 'display_name', 'email', 'phone',
         'street', 'zip', 'city', 'country_id', 'state_id',
         'website', 'vat', 'is_company',
         'total_invoiced', // Fatturato totale
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
         display_name: customer.display_name,
         email: customer.email || '',
         phone: customer.phone || '',
-        mobile: customer.mobile || '',
+        mobile: customer.phone || '',
         street: customer.street || '',
         zip: customer.zip || '',
         city: customer.city || '',

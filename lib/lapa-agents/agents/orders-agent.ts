@@ -353,7 +353,7 @@ const ordersTools: AgentTool[] = [
           const lines = await odoo.searchRead(
             'sale.order.line',
             [['id', 'in', order.order_line]],
-            ['product_id', 'name', 'product_uom_qty', 'price_unit', 'product_uom']
+            ['product_id', 'name', 'product_uom_qty', 'price_unit', 'product_uom_id']
           );
 
           orderLines = lines.map((line: any) => ({
@@ -361,7 +361,7 @@ const ordersTools: AgentTool[] = [
             product_name: line.product_id ? line.product_id[1] : line.name,
             quantity: line.product_uom_qty,
             price_unit: line.price_unit,
-            uom_id: line.product_uom ? line.product_uom[0] : undefined,
+            uom_id: line.product_uom_id ? line.product_uom_id[0] : undefined,
           }));
         }
 
@@ -777,7 +777,7 @@ const ordersTools: AgentTool[] = [
           const lines = await odoo.searchRead(
             'sale.order.line',
             [['id', 'in', cart[0].order_line]],
-            ['product_id', 'name', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+            ['product_id', 'name', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom_id']
           );
 
           items = lines.map((line: any) => ({
@@ -787,7 +787,7 @@ const ordersTools: AgentTool[] = [
             quantity: line.product_uom_qty,
             price_unit: line.price_unit,
             subtotal: line.price_subtotal,
-            uom: line.product_uom?.[1] || 'pz'
+            uom: line.product_uom_id?.[1] || 'pz'
           }));
         }
 
@@ -1085,7 +1085,7 @@ const ordersTools: AgentTool[] = [
           const lines = await odoo.searchRead(
             'sale.order.line',
             [['id', 'in', cart.order_line]],
-            ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+            ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom_id']
           );
 
           items = lines.map((line: any) => ({
@@ -1094,7 +1094,7 @@ const ordersTools: AgentTool[] = [
             quantity: line.product_uom_qty,
             price_unit: line.price_unit,
             subtotal: line.price_subtotal,
-            uom: line.product_uom?.[1] || 'pz'
+            uom: line.product_uom_id?.[1] || 'pz'
           }));
         }
 
@@ -1236,10 +1236,16 @@ const ordersTools: AgentTool[] = [
           return line;
         });
 
+        // Data consegna: sempre domani, mai nel passato/epoch (1970)
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const commitmentDate = `${tomorrow.toISOString().split('T')[0]} 06:00:00`;
+
         // Crea l'ordine intestato all'azienda (parent) se esiste
         const orderData: any = {
           partner_id: orderPartnerId,
           order_line: orderLines,
+          commitment_date: commitmentDate,
         };
 
         if (notes) {

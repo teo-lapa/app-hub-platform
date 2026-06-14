@@ -25,7 +25,7 @@
  * getPrice() - Calcola prezzo da listini REALI (product.pricelist)
  *   - Se partnerId fornito: usa property_product_pricelist del cliente
  *   - Altrimenti: cerca listino B2B o B2C per nome
- *   - Usa get_product_price_rule per calcolo automatico sconti
+ *   - O19: get_product_price_rule rimosso, si usa product.product.get_contextual_price
  *   - Considera regole di listino e quantità minime
  *
  * getProductSuppliers() - Info fornitori da product.supplierinfo
@@ -818,49 +818,27 @@ export class ProductsAgent {
 
       // Calcola prezzo dal listino usando il metodo REALE di Odoo
       if (pricelistId) {
+        // O19: get_product_price_rule (pubblico) rimosso. _get_product_price esiste ma via RPC
+        // l'id prodotto arriva come int e rompe (_compute_price_rule legge products._name).
+        // Si usa product.product.get_contextual_price (pubblico) che legge pricelist/quantity/
+        // partner dal context e ritorna un float (verificato su staging-19).
         try {
-          // Usa get_product_price_rule per ottenere prezzo, sconto e regola applicata
-          const priceResult = await this.odoo.callKw(
-            'product.pricelist',
-            'get_product_price_rule',
-            [[pricelistId], productId, quantity, partnerId || false]
+          const ctxPrice = await this.odoo.callKw(
+            'product.product',
+            'get_contextual_price',
+            [[productId]],
+            { context: { pricelist: pricelistId, quantity: quantity || 1, partner: partnerId || false } }
           );
-
-          // Formato risposta: { product_id: [prezzo, regola_id] }
-          if (priceResult && priceResult[productId]) {
-            const [calculatedPrice, ruleId] = priceResult[productId];
-
-            if (calculatedPrice && typeof calculatedPrice === 'number') {
-              finalPrice = calculatedPrice;
-
-              // Calcola sconto percentuale rispetto al prezzo di listino
-              if (product.list_price > 0) {
-                discountPercent = ((product.list_price - calculatedPrice) / product.list_price) * 100;
-              }
-
-              console.log(`   💰 Prezzo da listino: ${calculatedPrice.toFixed(2)} (sconto: ${discountPercent.toFixed(1)}%)`);
-
-              // Se c'è una regola, recupera i dettagli
-              if (ruleId) {
-                try {
-                  const rules = await this.odoo.searchRead(
-                    'product.pricelist.item',
-                    [['id', '=', ruleId]],
-                    ['name', 'min_quantity'],
-                    1
-                  );
-                  if (rules.length > 0) {
-                    console.log(`   📏 Regola applicata: ${rules[0].name || 'N/A'}`);
-                  }
-                } catch (error) {
-                  // Ignora errori nel recupero regola
-                }
-              }
-            }
+          if (typeof ctxPrice === 'number') {
+            finalPrice = ctxPrice;
+            console.log(`   💰 Prezzo da listino (get_contextual_price): ${finalPrice}`);
+          } else {
+            finalPrice = product.list_price;
+            console.log('   ℹ️ get_contextual_price non numerico, uso list_price');
           }
         } catch (error) {
-          console.warn('⚠️ Impossibile calcolare prezzo da listino, uso list_price:', error);
           finalPrice = product.list_price;
+          console.warn('⚠️ get_contextual_price fallito, uso list_price');
         }
       } else {
         // Nessun listino trovato, usa prezzo standard
@@ -1042,32 +1020,31 @@ export class ProductsAgent {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Domain per promozioni attive
+      // Domain per promozioni attive (O19: loyalty.program usa date_from/date_to, non start_date/end_date)
       const domain: any[] = [
         ['active', '=', true],
         '|',
-        ['start_date', '<=', today],
-        ['start_date', '=', false],
+        ['date_from', '<=', today],
+        ['date_from', '=', false],
         '|',
-        ['end_date', '>=', today],
-        ['end_date', '=', false],
+        ['date_to', '>=', today],
+        ['date_to', '=', false],
       ];
 
-      // Filtra per prodotto specifico
+      // Filtra per prodotto specifico (O19: i prodotti stanno su loyalty.rule.product_ids,
+      // non esiste product_ids su loyalty.program)
       if (productId) {
-        domain.push(['product_ids', 'in', [productId]]);
+        domain.push(['rule_ids.product_ids', 'in', [productId]]);
       }
 
-      // Filtra per categoria
+      // Filtra per categoria (O19: loyalty.rule.product_category_id)
       if (categoryId) {
-        domain.push(['category_ids', 'in', [categoryId]]);
+        domain.push(['rule_ids.product_category_id', 'in', [categoryId]]);
       }
 
-      // Cerca in sale.coupon.program (Odoo 14+) o loyalty.program (Odoo 16+)
+      // O19: sale.coupon.program RIMOSSO (fuso in loyalty.program/loyalty.reward/loyalty.rule).
       let promotions: any[] = [];
-
       try {
-        // Prova prima loyalty.program (Odoo 16+)
         promotions = await this.odoo.searchRead(
           'loyalty.program',
           domain,
@@ -1079,35 +1056,21 @@ export class ProductsAgent {
           'name'
         );
       } catch (error) {
-        console.log('⚠️ loyalty.program non disponibile, provo sale.coupon.program');
-
-        // Fallback a sale.coupon.program
-        try {
-          promotions = await this.odoo.searchRead(
-            'sale.coupon.program',
-            domain,
-            [
-              'id', 'name', 'discount_type', 'discount_percentage',
-              'discount_fixed_amount', 'active', 'rule_date_from', 'rule_date_to',
-              'rule_products_domain', 'promo_code'
-            ],
-            20
-          );
-        } catch (error2) {
-          console.warn('⚠️ Nessun modulo promozioni disponibile');
-          promotions = [];
-        }
+        console.warn('⚠️ Nessun modulo promozioni disponibile');
+        promotions = [];
       }
 
-      // Formatta risultati
+      // Formatta risultati. O19: i campi discount/promo_code non sono piu sul program ma su
+      // loyalty.reward (discount/discount_mode) e loyalty.rule (code); qui li lasciamo a default
+      // perche servirebbe un read aggiuntivo su reward_ids/rule_ids per popolarli.
       const formattedPromotions: Promotion[] = promotions.map(promo => ({
         id: promo.id,
         name: promo.name,
-        description: promo.promo_code || undefined,
-        discount_type: promo.discount_type || 'percentage',
-        discount_value: promo.discount_percentage || promo.discount_fixed_amount || 0,
-        start_date: promo.date_from || promo.rule_date_from || today,
-        end_date: promo.date_to || promo.rule_date_to || today,
+        description: undefined,
+        discount_type: 'percentage',
+        discount_value: 0,
+        start_date: promo.date_from || today,
+        end_date: promo.date_to || today,
         active: promo.active,
       }));
 

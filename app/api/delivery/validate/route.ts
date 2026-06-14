@@ -112,10 +112,6 @@ ${prodottiNonConsegnati}
       if (validateResult.res_model === 'stock.backorder.confirmation') {
         await callOdoo(cookies, validateResult.res_model, 'process', [[wizardId]], {});
         backorder_created = true;
-      } else if (validateResult.res_model === 'stock.immediate.transfer') {
-        await callOdoo(cookies, validateResult.res_model, 'process', [[wizardId]], {});
-      } else if (validateResult.res_model === 'stock.overprocessed.transfer') {
-        await callOdoo(cookies, validateResult.res_model, 'action_confirm', [[wizardId]], {});
       }
     }
 

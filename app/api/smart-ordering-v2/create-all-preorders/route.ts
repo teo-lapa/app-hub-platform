@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_uom_qty: product.quantity,
-                product_uom: productData.uom_id[0],
+                product_uom_id: productData.uom_id[0],
                 price_unit: priceUnit,
                 name: fullProductName,
                 customer_lead: 0
@@ -310,7 +310,7 @@ ${productDetailsHtml}
               orderLines.push([0, 0, {
                 product_id: product.productId,
                 product_qty: product.totalQuantity,
-                product_uom: productData.uom_id[0],
+                product_uom_id: productData.uom_id[0],
                 price_unit: productData.standard_price || productData.list_price || 0,
                 name: fullProductName,
                 date_planned: tomorrowDate

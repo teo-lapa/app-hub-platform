@@ -64,7 +64,7 @@ export async function GET(
     const orderLines = await rpc.searchRead(
       'purchase.order.line',
       [['order_id', '=', orderId]],
-      ['id', 'product_id', 'name', 'product_qty', 'qty_received', 'price_unit', 'price_subtotal', 'product_uom'],
+      ['id', 'product_id', 'name', 'product_qty', 'qty_received', 'price_unit', 'price_subtotal', 'product_uom_id'],
       0
     );
 
@@ -195,7 +195,7 @@ export async function GET(
         qtyReceived: line.qty_received || 0,
         qtyPending,
         priceUnit: line.price_unit,
-        uom: line.product_uom ? line.product_uom[1] : 'Pz',
+        uom: line.product_uom_id ? line.product_uom_id[1] : 'Pz',
         currentStock,
         avgDailySales: Math.round(avgDailySales * 100) / 100,
         daysOfCoverage: Math.round(daysOfCoverage),

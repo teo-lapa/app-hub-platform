@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin', // Es: "PO00123"
-        'move_ids_without_package'
+        'move_ids'
       ]
     ]);
 
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Conta prodotti nel picking
-      const moveIds = picking.move_ids_without_package || [];
+      const moveIds = picking.move_ids || [];
       const productsCount = moveIds.length;
 
       return {

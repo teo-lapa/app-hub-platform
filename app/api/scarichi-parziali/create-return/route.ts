@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     const pickingsOriginali = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
       ['name', '=', ordine.numeroOrdineResiduo]
     ]], {
-      fields: ['id', 'name', 'location_id', 'move_ids_without_package']
+      fields: ['id', 'name', 'location_id', 'move_ids']
     });
 
     if (pickingsOriginali.length === 0) {
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     console.log(`📍 Location furgone: ${vanLocationName} (ID: ${vanLocationId})`);
 
     // STEP 3: Leggi i dettagli dei move_ids per ottenere product_id
-    const moveIds = pickingOriginale.move_ids_without_package;
+    const moveIds = pickingOriginale.move_ids;
 
     if (!moveIds || moveIds.length === 0) {
       throw new Error('Nessun prodotto trovato nell\'ordine residuo');
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
 
       for (const product of products) {
         const moveId = await callOdoo(sessionId, 'stock.move', 'create', [{
-          name: product.productName,
+          description_picking: product.productName,
           picking_id: pickingId,
           product_id: product.productId,
           product_uom_qty: product.qty,

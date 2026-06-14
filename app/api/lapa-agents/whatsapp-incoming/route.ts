@@ -169,8 +169,7 @@ export async function POST(request: NextRequest) {
         if (!customerId) {
           const partners = await odoo.searchRead(
             'res.partner',
-            ['|',
-              ['mobile', 'ilike', phoneLast9],
+            [
               ['phone', 'ilike', phoneLast9]
             ],
             ['id', 'name', 'is_company', 'parent_id', 'customer_rank'],

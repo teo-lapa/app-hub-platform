@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
         visitedPartners = await client.searchRead(
           'res.partner',
           [['id', 'in', visitedPartnerIds]],
-          ['id', 'name', 'display_name', 'street', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude', 'website'],
+          ['id', 'name', 'display_name', 'street', 'city', 'zip', 'phone', 'partner_latitude', 'partner_longitude', 'website'],
           0
         );
       } catch (e) {
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
         visitedLeads = await client.searchRead(
           'crm.lead',
           [['id', 'in', visitedLeadIds]],
-          ['id', 'name', 'partner_name', 'street', 'city', 'zip', 'phone', 'mobile', 'description', 'website'],
+          ['id', 'name', 'partner_name', 'street', 'city', 'zip', 'phone', 'description', 'website'],
           0
         );
       } catch (e) {
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
         type: 'customer',
         name: partner.display_name || partner.name,
         address: [partner.street, partner.zip, partner.city].filter(Boolean).join(', '),
-        phone: partner.phone || partner.mobile,
+        phone: partner.phone || '',
         website: partner.website,
         latitude: partner.partner_latitude,
         longitude: partner.partner_longitude,
@@ -296,7 +296,7 @@ export async function GET(request: NextRequest) {
         type: 'lead',
         name: lead.partner_name || lead.name,
         address: [lead.street, lead.zip, lead.city].filter(Boolean).join(', '),
-        phone: lead.phone || lead.mobile,
+        phone: lead.phone || '',
         website: lead.website,
         latitude: coords.latitude,
         longitude: coords.longitude,

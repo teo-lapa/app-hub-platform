@@ -231,8 +231,7 @@ export async function POST(request: NextRequest) {
           'uom_id',
           'active',
           'sale_ok',
-          'image_128',
-          'packaging_ids'  // Per recuperare i cartoni
+          'image_128'
         ],
         limit: 1
       }
@@ -247,33 +246,10 @@ export async function POST(request: NextRequest) {
 
     const product = products[0];
 
-    // Fetch packaging info (cartoni) if available
+    // Odoo 19: product.packaging e product.product.packaging_ids RIMOSSI.
+    // Niente piu' lookup cartoni: il carrello procede su uom_id/quantita libera.
     let packagingQty = null;
     let packagingName = null;
-
-    if (product.packaging_ids && product.packaging_ids.length > 0) {
-      try {
-        const packagingResult = await callOdooAsAdmin(
-          'product.packaging',
-          'search_read',
-          [],
-          {
-            domain: [['id', 'in', product.packaging_ids]],
-            fields: ['id', 'name', 'qty'],
-            limit: 1  // Prendi solo il primo packaging (cartone)
-          }
-        );
-
-        if (packagingResult && packagingResult.length > 0) {
-          packagingQty = packagingResult[0].qty;
-          packagingName = packagingResult[0].name;
-          console.log(`📦 [CART-API] Packaging found: ${packagingName} = ${packagingQty} units`);
-        }
-      } catch (pkgError) {
-        console.error('⚠️ [CART-API] Failed to fetch packaging:', pkgError);
-        // Continue anyway - packaging is optional
-      }
-    }
 
     // Check if product is available for sale
     if (!product.active || !product.sale_ok) {

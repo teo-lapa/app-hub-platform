@@ -40,7 +40,8 @@ export interface OdooBankStatement {
   balance_start: number;
   balance_end_real: number;
   balance_end: number; // Computed from transactions
-  state: 'open' | 'confirm' | 'posted';
+  is_complete: boolean; // Odoo 19: sostituisce il workflow state (draft/posted)
+  is_valid: boolean;
   line_ids: number[];
   company_id: [number, string];
 }
@@ -144,7 +145,7 @@ export class OdooBankStatementClient {
         ['name', '=', name]
       ],
       {
-        fields: ['name', 'journal_id', 'date', 'balance_start', 'balance_end_real', 'balance_end', 'state', 'line_ids'],
+        fields: ['name', 'journal_id', 'date', 'balance_start', 'balance_end_real', 'balance_end', 'is_complete', 'is_valid', 'line_ids'],
         limit: 1
       }
     );
@@ -173,7 +174,7 @@ export class OdooBankStatementClient {
       'account.bank.statement',
       domain,
       {
-        fields: ['name', 'journal_id', 'date', 'balance_start', 'balance_end_real', 'balance_end', 'state', 'line_ids'],
+        fields: ['name', 'journal_id', 'date', 'balance_start', 'balance_end_real', 'balance_end', 'is_complete', 'is_valid', 'line_ids'],
         order: 'date asc'
       }
     );
@@ -288,40 +289,18 @@ export class OdooBankStatementClient {
   /**
    * Post (confirm) a bank statement
    */
-  async postStatement(statementId: number): Promise<void> {
-    // In Odoo, posting is done via button_post method
-    await this.odoo.execute(
-      'account.bank.statement',
-      'button_post',
-      [statementId]
-    );
+  async postStatement(_statementId: number): Promise<void> {
+    // Odoo 19: account.bank.statement non ha piu workflow di post ne campo state ne button_post.
+    // E' solo un raggruppamento di account.bank.statement.line (legate a account.move).
+    // Creare/scrivere le line e sufficiente: nessun post da eseguire.
   }
 
   /**
    * Delete a bank statement
    */
   async deleteStatement(statementId: number): Promise<void> {
-    // First set to draft if posted
-    const [statement] = await this.odoo.read<OdooBankStatement>(
-      'account.bank.statement',
-      [statementId],
-      { fields: ['state'] }
-    );
-
-    if (statement.state === 'posted' || statement.state === 'confirm') {
-      // Try to reset to draft
-      try {
-        await this.odoo.execute(
-          'account.bank.statement',
-          'button_reopen',
-          [statementId]
-        );
-      } catch (error) {
-        console.warn('Could not reset statement to draft:', error);
-      }
-    }
-
-    // Delete statement (will cascade delete lines)
+    // Odoo 19: niente workflow state/button_reopen sullo statement.
+    // Si elimina direttamente (cascata sulle line).
     await this.odoo.delete('account.bank.statement', [statementId]);
   }
 
@@ -329,12 +308,11 @@ export class OdooBankStatementClient {
    * Get current balance for a journal
    */
   async getJournalBalance(journalId: number): Promise<number> {
-    // Get the last posted statement
+    // Odoo 19: niente filtro su state (rimosso). Si prende l'ultimo statement per data.
     const statements = await this.odoo.searchRead<OdooBankStatement>(
       'account.bank.statement',
       [
-        ['journal_id', '=', journalId],
-        ['state', '=', 'posted']
+        ['journal_id', '=', journalId]
       ],
       {
         fields: ['balance_end_real'],
@@ -371,7 +349,7 @@ export class OdooBankStatementClient {
         // Call reconcile method
         await this.odoo.execute(
           'account.bank.statement.line',
-          'button_undo_reconciliation',
+          'action_undo_reconciliation',
           [line.id]
         );
         reconciled++;

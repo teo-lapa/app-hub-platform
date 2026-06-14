@@ -291,9 +291,9 @@ export async function GET(request: NextRequest) {
       const contacts = await odoo.searchRead(
         'res.partner',
         [['id', '=', parseInt(contactId)]],
-        ['id', 'name', 'function', 'email', 'phone', 'mobile', 'image_128', 'parent_id'],
+        ['id', 'name', 'function', 'email', 'phone', 'image_128', 'parent_id'],
         1
-      ) as Array<{ id: number; name: string; function?: string; email?: string; phone?: string; mobile?: string; image_128?: string; parent_id?: [number, string] | false }>;
+      ) as Array<{ id: number; name: string; function?: string; email?: string; phone?: string; image_128?: string; parent_id?: [number, string] | false }>;
 
       if (contacts.length > 0) {
         const c = contacts[0];
@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
           name: c.name,
           function: c.function,
           email: c.email,
-          phone: c.phone || c.mobile,
+          phone: c.phone,
           image: c.image_128,
           company: c.parent_id ? c.parent_id[1] : null,
         };

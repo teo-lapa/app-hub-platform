@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         ['picking_type_code', '=', 'outgoing'],
         ['state', '=', 'assigned']
       ],
-      fields: ['id', 'name', 'partner_id', 'scheduled_date', 'origin', 'move_ids_without_package', 'batch_id', 'location_id'],
+      fields: ['id', 'name', 'partner_id', 'scheduled_date', 'origin', 'move_ids', 'batch_id', 'location_id'],
       order: 'scheduled_date desc',
       limit: 500
     });

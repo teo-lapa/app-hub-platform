@@ -81,7 +81,7 @@ export async function GET(
           'origin',
           'partner_id',
           'location_dest_id',
-          'move_ids_without_package',
+          'move_ids',
           'carrier_tracking_ref',
           // 'delivery_man_id', // REMOVED: campo custom non presente su production
           'note',
@@ -151,13 +151,13 @@ export async function GET(
 
     // Step 3: Recupera i prodotti della consegna (stock.move)
     let products = [];
-    if (delivery.move_ids_without_package && delivery.move_ids_without_package.length > 0) {
+    if (delivery.move_ids && delivery.move_ids.length > 0) {
       const movesResult = await callOdooAsAdmin(
         'stock.move',
         'search_read',
         [],
         {
-          domain: [['id', 'in', delivery.move_ids_without_package]],
+          domain: [['id', 'in', delivery.move_ids]],
           fields: [
             'id',
             'product_id',

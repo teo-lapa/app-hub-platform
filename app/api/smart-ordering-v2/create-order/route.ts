@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         orderLines.push([0, 0, {
           product_id: item.productId,
           product_qty: item.qty,
-          product_uom: product.uom_id[0],
+          product_uom_id: product.uom_id[0],
           price_unit: product.standard_price || product.list_price || 0,
           name: product.name,
           date_planned: odooDate

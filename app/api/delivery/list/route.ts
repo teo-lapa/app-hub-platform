@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
       'read',
       [partnerIds],
       {
-        fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'mobile', 'partner_latitude', 'partner_longitude']
+        fields: ['name', 'street', 'street2', 'city', 'zip', 'phone', 'partner_latitude', 'partner_longitude']
       }
     );
 
@@ -363,7 +363,7 @@ export async function GET(request: NextRequest) {
         supplier: supplier,
         purchase_order: purchaseOrder,
         address: address.trim(),
-        phone: partner.phone || partner.mobile || '',
+        phone: partner.phone || '',
         lat: partner.partner_latitude || null,
         lng: partner.partner_longitude || null,
         latitude: partner.partner_latitude || null,
@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
         partner_street: partner.street || '',
         partner_city: partner.city || '',
         partner_zip: partner.zip || '',
-        partner_phone: partner.phone || partner.mobile || '',
+        partner_phone: partner.phone || '',
         products: products,
         note: picking.note || '',
         state: picking.state,

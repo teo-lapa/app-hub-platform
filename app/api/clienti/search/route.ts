@@ -126,11 +126,10 @@ export async function GET(request: NextRequest) {
           ['type', '=', 'contact'],        // Ma solo type='contact' (NO delivery/invoice)
 
       // Ricerca testuale (nome, email, telefono, città)
-      '|', '|', '|', '|',
+      '|', '|', '|',
       ['name', 'ilike', query],
       ['email', 'ilike', query],
       ['phone', 'ilike', query],
-      ['mobile', 'ilike', query],
       ['city', 'ilike', query]
     ];
 
@@ -144,7 +143,6 @@ export async function GET(request: NextRequest) {
           'name',
           'email',
           'phone',
-          'mobile',
           'street',
           'city',
           'zip',
@@ -170,7 +168,7 @@ export async function GET(request: NextRequest) {
       id: company.id,
       name: company.name,
       email: company.email || '',
-      phone: company.phone || company.mobile || '',
+      phone: company.phone || '',
       address: formatAddress(company),
       city: company.city || '',
       zip: company.zip || '',

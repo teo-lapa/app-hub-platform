@@ -194,9 +194,9 @@ export async function GET(request: NextRequest) {
         // Saldo ferie rimanenti
         const employee = await odooCall(sessionId, 'hr.employee', 'search_read', [
           [['id', '=', employeeId]],
-          ['remaining_leaves']
+          ['allocation_remaining_display']
         ], { limit: 1 });
-        remainingLeaves = employee?.[0]?.remaining_leaves || 0;
+        remainingLeaves = parseFloat(employee?.[0]?.allocation_remaining_display) || 0;
       }
     } catch (e) {
       console.error('Errore caricamento ferie:', e);
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
       if (employeeId) {
         const emp = await odooCall(sessionId, 'hr.employee', 'search_read', [
           [['id', '=', employeeId]],
-          ['id', 'name', 'work_email', 'department_id', 'job_title', 'work_phone', 'mobile_phone', 'remaining_leaves']
+          ['id', 'name', 'work_email', 'department_id', 'job_title', 'work_phone', 'mobile_phone', 'allocation_remaining_display']
         ], { limit: 1 });
 
         if (emp?.[0]) {
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
             department: emp[0].department_id?.[1] || null,
             jobTitle: emp[0].job_title || null,
             phone: emp[0].work_phone || emp[0].mobile_phone || null,
-            remainingLeaves: emp[0].remaining_leaves || 0
+            remainingLeaves: parseFloat(emp[0].allocation_remaining_display) || 0
           };
         }
       }

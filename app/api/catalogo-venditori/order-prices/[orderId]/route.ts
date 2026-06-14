@@ -114,7 +114,7 @@ export async function GET(
           'discount',
           'price_subtotal',
           'price_total',
-          'tax_id'
+          'tax_ids'
         ]
       }
     );
@@ -204,7 +204,7 @@ export async function GET(
         [],
         {
           domain: [['id', '=', order.pricelist_id[0]]],
-          fields: ['id', 'name', 'currency_id', 'discount_policy'],
+          fields: ['id', 'name', 'currency_id'],
           limit: 1
         }
       );
@@ -213,8 +213,7 @@ export async function GET(
         pricelistInfo = {
           id: pricelists[0].id,
           name: pricelists[0].name,
-          currency: pricelists[0].currency_id ? pricelists[0].currency_id[1] : 'CHF',
-          discountPolicy: pricelists[0].discount_policy
+          currency: pricelists[0].currency_id ? pricelists[0].currency_id[1] : 'CHF'
         };
         console.log('✅ [ORDER-PRICES-API] Pricelist found:', pricelistInfo.name);
       }
@@ -288,7 +287,7 @@ export async function GET(
         isLocked: lockedPricesMap.get(line.product_id[0]) || false,
 
         // Tax info
-        taxIds: line.tax_id || []
+        taxIds: line.tax_ids || []
       };
     });
 

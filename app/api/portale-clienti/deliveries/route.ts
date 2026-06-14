@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
           'origin', // SO number
           'partner_id',
           'location_dest_id',
-          'move_ids_without_package',
+          'move_ids',
           'carrier_tracking_ref',
           // 'delivery_man_id', // REMOVED: Campo custom non presente su production
         ],
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       locationDest: delivery.location_dest_id?.[1] || '',
       trackingRef: delivery.carrier_tracking_ref || null,
       // deliveryMan: delivery.delivery_man_id?.[1] || null, // REMOVED: Campo custom
-      itemsCount: delivery.move_ids_without_package?.length || 0,
+      itemsCount: delivery.move_ids?.length || 0,
     }));
 
     return NextResponse.json({

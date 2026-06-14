@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     // ===== STEP 1: Carica dati picking =====
     const pickings = await callOdoo(cookies, 'stock.picking', 'read', [
       [picking_id],
-      ['name', 'partner_id', 'origin', 'state', 'move_line_ids_without_package']
+      ['name', 'partner_id', 'origin', 'state', 'move_line_ids']
     ]);
 
     if (!pickings || pickings.length === 0) {
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== STEP 2: Carica move lines =====
-    const moveLineIds = picking.move_line_ids_without_package || [];
+    const moveLineIds = picking.move_line_ids || [];
     if (moveLineIds.length === 0) {
       throw new Error('Nessuna riga nel picking');
     }
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
           // Leggi il prodotto
           const productData = await callOdoo(cookies, 'product.product', 'read', [
             [line.product_id[0]],
-            ['name', 'default_code', 'uom_id', 'uom_po_id', 'product_tmpl_id']
+            ['name', 'default_code', 'uom_id', 'product_tmpl_id'] // Odoo 19: uom_po_id rimosso, UoM acquisto sulla riga PO -> fallback su uom_id
           ]);
 
           if (!productData || productData.length === 0) {
@@ -200,14 +200,14 @@ export async function POST(request: NextRequest) {
 
           const product = productData[0];
           const uomId = product.uom_id?.[0];
-          const uomPoId = product.uom_po_id?.[0];
+          const uomPoId = uomId; // Odoo 19: uom_po_id rimosso, l'UoM d'acquisto coincide con uom_id
 
           // Leggi le informazioni dettagliate dell'UoM
           let uomInfo = null;
           if (uomId) {
             const uomData = await callOdoo(cookies, 'uom.uom', 'read', [
               [uomId],
-              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+              ['name', 'factor', 'relative_factor', 'relative_uom_id', 'rounding'] // Odoo 19: rimossi category_id/factor_inv/uom_type
             ]);
             uomInfo = uomData?.[0];
           }
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
           if (uomPoId && uomPoId !== uomId) {
             const uomPoData = await callOdoo(cookies, 'uom.uom', 'read', [
               [uomPoId],
-              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+              ['name', 'factor', 'relative_factor', 'relative_uom_id', 'rounding'] // Odoo 19: rimossi category_id/factor_inv/uom_type
             ]);
             uomPoInfo = uomPoData?.[0];
           }

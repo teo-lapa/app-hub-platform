@@ -766,7 +766,7 @@ export async function POST(request: NextRequest) {
       const payslipName = `Busta Paga ${monthNames[monthNum - 1]} ${year} - ${employeeName}`;
 
       // STEP 1: Crea la busta paga - Odoo compila automaticamente:
-      // - contract_id (dal contratto attivo del dipendente)
+      // - version_id (dal contratto/version attivo del dipendente)
       // - struct_id (dalla struttura del contratto)
       // - journal_id (dal tipo di struttura)
       const payslipData: any = {
@@ -824,10 +824,10 @@ export async function POST(request: NextRequest) {
         // compute_sheet saltato: creiamo la riga NET manualmente dalla struttura del payslip
         const psInfo = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
           domain: [['id', '=', payslipId]],
-          fields: ['struct_id', 'contract_id'],
+          fields: ['struct_id', 'version_id'],
         });
         const structId = psInfo[0]?.struct_id?.[0];
-        const contractId = psInfo[0]?.contract_id?.[0];
+        const contractId = psInfo[0]?.version_id?.[0];
 
         // Regola NET della struttura del payslip (fallback: prima regola NET disponibile)
         let netRule = structId
@@ -857,7 +857,7 @@ export async function POST(request: NextRequest) {
             total: netTotal,
             sequence: 50,
           };
-          if (contractId) netLineData.contract_id = contractId;
+          if (contractId) netLineData.version_id = contractId;
           const netLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [netLineData]);
           console.log('[create-payslip] NET creato manualmente:', netLineId, '→', netTotal);
         } else {
@@ -873,12 +873,12 @@ export async function POST(request: NextRequest) {
         });
 
         if (bonusRule && bonusRule.length > 0) {
-          // Prendi contract_id e employee_id dal payslip per la riga bonus
+          // Prendi version_id e employee_id dal payslip per la riga bonus
           const payslipInfo = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
             domain: [['id', '=', payslipId]],
-            fields: ['contract_id', 'employee_id'],
+            fields: ['version_id', 'employee_id'],
           });
-          const contractId = payslipInfo[0]?.contract_id?.[0];
+          const contractId = payslipInfo[0]?.version_id?.[0];
 
           const bonusLineData: any = {
             slip_id: payslipId,
@@ -893,7 +893,7 @@ export async function POST(request: NextRequest) {
             sequence: 200,
           };
           if (contractId) {
-            bonusLineData.contract_id = contractId;
+            bonusLineData.version_id = contractId;
           }
 
           const bonusLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [bonusLineData]);
@@ -928,7 +928,7 @@ export async function POST(request: NextRequest) {
       // Leggi la busta paga completa
       const newPayslip = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
         domain: [['id', '=', payslipId]],
-        fields: ['id', 'name', 'number', 'employee_id', 'date_from', 'date_to', 'state', 'struct_id', 'journal_id', 'contract_id', 'net_wage'],
+        fields: ['id', 'name', 'number', 'employee_id', 'date_from', 'date_to', 'state', 'struct_id', 'journal_id', 'version_id', 'net_wage'],
       });
 
       return NextResponse.json({

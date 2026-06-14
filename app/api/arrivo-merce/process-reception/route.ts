@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           // Leggi il prodotto per ottenere le UoM configurate
           const productData = await callOdoo(cookies, 'product.product', 'read', [
             [line.product_id[0]],
-            ['uom_id', 'uom_po_id', 'product_tmpl_id']
+            ['uom_id', 'product_tmpl_id'] // Odoo 19: uom_po_id rimosso, UoM acquisto sulla riga PO -> fallback su uom_id
           ]);
 
           if (!productData || productData.length === 0) {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
           const product = productData[0];
           const uomId = product.uom_id?.[0];
-          const uomPoId = product.uom_po_id?.[0];
+          const uomPoId = uomId; // Odoo 19: uom_po_id rimosso, l'UoM d'acquisto coincide con uom_id
 
           // Se non c'è UoM, ritorna la riga invariata
           if (!uomId) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           // Leggi le informazioni dettagliate dell'UoM
           const uomData = await callOdoo(cookies, 'uom.uom', 'read', [
             [uomId],
-            ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+            ['name', 'factor', 'relative_factor', 'relative_uom_id', 'rounding'] // Odoo 19: rimossi category_id/factor_inv/uom_type
           ]);
 
           const uomInfo = uomData?.[0];
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
           if (uomPoId && uomPoId !== uomId) {
             const uomPoData = await callOdoo(cookies, 'uom.uom', 'read', [
               [uomPoId],
-              ['name', 'category_id', 'factor', 'factor_inv', 'uom_type', 'rounding']
+              ['name', 'factor', 'relative_factor', 'relative_uom_id', 'rounding'] // Odoo 19: rimossi category_id/factor_inv/uom_type
             ]);
             uomPoInfo = uomPoData?.[0];
           }

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     // Cerca picking originale
     const pickings = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
       ['name', '=', order.numeroOrdineResiduo]
-    ]], { fields: ['id', 'name', 'location_id', 'move_ids_without_package'] });
+    ]], { fields: ['id', 'name', 'location_id', 'move_ids'] });
 
     if (pickings.length === 0) throw new Error(`Picking ${order.numeroOrdineResiduo} non trovato`);
     const picking = pickings[0];
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     const vanLocationName = picking.location_id[1];
 
     // Trova il move corrispondente al prodotto
-    const moves = await callOdoo(sessionId, 'stock.move', 'read', [picking.move_ids_without_package], {
+    const moves = await callOdoo(sessionId, 'stock.move', 'read', [picking.move_ids], {
       fields: ['product_id', 'product_uom_qty', 'quantity', 'product_uom']
     });
     const move = moves.find((m: any) => m.product_id[1] === product.nome);

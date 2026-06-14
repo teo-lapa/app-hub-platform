@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       'crm.lead',
       [['id', '=', body.lead_id]],
       [
-        'id', 'name', 'partner_name', 'email_from', 'phone', 'mobile',
+        'id', 'name', 'partner_name', 'email_from', 'phone',
         'street', 'city', 'zip', 'country_id', 'state_id',
         'website', 'description', 'tag_ids', 'partner_latitude', 'partner_longitude'
       ],
@@ -176,7 +176,6 @@ export async function POST(request: NextRequest) {
         name: lead.partner_name || lead.name,
         is_company: true,
         phone: lead.phone || false,
-        mobile: lead.mobile || false,
         email: lead.email_from || false,
         website: lead.website || false,
         street: parsedStreet || false,
@@ -243,7 +242,7 @@ export async function POST(request: NextRequest) {
         'res.partner',
         [['id', '=', newPartnerId]],
         [
-          'id', 'name', 'display_name', 'email', 'phone', 'mobile',
+          'id', 'name', 'display_name', 'email', 'phone',
           'street', 'zip', 'city', 'country_id', 'state_id',
           'website', 'vat', 'is_company', 'comment'
         ],
@@ -261,7 +260,7 @@ export async function POST(request: NextRequest) {
           display_name: createdPartner.display_name,
           email: createdPartner.email || '',
           phone: createdPartner.phone || '',
-          mobile: createdPartner.mobile || '',
+          mobile: createdPartner.phone || '',
           street: createdPartner.street || '',
           zip: createdPartner.zip || '',
           city: createdPartner.city || '',
@@ -310,7 +309,7 @@ export async function POST(request: NextRequest) {
         'res.partner',
         [['id', '=', minimalPartnerId]],
         [
-          'id', 'name', 'display_name', 'email', 'phone', 'mobile',
+          'id', 'name', 'display_name', 'email', 'phone',
           'street', 'zip', 'city', 'country_id', 'state_id',
           'website', 'vat', 'is_company', 'comment'
         ],
@@ -330,7 +329,7 @@ export async function POST(request: NextRequest) {
           display_name: minimalPartner.display_name,
           email: minimalPartner.email || '',
           phone: minimalPartner.phone || '',
-          mobile: minimalPartner.mobile || '',
+          mobile: minimalPartner.phone || '',
           street: minimalPartner.street || '',
           zip: minimalPartner.zip || '',
           city: minimalPartner.city || '',

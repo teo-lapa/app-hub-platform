@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             params: {
               model: 'res.users',
               method: 'read',
-              args: [[odooAuthData.result.uid], ['groups_id', 'share']],
+              args: [[odooAuthData.result.uid], ['group_ids', 'share']],
               kwargs: {}
             },
             id: 2
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         const userGroupsData = await userGroupsResponse.json();
         console.log(`🔍 User groups response:`, JSON.stringify(userGroupsData));
 
-        const groupIds = userGroupsData.result?.[0]?.groups_id || [];
+        const groupIds = userGroupsData.result?.[0]?.group_ids || [];
         const isShare = userGroupsData.result?.[0]?.share || false;  // share=true significa utente portale
 
         console.log(`🔍 User groups: groupIds=${JSON.stringify(groupIds)}, is_share=${isShare}`);

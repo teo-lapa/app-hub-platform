@@ -174,7 +174,7 @@ class OdooClient:
                     'res.partner',
                     'read',
                     [[contact_id]],
-                    {'fields': ['id', 'name', 'display_name', 'email', 'phone', 'mobile']}
+                    {'fields': ['id', 'name', 'display_name', 'email', 'phone']}
                 )
 
                 result['contact'] = contact[0] if contact else {'id': contact_id, 'name': contact_data.get('name')}
@@ -248,7 +248,7 @@ def main():
                 'res.partner',
                 'read',
                 [[partner_id]],
-                {'fields': ['id', 'name', 'display_name', 'email', 'phone', 'mobile', 'vat']}
+                {'fields': ['id', 'name', 'display_name', 'email', 'phone', 'vat']}
             )
 
             print(json.dumps({

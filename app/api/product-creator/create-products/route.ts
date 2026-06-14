@@ -539,7 +539,6 @@ export async function POST(request: NextRequest) {
         // Use AI-selected unit of measure (default to ID 1 if not provided)
         if (product.uom_odoo_id && product.uom_odoo_id > 0) {
           odooProduct.uom_id = product.uom_odoo_id; // Unit of measure for sales
-          odooProduct.uom_po_id = product.uom_odoo_id; // Unit of measure for purchase
         }
 
         if (product.prezzo_vendita_suggerito && product.prezzo_vendita_suggerito > 0) {

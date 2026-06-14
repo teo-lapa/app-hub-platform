@@ -371,7 +371,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
     const lines = await odoo.searchRead(
       'sale.order.line',
       [['order_id', '=', input.order_id], ['display_type', '=', false]],
-      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom'],
+      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom_id'],
       100
     );
 
@@ -387,7 +387,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
         quantity: l.product_uom_qty,
         price_unit: l.price_unit,
         subtotal: l.price_subtotal,
-        unit: l.product_uom?.[1] || 'Unit',
+        unit: l.product_uom_id?.[1] || 'Unit',
       })),
     };
   },
@@ -463,7 +463,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
     const lines = await odoo.searchRead(
       'sale.order.line',
       [['order_id', '=', order.id]],
-      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom'],
+      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom_id'],
       50
     );
 
@@ -477,7 +477,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
         quantity: l.product_uom_qty,
         price_unit: l.price_unit,
         subtotal: l.price_subtotal,
-        unit: l.product_uom?.[1] || 'Unit',
+        unit: l.product_uom_id?.[1] || 'Unit',
       })),
     };
   },
@@ -583,7 +583,7 @@ export const toolExecutors: Record<string, ToolExecutor> = {
       vehicle: d.vehicle || undefined,
       products: d.products?.map((p: any) => ({
         name: p.product_name,
-        quantity: p.quantity_done || p.quantity,
+        quantity: p.quantity,
         unit: p.uom,
       })),
     };

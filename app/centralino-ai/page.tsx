@@ -67,14 +67,13 @@ export default function CentralinoAI() {
     try {
       const results = await callOdoo('res.partner', 'search_read', [
         [
-          '|', '|', '|',
+          '|', '|',
           ['name', 'ilike', searchQuery],
           ['phone', 'ilike', searchQuery],
-          ['mobile', 'ilike', searchQuery],
           ['email', 'ilike', searchQuery]
         ]
       ], {
-        fields: ['name', 'phone', 'mobile', 'email', 'total_invoiced', 'street', 'city'],
+        fields: ['name', 'phone', 'email', 'total_invoiced', 'street', 'city'],
         limit: 20
       });
 

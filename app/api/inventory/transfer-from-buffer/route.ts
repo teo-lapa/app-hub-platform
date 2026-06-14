@@ -156,7 +156,8 @@ export async function POST(req: NextRequest) {
 
       for (const move of moves) {
         await client.write('stock.move', [move.id], {
-          quantity_done: quantity
+          quantity: quantity,
+          picked: true
         });
       }
     }

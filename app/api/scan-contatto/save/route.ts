@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (contactData.email) partnerData.email = contactData.email;
     if (contactData.phone) partnerData.phone = contactData.phone;
-    if (contactData.mobile) partnerData.mobile = contactData.mobile;
+    if (contactData.mobile && !partnerData.phone) partnerData.phone = contactData.mobile;
     if (contactData.street) partnerData.street = contactData.street;
     if (contactData.zip) partnerData.zip = contactData.zip;
     if (contactData.city) partnerData.city = contactData.city;
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       'res.partner',
       'search_read',
       [[['id', '=', partnerId]]],
-      { fields: ['id', 'name', 'display_name', 'email', 'phone', 'mobile'], limit: 1 }
+      { fields: ['id', 'name', 'display_name', 'email', 'phone'], limit: 1 }
     );
 
     console.log(`📋 [SCAN-CONTATTO-SAVE] Request ${requestId} - search_read result:`, typeof createdPartner, createdPartner, 'length:', createdPartner?.length);
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
           display_name: partner.display_name,
           email: partner.email,
           phone: partner.phone,
-          mobile: partner.mobile
+          mobile: partner.phone
         },
         meta: {
           requestId,

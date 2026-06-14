@@ -176,7 +176,7 @@ async function main() {
         const creator = await odoo.searchRead<any>(
           'res.users',
           [['id', '=', order.create_uid[0]]],
-          ['id', 'name', 'login', 'partner_id', 'groups_id'],
+          ['id', 'name', 'login', 'partner_id', 'group_ids'],
           { limit: 1 }
         );
         if (creator.length > 0) {

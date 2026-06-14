@@ -24,9 +24,6 @@ interface OdooStockLocation {
   complete_name: string;
   barcode?: string | false;
   child_ids?: number[] | false;
-  posx?: number;
-  posy?: number;
-  posz?: number;
 }
 
 interface OdooStockMoveLine {
@@ -663,7 +660,7 @@ export class PickingOdooClient {
 
       const fields = [
         'name', 'complete_name', 'barcode',
-        'child_ids', 'posx', 'posy', 'posz'
+        'child_ids'
       ];
 
       const locations: OdooStockLocation[] = await this.rpc(
@@ -1163,10 +1160,7 @@ export class PickingOdooClient {
       complete_name: location.complete_name,
       barcode: location.barcode || undefined,
       parent_id: undefined,
-      child_ids: location.child_ids || undefined,
-      posx: location.posx,
-      posy: location.posy,
-      posz: location.posz
+      child_ids: location.child_ids || undefined
     };
   }
 

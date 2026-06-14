@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (q) domain.push(['name', 'ilike', q]);
 
     const FIELDS = [
-      'id', 'name', 'email', 'phone', 'mobile', 'street', 'city', 'zip',
+      'id', 'name', 'email', 'phone', 'street', 'city', 'zip',
       'partner_latitude', 'partner_longitude', 'total_invoiced', 'credit',
     ];
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       id: p.id,
       name: p.name,
       email: p.email || '',
-      phone: p.phone || p.mobile || '',
+      phone: p.phone || '',
       street: p.street || '',
       city: p.city || '',
       zip: p.zip || '',

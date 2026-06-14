@@ -38,7 +38,7 @@ export interface OdooPicking {
   scheduled_date: string;
   state: string;
   move_line_ids: number[];
-  move_line_ids_without_package: number[];
+  move_ids: number[];
 }
 
 export interface MatchedProduct {

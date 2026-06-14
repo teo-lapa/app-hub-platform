@@ -124,7 +124,7 @@ export class OdooClient {
             method: 'read',
             args: [session.uid],
             kwargs: {
-              fields: ['name', 'email', 'groups_id', 'company_id', 'active']
+              fields: ['name', 'email', 'group_ids', 'company_id', 'active']
             }
           }
         })
@@ -138,7 +138,7 @@ export class OdooClient {
       }
 
       const userInfo = data.result[0];
-      const groups = await this.getUserGroups(session, userInfo.groups_id);
+      const groups = await this.getUserGroups(session, userInfo.group_ids);
       const companyInfo = await this.getCompanyInfo(session, userInfo.company_id[0]);
 
       return {
