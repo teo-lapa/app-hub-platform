@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lapa-app-v1.0.0';
+const CACHE_NAME = 'lapa-app-v1.0.1-o19';
 const urlsToCache = [
   '/',
   '/pricing',
