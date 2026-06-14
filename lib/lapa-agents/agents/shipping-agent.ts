@@ -19,7 +19,7 @@
  * - stock.picking: id, name, state, partner_id, scheduled_date, date_done,
  *   origin, batch_id, sale_id, note, move_ids, picking_type_code
  * - stock.picking.batch: x_studio_autista_del_giro, x_studio_auto_del_giro
- * - stock.move: product_id, product_uom_qty, quantity_done, product_uom
+ * - stock.move: product_id, product_uom_qty, quantity, product_uom
  */
 
 import { getOdooClient } from '@/lib/odoo-client';
@@ -801,11 +801,11 @@ export class ShippingAgent {
             const driverPartners = await client.read(
               'res.partner',
               [driverId],
-              ['phone', 'mobile']
+              ['phone']
             );
             if (driverPartners && driverPartners.length > 0) {
               const driverPartner = driverPartners[0];
-              driverPhone = driverPartner.mobile || driverPartner.phone || null;
+              driverPhone = driverPartner.phone || null;
             }
           } catch (e) {
             console.warn('[ShippingAgent] Errore recupero telefono autista:', e);
@@ -838,11 +838,11 @@ export class ShippingAgent {
                 const userPartners = await client.read(
                   'res.partner',
                   [userPartnerId],
-                  ['phone', 'mobile']
+                  ['phone']
                 );
                 if (userPartners && userPartners.length > 0) {
                   const userPartner = userPartners[0];
-                  salespersonPhone = userPartner.mobile || userPartner.phone || null;
+                  salespersonPhone = userPartner.phone || null;
                 }
               }
             }
@@ -977,9 +977,9 @@ export class ShippingAgent {
         // Recupera telefono autista
         if (driverId) {
           try {
-            const driverPartners = await client.read('res.partner', [driverId], ['phone', 'mobile']);
+            const driverPartners = await client.read('res.partner', [driverId], ['phone']);
             if (driverPartners && driverPartners.length > 0) {
-              driverPhone = driverPartners[0].mobile || driverPartners[0].phone || null;
+              driverPhone = driverPartners[0].phone || null;
             }
           } catch (e) {
             // Ignora
@@ -998,9 +998,9 @@ export class ShippingAgent {
               const userId = orders[0].user_id[0];
               const users = await client.read('res.users', [userId], ['partner_id']);
               if (users && users.length > 0 && users[0].partner_id) {
-                const userPartners = await client.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+                const userPartners = await client.read('res.partner', [users[0].partner_id[0]], ['phone']);
                 if (userPartners && userPartners.length > 0) {
-                  salespersonPhone = userPartners[0].mobile || userPartners[0].phone || null;
+                  salespersonPhone = userPartners[0].phone || null;
                 }
               }
             }
@@ -1145,14 +1145,14 @@ export class ShippingAgent {
     const moves = await client.read(
       'stock.move',
       moveIds,
-      ['product_id', 'product_uom_qty', 'quantity_done', 'product_uom']
+      ['product_id', 'product_uom_qty', 'quantity', 'product_uom']
     );
 
     return moves.map((move: any) => ({
       product_id: move.product_id[0],
       product_name: move.product_id[1],
       quantity_ordered: move.product_uom_qty,
-      quantity_delivered: move.quantity_done,
+      quantity_delivered: move.quantity,
       unit: move.product_uom ? move.product_uom[1] : 'Unità'
     }));
   }

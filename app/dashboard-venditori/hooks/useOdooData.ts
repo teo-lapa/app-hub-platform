@@ -632,7 +632,6 @@ export function useOdooData() {
               'child_ids',
               'email',
               'phone',
-              'mobile',
               'street',
               'city',
               'zip',
@@ -711,7 +710,7 @@ export function useOdooData() {
           'search_read',
           [[['id', 'in', allChildIds]]],
           {
-            fields: ['id', 'name', 'email', 'phone', 'mobile', 'parent_id', 'function']
+            fields: ['id', 'name', 'email', 'phone', 'parent_id', 'function']
           }
         );
       }
@@ -800,7 +799,7 @@ export function useOdooData() {
           id: company.id,
           name: company.name,
           email: company.email || '',
-          phone: company.phone || company.mobile || '',
+          phone: company.phone || '',
           address: formatAddress(company),
           salesperson: company.user_id ? company.user_id[1] : 'Non assegnato',
           orderCount: orderCount,

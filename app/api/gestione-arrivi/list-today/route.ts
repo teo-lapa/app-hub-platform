@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin',
-        'move_ids_without_package'
+        'move_ids'
       ]
     ]);
 
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Conta prodotti nel picking
-      const moveIds = picking.move_ids_without_package || [];
+      const moveIds = picking.move_ids || [];
       const productsCount = moveIds.length;
 
       // Determina se è processato (arrivo fatto + fattura creata)

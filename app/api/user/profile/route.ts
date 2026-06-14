@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [['email', '=', userEmail]],
-        fields: ['id', 'name', 'phone', 'mobile', 'email', 'parent_id', 'is_company', 'street', 'city', 'vat', 'ref'],
+        fields: ['id', 'name', 'phone', 'email', 'parent_id', 'is_company', 'street', 'city', 'vat', 'ref'],
         limit: 1
       }
     );
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         user: {
           name: user.name,
           email: user.email,
-          phone: user.phone || user.mobile,
+          phone: user.phone,
           isContact,
         },
         company: companyData ? {

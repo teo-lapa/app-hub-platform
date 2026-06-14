@@ -164,9 +164,9 @@ async function getProdottiGiaResi(sessionId: string, residualPickingName: string
       ['picking_type_code', '=', 'internal'],
       ['origin', 'ilike', residualPickingName],
       ['state', '!=', 'cancel']
-    ]], { fields: ['move_ids_without_package'] });
+    ]], { fields: ['move_ids'] });
 
-    const moveIds = returns.flatMap((r: any) => r.move_ids_without_package || []);
+    const moveIds = returns.flatMap((r: any) => r.move_ids || []);
     if (moveIds.length === 0) return resi;
 
     const moves = await callOdoo(sessionId, 'stock.move', 'read', [moveIds], { fields: ['product_id'] });
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin',
-        'move_ids_without_package',
+        'move_ids',
         'batch_id',
         'location_id'
       ],

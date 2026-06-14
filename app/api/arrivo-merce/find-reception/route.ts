@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
           'scheduled_date',
           'state',
           'origin',
-          'move_line_ids_without_package',
-          'move_ids_without_package'
+          'move_line_ids',
+          'move_ids'
         ]
       ]);
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       const partner = partners[0];
 
       // Continua con il caricamento dei dettagli (move_lines, etc)
-      const moveIds = selectedPicking.move_ids_without_package || [];
+      const moveIds = selectedPicking.move_ids || [];
       console.log('📦 Move IDs trovati:', moveIds.length);
 
       let moves: any[] = [];
@@ -127,8 +127,7 @@ export async function POST(request: NextRequest) {
           'default_code',
           'product_tmpl_id',
           'product_template_variant_value_ids',
-          'uom_id',           // Unità di misura di vendita
-          'uom_po_id'         // Unità di misura di acquisto
+          'uom_id'            // Unità di misura (Odoo 19: uom_po_id rimosso, UoM acquisto vive sulla riga PO)
         ]
       ]);
 
@@ -149,8 +148,8 @@ export async function POST(request: NextRequest) {
           product_tmpl_id: product?.product_tmpl_id || [],
           variant_ids: product?.product_template_variant_value_ids || [],
           product_uom_id: ml.product_uom_id,
-          uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM di vendita
-          uom_po_name: product?.uom_po_id?.[1] || 'N/A',              // UOM di acquisto
+          uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM
+          uom_po_name: product?.uom_id?.[1] || 'N/A',                 // Odoo 19: uom_po_id rimosso, fallback su uom_id
           qty_done: ml.qty_done || 0,
           product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
           lot_id: ml.lot_id,
@@ -312,8 +311,8 @@ export async function POST(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin',
-        'move_line_ids_without_package',
-        'move_ids_without_package'
+        'move_line_ids',
+        'move_ids'
       ]
     ]);
 
@@ -350,7 +349,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Ricezione selezionata:', selectedPicking.name, '(ID:', selectedPicking.id, ')');
 
     // Step 3: Recupera i movimenti stock (stock.move) - sono i prodotti da ricevere
-    const moveIds = selectedPicking.move_ids_without_package || [];
+    const moveIds = selectedPicking.move_ids || [];
     console.log('📦 Move IDs trovati:', moveIds.length);
 
     let moves: any[] = [];
@@ -427,8 +426,7 @@ export async function POST(request: NextRequest) {
         'default_code',
         'product_tmpl_id',
         'product_template_variant_value_ids',
-        'uom_id',           // Unità di misura di vendita
-        'uom_po_id'         // Unità di misura di acquisto
+        'uom_id'            // Unità di misura (Odoo 19: uom_po_id rimosso, UoM acquisto vive sulla riga PO)
       ]
     ]);
 
@@ -449,8 +447,8 @@ export async function POST(request: NextRequest) {
         product_tmpl_id: product?.product_tmpl_id || [],
         variant_ids: product?.product_template_variant_value_ids || [],
         product_uom_id: ml.product_uom_id,
-        uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM di vendita
-        uom_po_name: product?.uom_po_id?.[1] || 'N/A',              // UOM di acquisto
+        uom_name: product?.uom_id?.[1] || 'N/A',                    // UOM
+        uom_po_name: product?.uom_id?.[1] || 'N/A',                 // Odoo 19: uom_po_id rimosso, fallback su uom_id
         qty_done: ml.qty_done || 0,
         product_uom_qty: relatedMove?.product_uom_qty || ml.quantity || 0, // 🔧 Prendi da stock.move
         lot_id: ml.lot_id,

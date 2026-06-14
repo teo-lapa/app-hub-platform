@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         limit: 1,
       });
       if (after?.[0]?.state === 'validate1') {
-        await callOdoo(cookies, 'hr.leave', 'action_validate', [[id]]);
+        await callOdoo(cookies, 'hr.leave', 'action_approve', [[id]]);
       }
       return NextResponse.json({ success: true });
     }

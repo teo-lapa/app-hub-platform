@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Step 3: Recupera informazioni sul prodotto
     const product = await callOdoo(cookies, 'product.product', 'read', [
       [product_id],
-      ['name', 'uom_po_id', 'seller_ids']
+      ['name', 'uom_id', 'seller_ids'] // Odoo 19: uom_po_id rimosso, l'UoM d'acquisto vive sulla riga PO -> usare uom_id
     ]);
 
     if (!product || product.length === 0) {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       product_id: product_id,
       name: productData.name,
       product_qty: quantity || 1,
-      product_uom: productData.uom_po_id[0],
+      product_uom_id: productData.uom_id[0], // Odoo 19: product_uom -> product_uom_id; valore da uom_id (uom_po_id rimosso)
       price_unit: productPrice,
       date_planned: new Date().toISOString().split('T')[0] // Data di oggi
     };
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         'order_id',
         'product_id',
         'product_qty',
-        'product_uom',
+        'product_uom_id',
         'price_unit',
         'price_subtotal',
         'date_planned'

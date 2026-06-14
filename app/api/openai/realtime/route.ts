@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
             method: 'search_read',
             args: [
               [['email', '=', userContext.email]],
-              ['id', 'name', 'phone', 'mobile', 'email', 'parent_id', 'is_company', 'total_invoiced', 'street', 'city', 'vat', 'ref']
+              ['id', 'name', 'phone', 'email', 'parent_id', 'is_company', 'total_invoiced', 'street', 'city', 'vat', 'ref']
             ],
             kwargs: { limit: 1 }
           })
@@ -105,7 +105,7 @@ PROFILO UTENTE:`;
       instructions += `
 - Nome contatto: ${userData.name}
 - Email: ${userData.email}
-- Telefono: ${userData.phone || userData.mobile || 'non disponibile'}`;
+- Telefono: ${userData.phone || 'non disponibile'}`;
 
       if (isContact && companyData) {
         instructions += `

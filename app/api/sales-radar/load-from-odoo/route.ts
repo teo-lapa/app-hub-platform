@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
           'res.partner',
           customerDomain,
           [
-            'id', 'name', 'display_name', 'phone', 'mobile',
+            'id', 'name', 'display_name', 'phone',
             'street', 'street2', 'zip', 'city',
             'partner_latitude', 'partner_longitude',
             'category_id', 'website'
@@ -298,7 +298,7 @@ export async function GET(request: NextRequest) {
             locationType: 'company',
             name: customer.display_name || customer.name,
             address,
-            phone: customer.phone || customer.mobile || undefined,
+            phone: customer.phone || undefined,
             website: customer.website || undefined,
             latitude: custLat,
             longitude: custLng,
@@ -329,7 +329,7 @@ export async function GET(request: NextRequest) {
                 ['partner_longitude', '!=', 0]
               ],
               [
-                'id', 'name', 'display_name', 'phone', 'mobile',
+                'id', 'name', 'display_name', 'phone',
                 'street', 'street2', 'zip', 'city',
                 'partner_latitude', 'partner_longitude',
                 'parent_id'
@@ -383,7 +383,7 @@ export async function GET(request: NextRequest) {
                   parentName: parentName,
                   name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
                   address,
-                  phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
+                  phone: delivery.phone || parentCustomer.phone || undefined,
                   website: parentCustomer.website || undefined,
                   latitude: deliveryLat,
                   longitude: deliveryLng,
@@ -439,7 +439,7 @@ export async function GET(request: NextRequest) {
           leadDomain,
           [
             'id', 'name', 'contact_name', 'partner_name',
-            'phone', 'mobile',
+            'phone',
             'street', 'street2', 'zip', 'city',
             'description', // Contains coordinates
             'tag_ids',
@@ -509,7 +509,7 @@ export async function GET(request: NextRequest) {
             type: 'lead',
             name: lead.partner_name || lead.name || lead.contact_name || 'Lead',
             address,
-            phone: lead.phone || lead.mobile || undefined,
+            phone: lead.phone || undefined,
             website: lead.website || undefined,
             latitude: coords.latitude,
             longitude: coords.longitude,
@@ -580,7 +580,7 @@ export async function GET(request: NextRequest) {
           'res.partner',
           customerDomain,
           [
-            'id', 'name', 'display_name', 'phone', 'mobile',
+            'id', 'name', 'display_name', 'phone',
             'street', 'street2', 'zip', 'city',
             'partner_latitude', 'partner_longitude',
             'category_id', // Tags
@@ -709,7 +709,7 @@ export async function GET(request: NextRequest) {
             locationType: 'company',
             name: customer.display_name || customer.name,
             address,
-            phone: customer.phone || customer.mobile || undefined,
+            phone: customer.phone || undefined,
             website: customer.website || undefined,
             latitude: custLat,
             longitude: custLng,
@@ -738,7 +738,7 @@ export async function GET(request: NextRequest) {
                 ['partner_longitude', '!=', 0]
               ],
               [
-                'id', 'name', 'display_name', 'phone', 'mobile',
+                'id', 'name', 'display_name', 'phone',
                 'street', 'street2', 'zip', 'city',
                 'partner_latitude', 'partner_longitude',
                 'parent_id'
@@ -825,7 +825,7 @@ export async function GET(request: NextRequest) {
                 parentName: parentName,
                 name: delivery.display_name || delivery.name || `Consegna - ${parentName}`,
                 address,
-                phone: delivery.phone || delivery.mobile || parentCustomer.phone || parentCustomer.mobile || undefined,
+                phone: delivery.phone || parentCustomer.phone || undefined,
                 website: parentCustomer.website || undefined,
                 latitude: deliveryLat,
                 longitude: deliveryLng,
@@ -886,7 +886,7 @@ export async function GET(request: NextRequest) {
           leadDomain,
           [
             'id', 'name', 'contact_name', 'partner_name',
-            'phone', 'mobile',
+            'phone',
             'street', 'street2', 'zip', 'city',
             'description', // Contains coordinates
             'tag_ids', // Tags
@@ -1017,7 +1017,7 @@ export async function GET(request: NextRequest) {
             type: 'lead',
             name: lead.partner_name || lead.name || lead.contact_name || 'Lead',
             address,
-            phone: lead.phone || lead.mobile || undefined,
+            phone: lead.phone || undefined,
             website: lead.website || undefined,
             latitude: coords.latitude,
             longitude: coords.longitude,

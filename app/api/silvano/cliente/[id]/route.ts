@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const partners = await callOdooAsAdmin('res.partner', 'search_read', [], {
       domain: [['id', '=', id]],
       fields: [
-        'id', 'name', 'email', 'phone', 'mobile', 'vat', 'street', 'street2',
+        'id', 'name', 'email', 'phone', 'vat', 'street', 'street2',
         'city', 'zip', 'comment', 'total_invoiced', 'credit',
         'property_product_pricelist', 'property_payment_term_id', 'user_id',
       ],
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Sotto-contatti / indirizzi di consegna (figli)
     const children = await callOdooAsAdmin('res.partner', 'search_read', [], {
       domain: [['parent_id', '=', id]],
-      fields: ['id', 'name', 'type', 'street', 'city', 'zip', 'phone', 'mobile', 'email'],
+      fields: ['id', 'name', 'type', 'street', 'city', 'zip', 'phone', 'email'],
       order: 'type asc, name asc',
     });
 
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         name: p.name,
         email: p.email || '',
         phone: p.phone || (children.find((c: any) => c.phone)?.phone) || '',
-        mobile: p.mobile || (children.find((c: any) => c.mobile)?.mobile) || '',
+        mobile: p.phone || (children.find((c: any) => c.phone)?.phone) || '',
         vat: p.vat || '',
         address: [p.street, p.street2, [p.zip, p.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
         note: p.comment || '',

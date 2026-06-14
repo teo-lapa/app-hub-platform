@@ -2132,7 +2132,7 @@ In the meantime, do you have other questions about our products?`
           const partners = await odooClient.searchRead(
             'res.partner',
             [['id', '=', context.customerId]],
-            ['name', 'email', 'phone', 'mobile', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 'ref', 'company_id', 'parent_id', 'category_id', 'property_payment_term_id', 'sale_order_count', 'total_invoiced', 'comment', 'user_id'],
+            ['name', 'email', 'phone', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 'ref', 'company_id', 'parent_id', 'category_id', 'property_payment_term_id', 'sale_order_count', 'total_invoiced', 'comment', 'user_id'],
             1
           );
           if (partners && partners.length > 0) {
@@ -2144,9 +2144,9 @@ In the meantime, do you have other questions about our products?`
               try {
                 const users = await odooClient.read('res.users', [salespersonId], ['partner_id']);
                 if (users && users.length > 0 && users[0].partner_id) {
-                  const salesPartners = await odooClient.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+                  const salesPartners = await odooClient.read('res.partner', [users[0].partner_id[0]], ['phone']);
                   if (salesPartners && salesPartners.length > 0) {
-                    salespersonPhone = salesPartners[0].mobile || salesPartners[0].phone;
+                    salespersonPhone = salesPartners[0].phone;
                   }
                 }
               } catch (e) {
@@ -2175,7 +2175,7 @@ In the meantime, do you have other questions about our products?`
         // 4. Costruisci descrizione COMPLETA del ticket
         const nome = customerData?.name || context.customerName || 'N/D';
         const email = customerData?.email || context.customerEmail || 'N/D';
-        const telefono = customerData?.phone || customerData?.mobile || 'N/D';
+        const telefono = customerData?.phone || 'N/D';
         const indirizzo = customerData ? `${customerData.street || ''} ${customerData.street2 || ''}, ${customerData.zip || ''} ${customerData.city || ''}`.trim() : 'N/D';
         const paese = customerData?.country_id?.[1] || 'N/D';
 
@@ -3985,7 +3985,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           order_id: cartId,
           product_id: product.id,
           product_uom_qty: quantity,
-          product_uom: uomId,
+          product_uom_id: uomId,
           name: product.name,
           price_unit: product.list_price || 0
         }]);
@@ -4078,7 +4078,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     const lines = await odoo.searchRead(
       'sale.order.line',
       [['id', 'in', cart.order_line]],
-      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom']
+      ['product_id', 'product_uom_qty', 'price_unit', 'price_subtotal', 'product_uom_id']
     );
 
     let message = `🛒 Il tuo carrello (${cart.name}):\n\n`;
@@ -4086,7 +4086,7 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
     for (const line of lines) {
       const productName = line.product_id?.[1] || 'Prodotto';
       const qty = line.product_uom_qty;
-      const uom = line.product_uom?.[1] || 'pz';
+      const uom = line.product_uom_id?.[1] || 'pz';
       const subtotal = line.price_subtotal;
 
       message += `• ${productName}\n`;
@@ -5122,9 +5122,9 @@ ${context.conversationHistory.map(m => `[${m.role === 'user' ? 'CLIENTE' : 'AI'}
           try {
             const users = await odoo.read('res.users', [salespersonId], ['partner_id']);
             if (users && users.length > 0 && users[0].partner_id) {
-              const partners = await odoo.read('res.partner', [users[0].partner_id[0]], ['phone', 'mobile']);
+              const partners = await odoo.read('res.partner', [users[0].partner_id[0]], ['phone']);
               if (partners && partners.length > 0) {
-                salespersonPhone = partners[0].mobile || partners[0].phone;
+                salespersonPhone = partners[0].phone;
               }
             }
           } catch (e) {

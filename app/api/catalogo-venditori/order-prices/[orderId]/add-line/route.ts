@@ -159,9 +159,9 @@ export async function POST(
       order_id: orderId,
       product_id: productId,
       product_uom_qty: quantity,
-      product_uom: product.uom_id ? product.uom_id[0] : 1,
+      product_uom_id: product.uom_id ? product.uom_id[0] : 1,
       company_id: 1, // LAPA - finest italian food GmbH
-      tax_id: companyTaxIds.length > 0
+      tax_ids: companyTaxIds.length > 0
         ? [[6, 0, companyTaxIds]]
         : false
     };
@@ -191,23 +191,8 @@ export async function POST(
 
     console.log(`✅ [ADD-LINE-API] Order line created successfully with ID: ${newLineId}`);
 
-    // Trigger price calculation by calling product_id_change
-    // This simulates what happens in the Odoo UI when you select a product
-    try {
-      console.log('🔄 [ADD-LINE-API] Triggering product_id_change to calculate price...');
-
-      await callOdoo(
-        cookies,
-        'sale.order.line',
-        'product_id_change',
-        [[newLineId]]
-      );
-
-      console.log('✅ [ADD-LINE-API] Price calculation triggered successfully');
-    } catch (error) {
-      console.warn('⚠️ [ADD-LINE-API] Could not trigger product_id_change:', error);
-      // Continue anyway - the line was created
-    }
+    // Odoo 19: il prezzo/tasse si calcolano automaticamente alla create via compute store
+    // (_compute_price_unit / _compute_tax_ids). Il vecchio onchange product_id_change non esiste piu.
 
     // Fetch the newly created line with all details
     console.log('🔍 [ADD-LINE-API] Fetching created line details...');
@@ -227,7 +212,7 @@ export async function POST(
           'discount',
           'price_subtotal',
           'price_total',
-          'tax_id'
+          'tax_ids'
         ],
         limit: 1
       }

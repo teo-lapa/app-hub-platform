@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
         'scheduled_date',
         'state',
         'origin',
-        'move_ids_without_package'
+        'move_ids'
       ]
     ]);
 
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     const receptionSummaries: ReceptionSummary[] = [];
 
     for (const picking of pickings) {
-      const moveIds = picking.move_ids_without_package || [];
+      const moveIds = picking.move_ids || [];
       let moves: any[] = [];
       let productsCount = 0;
       let totalQty = 0;

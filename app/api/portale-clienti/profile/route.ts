@@ -82,7 +82,6 @@ export async function GET(request: NextRequest) {
           'name',
           'email',
           'phone',
-          'mobile',
           'street',
           'street2',
           'city',
@@ -117,7 +116,7 @@ export async function GET(request: NextRequest) {
       name: partner.name,
       email: partner.email || '',
       phone: partner.phone || '',
-      mobile: partner.mobile || '',
+      mobile: partner.phone || '',
 
       // Indirizzo
       address: {

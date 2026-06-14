@@ -507,7 +507,7 @@ Se il venditore dice "i numeri sono sbagliati" o "mi da meno di quello che vedo"
 ## Controllare disponibilita' prodotto
 - Giacenza: stock.quant con location_id di tipo 'internal'
 - Disponibilita': qty_available su product.product
-- In arrivo: qty_incoming su product.product
+- In arrivo: incoming_qty su product.product
 
 ## ⚠️ VERIFICA DATI - REGOLA CRITICA!
 **I venditori si fidano dei tuoi dati. Se dai informazioni SBAGLIATE perdi credibilita'!**

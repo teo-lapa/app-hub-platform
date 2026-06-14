@@ -394,7 +394,7 @@ export class InventoryOdooClient {
         location_id: sourceLocationId,
         location_dest_id: destLocationId,
         product_uom_qty: quantity,
-        name: `Trasferimento inventario: ${new Date().toISOString()}`
+        description_picking: `Trasferimento inventario: ${new Date().toISOString()}`
       };
 
       if (lotId) {
@@ -403,9 +403,15 @@ export class InventoryOdooClient {
 
       const moveId = await this.rpc('stock.move', 'create', [moveData]);
 
-      // Conferma il movimento
-      await this.rpc('stock.move', 'action_confirm', [moveId]);
-      await this.rpc('stock.move', 'action_done', [moveId]);
+      // TODO O19: stock.move.action_confirm/action_done RIMOSSI in Odoo 19 — verificato su
+      // staging-19, esistono solo i privati _action_confirm/_action_done/_action_assign
+      // (non chiamabili via RPC). La validazione corretta richiede di agganciare il move a un
+      // picking interno (picking_type_id) e chiamare stock.picking.button_validate, ma:
+      //   1) createStockMove non riceve un picking_type_id (move standalone);
+      //   2) button_validate sposta fisicamente lo stock e non va eseguito alla cieca.
+      // Inoltre questa funzione NON ha chiamanti nel codice. Lasciato in bozza di proposito:
+      // il move viene creato (id ritornato) ma NON validato. Da rivedere col flusso picking
+      // quando/se servira'. Non e' un crash: il create va a buon fine.
 
       return moveId;
     } catch (error) {

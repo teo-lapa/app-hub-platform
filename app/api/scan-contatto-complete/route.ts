@@ -501,7 +501,7 @@ Rispondi con JSON:
       // Aggiungi campi disponibili
       if (finalData.email) partnerData.email = finalData.email;
       if (finalData.phone) partnerData.phone = finalData.phone;
-      if (finalData.mobile) partnerData.mobile = finalData.mobile;
+      if (finalData.mobile && !partnerData.phone) partnerData.phone = finalData.mobile;
       if (finalData.website) partnerData.website = finalData.website;
       if (finalData.street || finalData.address?.street) {
         partnerData.street = finalData.street || finalData.address?.street;
@@ -769,7 +769,7 @@ Rispondi con JSON:
       const createdPartnerArray = await readOdoo(
         'res.partner',
         [partnerId],
-        ['id', 'name', 'display_name', 'email', 'phone', 'mobile', 'vat', 'is_company']
+        ['id', 'name', 'display_name', 'email', 'phone', 'vat', 'is_company']
       );
 
       if (!createdPartnerArray || createdPartnerArray.length === 0) {

@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         orderLines.push([0, 0, {
           product_id: item.productId,
           product_uom_qty: item.quantity,
-          product_uom: product.uom_id[0],
+          product_uom_id: product.uom_id[0],
           discount: 100, // 100% discount for gift samples (price from pricelist)
           name: lineDescription,
           customer_lead: 0

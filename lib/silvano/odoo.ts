@@ -87,14 +87,17 @@ export async function getClientPrice(
   partnerId: number
 ): Promise<number | null> {
   try {
+    // O19: get_product_price_rule (pubblico) rimosso. _get_product_price esiste ma via RPC
+    // l'id prodotto arriva come int e rompe (_compute_price_rule legge products._name).
+    // Si usa il metodo pubblico product.product.get_contextual_price che legge pricelist/
+    // quantity/partner dal context e ritorna direttamente un float (verificato su staging-19).
     const res = await callOdooAsAdmin(
-      'product.pricelist',
-      'get_product_price_rule',
-      [[pricelistId], productId, qty, partnerId || false],
-      {}
+      'product.product',
+      'get_contextual_price',
+      [[productId]],
+      { context: { pricelist: pricelistId, quantity: qty || 1, partner: partnerId || false } }
     );
-    const entry = res?.[productId];
-    if (entry && typeof entry[0] === 'number') return entry[0];
+    if (typeof res === 'number') return res;
   } catch (e) {
     // fallback gestito dal chiamante
   }

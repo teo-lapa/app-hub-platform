@@ -195,8 +195,7 @@ export async function GET(request: NextRequest) {
       [],
       {
         domain: [
-          ['summary', 'ilike', 'Blocco Prezzo'],
-          ['state', '!=', 'done']
+          ['summary', 'ilike', 'Blocco Prezzo']
         ],
         fields: ['id', 'summary', 'note', 'state', 'res_id', 'res_model', 'date_deadline', 'user_id'],
         order: 'date_deadline ASC'

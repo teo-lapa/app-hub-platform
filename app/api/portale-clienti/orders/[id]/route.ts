@@ -121,7 +121,7 @@ export async function GET(
             'price_tax',
             'price_total',
             'discount',
-            'product_uom',
+            'product_uom_id',
           ],
         },
       );
@@ -237,7 +237,7 @@ export async function GET(
         subtotal: line.price_subtotal,
         tax: line.price_tax,
         total: line.price_total,
-        uom: line.product_uom?.[1] || 'Unità',
+        uom: line.product_uom_id?.[1] || 'Unità',
       })),
 
       // Fatture

@@ -92,7 +92,7 @@ export async function POST(
             'product_id',
             'name',
             'product_uom_qty',
-            'product_uom',
+            'product_uom_id',
           ],
         },
       );
@@ -111,7 +111,7 @@ export async function POST(
         productId: line.product_id[0],
         productName: line.product_id[1] || line.name,
         quantity: line.product_uom_qty || 1,
-        uom: line.product_uom?.[1] || 'Pz',
+        uom: line.product_uom_id?.[1] || 'Pz',
       }));
 
     console.log(`✅ [REORDER-API] Preparati ${productsToReorder.length} prodotti per reorder`);

@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       'res.partner',
       [['id', '=', newContactId]],
       [
-        'id', 'name', 'display_name', 'email', 'phone', 'mobile',
+        'id', 'name', 'display_name', 'email', 'phone',
         'street', 'zip', 'city', 'country_id', 'state_id',
         'website', 'vat', 'is_company', 'comment'
       ],
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
         display_name: createdContact.display_name,
         email: createdContact.email || '',
         phone: createdContact.phone || '',
-        mobile: createdContact.mobile || '',
+        mobile: createdContact.phone || '',
         street: createdContact.street || '',
         zip: createdContact.zip || '',
         city: createdContact.city || '',

@@ -487,7 +487,7 @@ export class VehicleStockService {
 
     for (const product of request.products) {
       const moveData: any = {
-        name: `${request.type.toUpperCase()}: Product ${product.product_id}`,
+        description_picking: `${request.type.toUpperCase()}: Product ${product.product_id}`,
         product_id: product.product_id,
         product_uom_qty: product.quantity,
         product_uom: 1, // Will be set by Odoo based on product
@@ -572,7 +572,7 @@ export class VehicleStockService {
           'note',
           'location_id',
           'location_dest_id',
-          'move_ids_without_package'
+          'move_ids'
         ],
         limit: limit,
         order: 'create_date desc'
@@ -598,8 +598,8 @@ export class VehicleStockService {
       let productsCount = 0;
       let totalQuantity = 0;
 
-      if (picking.move_ids_without_package && Array.isArray(picking.move_ids_without_package)) {
-        const moveIds = picking.move_ids_without_package;
+      if (picking.move_ids && Array.isArray(picking.move_ids)) {
+        const moveIds = picking.move_ids;
 
         if (moveIds.length > 0) {
           const moves = await this.sessionManager.callKw(

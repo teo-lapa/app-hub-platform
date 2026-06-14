@@ -123,7 +123,7 @@ async function getClientsLive(cookies: string | null) {
     const batch = regularIds.slice(i, i + PBATCH);
     const res = await callOdoo(cookies, 'res.partner', 'search_read',
       [[['id', 'in', batch]]],
-      { fields: ['name', 'phone', 'mobile', 'email', 'street', 'city', 'zip', 'partner_latitude', 'partner_longitude', 'is_company', 'category_id', 'customer_rank'], limit: PBATCH + 10 }
+      { fields: ['name', 'phone', 'email', 'street', 'city', 'zip', 'partner_latitude', 'partner_longitude', 'is_company', 'category_id', 'customer_rank'], limit: PBATCH + 10 }
     );
     partners.push(...res);
   }
@@ -148,7 +148,7 @@ async function getClientsLive(cookies: string | null) {
     return {
       id: pid,
       name: p.name || `Partner #${pid}`,
-      phone: p.phone || p.mobile || '',
+      phone: p.phone || '',
       email: p.email || '',
       street: p.street || '',
       city: p.city || '',

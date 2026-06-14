@@ -538,15 +538,15 @@ export class InvoicesAgent {
       // Se non esiste access token, generalo
       if (!accessToken) {
         try {
-          // Chiama il metodo Odoo per generare il portal access token
-          const tokenResult = await client.call('account.move', 'action_get_access_url', [[invoiceId]]);
-          if (tokenResult && tokenResult.url) {
+          // Odoo 19: action_get_access_url rimosso. get_portal_url ritorna un path RELATIVO (es. /my/invoices/<id>?access_token=...) e fa l'ensure del token internamente.
+          const tokenResult = await client.call('account.move', 'get_portal_url', [[invoiceId]]);
+          if (tokenResult && typeof tokenResult === 'string') {
             return {
               success: true,
               data: {
                 invoice_id: invoiceId,
                 invoice_name: invoice.name,
-                payment_url: tokenResult.url,
+                payment_url: tokenResult.startsWith('http') ? tokenResult : `${odooUrl}${tokenResult}`,
               },
               message: {
                 it: 'Link di pagamento generato',

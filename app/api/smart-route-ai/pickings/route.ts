@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       ],
       [
         'id', 'name', 'partner_id',
-        'scheduled_date', 'state', 'move_ids_without_package', 'batch_id', 'weight'
+        'scheduled_date', 'state', 'move_ids', 'batch_id', 'weight'
       ],
       500,
       'scheduled_date'
@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
     const allMoveIds: number[] = [];
 
     for (const picking of pickings) {
-      if (picking.move_ids_without_package && picking.move_ids_without_package.length > 0) {
-        allMoveIds.push(...picking.move_ids_without_package);
+      if (picking.move_ids && picking.move_ids.length > 0) {
+        allMoveIds.push(...picking.move_ids);
       }
     }
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       const moves = await rpcClient.callKw(
         'stock.move',
         'read',
-        [allMoveIds, ['id', 'product_uom_qty', 'picking_id', 'product_id', 'name', 'weight', 'product_uom']]
+        [allMoveIds, ['id', 'product_uom_qty', 'picking_id', 'product_id', 'description_picking', 'weight', 'product_uom']]
       );
 
       // Create map: pickingId -> array of product details
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           }
           movesMap[pickingId].push({
             productId: move.product_id ? move.product_id[0] : null,
-            productName: move.product_id ? move.product_id[1] : move.name || 'Prodotto sconosciuto',
+            productName: move.product_id ? move.product_id[1] : move.description_picking || 'Prodotto sconosciuto',
             quantity: move.product_uom_qty || 0,
             weight: move.weight || 0,
             uom: move.product_uom ? move.product_uom[1] : 'Unità'

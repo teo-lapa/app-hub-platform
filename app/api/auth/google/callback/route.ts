@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
             params: {
               model: 'res.users',
               method: 'read',
-              args: [[odooUserId], ['groups_id', 'share']],
+              args: [[odooUserId], ['group_ids', 'share']],
               kwargs: {}
             },
             id: 3
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
         });
 
         const userGroupsData = await userGroupsResponse.json();
-        const groupIds = userGroupsData.result?.[0]?.groups_id || [];
+        const groupIds = userGroupsData.result?.[0]?.group_ids || [];
         const isShare = userGroupsData.result?.[0]?.share || false;
 
         console.log(`ðŸ” User groups: ${groupIds.length} groups, share=${isShare}`);

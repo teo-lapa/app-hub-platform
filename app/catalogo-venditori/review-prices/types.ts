@@ -32,7 +32,7 @@ export interface PricelistInfo {
   id: number;
   name: string;
   currency: string;
-  discountPolicy: string;
+  discountPolicy?: string; // Odoo 19: product.pricelist.discount_policy rimosso, sempre undefined
 }
 
 export interface OrderTotals {

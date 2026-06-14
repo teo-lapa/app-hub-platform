@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
     const partners = await rpc.searchRead(
       'res.partner',
       [['id', 'in', partnerIds]],
-      ['id', 'name', 'phone', 'mobile', 'email', 'user_id', 'parent_id', 'is_company'],
+      ['id', 'name', 'phone', 'email', 'user_id', 'parent_id', 'is_company'],
       0
     );
 
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
       const parentPartners = await rpc.searchRead(
         'res.partner',
         [['id', 'in', Array.from(parentIdsToFetch)]],
-        ['id', 'name', 'phone', 'mobile', 'email', 'user_id', 'parent_id', 'is_company'],
+        ['id', 'name', 'phone', 'email', 'user_id', 'parent_id', 'is_company'],
         0
       );
       parentPartners.forEach((p: any) => {
@@ -437,7 +437,7 @@ export async function GET(request: NextRequest) {
       // Get partner contact info
       const partner = partnersMap[customerId];
       const phone = partner?.phone || null;
-      const mobile = partner?.mobile || null;
+      const mobile = partner?.phone || null;
       const email = partner?.email || null;
       const salesPersonId = partner?.user_id ? partner.user_id[0] : null;
       const salesPersonName = partner?.user_id ? partner.user_id[1] : null;

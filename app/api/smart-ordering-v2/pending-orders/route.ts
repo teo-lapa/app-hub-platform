@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       [['id', 'in', allOrderLineIds]],
       [
         'id', 'order_id', 'product_id', 'name', 'product_qty',
-        'qty_received', 'price_unit', 'price_subtotal', 'product_uom'
+        'qty_received', 'price_unit', 'price_subtotal', 'product_uom_id'
       ],
       0
     );
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           qtyPending: (line.product_qty || 0) - (line.qty_received || 0),
           priceUnit: line.price_unit,
           priceSubtotal: line.price_subtotal,
-          uom: line.product_uom ? line.product_uom[1] : 'Pz'
+          uom: line.product_uom_id ? line.product_uom_id[1] : 'Pz'
         })),
         summary: {
           totalProducts: lines.length,
