@@ -105,14 +105,19 @@ ${prodottiNonConsegnati}
     if (alreadyValidated) {
       console.warn('⚠️ [VALIDATE] Picking già in stato "done": salto button_validate (idempotenza retry)');
     } else {
-      validateResult = await callOdoo(cookies, 'stock.picking', 'button_validate', [[picking_id]]);
+      // skip_backorder: true => Odoo valida e crea il backorder automaticamente senza
+      // ritornare il wizard. Senza questo, button_validate ritorna l'azione
+      // stock.backorder.confirmation che NON ha res_id (wizard transient creato dal
+      // context): il process sotto falliva e la consegna dava "Errore validazione consegna".
+      validateResult = await callOdoo(cookies, 'stock.picking', 'button_validate', [[picking_id]], { context: { skip_backorder: true } });
+      backorder_created = isPartialDelivery;
     }
-    if (validateResult && typeof validateResult === 'object' && validateResult.res_model) {
-      const wizardId = validateResult.res_id;
-      if (validateResult.res_model === 'stock.backorder.confirmation') {
-        await callOdoo(cookies, validateResult.res_model, 'process', [[wizardId]], {});
-        backorder_created = true;
-      }
+    // Fallback: se una versione di Odoo ritorna comunque il wizard, lo creo dal context
+    // (pick_ids) e lo processo, invece di usare res_id inesistente.
+    if (validateResult && typeof validateResult === 'object' && validateResult.res_model === 'stock.backorder.confirmation') {
+      const wizardId = await callOdoo(cookies, 'stock.backorder.confirmation', 'create', [{ pick_ids: [[6, 0, [picking_id]]] }], {});
+      await callOdoo(cookies, 'stock.backorder.confirmation', 'process', [[wizardId]], {});
+      backorder_created = true;
     }
 
     let messageHtml = '';
