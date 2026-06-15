@@ -269,7 +269,7 @@ export class PickingOdooClient {
       const moveLines: OdooStockMoveLine[] = await this.rpc(
         'stock.move.line',
         'search_read',
-        [domain]
+        [domain, ['id', 'move_id', 'product_id', 'product_uom_id', 'location_id', 'quantity', 'picked', 'lot_id', 'lot_name', 'package_id', 'picking_id']]
       );
 
       if (moveLines.length === 0) {
@@ -937,7 +937,7 @@ export class PickingOdooClient {
       const moveLines: OdooStockMoveLine[] = await this.rpc(
         'stock.move.line',
         'search_read',
-        [domain]
+        [domain, ['id', 'move_id', 'product_id', 'product_uom_id', 'location_id', 'quantity', 'picked', 'lot_id', 'lot_name', 'package_id', 'picking_id']]
       );
 
       if (moveLines.length === 0) {
