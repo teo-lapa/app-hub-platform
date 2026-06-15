@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       'stock.picking',
       'button_validate',
       [pickingId],
-      {},
+      { context: { skip_backorder: true } },
       session
     );
 

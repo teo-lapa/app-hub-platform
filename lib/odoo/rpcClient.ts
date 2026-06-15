@@ -139,7 +139,8 @@ export class OdooRPCClient {
   // Valida picking
   async validatePicking(pickingId: number): Promise<boolean> {
     try {
-      await this.callKw('stock.picking', 'button_validate', [[pickingId]]);
+      // skip_backorder: true => valida senza bloccarsi sul wizard backorder (no-op se completo)
+      await this.callKw('stock.picking', 'button_validate', [[pickingId]], { context: { skip_backorder: true } });
       return true;
     } catch (error) {
       console.error('Errore validazione picking:', error);

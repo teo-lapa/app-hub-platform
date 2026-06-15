@@ -243,7 +243,8 @@ export async function POST(request: NextRequest) {
     // Valida il picking (button_validate)
     if (action === 'photo') {
       try {
-        await callOdoo(sessionId, 'stock.picking', 'button_validate', [[pickingId]]);
+        // skip_backorder: true => evita che il wizard backorder lasci il picking appeso
+        await callOdoo(sessionId, 'stock.picking', 'button_validate', [[pickingId]], { context: { skip_backorder: true } });
       } catch {
         // Se button_validate fallisce (wizard), proviamo action_assign
         await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);

@@ -434,7 +434,7 @@ ${notes || '   Nessuna nota aggiuntiva'}
               model: 'stock.picking',
               method: 'button_validate',
               args: [[pickingId]],
-              kwargs: injectLangContext({})
+              kwargs: injectLangContext({ context: { skip_backorder: true } })
             },
             id: 9
           })

@@ -524,30 +524,34 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
       console.log('🔐 Validazione picking...');
 
       try {
+        // skip_backorder + cancel_backorder: Odoo valida e NON crea il backorder (annulla
+        // il residuo), come faceva prima process_cancel_backorder. Senza questo
+        // button_validate ritorna il wizard stock.backorder.confirmation che NON ha res_id
+        // (wizard transient creato dal context): la process sotto falliva e l'arrivo non si validava.
         const validateResult = await callOdoo(
           cookies,
           'stock.picking',
           'button_validate',
-          [[picking_id]]
+          [[picking_id]],
+          { context: { skip_backorder: true, cancel_backorder: true } }
         );
 
         if (validateResult && typeof validateResult === 'object' && validateResult.res_model) {
           console.log('⚠️ Wizard richiesto:', validateResult.res_model);
 
-          if (validateResult.res_model === 'stock.immediate.transfer') {
-            await callOdoo(
+          // Fallback: il wizard backorder non ha res_id, lo creo dal context e annullo il residuo
+          if (validateResult.res_model === 'stock.backorder.confirmation') {
+            const wizId = await callOdoo(
               cookies,
-              'stock.immediate.transfer',
-              'process',
-              [[validateResult.res_id]]
+              'stock.backorder.confirmation',
+              'create',
+              [{ pick_ids: [[6, 0, [picking_id]]] }]
             );
-            pickingValidated = true;
-          } else if (validateResult.res_model === 'stock.backorder.confirmation') {
             await callOdoo(
               cookies,
               'stock.backorder.confirmation',
               'process_cancel_backorder',
-              [[validateResult.res_id]]
+              [[wizId]]
             );
             pickingValidated = true;
           } else {

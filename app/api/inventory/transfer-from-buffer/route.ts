@@ -162,8 +162,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Valida trasferimento
-    await client.call('stock.picking', 'button_validate', [[pickingId[0]]]);
+    // Valida trasferimento (skip_backorder: no-op se completo, evita il wizard se parziale)
+    await client.call('stock.picking', 'button_validate', [[pickingId[0]]], { context: { skip_backorder: true } });
 
     return NextResponse.json({
       success: true,

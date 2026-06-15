@@ -367,18 +367,17 @@ async function handleMixedStatesBatch(rpcClient: any, batchId: number): Promise<
       const pickingId = problematicPickingIdList[i];
       const pickingName = pickings.find((p: any) => p.id === pickingId)?.name || `ID ${pickingId}`;
       try {
-        const result = await rpcClient.callKw('stock.picking', 'button_validate', [[pickingId]]);
+        // skip_backorder: true => Odoo valida e crea il backorder da solo, senza wizard.
+        // Prima si leggeva result.res_id (che NON esiste nell'azione backorder), quindi il
+        // wizard non veniva processato e il picking restava aperto pur essendo poi segnato
+        // come validato (success bugiardo).
+        const result = await rpcClient.callKw('stock.picking', 'button_validate', [[pickingId]], { context: { skip_backorder: true } });
 
-        // If Odoo returns a wizard (e.g. backorder confirmation), try to process it
-        if (result && typeof result === 'object' && result.type === 'ir.actions.act_window' && result.res_id) {
-          console.log(`[Smart Route AI] Processing wizard for ${pickingName}: ${result.res_model}`);
-          try {
-            await rpcClient.callKw(result.res_model, 'process', [[result.res_id]]);
-          } catch {
-            try {
-              await rpcClient.callKw(result.res_model, 'process_cancel_backorder', [[result.res_id]]);
-            } catch { /* wizard may have auto-processed */ }
-          }
+        // Fallback: se torna comunque il wizard backorder, lo creo dal context (no res_id) e lo processo
+        if (result && typeof result === 'object' && result.res_model === 'stock.backorder.confirmation') {
+          console.log(`[Smart Route AI] Processing backorder wizard for ${pickingName}`);
+          const wizId = await rpcClient.callKw('stock.backorder.confirmation', 'create', [{ pick_ids: [[6, 0, [pickingId]]] }]);
+          await rpcClient.callKw('stock.backorder.confirmation', 'process', [[wizId]]);
         }
 
         validatedPickings.push(pickingName);

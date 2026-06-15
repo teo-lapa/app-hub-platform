@@ -118,7 +118,8 @@ export async function POST(request: NextRequest) {
         cookies,
         'stock.picking',
         'button_validate',
-        [[picking_id]]
+        [[picking_id]],
+        { context: { skip_backorder: true } }
       );
       console.log('✅ [CONFIRM-PICKUP] Picking validato');
     } catch (validateError: any) {
@@ -141,7 +142,8 @@ export async function POST(request: NextRequest) {
           cookies,
           'stock.picking',
           'button_validate',
-          [[picking_id]]
+          [[picking_id]],
+          { context: { skip_backorder: true } }
         );
       } catch (e) {
         validated = false;

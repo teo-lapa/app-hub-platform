@@ -394,7 +394,7 @@ export async function POST(request: NextRequest) {
           model: 'stock.picking',
           method: 'button_validate',
           args: [[pickingId]],
-          kwargs: injectLangContext({})
+          kwargs: injectLangContext({ context: { skip_backorder: true } })
         },
         id: 9
       })
