@@ -1207,10 +1207,24 @@ export default function ConvalidaResiduiPage() {
     
     setConvalidaLoading(pick.id);
     try {
-      const result = await callKwConvalida('stock.picking', 'button_validate', [[pick.id]], {});
-      
+      // skip_backorder: true => Odoo convalida e crea il backorder automaticamente
+      // senza restituire il wizard. Senza questo, button_validate ritorna l'azione
+      // stock.backorder.confirmation che NON ha res_id (wizard transient creato dal
+      // context), quindi il process sotto non agiva e il picking non si convalidava.
+      const result = await callKwConvalida('stock.picking', 'button_validate', [[pick.id]], {
+        context: { skip_backorder: true },
+      });
+
+      // Fallback: se una versione di Odoo ritorna comunque il wizard, lo creo dal
+      // context (non ha res_id) e lo processo, cosi' la convalida non resta appesa.
       if (result && typeof result === 'object' && result.res_model === 'stock.backorder.confirmation') {
-        await callKwConvalida('stock.backorder.confirmation', 'process', [[result.res_id]], {});
+        const wizId = await callKwConvalida<number>(
+          'stock.backorder.confirmation',
+          'create',
+          [{ pick_ids: [[6, 0, [pick.id]]] }],
+          {}
+        );
+        await callKwConvalida('stock.backorder.confirmation', 'process', [[wizId]], {});
       }
       
       await callKwConvalida('stock.picking', 'message_post', [[pick.id]], {
