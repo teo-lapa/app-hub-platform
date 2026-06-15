@@ -87,6 +87,21 @@ dev.log
 /*.md
 !README.md
 
+# Test/scratch files in root (keep only config + middleware)
+/*.ts
+/*.tsx
+/*.pdf
+/*.html
+/*.example
+/*.patch
+/*.jpg
+/*.jpeg
+/tmpclaude-*
+!middleware.ts
+!next-env.d.ts
+!.env.example
+!.env.local.example
+
 # Environment files with credentials
 .env.odoo.*
 .env.vercel.*
