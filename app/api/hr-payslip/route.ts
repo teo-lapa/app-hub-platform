@@ -162,15 +162,18 @@ export async function GET(request: NextRequest) {
       // Lista contratti per vedere la struttura stipendio associata
       const employeeId = searchParams.get('employeeId');
 
-      let domain: any[] = [['state', '=', 'open']];
+      // Odoo 19: i contratti sono ora hr.version (hr.contract dismesso/svuotato); niente campo 'state'.
+      // is_current e' computed non-searchable -> NON usarlo nel domain; filtro active e lo leggo nei fields
+      let domain: any[] = [['active', '=', true]];
       if (employeeId) {
         domain.push(['employee_id', '=', parseInt(employeeId)]);
       }
 
-      const contracts = await callOdoo(cookies, 'hr.contract', 'search_read', [], {
+      const contracts = await callOdoo(cookies, 'hr.version', 'search_read', [], {
         domain: domain,
-        fields: ['id', 'name', 'employee_id', 'wage', 'state', 'date_start', 'date_end'],
+        fields: ['id', 'name', 'employee_id', 'wage', 'date_start', 'date_end', 'is_current'],
         order: 'date_start desc',
+        limit: 200,
       });
 
       return NextResponse.json({
@@ -713,8 +716,12 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Crea la linea nella busta paga
-      const lineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [{
+      // Odoo 19: hr.payslip.line richiede version_id ed employee_id (obbligatori) — li prendo dal payslip
+      const slipInfo = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+        domain: [['id', '=', payslipId]],
+        fields: ['version_id', 'employee_id'],
+      });
+      const lineData: any = {
         slip_id: payslipId,
         name: name || 'Bonus Vendite',
         code: 'BONUS_VENDITE',
@@ -724,7 +731,10 @@ export async function POST(request: NextRequest) {
         quantity: 1,
         rate: 100,
         sequence: 100,
-      }]);
+      };
+      if (slipInfo[0]?.version_id) lineData.version_id = slipInfo[0].version_id[0];
+      if (slipInfo[0]?.employee_id) lineData.employee_id = slipInfo[0].employee_id[0];
+      const lineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [lineData]);
 
       return NextResponse.json({
         success: true,
@@ -856,6 +866,7 @@ export async function POST(request: NextRequest) {
             rate: 100,
             total: netTotal,
             sequence: 50,
+            employee_id: employeeId,
           };
           if (contractId) netLineData.version_id = contractId;
           const netLineId = await callOdoo(cookies, 'hr.payslip.line', 'create', [netLineData]);
@@ -891,6 +902,7 @@ export async function POST(request: NextRequest) {
             rate: 100,
             total: bonusAmount,
             sequence: 200,
+            employee_id: employeeId,
           };
           if (contractId) {
             bonusLineData.version_id = contractId;
