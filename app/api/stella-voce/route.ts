@@ -69,21 +69,20 @@ export async function POST(request: NextRequest) {
     const data = await r.json();
     const reply = data.reply || '';
 
-    // Voce naturale femminile (OpenAI TTS). Fallback browser se fallisce.
+    // Voce naturale femminile (OpenAI TTS). Doppio fallback: gpt-4o-mini-tts -> tts-1 -> browser.
     let audioOut = '';
     if (reply) {
-      try {
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const speech = await openai.audio.speech.create({
-          model: 'gpt-4o-mini-tts',
-          voice: 'shimmer',
-          input: reply,
-          instructions: 'Sei Stella, assistente personale donna italiana. Voce femminile, calda, sicura e naturale, come una collega di fiducia al telefono. Ritmo scorrevole e gentile, mai robotico.',
-        } as any);
-        const buf = Buffer.from(await speech.arrayBuffer());
-        audioOut = `data:audio/mp3;base64,${buf.toString('base64')}`;
-      } catch {
-        audioOut = '';
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const attempts: any[] = [
+        { model: 'gpt-4o-mini-tts', voice: 'shimmer', input: reply, instructions: 'Sei Stella, assistente personale donna italiana. Voce femminile, calda, sicura e naturale, come una collega di fiducia al telefono. Ritmo scorrevole e gentile, mai robotico.' },
+        { model: 'tts-1', voice: 'shimmer', input: reply },
+      ];
+      for (const a of attempts) {
+        try {
+          const speech = await openai.audio.speech.create(a);
+          const buf = Buffer.from(await speech.arrayBuffer());
+          if (buf.length > 0) { audioOut = `data:audio/mp3;base64,${buf.toString('base64')}`; break; }
+        } catch {}
       }
     }
 
