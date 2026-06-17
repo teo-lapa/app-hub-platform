@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     // 3. Carica prodotti con stock (excluding preorder products)
     console.log('📦 Caricamento prodotti...');
     const productFilter: any[] = [
-      ['type', '=', 'product'],
+      ['is_storable', '=', true],
       ['active', '=', true]
     ];
 

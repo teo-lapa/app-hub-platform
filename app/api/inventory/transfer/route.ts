@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const moveData = {
       picking_id: pickingId,
       product_id: productId,
-      name: `Transfer from Buffer`,
+      description_picking: `Transfer from Buffer`,
       product_uom_qty: quantity,
       location_id: BUFFER_LOCATION_ID,
       location_dest_id: destLocationId,
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         move_id: moveId,
         picking_id: pickingId,
         product_id: productId,
-        qty_done: quantity,
+        quantity: quantity,
         location_id: BUFFER_LOCATION_ID,
         location_dest_id: destLocationId,
         lot_id: lotId
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         move_id: moveId,
         picking_id: pickingId,
         product_id: productId,
-        qty_done: quantity,
+        quantity: quantity,
         location_id: BUFFER_LOCATION_ID,
         location_dest_id: destLocationId
       };

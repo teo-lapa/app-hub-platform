@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
           args: [{
             picking_id: pickingId,
             product_id: productId,
-            name: `Transfer from ${lotName}`,
+            description_picking: `Transfer from ${lotName}`,
             product_uom_qty: quantity,
             location_id: sourceLocationId,
             location_dest_id: destLocationId
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
       move_id: moveId,
       picking_id: pickingId,
       product_id: productId,
-      qty_done: quantity,
+      quantity: quantity,
       location_id: sourceLocationId,
       location_dest_id: destLocationId
     };

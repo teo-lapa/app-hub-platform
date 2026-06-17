@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         'product.product',
         [
           ['qty_available', '>', 0],
-          ['type', '=', 'product']
+          ['is_storable', '=', true]
         ],
         ['id'],
         50

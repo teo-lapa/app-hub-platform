@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
 
     // Get warehouse data
     const products = await searchRead<any>(session, 'product.product', [
-      ['type', '=', 'product'],
+      ['is_storable', '=', true],
       ['qty_available', '>', 0],
       ['company_id', 'in', [LAPA_COMPANY_ID, false]]
     ], ['id', 'name', 'qty_available', 'standard_price', 'categ_id'], { limit: 50000 });

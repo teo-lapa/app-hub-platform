@@ -216,7 +216,7 @@ async function handleAlternative(
         ['categ_id', '=', categoryId],
         ['id', '!=', productId],
         ['qty_available', '>', 0],
-        ['type', '=', 'product'],
+        ['is_storable', '=', true],
       ],
       fields: ['name', 'default_code', 'list_price', 'qty_available'],
       limit: 5,

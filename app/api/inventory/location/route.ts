@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 
       const catalogProducts = await searchReadOdoo(
         'product.product',
-        [['active', '=', true], ['type', '=', 'product']],
+        [['active', '=', true], ['is_storable', '=', true]],
         ['id', 'name', 'default_code', 'barcode'],
         20
       );

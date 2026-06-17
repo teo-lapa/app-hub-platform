@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       product_uom_qty: quantity,
       location_id: bufferLocationId,
       location_dest_id: destLocationId,
-      name: `Transfer ${lotNumber || ''}`,
+      description_picking: `Transfer ${lotNumber || ''}`,
       company_id: 1
     };
 
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
         move_id: moveId[0],
         product_id: productId,
         lot_id: lotId,
-        qty_done: quantity,
+        quantity: quantity,
         location_id: bufferLocationId,
         location_dest_id: destLocationId,
         company_id: 1

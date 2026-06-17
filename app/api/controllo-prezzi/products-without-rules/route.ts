@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         domain: [
           ['sale_ok', '=', true],
           ['active', '=', true],
-          ['type', '=', 'product']
+          ['is_storable', '=', true]
         ],
         fields: ['id', 'name', 'default_code', 'list_price', 'standard_price', 'categ_id'],
         limit: 0

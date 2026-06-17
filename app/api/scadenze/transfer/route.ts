@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
           args: [{
             picking_id: pickingId,
             product_id: productId,
-            name: reason || 'Trasferimento a scarti (scadenza)',
+            description_picking: reason || 'Trasferimento a scarti (scadenza)',
             product_uom_qty: quantity,
             location_id: sourceLocationId,
             location_dest_id: WASTE_LOCATION_ID,
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
             picking_id: pickingId,
             product_id: productId,
             lot_id: lotId,
-            qty_done: quantity,
+            quantity: quantity,
             location_id: sourceLocationId,
             location_dest_id: WASTE_LOCATION_ID,
             product_uom_id: 1

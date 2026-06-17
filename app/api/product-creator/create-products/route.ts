@@ -512,7 +512,8 @@ export async function POST(request: NextRequest) {
         // Prepare product data for Odoo
         const odooProduct: any = {
           name: product.nome_completo || product.nome || 'Prodotto senza nome',
-          type: 'product', // Prodotto immagazzinabile
+          type: 'consu', // Odoo 19: bene/consumabile
+          is_storable: true, // Prodotto immagazzinabile (Odoo 19)
           categ_id: product.categoria_odoo_id || 1, // Use AI-selected category or default (1 = "All")
           sale_ok: true,
           purchase_ok: true,

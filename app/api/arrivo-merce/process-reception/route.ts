@@ -268,7 +268,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
 
           // Aggiorna la riga esistente
           const updateData: any = {
-            qty_done: match.quantity
+            quantity: match.quantity
           };
 
           if (match.lot_number) {
@@ -344,7 +344,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             location_id: originalLine.location_id ? originalLine.location_id[0] : false,
             location_dest_id: originalLine.location_dest_id ? originalLine.location_dest_id[0] : false,
             move_id: originalLine.move_id[0],
-            qty_done: match.quantity,
+            quantity: match.quantity,
           };
 
           if (match.lot_number) {
@@ -406,7 +406,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           // Questa riga non è stata usata, metti quantità a 0
           await callOdoo(cookies, 'stock.move.line', 'write', [
             [moveLine.id],
-            { qty_done: 0 }
+            { quantity: 0 }
           ]);
 
           results.set_to_zero++;

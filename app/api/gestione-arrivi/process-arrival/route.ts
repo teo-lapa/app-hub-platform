@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     const moveLines = await callOdoo(cookies, 'stock.move.line', 'read', [
       moveLineIds,
-      ['id', 'product_id', 'qty_done', 'lot_id', 'lot_name', 'expiration_date', 'move_id', 'product_uom_id', 'location_id', 'location_dest_id']
+      ['id', 'product_id', 'quantity', 'lot_id', 'lot_name', 'expiration_date', 'move_id', 'product_uom_id', 'location_id', 'location_dest_id']
     ]);
 
     console.log('📋 Righe Odoo:', moveLines.length);
@@ -372,7 +372,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           usedMoveLineIds.add(match.move_line_id);
 
           const updateData: any = {
-            qty_done: match.quantity
+            quantity: match.quantity
           };
 
           // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
@@ -439,7 +439,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
             location_id: originalLine.location_id ? originalLine.location_id[0] : false,
             location_dest_id: originalLine.location_dest_id ? originalLine.location_dest_id[0] : false,
             move_id: originalLine.move_id[0],
-            qty_done: match.quantity,
+            quantity: match.quantity,
           };
 
           // Usa il lotto se presente, altrimenti usa la data di scadenza come lotto
@@ -495,7 +495,7 @@ allora la quantità finale deve essere 30.0 KG (non 3.0).
           try {
             await callOdoo(cookies, 'stock.move.line', 'write', [
               [moveLine.id],
-              { qty_done: 0 }
+              { quantity: 0 }
             ]);
 
             results.set_to_zero++;

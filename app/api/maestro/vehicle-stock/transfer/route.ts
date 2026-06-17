@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
             args: [{
               picking_id: pickingId,
               product_id: product.product_id,
-              name: `Reload Product ${product.product_id}`,
+              description_picking: `Reload Product ${product.product_id}`,
               product_uom_qty: product.quantity,
               location_id: warehouseLocationId,
               location_dest_id: vehicleLocationId
