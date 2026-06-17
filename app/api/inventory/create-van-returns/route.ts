@@ -197,14 +197,13 @@ export async function POST(request: NextRequest) {
               model: 'stock.move',
               method: 'create',
               args: [{
-                name: returnItem.productName,
+                description_picking: returnItem.productName,
                 picking_id: pickingId,
                 product_id: returnItem.productId,
                 product_uom_qty: returnItem.quantityToReturn,
                 product_uom: 1, // Unità (ID 1 di solito = PZ)
                 location_id: vanLocationId,
-                location_dest_id: bufferLocationId,
-                note: returnItem.customerName ? `Cliente: ${returnItem.customerName}` : undefined
+                location_dest_id: bufferLocationId
               }],
               kwargs: injectLangContext({})
             },
