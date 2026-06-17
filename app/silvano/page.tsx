@@ -267,7 +267,7 @@ export default function CatalogoPage() {
 
         {/* Griglia */}
         {loading ? <Spinner /> : !visibleProds.length ? <Empty>Nessun prodotto</Empty> : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {visibleProds.map((p) => (
               <button key={p.id} onClick={() => setModal(p)}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-emerald-400/50 hover:bg-white/10">
@@ -427,10 +427,10 @@ function ProductModal({ p, hasClient, clientId, onClose, onAdd, onSelectClient }
   return (
     <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
-          <div className="flex gap-3">
-            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white p-1.5">
+          <div className="flex gap-4">
+            <div className="h-36 w-36 shrink-0 overflow-hidden rounded-xl bg-white p-1.5">
               {p.image ? <img src={p.image} alt="" loading="lazy" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-slate-400"><Package size={28} /></div>}
             </div>
             <div>
