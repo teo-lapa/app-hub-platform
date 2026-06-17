@@ -48,7 +48,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ transcript: userText, error: `Stella non risponde (${r.status}): ${t.slice(0, 200)}` }, { status: 502 });
     }
     const data = await r.json();
-    return NextResponse.json({ transcript: userText, reply: data.reply || '', error: data.error || null });
+    const reply = data.reply || '';
+
+    // Voce naturale (OpenAI TTS). Se fallisce, il browser usa la voce di sistema come fallback.
+    let audio = '';
+    if (reply) {
+      try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const speech = await openai.audio.speech.create({
+          model: 'gpt-4o-mini-tts',
+          voice: 'coral',
+          input: reply,
+          instructions: 'Sei Stella, assistente personale italiana. Parla in italiano con tono caldo, sicuro e naturale, come al telefono con un collega di fiducia. Ritmo scorrevole, non robotico.',
+        } as any);
+        const buf = Buffer.from(await speech.arrayBuffer());
+        audio = `data:audio/mp3;base64,${buf.toString('base64')}`;
+      } catch (e) {
+        audio = '';
+      }
+    }
+
+    return NextResponse.json({ transcript: userText, reply, audio, error: data.error || null });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Errore interno' }, { status: 500 });
   }
