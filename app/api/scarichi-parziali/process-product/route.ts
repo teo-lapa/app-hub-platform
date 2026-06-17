@@ -33,18 +33,6 @@ async function callOdoo(sessionId: string, model: string, method: string, args: 
   return data.result;
 }
 
-function getBufferLocationFromCategory(categoryName: string | null): { name: string; locationId: number } {
-  if (!categoryName) return { name: 'WH/Stock/Secco', locationId: 29 };
-  const catLower = categoryName.toLowerCase();
-  if (catLower.includes('frigo') || catLower.includes('refrigerat') || catLower.includes('freddo'))
-    return { name: 'WH/Stock/Frigo', locationId: 28 };
-  if (catLower.includes('pingu') || catLower.includes('surgelat') || catLower.includes('congelat'))
-    return { name: 'WH/Stock/Pingu', locationId: 31 };
-  if (catLower.includes('secco sopra') || catLower.includes('scaffalatura') || catLower.includes('sopra'))
-    return { name: 'WH/Stock/Secco Sopra', locationId: 30 };
-  return { name: 'WH/Stock/Secco', locationId: 29 };
-}
-
 async function analyzePhotoWithAI(photoBase64: string, expectedProduct: string): Promise<{ match: boolean; labelText: string; confidence: string }> {
   const response = await genai.models.generateContent({
     model: 'gemini-2.5-flash',
@@ -85,9 +73,6 @@ export async function POST(request: NextRequest) {
     // action: 'photo' | 'not_found'
     // product: { nome, quantitaRichiesta, quantitaEffettiva, uom }
     // order: { numeroOrdineResiduo, cliente, salesOrder }
-    // photo: base64 string (solo per action='photo')
-    // reason: string (solo per action='not_found')
-    // messaggiAutista: array di messaggi scarico parziale dell'autista
 
     if (!product || !order) {
       return NextResponse.json({ success: false, error: 'Dati mancanti' }, { status: 400 });
@@ -103,86 +88,84 @@ export async function POST(request: NextRequest) {
       aiResult = await analyzePhotoWithAI(photo, product.nome);
     }
 
-    // Cerca picking originale
-    const pickings = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
+    // Picking residuo (OUT Furgoni→Cliente) dell'ordine: serve a ricavare il prodotto e la location del furgone
+    const outPickings = await callOdoo(sessionId, 'stock.picking', 'search_read', [[
       ['name', '=', order.numeroOrdineResiduo]
-    ]], { fields: ['id', 'name', 'location_id', 'move_ids'] });
+    ]], { fields: ['id', 'move_ids'] });
+    if (outPickings.length === 0) throw new Error(`Picking ${order.numeroOrdineResiduo} non trovato`);
+    const outPickingId = outPickings[0].id;
 
-    if (pickings.length === 0) throw new Error(`Picking ${order.numeroOrdineResiduo} non trovato`);
-    const picking = pickings[0];
-    const vanLocationId = picking.location_id[0];
-    const vanLocationName = picking.location_id[1];
-
-    // Trova il move corrispondente al prodotto
-    const moves = await callOdoo(sessionId, 'stock.move', 'read', [picking.move_ids], {
-      fields: ['product_id', 'product_uom_qty', 'quantity', 'product_uom']
+    const outMoves = await callOdoo(sessionId, 'stock.move', 'read', [outPickings[0].move_ids], {
+      fields: ['product_id', 'location_id']
     });
-    const move = moves.find((m: any) => m.product_id[1] === product.nome);
-    if (!move) throw new Error(`Prodotto "${product.nome}" non trovato nel picking`);
+    const outMove = outMoves.find((m: any) => m.product_id[1] === product.nome);
+    if (!outMove) throw new Error(`Prodotto "${product.nome}" non trovato nell'ordine ${order.numeroOrdineResiduo}`);
+    const productId = outMove.product_id[0];
+    const vanLocationId = outMove.location_id[0]; // WH/Furgoni (origine dell'OUT)
 
-    // Categoria e buffer
-    const prodData = await callOdoo(sessionId, 'product.product', 'read', [[move.product_id[0]]], {
-      fields: ['id', 'categ_id']
-    });
-    const categoryName = prodData[0]?.categ_id?.[1] || null;
-    const bufferInfo = getBufferLocationFromCategory(categoryName);
+    // === RESO LEGATO AL DOCUMENTO (solo per foto) ===
+    // Il prodotto è rimasto nel furgone: si fa il RESO NATIVO di Odoo del PICK
+    // (Deposito→Furgoni) che ce l'ha portato. Odoo aggancia il movimento al lotto/move
+    // originale di QUESTO ordine (return_id + origin_returned_move_id) → riporta esattamente
+    // quei kg di quel documento, senza toccare lo stock di un altro ordine (niente "furto").
+    let returnPickingId: number | null = null;
+    let returnPickingName = '';
+    let lotName: string | null = null;
+    let validated = false;
 
-    // Lotto
-    const moveLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
-      ['picking_id', '=', picking.id],
-      ['product_id', '=', move.product_id[0]],
-      ['state', '!=', 'cancel']
-    ]], { fields: ['lot_id'] });
-    const lotId = moveLines[0]?.lot_id?.[0] || null;
-    const lotName = moveLines[0]?.lot_id?.[1] || null;
+    if (action === 'photo') {
+      // Move del PICK (Deposito→Furgoni, completato) che ha portato il prodotto nel furgone per questo ordine
+      const pickMoves = await callOdoo(sessionId, 'stock.move', 'search_read', [[
+        ['product_id', '=', productId],
+        ['location_dest_id', '=', vanLocationId],
+        ['state', '=', 'done'],
+        ['picking_id.origin', '=', order.salesOrder]
+      ]], { fields: ['id', 'picking_id'], order: 'id desc' });
+      if (pickMoves.length === 0) {
+        throw new Error(`Nessun PICK di origine (Deposito→Furgoni) trovato per "${product.nome}" sull'ordine ${order.salesOrder}: impossibile fare il reso legato al documento`);
+      }
+      const pickMove = pickMoves[0];
+      const pickId = pickMove.picking_id[0];
 
-    // Nota per il trasferimento
-    let note = `Reso singolo prodotto → ${bufferInfo.name}\nCliente: ${order.cliente}\nSales Order: ${order.salesOrder}\n`;
-    if (action === 'photo' && aiResult) {
-      note += `\n📷 Verifica foto AI:\n- Match: ${aiResult.match ? 'SI' : 'NO'}\n- Etichetta letta: ${aiResult.labelText}\n- Confidenza: ${aiResult.confidence}`;
-    } else if (action === 'not_found') {
-      note += `\n❌ PRODOTTO NON TROVATO\nMotivo: ${reason || 'Non specificato'}`;
+      // Lotto (solo per il chatter)
+      const pickLines = await callOdoo(sessionId, 'stock.move.line', 'search_read', [[
+        ['move_id', '=', pickMove.id]
+      ]], { fields: ['lot_id'] });
+      lotName = pickLines[0]?.lot_id?.[1] || null;
+
+      // RESO nativo agganciato al PICK, SOLO per questo prodotto e questa quantità
+      const wizardId = await callOdoo(sessionId, 'stock.return.picking', 'create', [{
+        picking_id: pickId,
+        product_return_moves: [[0, 0, {
+          product_id: productId,
+          quantity: qty,
+          move_id: pickMove.id,
+          to_refund: false
+        }]]
+      }]);
+      const returnAction = await callOdoo(sessionId, 'stock.return.picking', 'action_create_returns', [[wizardId]]);
+      returnPickingId = returnAction?.res_id || null;
+      if (!returnPickingId) throw new Error('Creazione reso fallita (nessun picking di reso generato)');
+
+      // Assegna (riserva il quant del move originale grazie a origin_returned_move_id) e valida → merce torna in WH/Deposito
+      await callOdoo(sessionId, 'stock.picking', 'action_assign', [[returnPickingId]]);
+      try {
+        await callOdoo(sessionId, 'stock.picking', 'button_validate', [[returnPickingId]], { context: { skip_backorder: true } });
+        validated = true;
+      } catch {
+        // Disponibilità/wizard: il reso resta assegnato, da completare a mano in Odoo
+      }
+
+      const retInfo = await callOdoo(sessionId, 'stock.picking', 'read', [[returnPickingId]], { fields: ['name'] });
+      returnPickingName = retInfo[0]?.name || '';
     }
-    note += `\nCreato: ${new Date().toLocaleString('it-IT')}`;
 
-    // Crea trasferimento
-    const pickingId = await callOdoo(sessionId, 'stock.picking', 'create', [{
-      picking_type_id: 5,
-      location_id: vanLocationId,
-      location_dest_id: bufferInfo.locationId,
-      origin: `RESO_${order.numeroOrdineResiduo}_${product.nome.substring(0, 20)}`,
-      note
-    }]);
+    // Documento su cui allegare foto e scrivere il chatter:
+    // - 'photo'     → il picking di reso appena creato
+    // - 'not_found' → il picking residuo (OUT) dell'ordine, come semplice segnalazione (nessun movimento)
+    const targetPickingId = returnPickingId || outPickingId;
 
-    // Crea move
-    const moveId = await callOdoo(sessionId, 'stock.move', 'create', [{
-      description_picking: product.nome,
-      picking_id: pickingId,
-      product_id: move.product_id[0],
-      product_uom_qty: qty,
-      product_uom: move.product_uom[0],
-      location_id: vanLocationId,
-      location_dest_id: bufferInfo.locationId
-    }]);
-
-    // Conferma
-    await callOdoo(sessionId, 'stock.picking', 'action_confirm', [[pickingId]]);
-
-    // Move line con qty_done e lotto
-    const moveLineData: any = {
-      move_id: moveId,
-      picking_id: pickingId,
-      product_id: move.product_id[0],
-      product_uom_id: move.product_uom[0],
-      location_id: vanLocationId,
-      location_dest_id: bufferInfo.locationId,
-      quantity: qty,
-      qty_done: qty
-    };
-    if (lotId) moveLineData.lot_id = lotId;
-    await callOdoo(sessionId, 'stock.move.line', 'create', [moveLineData]);
-
-    // Allega foto al picking e ottieni attachment_id per il chatter
+    // Allega foto
     let photoAttachmentId = null;
     if (action === 'photo' && photo) {
       photoAttachmentId = await callOdoo(sessionId, 'ir.attachment', 'create', [{
@@ -190,19 +173,26 @@ export async function POST(request: NextRequest) {
         type: 'binary',
         datas: photo,
         res_model: 'stock.picking',
-        res_id: pickingId,
+        res_id: targetPickingId,
         mimetype: 'image/jpeg'
       }]);
     }
 
-    // Scrivi nel chatter del picking (testo semplice, no HTML)
-    let chatterLines = [];
-    chatterLines.push(`📦 RESO: ${product.nome}`);
-    chatterLines.push(`Quantità: ${qty} ${product.uom}`);
-    chatterLines.push(`Da: ${vanLocationName} → A: ${bufferInfo.name}`);
-    if (lotName) chatterLines.push(`Lotto: ${lotName}`);
+    // Chatter
+    const chatterLines: string[] = [];
+    if (action === 'photo') {
+      chatterLines.push(`📦 RESO: ${product.nome}`);
+      chatterLines.push(`Quantità: ${qty} ${product.uom}`);
+      chatterLines.push(`WH/Furgoni → WH/Deposito${returnPickingName ? ` (${returnPickingName})` : ''}`);
+      if (lotName) chatterLines.push(`Lotto: ${lotName}`);
+      if (!validated) chatterLines.push('⚠️ Reso creato ma NON validato: verificare disponibilità in Odoo');
+    } else {
+      chatterLines.push(`🔎 PRODOTTO NON TROVATO NEL FURGONE: ${product.nome}`);
+      chatterLines.push(`Quantità attesa: ${qty} ${product.uom}`);
+      chatterLines.push('Nessun movimento creato (merce non presente nel furgone).');
+    }
+    chatterLines.push(`Cliente: ${order.cliente} — ${order.salesOrder}`);
 
-    // Motivazione autista
     if (messaggiAutista && messaggiAutista.length > 0) {
       chatterLines.push('');
       chatterLines.push('🚛 MOTIVAZIONE AUTISTA');
@@ -212,7 +202,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Risultato AI (se foto)
     if (action === 'photo' && aiResult) {
       chatterLines.push('');
       chatterLines.push('🤖 ANALISI GEMINI');
@@ -221,48 +210,29 @@ export async function POST(request: NextRequest) {
       chatterLines.push(`Confidenza: ${aiResult.confidence}`);
     }
 
-    // Motivo non trovato
     if (action === 'not_found' && reason) {
       chatterLines.push('');
-      chatterLines.push('❌ PRODOTTO NON TROVATO');
-      chatterLines.push(`Motivo: ${reason}`);
+      chatterLines.push('❌ Motivo non trovato:');
+      chatterLines.push(reason);
     }
 
-    const chatterBody = chatterLines.join('\n');
-
     const messagePostKwargs: any = {
-      body: chatterBody,
+      body: chatterLines.join('\n'),
       message_type: 'comment',
       subtype_xmlid: 'mail.mt_note'
     };
-    if (photoAttachmentId) {
-      messagePostKwargs.attachment_ids = [photoAttachmentId];
-    }
-    await callOdoo(sessionId, 'stock.picking', 'message_post', [[pickingId]], messagePostKwargs);
-
-    // Valida il picking (button_validate)
-    if (action === 'photo') {
-      try {
-        // skip_backorder: true => evita che il wizard backorder lasci il picking appeso
-        await callOdoo(sessionId, 'stock.picking', 'button_validate', [[pickingId]], { context: { skip_backorder: true } });
-      } catch {
-        // Se button_validate fallisce (wizard), proviamo action_assign
-        await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
-      }
-    } else {
-      // Non trovato: assegna ma NON validare
-      await callOdoo(sessionId, 'stock.picking', 'action_assign', [[pickingId]]);
-    }
+    if (photoAttachmentId) messagePostKwargs.attachment_ids = [photoAttachmentId];
+    await callOdoo(sessionId, 'stock.picking', 'message_post', [[targetPickingId]], messagePostKwargs);
 
     return NextResponse.json({
       success: true,
-      pickingId,
-      bufferName: bufferInfo.name,
-      aiResult,
       action,
+      returnPickingId,
+      returnPickingName,
+      aiResult,
       message: action === 'photo'
-        ? `✅ ${product.nome} → ${bufferInfo.name} (${aiResult?.match ? 'match confermato' : 'verifica manuale'})`
-        : `⚠️ ${product.nome} segnalato come non trovato`
+        ? `✅ Reso ${returnPickingName} creato: ${product.nome} → WH/Deposito${validated ? '' : ' (da validare in Odoo)'}${aiResult?.match ? '' : ' — verifica foto'}`
+        : `⚠️ ${product.nome} segnalato come non trovato nel furgone`
     });
 
   } catch (error: any) {
