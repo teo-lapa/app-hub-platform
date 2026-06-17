@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     // Crea move
     const moveId = await callOdoo(sessionId, 'stock.move', 'create', [{
-      name: product.nome,
+      description_picking: product.nome,
       picking_id: pickingId,
       product_id: move.product_id[0],
       product_uom_qty: qty,
