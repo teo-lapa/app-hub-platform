@@ -1,17 +1,28 @@
 /**
  * STELLA VOCE - API Route
  * Riceve l'audio dal browser, lo trascrive con Whisper, lo manda al cervello
- * vero di Stella (voice-bridge sul PC STELLA) e ritorna la risposta testuale.
- * Il browser poi la legge a voce.
+ * vero di Stella (voice-bridge sul PC STELLA) e ritorna la risposta + voce.
+ * Accesso riservato ai proprietari (Paul). URL del bridge letto da KV.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { kv } from '@vercel/kv';
+import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const BRIDGE_URL = process.env.STELLA_BRIDGE_URL || '';
 const BRIDGE_TOKEN = process.env.STELLA_VOICE_TOKEN || '';
+const ALLOWED = (process.env.STELLA_ALLOWED_EMAILS || 'paul@lapa.ch,laura@lapa.ch')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+async function getBridgeUrl(): Promise<string> {
+  try {
+    const u = (await kv.get('stella:bridge_url')) as string | null;
+    if (u) return u;
+  } catch {}
+  return process.env.STELLA_BRIDGE_URL || '';
+}
 
 async function transcribe(file: File): Promise<string> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -24,17 +35,25 @@ async function transcribe(file: File): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    // --- Accesso riservato ---
+    const token = request.cookies.get('token')?.value;
+    const user = token ? verifyToken(token) : null;
+    if (!user || !ALLOWED.includes((user.email || '').toLowerCase())) {
+      return NextResponse.json({ error: 'Accesso riservato: questa e la Stella privata di Paul.' }, { status: 403 });
+    }
+
+    const BRIDGE_URL = await getBridgeUrl();
     if (!BRIDGE_URL || !BRIDGE_TOKEN) {
-      return NextResponse.json({ error: 'Stella non e ancora collegata (manca STELLA_BRIDGE_URL).' }, { status: 503 });
+      return NextResponse.json({ error: 'Stella non e ancora online (tunnel non registrato).' }, { status: 503 });
     }
 
     const form = await request.formData();
-    const audio = form.get('audio') as File | null;
+    const inputAudio = form.get('audio') as File | null;
     const typed = (form.get('text') as string | null)?.trim() || '';
     const reset = form.get('reset') === '1';
 
     let userText = typed;
-    if (!userText && audio) userText = (await transcribe(audio)).trim();
+    if (!userText && inputAudio) userText = (await transcribe(inputAudio)).trim();
     if (!userText && !reset) return NextResponse.json({ error: 'Niente da dire.' }, { status: 400 });
 
     const r = await fetch(`${BRIDGE_URL.replace(/\/$/, '')}/ask`, {
@@ -50,25 +69,25 @@ export async function POST(request: NextRequest) {
     const data = await r.json();
     const reply = data.reply || '';
 
-    // Voce naturale (OpenAI TTS). Se fallisce, il browser usa la voce di sistema come fallback.
-    let audio = '';
+    // Voce naturale femminile (OpenAI TTS). Fallback browser se fallisce.
+    let audioOut = '';
     if (reply) {
       try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const speech = await openai.audio.speech.create({
           model: 'gpt-4o-mini-tts',
-          voice: 'coral',
+          voice: 'shimmer',
           input: reply,
-          instructions: 'Sei Stella, assistente personale italiana. Parla in italiano con tono caldo, sicuro e naturale, come al telefono con un collega di fiducia. Ritmo scorrevole, non robotico.',
+          instructions: 'Sei Stella, assistente personale donna italiana. Voce femminile, calda, sicura e naturale, come una collega di fiducia al telefono. Ritmo scorrevole e gentile, mai robotico.',
         } as any);
         const buf = Buffer.from(await speech.arrayBuffer());
-        audio = `data:audio/mp3;base64,${buf.toString('base64')}`;
-      } catch (e) {
-        audio = '';
+        audioOut = `data:audio/mp3;base64,${buf.toString('base64')}`;
+      } catch {
+        audioOut = '';
       }
     }
 
-    return NextResponse.json({ transcript: userText, reply, audio, error: data.error || null });
+    return NextResponse.json({ transcript: userText, reply, audio: audioOut, error: data.error || null });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Errore interno' }, { status: 500 });
   }
