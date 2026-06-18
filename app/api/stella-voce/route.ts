@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ transcript: userText, reply, audio: audioOut, error: data.error || null });
+    return NextResponse.json({ transcript: userText, reply, audio: audioOut, images: data.images || [], error: data.error || null });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Errore interno' }, { status: 500 });
   }
