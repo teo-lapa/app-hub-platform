@@ -31,7 +31,8 @@ export default function StellaVocePage() {
 
   function setPh(p: Phase) { phaseRef.current = p; setPhase(p); }
 
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages, phase]);
+  function scrollBottom() { const el = scrollRef.current; if (el) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight })); }
+  useEffect(() => { scrollBottom(); }, [messages, phase]);
   useEffect(() => () => { cleanup(); }, []);
 
   function rms(an: AnalyserNode) {
@@ -231,7 +232,7 @@ export default function StellaVocePage() {
         )}
         {messages.map((m, i) => (
           <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', background: m.role === 'user' ? '#1f6feb' : 'rgba(255,255,255,.08)', padding: '9px 13px', borderRadius: 15, borderBottomRightRadius: m.role === 'user' ? 4 : 15, borderBottomLeftRadius: m.role === 'stella' ? 4 : 15, whiteSpace: 'pre-wrap', lineHeight: 1.45, fontSize: 14 }}>
-            {m.image && <img src={m.image} alt="" style={{ display: 'block', maxWidth: '100%', borderRadius: 10, marginBottom: m.text ? 8 : 0 }} />}
+            {m.image && <img src={m.image} alt="" onLoad={scrollBottom} style={{ display: 'block', maxWidth: '100%', borderRadius: 10, marginBottom: m.text ? 8 : 0 }} />}
             {renderText(m.text)}
           </div>
         ))}
