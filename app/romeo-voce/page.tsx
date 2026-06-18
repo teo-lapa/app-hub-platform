@@ -10,6 +10,7 @@ export default function RomeoVocePage() {
   const [phase, setPhase] = useState<Phase>('off');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [status, setStatus] = useState('Tocca la sfera e parla con Romeo');
+  const [installEvt, setInstallEvt] = useState<any>(null);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -33,6 +34,18 @@ export default function RomeoVocePage() {
   function scrollBottom() { const el = scrollRef.current; if (el) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight })); }
   useEffect(() => { scrollBottom(); }, [messages, phase]);
   useEffect(() => () => { cleanup(); }, []);
+  useEffect(() => {
+    const h = (e: any) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener('beforeinstallprompt', h);
+    return () => window.removeEventListener('beforeinstallprompt', h);
+  }, []);
+
+  async function installApp() {
+    if (!installEvt) return;
+    installEvt.prompt();
+    try { await installEvt.userChoice; } catch {}
+    setInstallEvt(null);
+  }
 
   function rms(an: AnalyserNode) {
     const buf = new Uint8Array(an.fftSize);
@@ -221,6 +234,7 @@ export default function RomeoVocePage() {
           {phase === 'off' ? '○ OFFLINE' : '● ' + phaseLabel[phase]}
         </div>
         <h1 style={{ fontSize: 20, margin: '4px 0 0', fontWeight: 700 }}>Romeo</h1>
+        {installEvt && <button onClick={installApp} style={{ marginTop: 8, background: '#0d9488', border: 'none', color: '#fff', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📲 Installa Romeo</button>}
       </header>
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
