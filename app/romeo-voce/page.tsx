@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-type Msg = { role: 'user' | 'romeo'; text: string; image?: string };
+type Msg = { role: 'user' | 'romeo'; text: string; image?: string; images?: string[] };
 type Phase = 'off' | 'listening' | 'recording' | 'thinking' | 'speaking';
 
 export default function RomeoVocePage() {
@@ -95,7 +95,7 @@ export default function RomeoVocePage() {
       const data = await res.json();
       if (data.transcript) setMessages(m => [...m, { role: 'user', text: data.transcript }]);
       if (data.error) { setMessages(m => [...m, { role: 'romeo', text: '⚠️ ' + data.error }]); resumeListen(); return; }
-      setMessages(m => [...m, { role: 'romeo', text: data.reply }]);
+      setMessages(m => [...m, { role: 'romeo', text: data.reply, images: data.images }]);
       if (data.audio) playAudio(data.audio);
       else speakFallback(data.reply);
     } catch {
@@ -177,7 +177,7 @@ export default function RomeoVocePage() {
       const res = await fetch('/api/romeo-voce', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.error) { setMessages(m => [...m, { role: 'romeo', text: '⚠️ ' + data.error }]); resumeListen(); return; }
-      setMessages(m => [...m, { role: 'romeo', text: data.reply }]);
+      setMessages(m => [...m, { role: 'romeo', text: data.reply, images: data.images }]);
       if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
     } catch {
       setMessages(m => [...m, { role: 'romeo', text: '⚠️ Connessione interrotta' }]); resumeListen();
@@ -233,6 +233,9 @@ export default function RomeoVocePage() {
           <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', background: m.role === 'user' ? '#0d9488' : 'rgba(255,255,255,.08)', padding: '9px 13px', borderRadius: 15, borderBottomRightRadius: m.role === 'user' ? 4 : 15, borderBottomLeftRadius: m.role === 'romeo' ? 4 : 15, whiteSpace: 'pre-wrap', lineHeight: 1.45, fontSize: 14 }}>
             {m.image && <img src={m.image} alt="" onLoad={scrollBottom} style={{ display: 'block', maxWidth: '100%', borderRadius: 10, marginBottom: m.text ? 8 : 0 }} />}
             {renderText(m.text)}
+            {m.images && m.images.map((src, j) => src.startsWith('data:application/pdf')
+              ? <a key={j} href={src} target="_blank" rel="noreferrer" style={{ ...linkStyle, display: 'inline-block', marginTop: 8 }}>📄 Apri PDF</a>
+              : <img key={j} src={src} alt="" onLoad={scrollBottom} style={{ display: 'block', maxWidth: '100%', borderRadius: 10, marginTop: 8 }} />)}
           </div>
         ))}
       </div>
