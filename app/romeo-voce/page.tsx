@@ -16,7 +16,6 @@ export default function RomeoVocePage() {
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const micAnRef = useRef<AnalyserNode | null>(null);
-  const outAnRef = useRef<AnalyserNode | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -60,7 +59,7 @@ export default function RomeoVocePage() {
     const ph = phaseRef.current;
     const t = performance.now();
     let level = 0;
-    if (ph === 'speaking' && outAnRef.current) level = rms(outAnRef.current) * 1.9;
+    if (ph === 'speaking') level = 0.13 + 0.13 * Math.abs(Math.sin(t / 170));
     else if ((ph === 'listening' || ph === 'recording') && micAnRef.current) level = rms(micAnRef.current);
     else if (ph === 'thinking') level = 0.06 + 0.05 * Math.abs(Math.sin(t / 260));
 
@@ -137,9 +136,6 @@ export default function RomeoVocePage() {
       await ctx.resume();
       const src = ctx.createMediaStreamSource(stream);
       const an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an); micAnRef.current = an;
-      const el = audioElRef.current!;
-      const outSrc = ctx.createMediaElementSource(el);
-      const outAn = ctx.createAnalyser(); outAn.fftSize = 1024; outSrc.connect(outAn); outAn.connect(ctx.destination); outAnRef.current = outAn;
       activeRef.current = true; setActive(true);
       lastLoudRef.current = performance.now();
       setPh('listening'); setStatus('Parla pure, ti ascolto');
@@ -156,7 +152,7 @@ export default function RomeoVocePage() {
     try { speechSynthesis.cancel(); } catch {}
     try { audioElRef.current?.pause(); } catch {}
     try { ctxRef.current?.close(); } catch {}
-    ctxRef.current = null; streamRef.current = null; micAnRef.current = null; outAnRef.current = null;
+    ctxRef.current = null; streamRef.current = null; micAnRef.current = null;
   }
 
   function stop() {
