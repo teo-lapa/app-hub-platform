@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-type Msg = { role: 'user' | 'romeo'; text: string };
+type Msg = { role: 'user' | 'romeo'; text: string; image?: string };
 type Phase = 'off' | 'listening' | 'recording' | 'thinking' | 'speaking';
 
 export default function RomeoVocePage() {
@@ -24,6 +24,7 @@ export default function RomeoVocePage() {
   const lastLoudRef = useRef(0);
   const recStartRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const SPEECH_ON = 0.05, SILENCE = 0.032, SILENCE_MS = 1100, MIN_SPEECH_MS = 350;
 
@@ -168,6 +169,44 @@ export default function RomeoVocePage() {
     setStatus(active ? 'Nuova conversazione. Parla pure.' : 'Nuova conversazione.');
   }
 
+  async function sendImage(file: File) {
+    setPh('thinking'); setStatus('Romeo sta guardando la foto…');
+    const fd = new FormData(); fd.append('image', file, 'foto.jpg');
+    try {
+      const res = await fetch('/api/romeo-voce', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.error) { setMessages(m => [...m, { role: 'romeo', text: '⚠️ ' + data.error }]); resumeListen(); return; }
+      setMessages(m => [...m, { role: 'romeo', text: data.reply }]);
+      if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
+    } catch {
+      setMessages(m => [...m, { role: 'romeo', text: '⚠️ Connessione interrotta' }]); resumeListen();
+    }
+  }
+
+  function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setMessages(m => [...m, { role: 'user', text: '', image: String(reader.result) }]); sendImage(file); };
+    reader.readAsDataURL(file);
+  }
+
+  function renderText(text: string) {
+    if (!text) return null;
+    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+    const out: React.ReactNode[] = [];
+    let last = 0, k = 0, m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (m.index > last) out.push(text.slice(last, m.index));
+      if (m[1] && m[2]) out.push(<a key={k++} href={m[2]} target="_blank" rel="noreferrer" style={linkStyle}>{m[1]}</a>);
+      else if (m[3]) { const lbl = m[3].replace(/^https?:\/\//, '').split('/')[0]; out.push(<a key={k++} href={m[3]} target="_blank" rel="noreferrer" style={linkStyle}>🔗 {lbl}</a>); }
+      last = re.lastIndex;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+
   const phaseLabel: Record<Phase, string> = {
     off: 'ROMEO', listening: 'IN ASCOLTO', recording: 'TI ASCOLTO', thinking: 'STO PENSANDO', speaking: 'ROMEO PARLA',
   };
@@ -191,7 +230,8 @@ export default function RomeoVocePage() {
         )}
         {messages.map((m, i) => (
           <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', background: m.role === 'user' ? '#0d9488' : 'rgba(255,255,255,.08)', padding: '9px 13px', borderRadius: 15, borderBottomRightRadius: m.role === 'user' ? 4 : 15, borderBottomLeftRadius: m.role === 'romeo' ? 4 : 15, whiteSpace: 'pre-wrap', lineHeight: 1.45, fontSize: 14 }}>
-            {m.text}
+            {m.image && <img src={m.image} alt="" style={{ display: 'block', maxWidth: '100%', borderRadius: 10, marginBottom: m.text ? 8 : 0 }} />}
+            {renderText(m.text)}
           </div>
         ))}
       </div>
@@ -211,7 +251,9 @@ export default function RomeoVocePage() {
           </div>
         </button>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPickImage} />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button onClick={() => fileRef.current?.click()} style={btnStyle}>📷 Foto</button>
           {active && <button onClick={stop} style={btnStyle}>■ Termina</button>}
           <button onClick={newChat} style={btnStyle}>Nuova conversazione</button>
         </div>
@@ -223,4 +265,8 @@ export default function RomeoVocePage() {
 const btnStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(45,212,191,.3)', color: '#7fe9d8',
   borderRadius: 20, padding: '6px 16px', fontSize: 12, cursor: 'pointer',
+};
+
+const linkStyle: React.CSSProperties = {
+  color: '#5eead4', fontWeight: 600, textDecoration: 'underline', wordBreak: 'break-word',
 };

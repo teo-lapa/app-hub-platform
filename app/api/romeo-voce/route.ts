@@ -47,17 +47,25 @@ export async function POST(request: NextRequest) {
 
     const form = await request.formData();
     const inputAudio = form.get('audio') as File | null;
+    const inputImage = form.get('image') as File | null;
     const typed = (form.get('text') as string | null)?.trim() || '';
     const reset = form.get('reset') === '1';
 
     let userText = typed;
     if (!userText && inputAudio) userText = (await transcribe(inputAudio)).trim();
-    if (!userText && !reset) return NextResponse.json({ error: 'Niente da dire.' }, { status: 400 });
+
+    let imageDataUrl = '';
+    if (inputImage) {
+      const ibuf = Buffer.from(await inputImage.arrayBuffer());
+      imageDataUrl = `data:${inputImage.type || 'image/jpeg'};base64,${ibuf.toString('base64')}`;
+    }
+
+    if (!userText && !imageDataUrl && !reset) return NextResponse.json({ error: 'Niente da dire.' }, { status: 400 });
 
     const r = await fetch(`${BRIDGE_URL.replace(/\/$/, '')}/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Token': BRIDGE_TOKEN },
-      body: JSON.stringify({ text: userText, reset }),
+      body: JSON.stringify({ text: userText, reset, image: imageDataUrl || undefined }),
     });
 
     if (!r.ok) {
