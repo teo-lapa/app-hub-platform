@@ -11,6 +11,7 @@ export default function StellaVocePage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [status, setStatus] = useState('Tocca la sfera e parla con Stella');
   const [installEvt, setInstallEvt] = useState<any>(null);
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -47,6 +48,11 @@ export default function StellaVocePage() {
     try { await installEvt.userChoice; } catch {}
     setInstallEvt(null);
   }
+
+  useEffect(() => {
+    fetch('/api/stella-voce').then(r => r.json()).then(d => setAuthed(!!d.authed)).catch(() => setAuthed(true));
+  }, []);
+  function goLogin() { window.location.href = '/?redirect=' + encodeURIComponent('/stella-voce'); }
 
   function rms(an: AnalyserNode) {
     const buf = new Uint8Array(an.fftSize);
@@ -190,6 +196,7 @@ export default function StellaVocePage() {
     try {
       const res = await fetch('/api/stella-voce', { method: 'POST', body: fd });
       const data = await res.json();
+      if (res.status === 403 || data.needLogin) { setAuthed(false); resumeListen(); return; }
       if (data.error) { setMessages(m => [...m, { role: 'stella', text: '⚠️ ' + data.error }]); resumeListen(); return; }
       setMessages(m => [...m, { role: 'stella', text: data.reply, images: data.images }]);
       if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
@@ -229,6 +236,15 @@ export default function StellaVocePage() {
   return (
     <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 50% -10%, #11244a, #060b16 60%)', color: '#eaf1ff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
       <audio ref={audioElRef} hidden />
+
+      {authed === false && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#060b16', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 24, textAlign: 'center' }}>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'radial-gradient(circle at 36% 30%, #3696ff, rgba(54,150,255,.3))', boxShadow: '0 0 44px rgba(54,150,255,.75)' }} />
+          <h2 style={{ margin: 0, fontSize: 22 }}>Stella</h2>
+          <p style={{ opacity: .7, maxWidth: 280, lineHeight: 1.5, fontSize: 14 }}>Per usare Stella accedi una volta con il tuo account LAPA.</p>
+          <button onClick={goLogin} style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: 24, padding: '12px 30px', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>🔑 Accedi</button>
+        </div>
+      )}
 
       <header style={{ padding: '16px', textAlign: 'center', borderBottom: '1px solid rgba(120,160,255,.12)' }}>
         <div style={{ fontSize: 12, letterSpacing: 3, color: phase === 'off' ? '#5f7bb0' : '#7da8ff' }}>

@@ -30,10 +30,11 @@ export default function LandingPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-  // Se già autenticato, redirect a dashboard
+  // Se già autenticato, redirect (a 'redirect' se presente, altrimenti dashboard)
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard');
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      router.push(redirect || '/dashboard');
     }
   }, [isAuthenticated, router]);
 
@@ -41,12 +42,13 @@ export default function LandingPage() {
     e.preventDefault();
 
     try {
+      const redirect = new URLSearchParams(window.location.search).get('redirect') || '/dashboard';
       if (authMode === 'login') {
         await login(email, password);
-        router.push('/dashboard');
+        router.push(redirect);
       } else {
         await register(email, password, name);
-        router.push('/dashboard');
+        router.push(redirect);
       }
     } catch (error) {
       // Errore già gestito da authStore con toast

@@ -32,12 +32,19 @@ async function transcribe(file: File): Promise<string> {
   return (r as any).text || (r as unknown as string) || '';
 }
 
+export async function GET(request: NextRequest) {
+  const token = request.cookies.get('token')?.value;
+  const user = token ? verifyToken(token) : null;
+  const authed = !!user && ALLOWED.includes((user.email || '').toLowerCase());
+  return NextResponse.json({ authed, email: user?.email || null });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value;
     const user = token ? verifyToken(token) : null;
     if (!user || !ALLOWED.includes((user.email || '').toLowerCase())) {
-      return NextResponse.json({ error: 'Accesso riservato: questo e Romeo, assistente di Laura.' }, { status: 403 });
+      return NextResponse.json({ error: 'Accesso riservato: questo e Romeo, assistente di Laura.', needLogin: !user }, { status: 403 });
     }
 
     const BRIDGE_URL = await getBridgeUrl();
