@@ -19,7 +19,7 @@ function r1(n: number): number {
 
 export type FerieBalance = {
   year: number;
-  anchor: string;          // data inizio conteggio usata (override o first_contract_date)
+  anchor: string;          // data inizio conteggio usata (override o contract_date_start)
   accrualStart: string;    // max(1 gennaio anno, anchor)
   monthsMatured: number;   // mesi compiuti a oggi nell'anno
   matured: number;         // giorni maturati a oggi
@@ -32,7 +32,7 @@ export type FerieBalance = {
 
 /**
  * Calcola il saldo ferie per l'anno indicato (default: anno corrente).
- * anchorDate = x_ferie_start_date || first_contract_date (formato YYYY-MM-DD).
+ * anchorDate = x_ferie_start_date || contract_date_start (formato YYYY-MM-DD).
  * takenDays/pendingDays = somma number_of_days delle ferie pagate dell'anno, già filtrate per stato.
  */
 export function computeBalance(opts: {
