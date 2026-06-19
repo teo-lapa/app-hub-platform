@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       const year = new Date().getFullYear();
       const emps = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
         domain: [['id', 'in', empIds]],
-        fields: ['id', 'first_contract_date', 'x_ferie_start_date'],
+        fields: ['id', 'contract_date_start', 'x_ferie_start_date'],
       });
       const yearLeaves = await callOdoo(cookies, 'hr.leave', 'search_read', [], {
         domain: [
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         const mine = yearLeaves.filter((l: any) => l.employee_id?.[0] === e.id);
         const taken = sumPaidLeaveDays(mine, ['validate'], year);
         const pending = sumPaidLeaveDays(mine, ['confirm', 'validate1'], year);
-        balances[e.id] = computeBalance({ anchorDate: e.x_ferie_start_date || e.first_contract_date || null, takenDays: taken, pendingDays: pending });
+        balances[e.id] = computeBalance({ anchorDate: e.x_ferie_start_date || e.contract_date_start || null, takenDays: taken, pendingDays: pending });
       }
     }
 

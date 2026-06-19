@@ -22,7 +22,7 @@ const STATE_LABELS: Record<string, string> = {
 async function findEmployee(cookies: string | null, uid: number) {
   const employees = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
     domain: [['user_id', '=', uid], ['active', '=', true]],
-    fields: ['id', 'name', 'work_email', 'parent_id', 'department_id', 'first_contract_date', 'x_ferie_start_date'],
+    fields: ['id', 'name', 'work_email', 'parent_id', 'department_id', 'contract_date_start', 'x_ferie_start_date'],
     order: 'id asc',
     limit: 1,
   });
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Saldo ferie anno corrente
     const year = new Date().getFullYear();
-    const anchorDate = employee.x_ferie_start_date || employee.first_contract_date || null;
+    const anchorDate = employee.x_ferie_start_date || employee.contract_date_start || null;
     const takenDays = sumPaidLeaveDays(leaves, ['validate'], year);
     const pendingDays = sumPaidLeaveDays(leaves, ['confirm', 'validate1'], year);
     const balance = computeBalance({ anchorDate, takenDays, pendingDays });
