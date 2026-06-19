@@ -751,9 +751,9 @@ export default function SmartRouteAIPage() {
     }
   }
 
-  // Un PICK e' escluso se sta nel batch "🚫 FUORI ZONA"
+  // Un PICK e' escluso se sta in un batch "FUORI ZONA"/"FUORI ZONE" (o con 🚫)
   function isExcludedPicking(p: Picking) {
-    return !!p.batchName && (p.batchName === EXCLUSION_BATCH_NAME || /fuori zona|🚫/i.test(p.batchName));
+    return !!p.batchName && /fuori\s*zon|🚫/i.test(p.batchName);
   }
 
   // Un PICK e' "intoccabile" se il suo giro e' gia' partito (in corso) o completato
