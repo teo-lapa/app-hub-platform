@@ -47,6 +47,11 @@ interface Route {
 
 type Algorithm = 'geographic' | 'clarke-wright' | 'nearest';
 
+// Vincoli ottimizzazione giri LAPA
+const VEHICLE_CAPACITY_KG = 1200;       // portata massima per furgone
+const MAX_VEHICLES = 4;                  // furgoni/autisti disponibili
+const EXCLUSION_BATCH_NAME = '🚫 FUORI ZONA'; // i PICK qui dentro vengono ignorati
+
 export default function SmartRouteAIPage() {
   // State
   const [loading, setLoading] = useState(false);
@@ -746,21 +751,72 @@ export default function SmartRouteAIPage() {
     }
   }
 
-  // Optimize routes
+  // Un PICK e' escluso se sta nel batch "🚫 FUORI ZONA"
+  function isExcludedPicking(p: Picking) {
+    return !!p.batchName && (p.batchName === EXCLUSION_BATCH_NAME || /fuori zona|🚫/i.test(p.batchName));
+  }
+
+  // Un PICK e' "intoccabile" se il suo giro e' gia' partito (in corso) o completato
+  function isInRunningBatch(p: Picking) {
+    if (!p.batchId) return false;
+    const b = batches.find(x => x.id === p.batchId);
+    return !!b && (b.state === 'in_progress' || b.state === 'done');
+  }
+
+  // Crea (o riusa) il batch di esclusione per la data selezionata
+  async function ensureExclusionBatch() {
+    if (!dateFrom) {
+      showToast('Seleziona prima la data', 'warning');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch('/api/smart-route-ai/exclusion-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: dateFrom })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.batchId) throw new Error(data.error || 'Errore');
+
+      showToast(
+        data.created
+          ? `Batch "${EXCLUSION_BATCH_NAME}" creato — trascinaci i PICK da escludere`
+          : `Batch "${EXCLUSION_BATCH_NAME}" già presente`,
+        'success'
+      );
+      await loadBatches(dateFrom);
+    } catch (error: any) {
+      debugLog(`Errore batch esclusione: ${error.message}`, 'error');
+      showToast('Errore batch esclusione', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Optimize routes (VRP reale: Clarke-Wright + 2-opt, cap 1200kg, max 4 furgoni)
   async function optimizeRoutes() {
     if (pickings.length === 0) {
-      showToast('Nessun picking da ottimizzare', 'error');
+      showToast('Importa prima i PICK', 'warning');
       return;
     }
 
-    const selectedVehicles = vehicles.filter(v => v.selected);
-    if (selectedVehicles.length === 0) {
-      showToast('Seleziona almeno un veicolo', 'error');
+    const eligible = pickings.filter(p => p.lat && p.lng && !isExcludedPicking(p) && !isInRunningBatch(p));
+    const excludedCount = pickings.length - eligible.length;
+
+    if (eligible.length === 0) {
+      showToast('Nessun PICK da ottimizzare (tutti esclusi o in giri già partiti)', 'warning');
+      return;
+    }
+
+    const vehiclesToUse = vehicles.slice(0, MAX_VEHICLES);
+    if (vehiclesToUse.length === 0) {
+      showToast('Nessun veicolo disponibile', 'error');
       return;
     }
 
     setLoading(true);
-    debugLog(`Ottimizzazione con algoritmo: ${selectedAlgorithm}`, 'info');
+    debugLog(`Ottimizzazione di ${eligible.length} PICK su ${vehiclesToUse.length} furgoni (${excludedCount} esclusi)`, 'info');
     const startTime = Date.now();
 
     try {
@@ -768,10 +824,10 @@ export default function SmartRouteAIPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pickings,
-          vehicles: selectedVehicles,
-          algorithm: selectedAlgorithm,
-          capacity: dynamicCapacity
+          pickings: eligible,
+          vehicles: vehiclesToUse,
+          capacity: VEHICLE_CAPACITY_KG,
+          maxVehicles: MAX_VEHICLES
         })
       });
 
@@ -780,8 +836,7 @@ export default function SmartRouteAIPage() {
       const data = await response.json();
       setRoutes(data.routes || []);
 
-      const endTime = Date.now();
-      const time = ((endTime - startTime) / 1000).toFixed(2);
+      const time = ((Date.now() - startTime) / 1000).toFixed(1);
       setOptimizationTime(`${time}s`);
 
       updateStats({
@@ -789,8 +844,15 @@ export default function SmartRouteAIPage() {
         unassignedOrders: data.unassigned || 0
       });
 
-      debugLog(`Ottimizzazione completata in ${time}s`, 'success');
-      showToast(`Ottimizzazione completata in ${time}s`, 'success');
+      const src = data.matrixSource === 'osrm' ? 'strade reali' : "linea d'aria";
+      let msg = `${data.routes?.length || 0} giri • ${Math.round(data.totalKm || 0)} km • ${src}`;
+      if (excludedCount > 0) msg += ` • ${excludedCount} esclusi`;
+      debugLog(`Ottimizzazione completata in ${time}s (${src})`, 'success');
+      showToast(msg, 'success');
+
+      if (data.unassigned > 0) {
+        showToast(`⚠️ ${data.unassigned} consegne non assegnate (capacità 4×1200kg superata o senza coordinate)`, 'warning');
+      }
 
     } catch (error: any) {
       debugLog(`Errore ottimizzazione: ${error.message}`, 'error');
@@ -814,22 +876,19 @@ export default function SmartRouteAIPage() {
       const response = await fetch('/api/smart-route-ai/create-batches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ routes })
+        body: JSON.stringify({ routes, date: dateFrom })
       });
 
       if (!response.ok) throw new Error('Errore creazione batch');
 
       const data = await response.json();
 
-      debugLog(`Creati ${data.created} batch in Odoo`, 'success');
-      showToast(`Creati ${data.created} batch con successo`, 'success');
+      debugLog(`Creati ${data.created} giri in Odoo`, 'success');
+      showToast(`Creati ${data.created} giri con autista/auto — ora confermali`, 'success');
 
-      // Ask to reset
-      setTimeout(() => {
-        if (confirm('Batch creati con successo! Vuoi pulire e ricominciare?')) {
-          clearRoutes();
-        }
-      }, 1000);
+      // Pulisci l'anteprima e ricarica i giri reali da Odoo
+      setRoutes([]);
+      await importPickings();
 
     } catch (error: any) {
       debugLog(`Errore creazione batch: ${error.message}`, 'error');
@@ -1101,6 +1160,21 @@ export default function SmartRouteAIPage() {
                   🔄 Aggiorna
                 </button>
               </div>
+              <button
+                onClick={optimizeRoutes}
+                disabled={loading || pickings.length === 0}
+                className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 shadow"
+              >
+                <Zap className="h-4 w-4" /> Ottimizza Giri
+              </button>
+              <button
+                onClick={ensureExclusionBatch}
+                disabled={loading || !dateFrom}
+                className="w-full px-3 py-1.5 bg-white border-2 border-red-300 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                title="Crea il batch dove trascinare i PICK da NON ottimizzare (posta, fuori zona)"
+              >
+                🚫 Crea/usa batch FUORI ZONA
+              </button>
               <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-600">WH/PICK trovati:</span>
@@ -1176,7 +1250,7 @@ export default function SmartRouteAIPage() {
                           </div>
                         </div>
                         <div className="text-xs bg-cyan-500 text-white px-2 py-1 rounded-full font-semibold">
-                          {dynamicCapacity} kg
+                          max {VEHICLE_CAPACITY_KG} kg
                         </div>
                       </div>
                     </div>

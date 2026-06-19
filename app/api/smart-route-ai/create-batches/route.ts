@@ -41,7 +41,7 @@ interface Route {
 
 export async function POST(request: NextRequest) {
   try {
-    const { routes } = await request.json();
+    const { routes, date } = await request.json();
 
     const cookieStore = cookies();
     const sessionId = cookieStore.get('odoo_session_id')?.value;
@@ -55,9 +55,10 @@ export async function POST(request: NextRequest) {
 
     let created = 0;
 
-    for (const route of routes as Route[]) {
+    for (let idx = 0; idx < (routes as Route[]).length; idx++) {
+      const route = (routes as Route[])[idx];
       try {
-        // Create batch in Odoo
+        // Crea il batch in Odoo gia con autista (hr.employee) e auto (fleet.vehicle) del giro
         const batchResponse = await fetch(`${ODOO_URL}/web/dataset/call_kw/stock.picking.batch/create`, {
           method: 'POST',
           headers: {
@@ -71,8 +72,10 @@ export async function POST(request: NextRequest) {
               model: 'stock.picking.batch',
               method: 'create',
               args: [{
-                name: route.geoName || `Batch ${route.vehicle.name}`,
-                user_id: route.vehicle.employeeId || false,
+                name: route.geoName || `Giro ${idx + 1}`,
+                scheduled_date: date ? `${date} 06:00:00` : false,
+                x_studio_auto_del_giro: route.vehicle?.id || false,
+                x_studio_autista_del_giro: route.vehicle?.employeeId || false,
                 picking_ids: [[6, 0, route.pickings.map(p => p.id)]]
               }],
               kwargs: injectLangContext({})
