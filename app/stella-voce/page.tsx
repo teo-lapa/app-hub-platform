@@ -13,6 +13,7 @@ export default function StellaVocePage() {
   const [installEvt, setInstallEvt] = useState<any>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [typed, setTyped] = useState('');
+  const [showInput, setShowInput] = useState(false);
   const [notif, setNotif] = useState(0);
   const [notifItems, setNotifItems] = useState<any[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -141,17 +142,20 @@ export default function StellaVocePage() {
     }
   }
 
-  async function sendText(text: string) {
+  async function sendText(text: string, mute = false) {
     setMessages(m => [...m, { role: 'user', text }]);
     setPh('thinking'); setStatus('Stella sta pensando…');
-    const fd = new FormData(); fd.append('text', text);
+    const fd = new FormData(); fd.append('text', text); if (mute) fd.append('mute', '1');
     try {
       const res = await fetch('/api/stella-voce', { method: 'POST', body: fd });
       const data = await res.json();
       if (res.status === 403 || data.needLogin) { setAuthed(false); resumeListen(); return; }
       if (data.error) { setMessages(m => [...m, { role: 'stella', text: '⚠️ ' + data.error }]); resumeListen(); return; }
       setMessages(m => [...m, { role: 'stella', text: data.reply, images: data.images }]);
-      if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
+      if (mute) {
+        if (activeRef.current) resumeListen();
+        else { setPh('off'); setStatus('Risposta scritta. Tocca per parlare o scrivi ancora.'); }
+      } else if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
     } catch {
       setMessages(m => [...m, { role: 'stella', text: '⚠️ Connessione interrotta' }]); resumeListen();
     }
@@ -337,12 +341,14 @@ export default function StellaVocePage() {
         </div>
         <div style={{ fontSize: 13, opacity: .75, minHeight: 18, textAlign: 'center' }}>{status}</div>
 
-        <form onSubmit={(e) => { e.preventDefault(); const t = typed.trim(); if (t) { sendText(t); setTyped(''); } }} style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 440 }}>
-          <input value={typed} onChange={e => setTyped(e.target.value)} placeholder="Scrivi a Stella…" disabled={phase === 'thinking' || phase === 'speaking'}
-            style={{ flex: 1, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(120,160,255,.3)', color: '#eaf1ff', borderRadius: 22, padding: '11px 16px', fontSize: 15, outline: 'none' }} />
-          <button type="submit" disabled={!typed.trim() || phase === 'thinking' || phase === 'speaking'}
-            style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: '50%', width: 44, height: 44, fontSize: 18, cursor: 'pointer', flex: '0 0 auto' }}>➤</button>
-        </form>
+        {showInput && (
+          <form onSubmit={(e) => { e.preventDefault(); const t = typed.trim(); if (t) { sendText(t, true); setTyped(''); } }} style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 460 }}>
+            <input autoFocus value={typed} onChange={e => setTyped(e.target.value)} placeholder="Scrivi a Stella… (non risponde a voce)"
+              style={{ flex: 1, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(120,160,255,.3)', color: '#eaf1ff', borderRadius: 22, padding: '11px 16px', fontSize: 15, outline: 'none' }} />
+            <button type="submit" disabled={!typed.trim()} style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: '50%', width: 44, height: 44, fontSize: 18, cursor: 'pointer', flex: '0 0 auto' }}>➤</button>
+            <button type="button" onClick={() => { setShowInput(false); setTyped(''); }} style={{ background: 'transparent', border: '1px solid rgba(120,160,255,.3)', color: '#9bb8ff', borderRadius: '50%', width: 44, height: 44, fontSize: 16, cursor: 'pointer', flex: '0 0 auto' }}>✕</button>
+          </form>
+        )}
 
         <button
           onClick={active ? stop : start}
@@ -366,6 +372,7 @@ export default function StellaVocePage() {
         <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPickImage} />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button onClick={() => fileRef.current?.click()} style={btnStyle}>📷 Foto</button>
+          <button onClick={() => setShowInput(s => !s)} style={btnStyle}>⌨️ Scrivi</button>
           {active && <button onClick={stop} style={btnStyle}>■ Termina</button>}
           <button onClick={newChat} style={btnStyle}>Nuova conversazione</button>
         </div>
