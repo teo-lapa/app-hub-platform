@@ -1,20 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Search, Package } from 'lucide-react';
+import { Search, Package, X } from 'lucide-react';
 
 interface Product {
   id: number;
   name: string;
   code?: string;
-  price?: number;
-  originalPrice?: number;
-  hasCustomPrice?: boolean;
+  price?: number | null;
   image?: string;
   unit?: string;
-  category?: { name?: string } | string;
   available?: boolean;
-  quantity?: number;
 }
 
 function imgSrc(img?: string) {
@@ -23,13 +19,8 @@ function imgSrc(img?: string) {
   if (img.length > 100) return `data:image/jpeg;base64,${img}`;
   return img;
 }
-const chf = (n?: number) =>
+const chf = (n?: number | null) =>
   n == null ? '' : 'CHF ' + n.toLocaleString('it-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function catName(c?: { name?: string } | string) {
-  if (!c) return '';
-  return typeof c === 'string' ? c : c.name || '';
-}
 
 export default function CatalogoView() {
   const [q, setQ] = useState('');
@@ -60,42 +51,14 @@ export default function CatalogoView() {
   const suggestions = q.trim() && focused ? items.slice(0, 7) : [];
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header + ricerca con tendina */}
-      <div className="border-b border-black/5 dark:border-white/5 px-4 py-3 md:px-6">
-        <h1 className="mb-2 text-xl font-semibold">Catalogo</h1>
-        <div className="relative max-w-xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onFocus={() => { if (blurTimer.current) clearTimeout(blurTimer.current); setFocused(true); }}
-            onBlur={() => { blurTimer.current = setTimeout(() => setFocused(false), 150); }}
-            placeholder="Cerca un prodotto…"
-            className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#222236] py-2 pl-10 pr-3 text-sm outline-none focus:border-[#dc2626]/50"
-          />
-          {/* Tendina suggerimenti (foto + nome + prezzo) */}
-          {suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#222236] py-1 shadow-xl">
-              {suggestions.map((p) => (
-                <button
-                  key={p.id}
-                  onMouseDown={(e) => { e.preventDefault(); setQ(p.name); setFocused(false); }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imgSrc(p.image)} alt="" className="h-9 w-9 shrink-0 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/logos/logo-default.png'; }} />
-                  <span className="flex-1 truncate text-sm">{p.name}</span>
-                  {p.price != null && <span className="shrink-0 text-sm font-semibold text-[#dc2626]">{chf(p.price)}</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="relative flex h-full flex-col">
+      {/* Titolo slim */}
+      <div className="px-4 pt-4 pb-1 md:px-6">
+        <h1 className="text-xl font-semibold">Catalogo</h1>
       </div>
 
-      {/* Griglia compatta */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
+      {/* Griglia (padding in basso per non finire sotto la barra) */}
+      <div className="flex-1 overflow-y-auto px-4 pb-28 pt-2 md:px-6">
         {loading ? (
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
             {Array.from({ length: 14 }).map((_, i) => (
@@ -126,6 +89,7 @@ export default function CatalogoView() {
                   <img
                     src={imgSrc(p.image)}
                     alt={p.name}
+                    loading="lazy"
                     className="h-full w-full object-contain p-1.5 transition group-hover:scale-105"
                     onError={(e) => { (e.target as HTMLImageElement).src = '/logos/logo-default.png'; }}
                   />
@@ -145,6 +109,47 @@ export default function CatalogoView() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* BARRA DI RICERCA FLOTTANTE IN BASSO (bianca, stile sito) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-5">
+        <div className="pointer-events-auto relative w-full max-w-xl">
+          {/* Tendina suggerimenti: si apre verso l'ALTO */}
+          {suggestions.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 max-h-80 overflow-y-auto rounded-2xl border border-black/10 bg-white py-1 shadow-2xl dark:border-white/10 dark:bg-[#222236]">
+              {suggestions.map((p) => (
+                <button
+                  key={p.id}
+                  onMouseDown={(e) => { e.preventDefault(); setQ(p.name); setFocused(false); }}
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imgSrc(p.image)} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/logos/logo-default.png'; }} />
+                  <span className="flex-1 truncate text-sm">{p.name}</span>
+                  {p.price != null && <span className="shrink-0 text-sm font-semibold text-[#dc2626]">{chf(p.price)}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* La barra */}
+          <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-3 shadow-2xl dark:border-white/10 dark:bg-[#222236]">
+            <Search className="h-5 w-5 shrink-0 text-zinc-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onFocus={() => { if (blurTimer.current) clearTimeout(blurTimer.current); setFocused(true); }}
+              onBlur={() => { blurTimer.current = setTimeout(() => setFocused(false), 150); }}
+              placeholder="Cerca un prodotto…"
+              className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-zinc-400"
+            />
+            {q && (
+              <button onMouseDown={(e) => { e.preventDefault(); setQ(''); }} className="shrink-0 text-zinc-400 hover:text-zinc-600">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

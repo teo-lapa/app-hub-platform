@@ -41,7 +41,7 @@ export default function FattureView() {
     let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/portale-clienti/invoices');
+        const r = await fetch('/api/app-clienti/invoices');
         const d = await r.json();
         if (alive) setInvoices(Array.isArray(d.invoices) ? d.invoices : []);
       } catch {

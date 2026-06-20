@@ -41,7 +41,7 @@ export default function OrdiniView() {
     let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/portale-clienti/orders');
+        const r = await fetch('/api/app-clienti/orders');
         const d = await r.json();
         if (alive) setOrders(Array.isArray(d.orders) ? d.orders : []);
       } catch {
