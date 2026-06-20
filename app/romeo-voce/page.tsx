@@ -27,6 +27,7 @@ export default function RomeoVocePage() {
   const recStartRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const wakeRef = useRef<any>(null);
 
   const SPEECH_ON = 0.05, SILENCE = 0.032, SILENCE_MS = 1100, MIN_SPEECH_MS = 350;
 
@@ -52,6 +53,15 @@ export default function RomeoVocePage() {
     fetch('/api/romeo-voce').then(r => r.json()).then(d => setAuthed(!!d.authed)).catch(() => setAuthed(true));
   }, []);
   function goLogin() { window.location.href = '/?redirect=' + encodeURIComponent('/romeo-voce'); }
+  useEffect(() => {
+    const onVis = async () => {
+      if (document.visibilityState === 'visible' && activeRef.current && !wakeRef.current) {
+        try { wakeRef.current = await (navigator as any).wakeLock?.request('screen'); wakeRef.current?.addEventListener?.('release', () => { wakeRef.current = null; }); } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   function rms(an: AnalyserNode) {
     const buf = new Uint8Array(an.fftSize);
@@ -174,6 +184,7 @@ export default function RomeoVocePage() {
       const src = ctx.createMediaStreamSource(stream);
       const an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an); micAnRef.current = an;
       activeRef.current = true; setActive(true);
+      try { wakeRef.current = await (navigator as any).wakeLock?.request('screen'); wakeRef.current?.addEventListener?.('release', () => { wakeRef.current = null; }); } catch {}
       lastLoudRef.current = performance.now();
       setPh('listening'); setStatus('Parla pure, ti ascolto');
       rafRef.current = requestAnimationFrame(loop);
@@ -189,6 +200,7 @@ export default function RomeoVocePage() {
     try { speechSynthesis.cancel(); } catch {}
     try { audioElRef.current?.pause(); } catch {}
     try { ctxRef.current?.close(); } catch {}
+    try { wakeRef.current?.release(); wakeRef.current = null; } catch {}
     ctxRef.current = null; streamRef.current = null; micAnRef.current = null;
   }
 
@@ -273,6 +285,7 @@ export default function RomeoVocePage() {
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', opacity: .45, marginTop: 24, lineHeight: 1.7, fontSize: 14 }}>
             Avvia e parla naturalmente:<br />“Romeo, cosa devo pagare oggi?”<br />“Leggimi le email importanti”<br />“Com'e la situazione fatture?”
+            <div style={{ marginTop: 16, fontSize: 12, opacity: .8 }}>🚗 In auto: collega il Bluetooth, tocca la sfera una volta e parla a mani libere — lo schermo resta acceso.</div>
           </div>
         )}
         {messages.map((m, i) => (
