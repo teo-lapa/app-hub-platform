@@ -59,6 +59,8 @@ export default function SmartRouteAIPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [pickings, setPickings] = useState<Picking[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Set<number>>(new Set());
+  const [optimizeMode, setOptimizeMode] = useState<'auto' | 'selected'>('auto');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<Algorithm>('geographic');
   const [dynamicCapacity, setDynamicCapacity] = useState(1500);
   const [capacityInput, setCapacityInput] = useState('');
@@ -809,32 +811,54 @@ export default function SmartRouteAIPage() {
       return;
     }
 
-    const vehiclesToUse = vehicles.slice(0, MAX_VEHICLES);
-    if (vehiclesToUse.length === 0) {
-      showToast('Nessun veicolo disponibile', 'error');
+    // Modalita "batch selezionati": distribuisce TUTTE le consegne nei soli giri spuntati
+    const selectedBatches = batches.filter(b =>
+      selectedBatchIds.has(b.id) && b.state === 'draft' && !/fuori\s*zon|🚫/i.test(b.name)
+    );
+    const useSelected = selectedBatchIds.size > 0;
+
+    if (useSelected && selectedBatches.length === 0) {
+      showToast('I giri selezionati non sono validi (già partiti o FUORI ZONE)', 'warning');
       return;
     }
 
+    let body: any;
+    let mode: 'auto' | 'selected';
+    if (useSelected) {
+      mode = 'selected';
+      const targets = selectedBatches.map(b => ({
+        id: b.id, batchId: b.id,
+        name: b.vehicleName || b.name,
+        plate: '', driver: b.driverName || '', driverId: 0, employeeId: null,
+        capacity: VEHICLE_CAPACITY_KG, selected: true
+      }));
+      body = { pickings: eligible, vehicles: targets, capacity: VEHICLE_CAPACITY_KG, targetRoutes: targets.length };
+    } else {
+      mode = 'auto';
+      const vehiclesToUse = vehicles.slice(0, MAX_VEHICLES);
+      if (vehiclesToUse.length === 0) {
+        showToast('Nessun veicolo disponibile (oppure spunta i giri da usare)', 'error');
+        return;
+      }
+      body = { pickings: eligible, vehicles: vehiclesToUse, capacity: VEHICLE_CAPACITY_KG, targetRoutes: vehiclesToUse.length };
+    }
+
     setLoading(true);
-    debugLog(`Ottimizzazione di ${eligible.length} PICK su ${vehiclesToUse.length} furgoni (${excludedCount} esclusi)`, 'info');
+    debugLog(`Ottimizzazione ${mode}: ${eligible.length} PICK (${excludedCount} esclusi)`, 'info');
     const startTime = Date.now();
 
     try {
       const response = await fetch('/api/smart-route-ai/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pickings: eligible,
-          vehicles: vehiclesToUse,
-          capacity: VEHICLE_CAPACITY_KG,
-          maxVehicles: MAX_VEHICLES
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) throw new Error('Errore ottimizzazione');
 
       const data = await response.json();
       setRoutes(data.routes || []);
+      setOptimizeMode(mode);
 
       const time = ((Date.now() - startTime) / 1000).toFixed(1);
       setOptimizationTime(`${time}s`);
@@ -850,8 +874,11 @@ export default function SmartRouteAIPage() {
       debugLog(`Ottimizzazione completata in ${time}s (${src})`, 'success');
       showToast(msg, 'success');
 
+      if (data.overCapacityCount > 0) {
+        showToast(`⚠️ ${data.overCapacityCount} giro/i oltre ${VEHICLE_CAPACITY_KG} kg — sposta qualcosa o aggiungi un furgone`, 'warning');
+      }
       if (data.unassigned > 0) {
-        showToast(`⚠️ ${data.unassigned} consegne non assegnate (capacità 4×1200kg superata o senza coordinate)`, 'warning');
+        showToast(`⚠️ ${data.unassigned} consegne senza coordinate (cliente non geolocalizzato)`, 'warning');
       }
 
     } catch (error: any) {
@@ -896,6 +923,50 @@ export default function SmartRouteAIPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Distribuisce le consegne ottimizzate nei batch (giri) selezionati esistenti
+  async function applyToBatches() {
+    const assignments = routes
+      .filter(r => r.vehicle && (r.vehicle as any).batchId)
+      .map(r => ({ batchId: (r.vehicle as any).batchId, pickingIds: r.pickings.map(p => p.id) }));
+
+    if (assignments.length === 0) {
+      showToast('Nessun giro selezionato valido', 'error');
+      return;
+    }
+
+    setLoading(true);
+    debugLog(`Applico ${assignments.length} giri ai batch selezionati...`, 'info');
+    try {
+      const response = await fetch('/api/smart-route-ai/apply-batches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignments })
+      });
+      if (!response.ok) throw new Error('Errore applicazione');
+      const data = await response.json();
+
+      showToast(`Consegne distribuite in ${data.applied} giri — ora confermali`, 'success');
+      setRoutes([]);
+      setOptimizeMode('auto');
+      setSelectedBatchIds(new Set());
+      await importPickings();
+    } catch (error: any) {
+      debugLog(`Errore applicazione giri: ${error.message}`, 'error');
+      showToast('Errore applicazione giri', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Seleziona/deseleziona un giro per l'ottimizzazione
+  function toggleBatchSelection(id: number) {
+    setSelectedBatchIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   // Clear routes
@@ -1263,9 +1334,10 @@ export default function SmartRouteAIPage() {
           {/* Batch List */}
           {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').length > 0 && (
             <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                 <span>📦</span> Batch
               </h3>
+              <p className="text-xs text-gray-500 mb-3">Spunta i giri da usare e premi ⚡ Ottimizza: distribuisce le consegne solo in quelli (autisti mantenuti).</p>
               <div className="space-y-2">
                 {batches.filter(b => b.state !== 'done' && b.state !== 'cancel').map((batch) => {
                   // Get consistent color based on batch ID
@@ -1289,13 +1361,21 @@ export default function SmartRouteAIPage() {
                     <div
                       key={batch.id}
                       onClick={() => handleBatchClick(batch)}
-                      className="p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md"
+                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${selectedBatchIds.has(batch.id) ? 'ring-2 ring-indigo-500' : ''}`}
                       style={{
                         borderColor: color,
                         backgroundColor: `${color}10`
                       }}
                     >
                       <div className="flex items-start justify-between mb-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedBatchIds.has(batch.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => { e.stopPropagation(); toggleBatchSelection(batch.id); }}
+                          className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0"
+                          title="Seleziona questo giro per l'ottimizzazione"
+                        />
                         <div className="flex-1">
                           <div className="font-semibold text-sm text-gray-900 mb-1">
                             {batch.name}
@@ -1345,21 +1425,21 @@ export default function SmartRouteAIPage() {
             </div>
           )}
 
-          {/* Create Batches */}
+          {/* Crea / Applica giri */}
           {routes.length > 0 && (
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg shadow p-4">
               <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <span>📋</span> Crea Batch in Odoo
+                <span>📋</span> {optimizeMode === 'selected' ? 'Applica ai giri selezionati' : 'Crea Giri in Odoo'}
               </h3>
               <div className="text-sm text-green-700 mb-3">
-                {routes.length} percorsi pronti per la creazione
+                {routes.length} giri pronti {optimizeMode === 'selected' ? '(autisti mantenuti)' : '(con autista/auto)'}
               </div>
               <button
-                onClick={createBatches}
+                onClick={optimizeMode === 'selected' ? applyToBatches : createBatches}
                 disabled={loading}
                 className="w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
               >
-                ✅ Crea Batch e Assegna
+                {optimizeMode === 'selected' ? '✅ Applica ai giri selezionati' : '✅ Crea Giri e Assegna'}
               </button>
             </div>
           )}

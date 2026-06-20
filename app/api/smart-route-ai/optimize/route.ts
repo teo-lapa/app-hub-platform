@@ -25,6 +25,7 @@ interface Vehicle {
   employeeId: number | null;
   capacity: number;
   selected: boolean;
+  batchId?: number; // in modalita "batch selezionati": id del giro di destinazione
 }
 
 interface Route {
@@ -33,6 +34,7 @@ interface Route {
   totalWeight: number;
   totalDistance: number; // km
   totalDuration: number; // minuti (tragitto + scarichi)
+  overCapacity: boolean;
   geoName?: string;
 }
 
@@ -117,77 +119,39 @@ function twoOpt(route: number[], dist: number[][]): number[] {
   return best;
 }
 
-// Clarke-Wright Savings con vincolo di capacita; consolida fino a maxRoutes giri.
-function clarkeWright(n: number, dist: number[][], weights: number[], capacity: number, maxRoutes: number): number[][] {
-  let routes: (number[] | null)[] = [];
-  const routeIndexOf = new Array(n + 1).fill(-1);
+// Sweep: divide le consegne in K giri per zona (angolo attorno al deposito),
+// bilanciati per numero di tappe, con il peso come limite di sicurezza.
+function sweepRoutes(points: { lat: number; lng: number }[], weights: number[], capacity: number, K: number): number[][] {
+  const n = points.length - 1; // escluso deposito (indice 0)
+  if (n === 0 || K <= 0) return [];
+
+  const cust = [];
   for (let i = 1; i <= n; i++) {
-    routeIndexOf[i] = routes.length;
-    routes.push([i]);
+    const ang = Math.atan2(points[i].lat - DEPOT.lat, points[i].lng - DEPOT.lng);
+    cust.push({ i, ang });
   }
-  const weightOf = (r: number[]) => r.reduce((s, c) => s + weights[c], 0);
+  cust.sort((a, b) => a.ang - b.ang);
+  const order = cust.map(c => c.i);
 
-  const savings: [number, number, number][] = [];
-  for (let i = 1; i <= n; i++) {
-    for (let j = i + 1; j <= n; j++) {
-      savings.push([dist[0][i] + dist[0][j] - dist[i][j], i, j]);
+  const per = Math.ceil(order.length / K); // tappe per giro (bilanciamento)
+  const groups: number[][] = [];
+  let cur: number[] = [];
+  let curW = 0;
+  for (const c of order) {
+    const w = weights[c] || 0;
+    const canOpenNew = groups.length < K - 1;
+    const full = cur.length >= per;
+    const overCap = curW + w > capacity;
+    if (cur.length > 0 && canOpenNew && (full || overCap)) {
+      groups.push(cur);
+      cur = [];
+      curW = 0;
     }
+    cur.push(c);
+    curW += w;
   }
-  savings.sort((a, b) => b[0] - a[0]);
-
-  for (const [s, i, j] of savings) {
-    if (s <= 0) break;
-    const ai = routeIndexOf[i], aj = routeIndexOf[j];
-    if (ai === aj || ai < 0 || aj < 0) continue;
-    const ri = routes[ai], rj = routes[aj];
-    if (!ri || !rj) continue;
-    if (weightOf(ri) + weightOf(rj) > capacity) continue;
-
-    const iStart = ri[0] === i, iEnd = ri[ri.length - 1] === i;
-    const jStart = rj[0] === j, jEnd = rj[rj.length - 1] === j;
-    if (!(iStart || iEnd) || !(jStart || jEnd)) continue;
-
-    let merged: number[] | null = null;
-    if (iEnd && jStart) merged = ri.concat(rj);
-    else if (iStart && jEnd) merged = rj.concat(ri);
-    else if (iEnd && jEnd) merged = ri.concat([...rj].reverse());
-    else if (iStart && jStart) merged = [...ri].reverse().concat(rj);
-    if (!merged) continue;
-
-    routes[ai] = merged;
-    routes[aj] = null;
-    for (const c of merged) routeIndexOf[c] = ai;
-  }
-
-  let result = routes.filter((r): r is number[] => !!r && r.length > 0);
-
-  // Consolida i giri in eccesso (oltre maxRoutes) unendo quelli che stanno nella capacita,
-  // scegliendo ogni volta la cucitura piu corta.
-  while (result.length > maxRoutes) {
-    let best: [number, number] | null = null;
-    let bestCost = Infinity;
-    for (let a = 0; a < result.length; a++) {
-      for (let b = 0; b < result.length; b++) {
-        if (a === b) continue;
-        if (weightOf(result[a]) + weightOf(result[b]) > capacity) continue;
-        const cost = dist[result[a][result[a].length - 1]][result[b][0]];
-        if (cost < bestCost) { bestCost = cost; best = [a, b]; }
-      }
-    }
-    if (!best) break; // non si puo consolidare oltre: overflow di capacita
-    const [a, b] = best;
-    result[a] = result[a].concat(result[b]);
-    result.splice(b, 1);
-  }
-
-  // Se ancora oltre maxRoutes (capacita totale > maxRoutes x 1200): tieni i giri piu carichi,
-  // gli altri finiscono tra i non assegnati.
-  if (result.length > maxRoutes) {
-    result.sort((a, b) => weightOf(b) - weightOf(a));
-    result = result.slice(0, maxRoutes);
-  }
-
-  return result;
+  if (cur.length) groups.push(cur);
+  return groups;
 }
 
 export async function POST(request: NextRequest) {
@@ -196,15 +160,17 @@ export async function POST(request: NextRequest) {
     const allPickings: Picking[] = body.pickings || [];
     const vehicles: Vehicle[] = body.vehicles || [];
     const capacity: number = body.capacity || 1200;
-    const maxVehicles: number = Math.max(1, Math.min(body.maxVehicles || vehicles.length || 4, vehicles.length || 4));
+    // targetRoutes: numero di giri voluto (modalita batch selezionati). Se assente, usa i veicoli (max 4).
+    const requested: number = body.targetRoutes || vehicles.length || 4;
 
-    // Solo i picking con coordinate valide entrano nell'ottimizzazione
     const pickings = allPickings.filter(p => p.lat && p.lng);
     const noCoords = allPickings.filter(p => !p.lat || !p.lng);
 
     if (pickings.length === 0) {
       return NextResponse.json({ success: true, routes: [], unassigned: noCoords.length, unassignedNames: noCoords.map(p => p.name), matrixSource: 'haversine', totalKm: 0, totalMin: 0 });
     }
+
+    const K = Math.max(1, Math.min(requested, pickings.length));
 
     // points[0] = deposito, points[1..n] = consegne
     const points = [DEPOT, ...pickings.map(p => ({ lat: p.lat, lng: p.lng }))];
@@ -214,12 +180,12 @@ export async function POST(request: NextRequest) {
     const weights = new Array(n + 1).fill(0);
     for (let i = 1; i <= n; i++) weights[i] = pickings[i - 1].weight || 0;
 
-    const rawRoutes = clarkeWright(n, dist, weights, capacity, maxVehicles);
+    const groups = sweepRoutes(points, weights, capacity, K);
 
     const routes: Route[] = [];
     const assignedIds = new Set<number>();
 
-    rawRoutes.forEach((custIdx, idx) => {
+    groups.forEach((custIdx, idx) => {
       const ordered = twoOpt(custIdx, dist);
       const routePickings = ordered.map(ci => pickings[ci - 1]);
       routePickings.forEach(p => assignedIds.add(p.id));
@@ -243,6 +209,7 @@ export async function POST(request: NextRequest) {
         totalWeight,
         totalDistance: Math.round(totalDistance * 10) / 10,
         totalDuration,
+        overCapacity: totalWeight > capacity,
         geoName: `Giro ${idx + 1}`,
       });
     });
@@ -250,12 +217,14 @@ export async function POST(request: NextRequest) {
     const unassignedList = allPickings.filter(p => !assignedIds.has(p.id));
     const totalKm = Math.round(routes.reduce((s, r) => s + r.totalDistance, 0) * 10) / 10;
     const totalMin = routes.reduce((s, r) => s + r.totalDuration, 0);
+    const overCapacityCount = routes.filter(r => r.overCapacity).length;
 
     return NextResponse.json({
       success: true,
       routes,
       unassigned: unassignedList.length,
       unassignedNames: unassignedList.map(p => p.name),
+      overCapacityCount,
       matrixSource: source,
       totalKm,
       totalMin,
