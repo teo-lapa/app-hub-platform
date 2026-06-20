@@ -12,6 +12,7 @@ export default function StellaVocePage() {
   const [status, setStatus] = useState('Tocca la sfera e parla con Stella');
   const [installEvt, setInstallEvt] = useState<any>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [typed, setTyped] = useState('');
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -312,6 +313,13 @@ export default function StellaVocePage() {
           ))}
         </div>
         <div style={{ fontSize: 13, opacity: .75, minHeight: 18, textAlign: 'center' }}>{status}</div>
+
+        <form onSubmit={(e) => { e.preventDefault(); const t = typed.trim(); if (t) { sendText(t); setTyped(''); } }} style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 440 }}>
+          <input value={typed} onChange={e => setTyped(e.target.value)} placeholder="Scrivi a Stella…" disabled={phase === 'thinking' || phase === 'speaking'}
+            style={{ flex: 1, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(120,160,255,.3)', color: '#eaf1ff', borderRadius: 22, padding: '11px 16px', fontSize: 15, outline: 'none' }} />
+          <button type="submit" disabled={!typed.trim() || phase === 'thinking' || phase === 'speaking'}
+            style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: '50%', width: 44, height: 44, fontSize: 18, cursor: 'pointer', flex: '0 0 auto' }}>➤</button>
+        </form>
 
         <button
           onClick={active ? stop : start}
