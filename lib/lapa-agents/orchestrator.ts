@@ -694,7 +694,7 @@ export class LapaAiOrchestrator {
       const systemPrompt = this.buildIntentAnalysisPrompt(context);
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 1024,
         temperature: 0.3,
         system: systemPrompt,
@@ -2280,7 +2280,7 @@ ${conversationSummary}
 
       // Se non è loggato o non vuole operatore, usa Claude per risposta generale
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
         temperature: 0.7,
         system: this.buildHelpdeskPrompt(context),
@@ -5638,7 +5638,7 @@ CLIENTE: ${(context.customerType === 'b2b' || (context.customerType === 'b2c' &&
 Rispondi in modo naturale e conversazionale.`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
         temperature: 0.7,
         system: systemPrompt,
@@ -5760,7 +5760,7 @@ Rispondi in modo naturale come se stessi parlando con un amico/cliente.`;
           console.log(`🔄 Tentativo ${attempt}/2 per generazione risposta...`);
 
           const response = await this.anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 1024,
             temperature: 0.8,
             system: systemPrompt,

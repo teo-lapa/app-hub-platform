@@ -486,7 +486,7 @@ export class ProductsAgent {
       }
 
       // Esegui ricerca
-      const products = await this.odoo.searchRead(
+      let products = await this.odoo.searchRead(
         'product.product',
         domain,
         [
@@ -499,6 +499,31 @@ export class ProductsAgent {
         limit * 2,  // Aumentiamo il limite per poi riordinare e filtrare
         'name asc'
       );
+
+      // RETE DI SICUREZZA: se il flusso (RAG + keyword) non trova nulla,
+      // ricerca semplice e robusta per nome (OR su ogni parola >= 3 lettere).
+      // Garantisce che un prodotto esistente per nome venga SEMPRE trovato.
+      if ((!products || products.length === 0) && filters.query) {
+        const fbWords = filters.query.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 3);
+        if (fbWords.length > 0) {
+          const fbDomain: any[] = ['&', '&', ['active', '=', true], ['sale_ok', '=', true]];
+          for (let i = 0; i < fbWords.length - 1; i++) fbDomain.push('|');
+          for (const w of fbWords) fbDomain.push(['name', 'ilike', w]);
+          console.log(`🛟 Fallback ricerca semplice per nome: ${fbWords.join(' | ')}`);
+          products = await this.odoo.searchRead(
+            'product.product',
+            fbDomain,
+            [
+              'id', 'name', 'default_code', 'barcode', 'categ_id',
+              'list_price', 'standard_price', 'type', 'description',
+              'description_sale', 'uom_id', 'active',
+              'qty_available', 'virtual_available', 'product_tmpl_id'
+            ],
+            limit * 2,
+            'name asc'
+          );
+        }
+      }
 
       // ===========================================
       // PRIORITIZZAZIONE RISULTATI
