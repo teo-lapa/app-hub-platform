@@ -46,6 +46,6 @@ export async function GET(request: NextRequest) {
   ].filter(it => it.n > 0);
 
   // il pallino conta solo le cose "da fare oggi" (ordini + consegne), non lo scaduto storico
-  const count = ordini + consegne;
-  return NextResponse.json({ count, items });
+  const todo = ordini + consegne;
+  return NextResponse.json({ count: todo, items });
 }
