@@ -124,6 +124,22 @@ export default function StellaVocePage() {
     }
   }
 
+  async function sendText(text: string) {
+    setMessages(m => [...m, { role: 'user', text }]);
+    setPh('thinking'); setStatus('Stella sta pensando…');
+    const fd = new FormData(); fd.append('text', text);
+    try {
+      const res = await fetch('/api/stella-voce', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.status === 403 || data.needLogin) { setAuthed(false); resumeListen(); return; }
+      if (data.error) { setMessages(m => [...m, { role: 'stella', text: '⚠️ ' + data.error }]); resumeListen(); return; }
+      setMessages(m => [...m, { role: 'stella', text: data.reply, images: data.images }]);
+      if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
+    } catch {
+      setMessages(m => [...m, { role: 'stella', text: '⚠️ Connessione interrotta' }]); resumeListen();
+    }
+  }
+
   function playAudio(url: string) {
     const el = audioElRef.current!;
     setPh('speaking'); setStatus('Stella sta parlando…');
@@ -272,6 +288,16 @@ export default function StellaVocePage() {
       </div>
 
       <div style={{ padding: '8px 16px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', maxWidth: '100%', width: '100%', padding: '0 2px' }}>
+          {([
+            ['☀️ Briefing', 'Fammi il briefing del mattino: in breve come va oggi (ordini, incassi e pagamenti, email importanti, urgenze).'],
+            ['📦 Ordini oggi', 'Quanti ordini abbiamo oggi e qual e il totale?'],
+            ['📧 Email', 'Leggimi le email importanti di oggi.'],
+            ['📅 Scadenze', 'Cosa scade a breve nel magazzino?'],
+          ] as [string, string][]).map(([label, prompt]) => (
+            <button key={label} onClick={() => sendText(prompt)} disabled={phase === 'thinking' || phase === 'speaking'} style={chipStyle}>{label}</button>
+          ))}
+        </div>
         <div style={{ fontSize: 13, opacity: .75, minHeight: 18, textAlign: 'center' }}>{status}</div>
 
         <button
@@ -311,4 +337,9 @@ const btnStyle: React.CSSProperties = {
 
 const linkStyle: React.CSSProperties = {
   color: '#7db4ff', fontWeight: 600, textDecoration: 'underline', wordBreak: 'break-word',
+};
+
+const chipStyle: React.CSSProperties = {
+  whiteSpace: 'nowrap', background: 'rgba(31,111,235,.18)', border: '1px solid rgba(120,160,255,.35)', color: '#cfe0ff',
+  borderRadius: 18, padding: '7px 14px', fontSize: 13, cursor: 'pointer', flex: '0 0 auto',
 };

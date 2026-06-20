@@ -123,6 +123,22 @@ export default function RomeoVocePage() {
     }
   }
 
+  async function sendText(text: string) {
+    setMessages(m => [...m, { role: 'user', text }]);
+    setPh('thinking'); setStatus('Romeo sta pensando…');
+    const fd = new FormData(); fd.append('text', text);
+    try {
+      const res = await fetch('/api/romeo-voce', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.status === 403 || data.needLogin) { setAuthed(false); resumeListen(); return; }
+      if (data.error) { setMessages(m => [...m, { role: 'romeo', text: '⚠️ ' + data.error }]); resumeListen(); return; }
+      setMessages(m => [...m, { role: 'romeo', text: data.reply, images: data.images }]);
+      if (data.audio) playAudio(data.audio); else speakFallback(data.reply);
+    } catch {
+      setMessages(m => [...m, { role: 'romeo', text: '⚠️ Connessione interrotta' }]); resumeListen();
+    }
+  }
+
   function playAudio(url: string) {
     const el = audioElRef.current!;
     setPh('speaking'); setStatus('Romeo sta parlando…');
@@ -271,6 +287,16 @@ export default function RomeoVocePage() {
       </div>
 
       <div style={{ padding: '8px 16px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', maxWidth: '100%', width: '100%', padding: '0 2px' }}>
+          {([
+            ['☀️ Briefing', 'Fammi il briefing del mattino: in breve come va oggi (scadenze e pagamenti, fatture importanti, email importanti, cose da fare).'],
+            ['💰 Da pagare', 'Cosa c\'e da pagare oggi?'],
+            ['📧 Email', 'Leggimi le email importanti di oggi.'],
+            ['🧾 Fatture', 'Situazione fatture in scadenza?'],
+          ] as [string, string][]).map(([label, prompt]) => (
+            <button key={label} onClick={() => sendText(prompt)} disabled={phase === 'thinking' || phase === 'speaking'} style={chipStyle}>{label}</button>
+          ))}
+        </div>
         <div style={{ fontSize: 13, opacity: .75, minHeight: 18, textAlign: 'center' }}>{status}</div>
 
         <button onClick={active ? stop : start} aria-label="Parla con Romeo" style={{ width: 132, height: 132, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: 'transparent', position: 'relative', outline: 'none' }}>
@@ -303,4 +329,9 @@ const btnStyle: React.CSSProperties = {
 
 const linkStyle: React.CSSProperties = {
   color: '#5eead4', fontWeight: 600, textDecoration: 'underline', wordBreak: 'break-word',
+};
+
+const chipStyle: React.CSSProperties = {
+  whiteSpace: 'nowrap', background: 'rgba(13,148,136,.20)', border: '1px solid rgba(45,212,191,.35)', color: '#bff3ea',
+  borderRadius: 18, padding: '7px 14px', fontSize: 13, cursor: 'pointer', flex: '0 0 auto',
 };
