@@ -108,11 +108,11 @@ export default function OrdiniView() {
 
                   {/* Pulsanti PDF */}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <PdfButton onClick={() => openPdf(`/api/portale-clienti/orders/${o.id}/pdf`)} icon={FileText} label="PDF ordine" />
+                    <PdfButton onClick={() => openPdf(`/api/app-clienti/pdf?type=order&id=${o.id}`)} icon={FileText} label="PDF ordine" />
                     {(o.pickingIds || []).map((pid, i) => (
                       <PdfButton
                         key={pid}
-                        onClick={() => openPdf(`/api/portale-clienti/deliveries/${pid}/pdf`)}
+                        onClick={() => openPdf(`/api/app-clienti/pdf?type=delivery&id=${pid}`)}
                         icon={Truck}
                         label={`DDT consegna${(o.pickingIds || []).length > 1 ? ' ' + (i + 1) : ''}`}
                       />

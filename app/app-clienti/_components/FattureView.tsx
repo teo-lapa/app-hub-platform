@@ -112,7 +112,7 @@ export default function FattureView() {
                   {/* Pulsante PDF */}
                   <div className="mt-3">
                     <button
-                      onClick={() => openPdf(`/api/portale-clienti/invoices/${inv.id}/pdf`)}
+                      onClick={() => openPdf(`/api/app-clienti/pdf?type=invoice&id=${inv.id}`)}
                       className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 transition hover:border-[#dc2626]/40 hover:text-[#dc2626]"
                     >
                       <FileText className="h-3.5 w-3.5" /> PDF fattura
