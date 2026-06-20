@@ -45,7 +45,7 @@ export default function CatalogoView() {
       setLoading(true);
       setErr('');
       try {
-        const r = await fetch(`/api/portale-clienti/products?limit=60${q ? `&q=${encodeURIComponent(q)}` : ''}`);
+        const r = await fetch(`/api/app-clienti/search?limit=60${q ? `&q=${encodeURIComponent(q)}` : ''}`);
         const d = await r.json();
         if (alive) setItems(Array.isArray(d.products) ? d.products : []);
       } catch {
