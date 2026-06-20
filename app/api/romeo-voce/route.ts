@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
     const inputImage = form.get('image') as File | null;
     const typed = (form.get('text') as string | null)?.trim() || '';
     const reset = form.get('reset') === '1';
+    const mute = form.get('mute') === '1';
 
     let userText = typed;
     if (!userText && inputAudio) userText = (await transcribe(inputAudio)).trim();
@@ -82,9 +83,9 @@ export async function POST(request: NextRequest) {
     const data = await r.json();
     const reply = data.reply || '';
 
-    // Voce naturale maschile (OpenAI TTS). Doppio fallback: gpt-4o-mini-tts -> tts-1 -> browser.
+    // Voce naturale maschile (OpenAI TTS). Saltata se mute (chat scritta = solo testo).
     let audioOut = '';
-    if (reply) {
+    if (reply && !mute) {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const attempts: any[] = [
         { model: 'gpt-4o-mini-tts', voice: 'onyx', input: reply, instructions: 'Sei Romeo, assistente amministrativo uomo italiano di Laura. Voce maschile, calma, sicura e cordiale, naturale come un collega di fiducia al telefono. Ritmo scorrevole, mai robotico.' },
