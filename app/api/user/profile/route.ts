@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         [],
         {
           domain: [['id', '=', user.parent_id[0]]],
-          fields: ['name', 'phone', 'email', 'street', 'city', 'vat', 'ref'],
+          fields: ['id', 'name', 'phone', 'email', 'street', 'city', 'vat', 'ref'],
           limit: 1
         }
       );
@@ -118,12 +118,17 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         user: {
+          id: user.id,
           name: user.name,
           email: user.email,
           phone: user.phone,
           isContact,
+          isCompany: user.is_company,
+          // ID Odoo dell'azienda padre (per B2B): serve all'AI per ordini/fatture condivisi
+          parentId: isContact && user.parent_id ? user.parent_id[0] : null,
         },
         company: companyData ? {
+          id: companyData.id,
           name: companyData.name,
           vat: companyData.vat,
           ref: companyData.ref,
