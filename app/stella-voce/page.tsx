@@ -14,6 +14,8 @@ export default function StellaVocePage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [typed, setTyped] = useState('');
   const [notif, setNotif] = useState(0);
+  const [notifItems, setNotifItems] = useState<any[]>([]);
+  const [showNotifs, setShowNotifs] = useState(false);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -57,7 +59,7 @@ export default function StellaVocePage() {
   }, []);
   function goLogin() { window.location.href = '/?redirect=' + encodeURIComponent('/stella-voce'); }
   useEffect(() => {
-    if (authed) fetch('/api/stella-voce/notifs').then(r => r.json()).then(d => setNotif(d.count || 0)).catch(() => {});
+    if (authed) fetch('/api/stella-voce/notifs').then(r => r.json()).then(d => { setNotif(d.count || 0); setNotifItems(d.items || []); }).catch(() => {});
   }, [authed]);
   useEffect(() => {
     const onVis = async () => {
@@ -280,10 +282,22 @@ export default function StellaVocePage() {
       )}
 
       <header style={{ padding: '16px', textAlign: 'center', borderBottom: '1px solid rgba(120,160,255,.12)', position: 'relative' }}>
-        {notif > 0 && (
-          <button onClick={() => sendText('Elencami in breve gli ordini da confermare di oggi.')} title="Cose da fare" style={{ position: 'absolute', right: 12, top: 12, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 24, lineHeight: 1 }}>
-            🔔<span style={{ position: 'absolute', top: -2, right: -4, background: '#ff4d4d', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 5px' }}>{notif}</span>
-          </button>
+        <button onClick={() => setShowNotifs(s => !s)} title="Cose da fare" style={{ position: 'absolute', right: 12, top: 12, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 24, lineHeight: 1 }}>
+          🔔{notif > 0 && <span style={{ position: 'absolute', top: -2, right: -4, background: '#ff4d4d', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 5px' }}>{notif}</span>}
+        </button>
+        {showNotifs && (
+          <div style={{ position: 'absolute', right: 10, top: 52, zIndex: 40, background: '#0c1830', border: '1px solid rgba(120,160,255,.3)', borderRadius: 14, padding: 10, width: 280, textAlign: 'left', boxShadow: '0 10px 34px rgba(0,0,0,.55)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, opacity: .85, padding: '2px 6px 8px' }}>📋 Cose da fare</div>
+            {notifItems.length === 0 && <div style={{ opacity: .6, fontSize: 13, padding: '6px' }}>Tutto a posto ✅</div>}
+            {notifItems.map((it: any) => (
+              <button key={it.key} onClick={() => { setShowNotifs(false); sendText(it.ask); }} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.05)', border: 'none', color: '#eaf1ff', borderRadius: 10, padding: '9px 10px', marginBottom: 6, cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ fontSize: 18 }}>{it.icon}</span>
+                <span style={{ flex: 1, fontSize: 13 }}>{it.label}</span>
+                <span style={{ background: '#1f6feb', borderRadius: 9, fontSize: 12, fontWeight: 700, padding: '1px 7px' }}>{it.n}</span>
+              </button>
+            ))}
+            <div style={{ fontSize: 11, opacity: .5, padding: '4px 6px 0' }}>Tocca una voce per i dettagli a voce</div>
+          </div>
         )}
         <div style={{ fontSize: 12, letterSpacing: 3, color: phase === 'off' ? '#5f7bb0' : '#7da8ff' }}>
           {phase === 'off' ? '○ OFFLINE' : '● ' + phaseLabel[phase]}
