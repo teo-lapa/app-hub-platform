@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       {
         domain: [['email', '=', userEmail]],
         fields: ['id', 'name', 'phone', 'email', 'parent_id', 'is_company', 'street', 'city', 'vat', 'ref'],
-        limit: 1
+        limit: 10
       }
     );
     console.log('👤 [USER-PROFILE-API] Step 6: callOdooAsAdmin completato. Risultato:', userData ? userData.length : 'null');
@@ -81,7 +81,22 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    const user = userData[0];
+    // Una stessa email può avere più partner in Odoo (es. "Anonymous express
+    // checkout partner", "Magazzino (consegna)"). Scegliamo quello giusto:
+    // scarta i partner "spazzatura", preferisci aziende, poi contatti con azienda padre.
+    const JUNK_PARTNER = /anonymous|express checkout|magazzino|consegna|delivery|point of sale|pos\b/i;
+    const user = [...userData].sort((a: any, b: any) => {
+      const aj = JUNK_PARTNER.test(a.name || '') ? 1 : 0;
+      const bj = JUNK_PARTNER.test(b.name || '') ? 1 : 0;
+      if (aj !== bj) return aj - bj;                       // spazzatura in fondo
+      const ac = a.is_company ? 0 : 1;
+      const bc = b.is_company ? 0 : 1;
+      if (ac !== bc) return ac - bc;                       // aziende prima
+      const ap = a.parent_id ? 0 : 1;
+      const bp = b.parent_id ? 0 : 1;
+      return ap - bp;                                      // con azienda padre prima
+    })[0];
+    console.log('👤 [USER-PROFILE-API] Partner scelto tra', userData.length, ':', user.id, user.name);
     console.log('✅ [USER-PROFILE-API] Step 7: Utente trovato:', user.name);
 
     let companyData = null;

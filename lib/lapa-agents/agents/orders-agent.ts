@@ -1641,7 +1641,7 @@ FORMATO OUTPUT (JSON):
 Rispondi SOLO con il JSON, senza altro testo.`;
 
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5-20250929',
           max_tokens: 2000,
           temperature: 0.2,
           messages: [{ role: 'user', content: prompt }]

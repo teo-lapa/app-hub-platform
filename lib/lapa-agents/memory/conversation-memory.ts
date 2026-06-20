@@ -767,7 +767,7 @@ export class ConversationMemoryService {
         .join('\n');
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 300,
         temperature: 0.3,
         system: `Riassumi questa conversazione in 2-3 frasi. Focus su: cosa ha cercato/chiesto il cliente, problemi, preferenze. Sii conciso.`,
