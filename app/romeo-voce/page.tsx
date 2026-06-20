@@ -13,6 +13,7 @@ export default function RomeoVocePage() {
   const [installEvt, setInstallEvt] = useState<any>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [typed, setTyped] = useState('');
+  const [notif, setNotif] = useState(0);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -54,6 +55,9 @@ export default function RomeoVocePage() {
     fetch('/api/romeo-voce').then(r => r.json()).then(d => setAuthed(!!d.authed)).catch(() => setAuthed(true));
   }, []);
   function goLogin() { window.location.href = '/?redirect=' + encodeURIComponent('/romeo-voce'); }
+  useEffect(() => {
+    if (authed) fetch('/api/stella-voce/notifs').then(r => r.json()).then(d => setNotif(d.count || 0)).catch(() => {});
+  }, [authed]);
   useEffect(() => {
     const onVis = async () => {
       if (document.visibilityState === 'visible' && activeRef.current && !wakeRef.current) {
@@ -274,7 +278,12 @@ export default function RomeoVocePage() {
         </div>
       )}
 
-      <header style={{ padding: '16px', textAlign: 'center', borderBottom: '1px solid rgba(45,212,191,.14)' }}>
+      <header style={{ padding: '16px', textAlign: 'center', borderBottom: '1px solid rgba(45,212,191,.14)', position: 'relative' }}>
+        {notif > 0 && (
+          <button onClick={() => sendText('Elencami in breve gli ordini da confermare di oggi.')} title="Cose da fare" style={{ position: 'absolute', right: 12, top: 12, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 24, lineHeight: 1 }}>
+            🔔<span style={{ position: 'absolute', top: -2, right: -4, background: '#ff4d4d', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 5px' }}>{notif}</span>
+          </button>
+        )}
         <div style={{ fontSize: 12, letterSpacing: 3, color: phase === 'off' ? '#4f8f87' : '#5eead4' }}>
           {phase === 'off' ? '○ OFFLINE' : '● ' + phaseLabel[phase]}
         </div>
