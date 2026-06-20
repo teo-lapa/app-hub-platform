@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         ['partner_id', 'child_of', cust.commercialId],
         ['state', 'in', ['draft', 'sent', 'sale', 'done']],
       ],
-      fields: ['id', 'name', 'date_order', 'amount_total', 'state', 'order_line', 'invoice_status', 'delivery_status'],
+      fields: ['id', 'name', 'date_order', 'amount_total', 'state', 'order_line', 'invoice_status', 'delivery_status', 'picking_ids'],
       order: 'date_order desc',
       limit: 100,
     });
@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       productsCount: Array.isArray(o.order_line) ? o.order_line.length : 0,
       invoiceStatus: o.invoice_status,
       deliveryStatus: o.delivery_status,
+      pickingIds: Array.isArray(o.picking_ids) ? o.picking_ids : [],
     }));
 
     return NextResponse.json({ success: true, orders });

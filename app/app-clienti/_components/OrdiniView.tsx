@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, FileText, Truck } from 'lucide-react';
+import { Package, FileText, Truck, Download } from 'lucide-react';
 
 interface Order {
   id: number;
@@ -13,7 +13,7 @@ interface Order {
   productsCount?: number;
   invoiceStatus?: string;
   deliveryStatus?: string;
-  salesperson?: string;
+  pickingIds?: number[];
 }
 
 const chf = (n?: number) =>
@@ -30,6 +30,19 @@ function stateColor(state?: string) {
   if (state === 'draft' || state === 'sent') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400';
   if (state === 'cancel') return 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400';
   return 'bg-zinc-100 text-zinc-600 dark:bg-white/10';
+}
+
+const openPdf = (url: string) => { if (typeof window !== 'undefined') window.open(url, '_blank'); };
+
+function PdfButton({ onClick, icon: Icon, label }: { onClick: () => void; icon: any; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 transition hover:border-[#dc2626]/40 hover:text-[#dc2626]"
+    >
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </button>
+  );
 }
 
 export default function OrdiniView() {
@@ -63,7 +76,7 @@ export default function OrdiniView() {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/5" />
+                <div key={i} className="h-24 animate-pulse rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/5" />
               ))}
             </div>
           ) : err ? (
@@ -92,12 +105,19 @@ export default function OrdiniView() {
                       {o.productsCount != null && <div className="text-xs text-zinc-400">{o.productsCount} prodotti</div>}
                     </div>
                   </div>
-                  {(o.deliveryStatus || o.invoiceStatus) && (
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500">
-                      {o.deliveryStatus && <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" /> {o.deliveryStatus}</span>}
-                      {o.invoiceStatus && <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {o.invoiceStatus}</span>}
-                    </div>
-                  )}
+
+                  {/* Pulsanti PDF */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <PdfButton onClick={() => openPdf(`/api/portale-clienti/orders/${o.id}/pdf`)} icon={FileText} label="PDF ordine" />
+                    {(o.pickingIds || []).map((pid, i) => (
+                      <PdfButton
+                        key={pid}
+                        onClick={() => openPdf(`/api/portale-clienti/deliveries/${pid}/pdf`)}
+                        icon={Truck}
+                        label={`DDT consegna${(o.pickingIds || []).length > 1 ? ' ' + (i + 1) : ''}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

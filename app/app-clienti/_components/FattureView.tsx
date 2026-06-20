@@ -32,6 +32,8 @@ function payColor(ps?: string) {
   return 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400';
 }
 
+const openPdf = (url: string) => { if (typeof window !== 'undefined') window.open(url, '_blank'); };
+
 export default function FattureView() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ export default function FattureView() {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/5" />
+                <div key={i} className="h-24 animate-pulse rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/5" />
               ))}
             </div>
           ) : err ? (
@@ -105,6 +107,16 @@ export default function FattureView() {
                         <div className="text-xs text-[#dc2626]">da pagare {money(inv.amountResidual, inv.currency || 'CHF')}</div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Pulsante PDF */}
+                  <div className="mt-3">
+                    <button
+                      onClick={() => openPdf(`/api/portale-clienti/invoices/${inv.id}/pdf`)}
+                      className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 transition hover:border-[#dc2626]/40 hover:text-[#dc2626]"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> PDF fattura
+                    </button>
                   </div>
                 </div>
               ))}
