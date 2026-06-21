@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag, HandCoins, Hourglass, CheckCircle2, Coins } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, Spinner, Empty, fmtCHF, fmtNum, fmtDate } from '../_components/ui';
 
@@ -107,19 +107,19 @@ export default function DashboardPage() {
           {data?.riscossione && (
             <Card className="border-emerald-400/20 bg-emerald-500/5 p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-                <HandCoins size={16} className="text-emerald-300" /> Conto provvigioni — quanto devi riscuotere
+                <Wallet size={16} className="text-emerald-300" /> Conto provvigioni — quanto devi riscuotere
               </div>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                 <div className="rounded-xl bg-white/5 p-3">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400"><Coins size={13} /> Maturato totale</div>
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400"><Receipt size={13} /> Maturato totale</div>
                   <div className="mt-1 text-xl font-bold text-white">{fmtCHF(data.riscossione.maturato)}</div>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-300"><CheckCircle2 size={13} /> Riscuotibile (pagato)</div>
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-300"><TrendingUp size={13} /> Riscuotibile (pagato)</div>
                   <div className="mt-1 text-xl font-bold text-emerald-300">{fmtCHF(data.riscossione.riscuotibile)}</div>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-amber-300"><Hourglass size={13} /> In attesa (non pagato)</div>
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-amber-300"><TrendingDown size={13} /> In attesa (non pagato)</div>
                   <div className="mt-1 text-xl font-bold text-amber-300">{fmtCHF(data.riscossione.attesa)}</div>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
@@ -127,7 +127,7 @@ export default function DashboardPage() {
                   <div className="mt-1 text-xl font-bold text-white">{fmtCHF(data.riscossione.riscosso)}</div>
                 </div>
                 <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 p-3">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-200"><HandCoins size={13} /> Ancora da prendere</div>
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-200"><Wallet size={13} /> Ancora da prendere</div>
                   <div className="mt-1 text-xl font-bold text-emerald-200">{fmtCHF(data.riscossione.daPrendere)}</div>
                 </div>
               </div>
