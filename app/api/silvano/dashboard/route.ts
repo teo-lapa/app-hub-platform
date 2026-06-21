@@ -26,20 +26,38 @@ export async function GET(request: NextRequest) {
     const prevTo = new Date(new Date(from).getTime() - 86400000).toISOString().slice(0, 10);
     const prevFrom = new Date(new Date(from).getTime() - days * 86400000).toISOString().slice(0, 10);
 
+    // Clienti del portafoglio del venditore (res.partner.user_id). Il fatturato di
+    // questi clienti conta per il venditore ANCHE se l'ordine lo fa il cliente da solo
+    // (sito) o un altro venditore. Si aggrega per azienda madre (commercial_partner_id).
+    let clientIds: number[] = [];
+    if (seller.userId) {
+      const myPartners = await callOdooAsAdmin('res.partner', 'search_read', [], {
+        domain: [['user_id', '=', seller.userId]],
+        fields: ['commercial_partner_id'],
+        limit: 5000,
+      });
+      clientIds = Array.from(new Set(
+        myPartners
+          .map((p: any) => (p.commercial_partner_id ? p.commercial_partner_id[0] : null))
+          .filter((x: any): x is number => !!x)
+      ));
+    }
+
     const baseDomain = (f: string, t: string): any[] => {
       const d: any[] = [
         ['date_order', '>=', `${f} 00:00:00`],
         ['date_order', '<=', `${t} 23:59:59`],
         ['state', 'in', ['sale', 'done']],
       ];
-      if (seller.userId) d.push(['user_id', '=', seller.userId]);
+      if (clientIds.length) d.push(['commercial_partner_id', 'in', clientIds]);
+      else if (seller.userId) d.push(['user_id', '=', seller.userId]);
       return d;
     };
 
     const orders = await callOdooAsAdmin('sale.order', 'search_read', [], {
       domain: baseDomain(from, to),
-      fields: ['id', 'name', 'partner_id', 'amount_untaxed', 'pricelist_id', 'order_line', 'date_order'],
-      limit: 1000,
+      fields: ['id', 'name', 'partner_id', 'commercial_partner_id', 'amount_untaxed', 'pricelist_id', 'order_line', 'date_order'],
+      limit: 2000,
     });
 
     const prevOrders = await callOdooAsAdmin('sale.order', 'search_read', [], {
@@ -53,14 +71,22 @@ export async function GET(request: NextRequest) {
 
     // Top clienti
     const perCliente = new Map<number, { name: string; revenue: number; orders: number }>();
+    const perMese = new Map<string, number>();
     for (const o of orders) {
-      if (!o.partner_id) continue;
-      const cid = o.partner_id[0];
-      const cur = perCliente.get(cid) || { name: o.partner_id[1], revenue: 0, orders: 0 };
-      cur.revenue += o.amount_untaxed || 0;
-      cur.orders += 1;
-      perCliente.set(cid, cur);
+      const cp = o.commercial_partner_id || o.partner_id;
+      if (cp) {
+        const cid = cp[0];
+        const cur = perCliente.get(cid) || { name: cp[1], revenue: 0, orders: 0 };
+        cur.revenue += o.amount_untaxed || 0;
+        cur.orders += 1;
+        perCliente.set(cid, cur);
+      }
+      const ym = (o.date_order || '').slice(0, 7); // YYYY-MM
+      if (ym) perMese.set(ym, (perMese.get(ym) || 0) + (o.amount_untaxed || 0));
     }
+    const andamento = Array.from(perMese.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([ym, revenue]) => ({ ym, revenue }));
     const topClienti = Array.from(perCliente.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => b.revenue - a.revenue)
@@ -123,6 +149,7 @@ export async function GET(request: NextRequest) {
         ticketMedio: orders.length ? fatturato / orders.length : 0,
       },
       topClienti,
+      andamento,
     });
   } catch (error: any) {
     console.error('💥 [SILVANO/dashboard]', error);

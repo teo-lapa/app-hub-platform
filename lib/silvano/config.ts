@@ -7,9 +7,10 @@
 // Modificabile senza toccare il resto dell'app.
 export const SHARE = Number(process.env.SILVANO_MARGIN_SHARE || 0.2);
 
-// Utente Odoo (res.users.id) di Silvano. Finché non è onboardato resta il fallback;
-// quando esiste, il salesperson viene preso dal JWT (odooUserId) del login agente.
-export const SILVANO_ODOO_USER_ID = Number(process.env.SILVANO_ODOO_USER_ID || 0);
+// Utente Odoo (res.users.id) di Silvano. Quando logga come agente arriva dal JWT
+// (odooUserId); questo è il fallback per admin/anteprima. È 450 (silvano@lapa.ch)
+// così non si calcola MAI su tutta l'azienda per sbaglio (timeout dashboard).
+export const SILVANO_ODOO_USER_ID = Number(process.env.SILVANO_ODOO_USER_ID || 450);
 
 // LAPA - finest italian food GmbH
 export const LAPA_COMPANY_ID = 1;

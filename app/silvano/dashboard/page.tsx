@@ -14,9 +14,10 @@ interface DashData {
   periodo: { from: string; to: string };
   kpi: Kpi;
   topClienti: TopCliente[];
+  andamento: { ym: string; revenue: number }[];
 }
 
-type Preset = 'mese' | 'meseScorso' | 'ultimi30' | 'anno';
+type Preset = 'mese' | 'meseScorso' | 'ultimi3mesi' | 'daGennaio' | 'anno';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -26,7 +27,9 @@ function rangeFor(p: Preset): { from: string; to: string } {
   const m = now.getMonth();
   if (p === 'mese') return { from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)) };
   if (p === 'meseScorso') return { from: iso(new Date(y, m - 1, 1)), to: iso(new Date(y, m, 0)) };
+  if (p === 'daGennaio') return { from: iso(new Date(y, 0, 1)), to: iso(now) };
   if (p === 'anno') return { from: iso(new Date(y, 0, 1)), to: iso(new Date(y, 11, 31)) };
+  if (p === 'ultimi3mesi') return { from: iso(new Date(y, m - 3, now.getDate())), to: iso(now) };
   const to = new Date(now); const from = new Date(now); from.setDate(from.getDate() - 29);
   return { from: iso(from), to: iso(to) };
 }
@@ -34,12 +37,15 @@ function rangeFor(p: Preset): { from: string; to: string } {
 const PRESETS: { key: Preset; label: string }[] = [
   { key: 'mese', label: 'Questo mese' },
   { key: 'meseScorso', label: 'Mese scorso' },
-  { key: 'ultimi30', label: 'Ultimi 30 giorni' },
+  { key: 'ultimi3mesi', label: 'Ultimi 3 mesi' },
+  { key: 'daGennaio', label: 'Da gennaio' },
   { key: 'anno', label: 'Anno' },
 ];
 
+const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
 export default function DashboardPage() {
-  const [preset, setPreset] = useState<Preset>('mese');
+  const [preset, setPreset] = useState<Preset>('daGennaio');
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +54,7 @@ export default function DashboardPage() {
     const { from, to } = rangeFor(preset);
     const r = await fetch(`/api/silvano/dashboard?from=${from}&to=${to}`);
     const d = await r.json();
-    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, topClienti: d.topClienti });
+    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, topClienti: d.topClienti, andamento: d.andamento || [] });
     else setData(null);
     setLoading(false);
   }, [preset]);
@@ -63,6 +69,14 @@ export default function DashboardPage() {
     [topClienti]
   );
 
+  const andamentoData = useMemo(
+    () => (data?.andamento ?? []).map((a) => {
+      const [yy, mm] = a.ym.split('-');
+      return { name: `${MESI[Number(mm) - 1]} ${yy.slice(2)}`, revenue: a.revenue };
+    }),
+    [data]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -71,6 +85,9 @@ export default function DashboardPage() {
           <div className="text-sm text-slate-400">
             {data?.seller?.name ? `Venditore ${data.seller.name}` : 'Area venditore'}
             {data?.periodo && <> · {fmtDate(data.periodo.from)} – {fmtDate(data.periodo.to)}</>}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            Conta tutti gli ordini dei clienti assegnati, anche quelli fatti dal cliente da solo o da un altro venditore.
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -128,6 +145,26 @@ export default function DashboardPage() {
               <div className="mt-1 text-2xl font-bold text-white">{fmtCHF(data!.kpi.ticketMedio)}</div>
             </Card>
           </div>
+
+          <Card className="p-4">
+            <div className="mb-4 text-sm font-semibold text-white">Andamento mensile</div>
+            {!andamentoData.length ? <Empty>Nessun dato nel periodo</Empty> : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={andamentoData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} interval={0} height={40} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => fmtNum(v)} width={70} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#f1f5f9' }}
+                    formatter={(v: any) => [fmtCHF(Number(v)), 'Fatturato']}
+                  />
+                  <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
+                    {andamentoData.map((_, i) => <Cell key={i} fill="#3b82f6" />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
 
           <Card className="p-4">
             <div className="mb-4 text-sm font-semibold text-white">Top clienti per fatturato</div>
