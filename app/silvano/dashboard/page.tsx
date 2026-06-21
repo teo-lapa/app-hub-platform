@@ -15,7 +15,7 @@ interface DashData {
   periodo: { from: string; to: string };
   kpi: Kpi;
   riscossione?: Riscossione;
-  topClienti: TopCliente[];
+  clienti: TopCliente[];
   andamento: { ym: string; revenue: number }[];
 }
 
@@ -50,25 +50,27 @@ export default function DashboardPage() {
   const [preset, setPreset] = useState<Preset>('daGennaio');
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cQuery, setCQuery] = useState('');
+  const [cPage, setCPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { from, to } = rangeFor(preset);
     const r = await fetch(`/api/silvano/dashboard?from=${from}&to=${to}`);
     const d = await r.json();
-    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, riscossione: d.riscossione, topClienti: d.topClienti, andamento: d.andamento || [] });
+    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, riscossione: d.riscossione, clienti: d.clienti, andamento: d.andamento || [] });
     else setData(null);
     setLoading(false);
   }, [preset]);
 
   useEffect(() => { load(); }, [load]);
 
-  const topClienti = data?.topClienti ?? [];
-  const hasData = !!data && (data.kpi.fatturato > 0 || topClienti.length > 0);
+  const clienti = data?.clienti ?? [];
+  const hasData = !!data && (data.kpi.fatturato > 0 || clienti.length > 0);
 
   const chartData = useMemo(
-    () => topClienti.map((c) => ({ name: c.name, revenue: c.revenue })),
-    [topClienti]
+    () => clienti.slice(0, 10).map((c) => ({ name: c.name, revenue: c.revenue })),
+    [clienti]
   );
 
   const andamentoData = useMemo(
@@ -78,6 +80,16 @@ export default function DashboardPage() {
     }),
     [data]
   );
+
+  const PAGE_SIZE = 20;
+  const clientiFiltrati = useMemo(() => {
+    const q = cQuery.trim().toLowerCase();
+    return q ? clienti.filter((c) => c.name.toLowerCase().includes(q)) : clienti;
+  }, [clienti, cQuery]);
+  const totalPages = Math.max(1, Math.ceil(clientiFiltrati.length / PAGE_SIZE));
+  const pageSafe = Math.min(cPage, totalPages - 1);
+  const clientiPagina = clientiFiltrati.slice(pageSafe * PAGE_SIZE, (pageSafe + 1) * PAGE_SIZE);
+  useEffect(() => { setCPage(0); }, [preset, cQuery]);
 
   return (
     <div className="space-y-6">
@@ -222,32 +234,47 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="p-4">
-            <div className="mb-3 text-sm font-semibold text-white">Top clienti</div>
-            {!topClienti.length ? <Empty>Nessun cliente nel periodo</Empty> : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-                      <th className="py-2 pr-3 font-medium">Cliente</th>
-                      <th className="py-2 px-3 text-right font-medium">Ordini</th>
-                      <th className="py-2 px-3 text-right font-medium">Fatturato</th>
-                      <th className="py-2 px-3 text-right font-medium">Tuo guadagno</th>
-                      <th className="py-2 pl-3 text-right font-medium">Da incassare</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topClienti.map((c) => (
-                      <tr key={c.id} className="border-t border-white/10">
-                        <td className="py-2.5 pr-3 text-white">{c.name}</td>
-                        <td className="py-2.5 px-3 text-right text-slate-300">{fmtNum(c.orders)}</td>
-                        <td className="py-2.5 px-3 text-right text-white">{fmtCHF(c.revenue)}</td>
-                        <td className="py-2.5 px-3 text-right font-semibold text-emerald-300">{fmtCHF(c.guadagno)}</td>
-                        <td className={`py-2.5 pl-3 text-right font-medium ${c.daIncassare > 0 ? 'text-amber-300' : 'text-slate-500'}`}>{fmtCHF(c.daIncassare)}</td>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-white">Clienti <span className="text-slate-500">({clientiFiltrati.length})</span></div>
+              <input value={cQuery} onChange={(e) => setCQuery(e.target.value)} placeholder="Cerca cliente…"
+                className="rounded-lg border border-white/10 bg-slate-800/60 px-3 py-1.5 text-sm text-white placeholder-slate-400 outline-none focus:border-emerald-400" />
+            </div>
+            {!clientiFiltrati.length ? <Empty>Nessun cliente</Empty> : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                        <th className="py-2 pr-3 font-medium">Cliente</th>
+                        <th className="py-2 px-3 text-right font-medium">Ordini</th>
+                        <th className="py-2 px-3 text-right font-medium">Fatturato</th>
+                        <th className="py-2 px-3 text-right font-medium">Tuo guadagno</th>
+                        <th className="py-2 pl-3 text-right font-medium">Da incassare</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {clientiPagina.map((c) => (
+                        <tr key={c.id} className="border-t border-white/10">
+                          <td className="py-2.5 pr-3 text-white">{c.name}</td>
+                          <td className="py-2.5 px-3 text-right text-slate-300">{fmtNum(c.orders)}</td>
+                          <td className="py-2.5 px-3 text-right text-white">{fmtCHF(c.revenue)}</td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-emerald-300">{fmtCHF(c.guadagno)}</td>
+                          <td className={`py-2.5 pl-3 text-right font-medium ${c.daIncassare > 0 ? 'text-amber-300' : 'text-slate-500'}`}>{fmtCHF(c.daIncassare)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {totalPages > 1 && (
+                  <div className="mt-3 flex items-center justify-center gap-3 text-sm">
+                    <button disabled={pageSafe <= 0} onClick={() => setCPage((p) => Math.max(0, p - 1))}
+                      className="rounded-lg bg-white/5 px-3 py-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">‹ Prec</button>
+                    <span className="text-slate-400">Pagina {pageSafe + 1} di {totalPages}</span>
+                    <button disabled={pageSafe >= totalPages - 1} onClick={() => setCPage((p) => Math.min(totalPages - 1, p + 1))}
+                      className="rounded-lg bg-white/5 px-3 py-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">Succ ›</button>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         </>
