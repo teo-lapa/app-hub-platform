@@ -68,7 +68,7 @@ export default function ClientiPage() {
         <div className="relative">
           <Search size={16} className="absolute left-3 top-3 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cliente…"
-            className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-400" />
+            className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-400 outline-none focus:border-emerald-400" />
         </div>
 
         {loadingList ? <Spinner /> : !clienti.length ? <Empty>Nessun cliente</Empty> : (

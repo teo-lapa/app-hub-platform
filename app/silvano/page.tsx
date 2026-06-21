@@ -212,7 +212,7 @@ export default function CatalogoPage() {
                 <Search size={16} className="absolute left-3 top-3 text-slate-400" />
                 <input autoFocus value={clientiQ} onChange={(e) => setClientiQ(e.target.value)}
                   placeholder="Cerca cliente…"
-                  className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-400" />
+                  className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-400 outline-none focus:border-emerald-400" />
               </div>
               <div className="mt-2 max-h-60 overflow-auto rounded-xl border border-white/5">
                 {clienti.map((c) => (
@@ -236,7 +236,7 @@ export default function CatalogoPage() {
           <div className="relative flex-1 min-w-[200px]">
             <Search size={16} className="absolute left-3 top-3 text-slate-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca prodotto o codice…"
-              className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-400" />
+              className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-400 outline-none focus:border-emerald-400" />
           </div>
           <select value={categ} onChange={(e) => setCateg(e.target.value)}
             className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-emerald-400">
@@ -371,7 +371,7 @@ export default function CatalogoPage() {
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white" />
                 </label>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (opzionale)…" rows={2}
-                  className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm" />
+                  className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white placeholder-slate-400" />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Totale</span><span className="font-bold text-white">{fmtCHF(cartTotal)}</span>
                 </div>
