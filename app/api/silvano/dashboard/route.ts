@@ -125,6 +125,70 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // === CONTO PROVVIGIONI sul fatturato reale (fatture clienti account.move) ===
+    // Riscuotibile = quota di margine su fatture PAGATE; attesa = su non pagate.
+    let riscMaturato = 0, riscRiscuotibile = 0, riscAttesa = 0;
+    const riscCliente = new Map<number, { riscuotibile: number; attesa: number; residuo: number }>();
+    if (clientIds.length) {
+      const invoices = await callOdooAsAdmin('account.move', 'search_read', [], {
+        domain: [
+          ['commercial_partner_id', 'in', clientIds],
+          ['move_type', '=', 'out_invoice'],
+          ['state', '=', 'posted'],
+          ['invoice_date', '>=', from],
+          ['invoice_date', '<=', to],
+        ],
+        fields: ['id', 'commercial_partner_id', 'amount_total', 'amount_residual', 'invoice_line_ids'],
+        limit: 5000,
+      });
+      const invLineIds: number[] = invoices.flatMap((m: any) => m.invoice_line_ids || []);
+      const margineFatt = new Map<number, number>();
+      if (invLineIds.length) {
+        const invLines = await callOdooAsAdmin('account.move.line', 'search_read', [], {
+          domain: [['id', 'in', invLineIds], ['display_type', '=', 'product'], ['product_id', '!=', false]],
+          fields: ['product_id', 'quantity', 'price_unit', 'move_id'],
+          limit: 50000,
+        });
+        const invProdIds = Array.from(new Set(invLines.map((l: any) => l.product_id[0])));
+        const invProducts = await callOdooAsAdmin('product.product', 'search_read', [], {
+          domain: [['id', 'in', invProdIds]],
+          fields: ['id', 'standard_price'],
+        });
+        const invCostMap = new Map<number, number>(invProducts.map((p: any): [number, number] => [p.id, p.standard_price || 0]));
+        for (const l of invLines) {
+          const cost = invCostMap.get(l.product_id[0]) || 0;
+          const m = SHARE * Math.max(0, Number(l.price_unit) - cost) * Number(l.quantity);
+          const mid: number = l.move_id[0];
+          margineFatt.set(mid, (margineFatt.get(mid) || 0) + m);
+        }
+      }
+      for (const inv of invoices) {
+        const m = margineFatt.get(inv.id) || 0;
+        const tot = Number(inv.amount_total) || 0;
+        const res = Number(inv.amount_residual) || 0;
+        const fracPagata = tot > 0 ? Math.min(1, Math.max(0, (tot - res) / tot)) : 1;
+        const ric = m * fracPagata;
+        const att = m - ric;
+        riscMaturato += m; riscRiscuotibile += ric; riscAttesa += att;
+        const cid: number | null = inv.commercial_partner_id ? inv.commercial_partner_id[0] : null;
+        if (cid) {
+          const cur = riscCliente.get(cid) || { riscuotibile: 0, attesa: 0, residuo: 0 };
+          cur.riscuotibile += ric; cur.attesa += att; cur.residuo += res;
+          riscCliente.set(cid, cur);
+        }
+      }
+    }
+    // Gia' preso: fatture provvigione di Silvano (fornitore, partner 8459 = user 450).
+    let riscosso = 0;
+    {
+      const myInv = await callOdooAsAdmin('account.move', 'search_read', [], {
+        domain: [['partner_id', '=', 8459], ['move_type', '=', 'in_invoice'], ['state', '=', 'posted']],
+        fields: ['amount_untaxed'],
+        limit: 1000,
+      });
+      riscosso = myInv.reduce((s: number, m: any) => s + (Number(m.amount_untaxed) || 0), 0);
+    }
+
     const trend = fatturatoPrev > 0 ? ((fatturato - fatturatoPrev) / fatturatoPrev) * 100 : null;
 
     return NextResponse.json({
@@ -140,7 +204,19 @@ export async function GET(request: NextRequest) {
         provvigioni,
         ticketMedio: orders.length ? fatturato / orders.length : 0,
       },
-      topClienti: topClienti.map((c: any) => ({ ...c, guadagno: guadagnoCliente.get(c.id) || 0 })),
+      riscossione: {
+        maturato: riscMaturato,
+        riscuotibile: riscRiscuotibile,
+        attesa: riscAttesa,
+        riscosso,
+        daPrendere: riscRiscuotibile - riscosso,
+      },
+      topClienti: topClienti.map((c: any) => ({
+        ...c,
+        guadagno: guadagnoCliente.get(c.id) || 0,
+        daIncassare: riscCliente.get(c.id)?.residuo || 0,
+        riscuotibile: riscCliente.get(c.id)?.riscuotibile || 0,
+      })),
       andamento,
     });
   } catch (error: any) {

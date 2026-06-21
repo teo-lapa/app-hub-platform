@@ -1,18 +1,20 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag, HandCoins, Hourglass, CheckCircle2, Coins } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, Spinner, Empty, fmtCHF, fmtNum, fmtDate } from '../_components/ui';
 
-interface TopCliente { id: number; name: string; revenue: number; orders: number; guadagno: number }
+interface TopCliente { id: number; name: string; revenue: number; orders: number; guadagno: number; daIncassare: number; riscuotibile: number }
 interface Kpi {
   fatturato: number; fatturatoPrev: number; trendPct: number | null;
   ordini: number; clientiAttivi: number; provvigioni: number; ticketMedio: number;
 }
+interface Riscossione { maturato: number; riscuotibile: number; attesa: number; riscosso: number; daPrendere: number }
 interface DashData {
   seller: { name: string };
   periodo: { from: string; to: string };
   kpi: Kpi;
+  riscossione?: Riscossione;
   topClienti: TopCliente[];
   andamento: { ym: string; revenue: number }[];
 }
@@ -54,7 +56,7 @@ export default function DashboardPage() {
     const { from, to } = rangeFor(preset);
     const r = await fetch(`/api/silvano/dashboard?from=${from}&to=${to}`);
     const d = await r.json();
-    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, topClienti: d.topClienti, andamento: d.andamento || [] });
+    if (d.success) setData({ seller: d.seller, periodo: d.periodo, kpi: d.kpi, riscossione: d.riscossione, topClienti: d.topClienti, andamento: d.andamento || [] });
     else setData(null);
     setLoading(false);
   }, [preset]);
@@ -102,6 +104,39 @@ export default function DashboardPage() {
 
       {loading ? <Spinner /> : !hasData ? <Empty>Nessun dato nel periodo selezionato</Empty> : (
         <>
+          {data?.riscossione && (
+            <Card className="border-emerald-400/20 bg-emerald-500/5 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                <HandCoins size={16} className="text-emerald-300" /> Conto provvigioni — quanto devi riscuotere
+              </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400"><Coins size={13} /> Maturato totale</div>
+                  <div className="mt-1 text-xl font-bold text-white">{fmtCHF(data.riscossione.maturato)}</div>
+                </div>
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-300"><CheckCircle2 size={13} /> Riscuotibile (pagato)</div>
+                  <div className="mt-1 text-xl font-bold text-emerald-300">{fmtCHF(data.riscossione.riscuotibile)}</div>
+                </div>
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-amber-300"><Hourglass size={13} /> In attesa (non pagato)</div>
+                  <div className="mt-1 text-xl font-bold text-amber-300">{fmtCHF(data.riscossione.attesa)}</div>
+                </div>
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400"><Wallet size={13} /> Già preso</div>
+                  <div className="mt-1 text-xl font-bold text-white">{fmtCHF(data.riscossione.riscosso)}</div>
+                </div>
+                <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-200"><HandCoins size={13} /> Ancora da prendere</div>
+                  <div className="mt-1 text-xl font-bold text-emerald-200">{fmtCHF(data.riscossione.daPrendere)}</div>
+                </div>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500">
+                Riscuotibile = il tuo 20% sul margine delle fatture già pagate dai clienti. In attesa = margine su fatture non ancora pagate (non riscuotibile finché il cliente non paga).
+              </div>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Card className="col-span-2 p-4 lg:col-span-1">
               <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
@@ -196,7 +231,8 @@ export default function DashboardPage() {
                       <th className="py-2 pr-3 font-medium">Cliente</th>
                       <th className="py-2 px-3 text-right font-medium">Ordini</th>
                       <th className="py-2 px-3 text-right font-medium">Fatturato</th>
-                      <th className="py-2 pl-3 text-right font-medium">Tuo guadagno</th>
+                      <th className="py-2 px-3 text-right font-medium">Tuo guadagno</th>
+                      <th className="py-2 pl-3 text-right font-medium">Da incassare</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -205,7 +241,8 @@ export default function DashboardPage() {
                         <td className="py-2.5 pr-3 text-white">{c.name}</td>
                         <td className="py-2.5 px-3 text-right text-slate-300">{fmtNum(c.orders)}</td>
                         <td className="py-2.5 px-3 text-right text-white">{fmtCHF(c.revenue)}</td>
-                        <td className="py-2.5 pl-3 text-right font-semibold text-emerald-300">{fmtCHF(c.guadagno)}</td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-emerald-300">{fmtCHF(c.guadagno)}</td>
+                        <td className={`py-2.5 pl-3 text-right font-medium ${c.daIncassare > 0 ? 'text-amber-300' : 'text-slate-500'}`}>{fmtCHF(c.daIncassare)}</td>
                       </tr>
                     ))}
                   </tbody>
