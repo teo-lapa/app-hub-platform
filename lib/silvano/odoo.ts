@@ -52,9 +52,11 @@ export async function resolveSalesperson(request: NextRequest): Promise<Salesper
     return { userId: Number(odooUserId), name: payload?.name || 'Venditore', isOverride: false };
   }
 
+  // App dedicata a Silvano: chiunque entri (Paul/Laura admin) vede i dati di
+  // Silvano. Nome fisso così l'header non mostra il nome di chi è loggato.
   return {
     userId: SILVANO_ODOO_USER_ID,
-    name: payload?.name || 'Silvano Barbera',
+    name: 'Silvano Barbera',
     isOverride: false,
   };
 }
