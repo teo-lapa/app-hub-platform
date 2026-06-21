@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag } from 'l
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, Spinner, Empty, fmtCHF, fmtNum, fmtDate } from '../_components/ui';
 
-interface TopCliente { id: number; name: string; revenue: number; orders: number }
+interface TopCliente { id: number; name: string; revenue: number; orders: number; guadagno: number }
 interface Kpi {
   fatturato: number; fatturatoPrev: number; trendPct: number | null;
   ordini: number; clientiAttivi: number; provvigioni: number; ticketMedio: number;
@@ -195,7 +195,8 @@ export default function DashboardPage() {
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
                       <th className="py-2 pr-3 font-medium">Cliente</th>
                       <th className="py-2 px-3 text-right font-medium">Ordini</th>
-                      <th className="py-2 pl-3 text-right font-medium">Fatturato</th>
+                      <th className="py-2 px-3 text-right font-medium">Fatturato</th>
+                      <th className="py-2 pl-3 text-right font-medium">Tuo guadagno</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -203,7 +204,8 @@ export default function DashboardPage() {
                       <tr key={c.id} className="border-t border-white/10">
                         <td className="py-2.5 pr-3 text-white">{c.name}</td>
                         <td className="py-2.5 px-3 text-right text-slate-300">{fmtNum(c.orders)}</td>
-                        <td className="py-2.5 pl-3 text-right font-semibold text-emerald-300">{fmtCHF(c.revenue)}</td>
+                        <td className="py-2.5 px-3 text-right text-white">{fmtCHF(c.revenue)}</td>
+                        <td className="py-2.5 pl-3 text-right font-semibold text-emerald-300">{fmtCHF(c.guadagno)}</td>
                       </tr>
                     ))}
                   </tbody>

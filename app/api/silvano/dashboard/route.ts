@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOdooAsAdmin, resolveSalesperson, getClientPrice } from '@/lib/silvano/odoo';
-import { computeMarginInfo, marginAtPrice } from '@/lib/silvano/margin';
+import { callOdooAsAdmin, resolveSalesperson } from '@/lib/silvano/odoo';
+import { SHARE } from '@/lib/silvano/config';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -92,44 +92,36 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
-    // Provvigioni maturate (margine venditore sulle righe) — dataset piccolo al lancio
+    // Guadagno del venditore = SHARE (20%) del margine realizzato su ogni riga:
+    // SHARE * (prezzo venduto - costo) * qty. Usa price_unit (gia' nel dato ordine)
+    // come prezzo del cliente: niente lookup prezzo per riga -> niente timeout.
+    // Calcolato anche per cliente (commercial_partner_id) per il dettaglio.
     const lineIds: number[] = orders.flatMap((o: any) => o.order_line || []);
     let provvigioni = 0;
+    const guadagnoCliente = new Map<number, number>();
     if (lineIds.length) {
       const lines = await callOdooAsAdmin('sale.order.line', 'search_read', [], {
         domain: [['id', 'in', lineIds], ['display_type', '=', false], ['product_id', '!=', false]],
         fields: ['product_id', 'product_uom_qty', 'price_unit', 'order_id'],
-        limit: 5000,
+        limit: 20000,
       });
-      const orderMap = new Map(orders.map((o: any) => [o.id, o]));
       const productIds = Array.from(new Set(lines.map((l: any) => l.product_id[0])));
       const products = await callOdooAsAdmin('product.product', 'search_read', [], {
         domain: [['id', 'in', productIds]],
-        fields: ['id', 'standard_price', 'list_price'],
+        fields: ['id', 'standard_price'],
       });
-      const pmap = new Map(products.map((p: any) => [p.id, p]));
-      const baseCache = new Map<string, number>();
-      const MAX_PRICE_LOOKUPS = 400; // tetto anti-timeout (anteprima admin su tutta l'azienda)
-
+      const costMap = new Map(products.map((p: any) => [p.id, p.standard_price || 0]));
+      const orderCp = new Map(orders.map((o: any) => {
+        const cp = o.commercial_partner_id || o.partner_id;
+        return [o.id, cp ? cp[0] : null];
+      }));
       for (const l of lines) {
-        const pid = l.product_id[0];
-        const prod: any = pmap.get(pid);
-        if (!prod) continue;
-        const ord: any = orderMap.get(l.order_id[0]);
-        const pricelistId = ord?.pricelist_id ? ord.pricelist_id[0] : null;
-        const partnerId = ord?.partner_id ? ord.partner_id[0] : null;
-        let base = prod.list_price || l.price_unit || 0;
-        if (pricelistId) {
-          const key = `${pricelistId}:${pid}`;
-          if (baseCache.has(key)) base = baseCache.get(key)!;
-          else if (baseCache.size < MAX_PRICE_LOOKUPS) {
-            const cp = await getClientPrice(pricelistId, pid, l.product_uom_qty || 1, partnerId);
-            if (cp != null) base = cp;
-            baseCache.set(key, base);
-          }
-        }
-        const info = computeMarginInfo(base, prod.standard_price || 0);
-        provvigioni += marginAtPrice(l.price_unit || 0, info.floor) * (l.product_uom_qty || 0);
+        const cost = costMap.get(l.product_id[0]) || 0;
+        const qty = l.product_uom_qty || 0;
+        const prov = SHARE * Math.max(0, (l.price_unit || 0) - cost) * qty;
+        provvigioni += prov;
+        const cid = orderCp.get(l.order_id[0]);
+        if (cid) guadagnoCliente.set(cid, (guadagnoCliente.get(cid) || 0) + prov);
       }
     }
 
@@ -148,7 +140,7 @@ export async function GET(request: NextRequest) {
         provvigioni,
         ticketMedio: orders.length ? fatturato / orders.length : 0,
       },
-      topClienti,
+      topClienti: topClienti.map((c: any) => ({ ...c, guadagno: guadagnoCliente.get(c.id) || 0 })),
       andamento,
     });
   } catch (error: any) {
