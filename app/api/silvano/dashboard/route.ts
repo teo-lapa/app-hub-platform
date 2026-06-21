@@ -87,10 +87,9 @@ export async function GET(request: NextRequest) {
     const andamento = Array.from(perMese.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([ym, revenue]) => ({ ym, revenue }));
-    const topClienti = Array.from(perCliente.entries())
+    const clientiAgg = Array.from(perCliente.entries())
       .map(([id, v]) => ({ id, ...v }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
+      .sort((a, b) => b.revenue - a.revenue);
 
     // Guadagno del venditore = SHARE (20%) del margine realizzato su ogni riga:
     // SHARE * (prezzo venduto - costo) * qty. Usa price_unit (gia' nel dato ordine)
@@ -211,7 +210,7 @@ export async function GET(request: NextRequest) {
         riscosso,
         daPrendere: riscRiscuotibile - riscosso,
       },
-      topClienti: topClienti.map((c: any) => ({
+      clienti: clientiAgg.map((c: any) => ({
         ...c,
         guadagno: guadagnoCliente.get(c.id) || 0,
         daIncassare: riscCliente.get(c.id)?.residuo || 0,
