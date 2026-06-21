@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
         domain: [['id', 'in', productIds]],
         fields: ['id', 'standard_price'],
       });
-      const costMap = new Map(products.map((p: any) => [p.id, p.standard_price || 0]));
-      const orderCp = new Map(orders.map((o: any) => {
+      const costMap = new Map<number, number>(products.map((p: any): [number, number] => [p.id, p.standard_price || 0]));
+      const orderCp = new Map<number, number | null>(orders.map((o: any): [number, number | null] => {
         const cp = o.commercial_partner_id || o.partner_id;
         return [o.id, cp ? cp[0] : null];
       }));
