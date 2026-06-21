@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Receipt, Users, ShoppingBag, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, Spinner, Empty, fmtCHF, fmtNum, fmtDate } from '../_components/ui';
 
@@ -10,6 +10,14 @@ interface Kpi {
   ordini: number; clientiAttivi: number; provvigioni: number; ticketMedio: number;
 }
 interface Riscossione { maturato: number; riscuotibile: number; attesa: number; riscosso: number; daPrendere: number }
+interface ContoMese { ym: string; fatturato: number; guadagno: number }
+interface ContoFattura { id: number; name: string; date: string | null; total: number; residual: number; paymentState: string }
+interface ContoCliente {
+  cliente: { id: number; name: string };
+  mesi: ContoMese[];
+  fatture: ContoFattura[];
+  totali: { fatturato: number; guadagno: number; riscuotibile: number; attesa: number; daIncassare: number };
+}
 interface DashData {
   seller: { name: string };
   periodo: { from: string; to: string };
@@ -46,12 +54,30 @@ const PRESETS: { key: Preset; label: string }[] = [
 
 const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
+function meseLabel(ym: string): string {
+  const [y, mm] = ym.split('-');
+  return `${MESI[Number(mm) - 1]} ${y.slice(2)}`;
+}
+
+function Stat({ l, v, accent }: { l: string; v: string; accent?: 'emerald' | 'amber' }) {
+  const color = accent === 'emerald' ? 'text-emerald-300' : accent === 'amber' ? 'text-amber-300' : 'text-white';
+  return (
+    <div className="rounded-xl bg-white/5 p-3">
+      <div className="text-[11px] text-slate-400">{l}</div>
+      <div className={`mt-0.5 font-semibold ${color}`}>{v}</div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [preset, setPreset] = useState<Preset>('daGennaio');
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
   const [cQuery, setCQuery] = useState('');
   const [cPage, setCPage] = useState(0);
+  const [selCliente, setSelCliente] = useState<TopCliente | null>(null);
+  const [dett, setDett] = useState<ContoCliente | null>(null);
+  const [loadingDett, setLoadingDett] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,6 +116,15 @@ export default function DashboardPage() {
   const pageSafe = Math.min(cPage, totalPages - 1);
   const clientiPagina = clientiFiltrati.slice(pageSafe * PAGE_SIZE, (pageSafe + 1) * PAGE_SIZE);
   useEffect(() => { setCPage(0); }, [preset, cQuery]);
+
+  const openCliente = useCallback(async (c: TopCliente) => {
+    setSelCliente(c); setDett(null); setLoadingDett(true);
+    const { from, to } = rangeFor(preset);
+    const r = await fetch(`/api/silvano/cliente-conto/${c.id}?from=${from}&to=${to}`);
+    const d = await r.json();
+    if (d.success) setDett(d);
+    setLoadingDett(false);
+  }, [preset]);
 
   return (
     <div className="space-y-6">
@@ -254,7 +289,7 @@ export default function DashboardPage() {
                     </thead>
                     <tbody>
                       {clientiPagina.map((c) => (
-                        <tr key={c.id} className="border-t border-white/10">
+                        <tr key={c.id} onClick={() => openCliente(c)} className="cursor-pointer border-t border-white/10 hover:bg-white/5">
                           <td className="py-2.5 pr-3 text-white">{c.name}</td>
                           <td className="py-2.5 px-3 text-right text-slate-300">{fmtNum(c.orders)}</td>
                           <td className="py-2.5 px-3 text-right text-white">{fmtCHF(c.revenue)}</td>
@@ -278,6 +313,80 @@ export default function DashboardPage() {
             )}
           </Card>
         </>
+      )}
+
+      {selCliente && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/60 p-4" onClick={() => setSelCliente(null)}>
+          <div className="my-6 w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-lg font-semibold text-white">{selCliente.name}</div>
+              <button onClick={() => setSelCliente(null)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+            </div>
+            {loadingDett || !dett ? <div className="py-10"><Spinner /></div> : (
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <Stat l="Fatturato" v={fmtCHF(dett.totali.fatturato)} />
+                  <Stat l="Tuo guadagno" v={fmtCHF(dett.totali.guadagno)} accent="emerald" />
+                  <Stat l="Riscuotibile (pagato)" v={fmtCHF(dett.totali.riscuotibile)} accent="emerald" />
+                  <Stat l="Da incassare" v={fmtCHF(dett.totali.daIncassare)} accent="amber" />
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 text-sm font-semibold text-white">Guadagno per mese</div>
+                  {!dett.mesi.length ? <Empty>Nessun dato</Empty> : (
+                    <div className="space-y-1">
+                      {dett.mesi.map((m) => (
+                        <div key={m.ym} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5 text-sm">
+                          <span className="text-slate-300">{meseLabel(m.ym)}</span>
+                          <span className="flex gap-4">
+                            <span className="text-slate-400">{fmtCHF(m.fatturato)}</span>
+                            <span className="w-24 text-right font-semibold text-emerald-300">{fmtCHF(m.guadagno)}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 text-sm font-semibold text-white">Fatture <span className="text-slate-500">({dett.fatture.length})</span></div>
+                  {!dett.fatture.length ? <Empty>Nessuna fattura nel periodo</Empty> : (
+                    <div className="overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                            <th className="py-1.5 pr-2 font-medium">Numero</th>
+                            <th className="py-1.5 pr-2 font-medium">Data</th>
+                            <th className="py-1.5 pr-2 text-right font-medium">Totale</th>
+                            <th className="py-1.5 pr-2 text-right font-medium">Residuo</th>
+                            <th className="py-1.5 font-medium">Stato</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dett.fatture.map((f) => (
+                            <tr key={f.id} className="border-t border-white/5">
+                              <td className="py-1.5 pr-2 text-white">{f.name}</td>
+                              <td className="py-1.5 pr-2 text-slate-400">{fmtDate(f.date)}</td>
+                              <td className="py-1.5 pr-2 text-right text-white">{fmtCHF(f.total)}</td>
+                              <td className={`py-1.5 pr-2 text-right ${f.residual > 0 ? 'text-amber-300' : 'text-slate-500'}`}>{fmtCHF(f.residual)}</td>
+                              <td className="py-1.5">
+                                {f.paymentState === 'paid'
+                                  ? <span className="text-emerald-300">Pagata</span>
+                                  : f.paymentState === 'partial'
+                                    ? <span className="text-amber-300">Parziale</span>
+                                    : <span className="text-red-300">Da pagare</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
