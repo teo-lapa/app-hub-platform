@@ -194,6 +194,108 @@ function DettaglioModal({ c, onClose }: { c: Cliente; onClose: () => void }) {
   );
 }
 
+function ColonnaModal({ titolo, clienti, onClose }: { titolo: string; clienti: Cliente[]; onClose: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/portafogli/trend-colonna', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: clienti.map(c => c.id) }),
+    }).then(r => r.json())
+      .then(j => { if (!alive) return; if (j.success) setD(j); else setErr(j.error || 'Errore'); })
+      .catch(e => alive && setErr(e.message));
+    return () => { alive = false; };
+  }, [clienti]);
+
+  const valori: number[] = d?.serie?.valori || [];
+  const months: string[] = d?.serie?.months || [];
+  const recente = calcTrend(valori.slice(-6));
+  const colR = trendColor(recente.dir);
+  const max = Math.max(...valori, 1);
+  const yoy = d?.yoy?.pct;
+
+  let up = 0, down = 0, flat = 0;
+  for (const c of clienti) {
+    const dir = calcTrend(c.serie).dir;
+    if (dir === 'up') up++; else if (dir === 'down') down++; else flat++;
+  }
+  const totFatt = clienti.reduce((a, c) => a + c.fatturato, 0);
+  const top = clienti.slice(0, 8);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-3xl my-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="text-xl font-bold">Andamento colonna: {titolo}</div>
+            <div className="text-xs text-slate-400">{clienti.length} clienti · {fmtCHF(totFatt)} dal 1° gennaio</div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        {err && <div className="text-red-400 text-sm">⚠️ {err}</div>}
+        {!d && !err && <div className="text-slate-400 text-sm py-10 text-center">Caricamento andamento…</div>}
+
+        {d && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="px-3 py-1 rounded-full text-sm font-semibold" style={{ background: colR + '22', color: colR }}>
+                {trendIcon(recente.dir)} {trendLabel(recente.dir)} {recente.pct > 0 ? `+${recente.pct}%` : `${recente.pct}%`} (ultimi 6 mesi)
+              </span>
+              {yoy !== null && yoy !== undefined && (
+                <span className="px-3 py-1 rounded-full text-sm font-semibold"
+                  style={{ background: (yoy >= 0 ? '#34d399' : '#f87171') + '22', color: yoy >= 0 ? '#34d399' : '#f87171' }}>
+                  {yoy >= 0 ? '▲' : '▼'} {yoy > 0 ? `+${yoy}%` : `${yoy}%`} vs anno scorso
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <KPI label="Fatturato anno in corso" value={fmtCHF(d.yoy.ytdCur)} sub={`anno scorso: ${fmtCHF(d.yoy.ytdPrev)}`} />
+              <KPI label="In crescita" value={`${up}`} sub="clienti 📈" color="#34d399" />
+              <KPI label="In calo" value={`${down}`} sub="clienti 📉" color="#f87171" />
+              <KPI label="Stabili / fermi" value={`${flat}`} sub="clienti ➖" color="#94a3b8" />
+            </div>
+
+            <div className="text-xs text-slate-400 mb-1">Andamento mensile aggregato (ultimi 18 mesi)</div>
+            <div className="flex items-end gap-1 h-36 mb-1">
+              {valori.map((v, i) => {
+                const isYearStart = months[i]?.slice(5) === '01';
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <div className="w-full rounded-t" title={`${meseLabel(months[i])} ${months[i]?.slice(0, 4)}: ${fmtCHF(v)}`}
+                      style={{ height: `${(v / max) * 100}%`, background: isYearStart ? '#64748b' : colR, minHeight: v > 0 ? 2 : 0 }} />
+                    <div className="text-[9px] text-slate-500 mt-1">{meseLabel(months[i])}</div>
+                    <div className="text-[9px] text-slate-600">{isYearStart ? months[i].slice(0, 4) : ''}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-xs text-slate-400 mt-4 mb-2">Clienti principali</div>
+            <div className="space-y-1">
+              {top.map(c => {
+                const tr = calcTrend(c.serie);
+                return (
+                  <div key={c.id} className="flex items-center justify-between gap-2 text-sm bg-slate-800/40 rounded px-2 py-1">
+                    <span className="truncate">{c.name}</span>
+                    <span className="shrink-0 flex items-center gap-2">
+                      <span className="text-slate-300 font-medium">{fmtCHF(c.fatturato)}</span>
+                      <span style={{ color: trendColor(tr.dir) }}>{trendIcon(tr.dir)} {tr.pct > 0 ? `+${tr.pct}%` : `${tr.pct}%`}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function PortafogliPage() {
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,6 +305,7 @@ export default function PortafogliPage() {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [detail, setDetail] = useState<Cliente | null>(null);
+  const [colDetail, setColDetail] = useState<{ titolo: string; list: Cliente[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -349,16 +452,21 @@ export default function PortafogliPage() {
                 onDrop={e => onDrop(e, col.key)}
                 className={`rounded-xl border ${col.accent} p-3 min-h-[60vh]`}
               >
-                <div className="flex items-baseline justify-between mb-2 sticky top-0">
+                <button
+                  type="button"
+                  onClick={() => setColDetail({ titolo: col.titolo, list: clienti.filter(c => c.col === col.key) })}
+                  className="w-full flex items-baseline justify-between mb-2 text-left rounded-lg p-1 -m-1 hover:bg-white/5"
+                  title="Vedi andamento generale della colonna"
+                >
                   <div>
-                    <div className="font-bold">{col.titolo}</div>
+                    <div className="font-bold">{col.titolo} <span className="text-xs font-normal text-slate-400">📊 andamento</span></div>
                     <div className="text-xs text-slate-400">{col.sotto}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold">{t.n}</div>
                     <div className="text-xs text-slate-400">{fmtCHF(t.sum)}</div>
                   </div>
-                </div>
+                </button>
 
                 <div className="space-y-2">
                   {byCol(col.key).map(c => (
@@ -422,6 +530,7 @@ export default function PortafogliPage() {
       )}
 
       {detail && <DettaglioModal c={detail} onClose={() => setDetail(null)} />}
+      {colDetail && <ColonnaModal titolo={colDetail.titolo} clienti={colDetail.list} onClose={() => setColDetail(null)} />}
     </div>
   );
 }
