@@ -46,7 +46,7 @@ export async function GET(_request: NextRequest) {
     // 2) Dettagli partner (escludi quelli col tag e-commerce)
     const partners = await callOdooAsAdmin('res.partner', 'search_read', [], {
       domain: [['id', 'in', ids], ['category_id', 'not in', [ECOMMERCE_TAG]]],
-      fields: ['id', 'name', 'city', 'state_id', 'user_id', 'team_id', 'is_company'],
+      fields: ['id', 'name', 'city', 'state_id', 'user_id', 'is_company'],
       limit: 2000,
     });
 
@@ -58,7 +58,6 @@ export async function GET(_request: NextRequest) {
       isCompany: !!p.is_company,
       venditore: Array.isArray(p.user_id) ? p.user_id[1] : '',
       venditoreId: Array.isArray(p.user_id) ? p.user_id[0] : null,
-      team: Array.isArray(p.team_id) ? p.team_id[1] : '',
       fatturato: fatturato[p.id] || 0,
       ordini: ordini[p.id] || 0,
       col: colFromUser(Array.isArray(p.user_id) ? p.user_id[0] : null),

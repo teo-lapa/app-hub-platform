@@ -10,7 +10,6 @@ type Cliente = {
   cantone: string;
   isCompany: boolean;
   venditore: string;
-  team: string;
   fatturato: number;
   ordini: number;
   col: Col;
@@ -218,7 +217,7 @@ export default function PortafogliPage() {
                             {fmtCHF(c.fatturato)} · {c.ordini} ord.
                           </div>
                           <div className="text-[11px] text-slate-500 truncate">
-                            {c.venditore || 'nessun venditore'}{c.team ? ` · ${c.team}` : ''}
+                            {c.venditore || 'nessun venditore'}
                           </div>
                         </div>
                       </div>
