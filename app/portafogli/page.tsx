@@ -10,6 +10,7 @@ type Cliente = {
   cantone: string;
   isCompany: boolean;
   venditore: string;
+  venditoreId: number | null;
   fatturato: number;
   ordini: number;
   col: Col;
@@ -18,7 +19,7 @@ type Cliente = {
 
 const COLS: { key: Col; titolo: string; sotto: string; accent: string }[] = [
   { key: 'mihai', titolo: 'Mihai', sotto: 'Clienti di Mihai', accent: 'border-blue-500/60 bg-blue-500/5' },
-  { key: 'centro', titolo: 'Resto / Azienda', sotto: 'Tutto il resto', accent: 'border-slate-500/50 bg-slate-500/5' },
+  { key: 'centro', titolo: 'Resto / Azienda', sotto: '→ Paul (Laura resta)', accent: 'border-slate-500/50 bg-slate-500/5' },
   { key: 'silvano', titolo: 'Silvano', sotto: 'Nuovo venditore', accent: 'border-emerald-500/60 bg-emerald-500/5' },
 ];
 
@@ -104,7 +105,7 @@ export default function PortafogliPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          changes: changes.map(c => ({ id: c.id, target: c.col })),
+          changes: changes.map(c => ({ id: c.id, target: c.col, cur: c.venditoreId })),
         }),
       });
       const d = await r.json();

@@ -7,6 +7,8 @@ export const maxDuration = 60;
 // Venditori target
 const MIHAI = 14;
 const SILVANO = 450;
+const PAUL = 7;
+const LAURA = 8;
 const ECOMMERCE_TAG = 232; // res.partner.category "E-commerce B2C"
 const DA = '2026-01-01'; // acquisti da gennaio
 
@@ -75,8 +77,8 @@ export async function GET(_request: NextRequest) {
 
 /**
  * POST /api/portafogli
- * body: { changes: [{ id, target: 'mihai'|'silvano'|'centro' }] }
- * Scrive il venditore (user_id). 'centro' = nessuna scrittura (parcheggio).
+ * body: { changes: [{ id, target: 'mihai'|'silvano'|'centro', cur: venditoreId|null }] }
+ * Scrive il venditore (user_id). 'centro' = Paul, ma se ha gia' Laura la lascia.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -87,6 +89,8 @@ export async function POST(request: NextRequest) {
 
     const toMihai = changes.filter((c: any) => c.target === 'mihai').map((c: any) => c.id);
     const toSilvano = changes.filter((c: any) => c.target === 'silvano').map((c: any) => c.id);
+    // Centro = Paul, tranne chi ha gia' Laura (resta Laura)
+    const toPaul = changes.filter((c: any) => c.target === 'centro' && c.cur !== LAURA).map((c: any) => c.id);
 
     let scritti = 0;
     if (toMihai.length) {
@@ -96,6 +100,10 @@ export async function POST(request: NextRequest) {
     if (toSilvano.length) {
       await callOdooAsAdmin('res.partner', 'write', [toSilvano, { user_id: SILVANO }]);
       scritti += toSilvano.length;
+    }
+    if (toPaul.length) {
+      await callOdooAsAdmin('res.partner', 'write', [toPaul, { user_id: PAUL }]);
+      scritti += toPaul.length;
     }
 
     return NextResponse.json({ success: true, scritti });
