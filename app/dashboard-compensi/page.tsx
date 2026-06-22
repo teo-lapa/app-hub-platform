@@ -172,7 +172,7 @@ export default function DashboardCompensi() {
   const loadBonusWithdrawn = async (teamId: number) => {
     setLoadingBonus((prev) => ({ ...prev, [teamId]: true }));
     try {
-      const response = await fetch(`/api/hr-payslip?action=team-bonus-withdrawn&teamId=${teamId}`);
+      const response = await fetch(`/api/hr-payslip?action=team-bonus-withdrawn&userId=${teamId}`);
       if (response.ok) {
         const result = await response.json();
         setBonusWithdrawn((prev) => ({
@@ -193,7 +193,7 @@ export default function DashboardCompensi() {
   const loadCumulativeBonus = async (teamId: number) => {
     setLoadingCumulative((prev) => ({ ...prev, [teamId]: true }));
     try {
-      const response = await fetch(`/api/hr-payslip?action=team-bonus-cumulative&teamId=${teamId}`);
+      const response = await fetch(`/api/hr-payslip?action=team-bonus-cumulative&userId=${teamId}`);
       if (response.ok) {
         const result = await response.json();
         setCumulativeBonus((prev) => ({
@@ -300,7 +300,7 @@ export default function DashboardCompensi() {
                 <div>
                   <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                     <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    Compensi Team
+                    Compensi Venditori
                   </h1>
                   {data && (
                     <p className="text-xs text-slate-600">
@@ -390,7 +390,7 @@ export default function DashboardCompensi() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                   <span className="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                  Dashboard Compensi Team
+                  Dashboard Compensi Venditori
                 </h1>
                 {data && (
                   <p className="text-sm text-slate-600 mt-1">
@@ -477,13 +477,13 @@ export default function DashboardCompensi() {
       {data && data.salespeople.length > 1 && (
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-4 md:mt-6">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 md:p-4">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Filtra per team</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Filtra per venditore</label>
             <select
               value={selectedSalesperson || ''}
               onChange={(e) => setSelectedSalesperson(e.target.value ? parseInt(e.target.value) : null)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
             >
-              <option value="">Tutti i team</option>
+              <option value="">Tutti i venditori</option>
               {data.salespeople.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -502,7 +502,7 @@ export default function DashboardCompensi() {
             <div className="pb-4 md:pb-6 border-b-2 border-slate-100">
               <div className="mb-4 md:mb-6">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">{person.name}</h2>
-                <p className="text-xs md:text-sm text-slate-600">Team di Vendita</p>
+                <p className="text-xs md:text-sm text-slate-600">Venditore</p>
               </div>
 
               {/* Revenue Section - Stack su mobile */}

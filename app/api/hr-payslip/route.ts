@@ -358,13 +358,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'team-bonus-cumulative') {
-      // Calcola il bonus cumulativo per un team di vendita (da Nov 2024 ad oggi)
+      // Calcola il bonus cumulativo per un VENDITORE (da Nov 2025 ad oggi)
       // Combina bonus_real di ogni mese + bonus ritirato per calcolare il disponibile
-      const teamId = searchParams.get('teamId');
+      const userIdParam = searchParams.get('userId') || searchParams.get('teamId');
 
-      if (!teamId) {
-        return NextResponse.json({ error: 'teamId richiesto' }, { status: 400 });
+      if (!userIdParam) {
+        return NextResponse.json({ error: 'userId richiesto' }, { status: 400 });
       }
+      const userId = parseInt(userIdParam);
 
       const today = new Date();
       const startMonth = new Date(2025, 10, 1); // Novembre 2025
@@ -382,7 +383,7 @@ export async function GET(request: NextRequest) {
         try {
           const compensiUrl = new URL(request.url);
           compensiUrl.pathname = '/api/compensi-venditori';
-          compensiUrl.searchParams.set('teamId', teamId);
+          compensiUrl.searchParams.set('userId', userId.toString());
           compensiUrl.searchParams.set('monthsBack', monthsBack.toString());
 
           const compensiResponse = await fetch(compensiUrl.toString(), {
@@ -391,16 +392,15 @@ export async function GET(request: NextRequest) {
 
           if (compensiResponse.ok) {
             const compensiData = await compensiResponse.json();
-            // compensi-venditori returns { salespeople: [...] } format
-            const teamData = compensiData.salespeople?.find((s: any) => s.id === parseInt(teamId));
+            const personData = compensiData.salespeople?.find((s: any) => s.id === userId);
 
-            if (teamData && teamData.bonus_real > 0) {
-              totalBonusReal += teamData.bonus_real;
+            if (personData && personData.bonus_real > 0) {
+              totalBonusReal += personData.bonus_real;
               monthsDetail.push({
                 month: monthStr,
-                bonus_theoretical: teamData.bonus_theoretical || 0,
-                bonus_real: teamData.bonus_real || 0,
-                payment_percentage: teamData.payment_percentage || 0,
+                bonus_theoretical: personData.bonus_theoretical || 0,
+                bonus_real: personData.bonus_real || 0,
+                payment_percentage: personData.payment_percentage || 0,
               });
             }
           }
@@ -411,50 +411,36 @@ export async function GET(request: NextRequest) {
         currentMonth.setMonth(currentMonth.getMonth() + 1);
       }
 
-      // Calcola bonus ritirato tramite buste paga (riusa la stessa logica di team-bonus-withdrawn)
-      // Trova membri del team
-      const teamMembersCum = await callOdoo(cookies, 'crm.team.member', 'search_read', [], {
-        domain: [['crm_team_id', '=', parseInt(teamId)]],
-        fields: ['id', 'user_id'],
+      // Calcola bonus ritirato dalle buste paga del venditore
+      const employeesCum = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
+        domain: [['user_id', '=', userId]],
+        fields: ['id'],
       });
-
-      const EXCLUDED_USER_IDS_CUM = [7, 8];
-      const userIdsCum = teamMembersCum
-        .filter((m: any) => m.user_id && !EXCLUDED_USER_IDS_CUM.includes(m.user_id[0]))
-        .map((m: any) => m.user_id[0]);
+      const employeeIdsCum = employeesCum.map((e: any) => e.id);
 
       let totalBonusWithdrawn = 0;
 
-      if (userIdsCum.length > 0) {
-        const employeesCum = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
-          domain: [['user_id', 'in', userIdsCum]],
+      if (employeeIdsCum.length > 0) {
+        const payslipsCum = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+          domain: [
+            ['employee_id', 'in', employeeIdsCum],
+            ['date_from', '>=', '2025-11-01'],
+          ],
           fields: ['id'],
         });
 
-        const employeeIdsCum = employeesCum.map((e: any) => e.id);
-
-        if (employeeIdsCum.length > 0) {
-          const payslipsCum = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
+        for (const payslip of payslipsCum) {
+          const lines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
             domain: [
-              ['employee_id', 'in', employeeIdsCum],
-              ['date_from', '>=', '2025-11-01'],
+              ['slip_id', '=', payslip.id],
+              ['code', '=', 'BONUS_VENDITE'],
             ],
-            fields: ['id'],
+            fields: ['amount'],
           });
 
-          for (const payslip of payslipsCum) {
-            const lines = await callOdoo(cookies, 'hr.payslip.line', 'search_read', [], {
-              domain: [
-                ['slip_id', '=', payslip.id],
-                ['code', '=', 'BONUS_VENDITE'],
-              ],
-              fields: ['amount'],
-            });
-
-            for (const line of lines) {
-              if (line.amount > 0) {
-                totalBonusWithdrawn += line.amount;
-              }
+          for (const line of lines) {
+            if (line.amount > 0) {
+              totalBonusWithdrawn += line.amount;
             }
           }
         }
@@ -464,7 +450,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        team_id: parseInt(teamId),
+        user_id: userId,
         period: {
           from: '2025-11',
           to: `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, '0')}`,
@@ -477,49 +463,18 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'team-bonus-withdrawn') {
-      // Ottiene il totale bonus ritirati per un team di vendita
+      // Ottiene il totale bonus ritirati per un VENDITORE
       // Usato nella Dashboard Compensi per mostrare "Bonus Ritirato"
-      const teamId = searchParams.get('teamId');
+      const userIdParam = searchParams.get('userId') || searchParams.get('teamId');
 
-      if (!teamId) {
-        return NextResponse.json({ error: 'teamId richiesto' }, { status: 400 });
+      if (!userIdParam) {
+        return NextResponse.json({ error: 'userId richiesto' }, { status: 400 });
       }
+      const userId = parseInt(userIdParam);
 
-      // 1. Trova tutti i membri del team
-      const teamMembers = await callOdoo(cookies, 'crm.team.member', 'search_read', [], {
-        domain: [['crm_team_id', '=', parseInt(teamId)]],
-        fields: ['id', 'user_id'],
-      });
-
-      if (!teamMembers || teamMembers.length === 0) {
-        return NextResponse.json({
-          success: true,
-          team_id: parseInt(teamId),
-          bonus_withdrawn: 0,
-          members_count: 0,
-          message: 'Nessun membro nel team',
-        });
-      }
-
-      // 2. Trova gli employee_id corrispondenti ai user_id
-      // Escludi Paul (user_id=7) e Laura (user_id=8) — non partecipano al ritiro bonus
-      const EXCLUDED_USER_IDS = [7, 8];
-      const userIds = teamMembers
-        .filter((m: any) => m.user_id && !EXCLUDED_USER_IDS.includes(m.user_id[0]))
-        .map((m: any) => m.user_id[0]);
-
-      if (userIds.length === 0) {
-        return NextResponse.json({
-          success: true,
-          team_id: parseInt(teamId),
-          bonus_withdrawn: 0,
-          members_count: 0,
-          message: 'Nessun venditore con user_id nel team',
-        });
-      }
-
+      // Trova il dipendente HR collegato al venditore
       const employees = await callOdoo(cookies, 'hr.employee', 'search_read', [], {
-        domain: [['user_id', 'in', userIds]],
+        domain: [['user_id', '=', userId]],
         fields: ['id', 'name', 'user_id'],
       });
 
@@ -528,14 +483,14 @@ export async function GET(request: NextRequest) {
       if (employeeIds.length === 0) {
         return NextResponse.json({
           success: true,
-          team_id: parseInt(teamId),
+          user_id: userId,
           bonus_withdrawn: 0,
           members_count: 0,
-          message: 'Nessun dipendente HR collegato ai venditori',
+          message: 'Nessun dipendente HR collegato al venditore',
         });
       }
 
-      // 3. Cerca tutte le buste paga dei dipendenti del team dal 1 Novembre 2024
+      // Cerca tutte le buste paga del venditore dal 1 Novembre 2025
       const payslips = await callOdoo(cookies, 'hr.payslip', 'search_read', [], {
         domain: [
           ['employee_id', 'in', employeeIds],
@@ -577,7 +532,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        team_id: parseInt(teamId),
+        user_id: userId,
         bonus_withdrawn: totalBonusWithdrawn,
         members_count: employees.length,
         payslips_count: payslips.length,
