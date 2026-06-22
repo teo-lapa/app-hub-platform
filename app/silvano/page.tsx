@@ -64,6 +64,7 @@ export default function CatalogoPage() {
     const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().slice(0, 10);
   });
   const [note, setNote] = useState('');
+  const [noteMag, setNoteMag] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ orderId: number; orderName: string; margine: number } | null>(null);
   const [toast, setToast] = useState('');
@@ -162,7 +163,7 @@ export default function CatalogoPage() {
     const r = await fetch('/api/silvano/crea-ordine', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: cliente.id, deliveryDate, note,
+        clientId: cliente.id, deliveryDate, note, noteMagazzino: noteMag,
         contactId: contattoId || undefined,
         deliveryAddressId: indirizzoId || undefined,
         lines: cart.map((i) => ({ product_id: i.id, qty: i.qty, price: i.price, name: i.name })),
@@ -170,7 +171,7 @@ export default function CatalogoPage() {
     });
     const d = await r.json();
     setSubmitting(false);
-    if (d.success) { setDone({ orderId: d.orderId, orderName: d.orderName, margine: d.margineVenditore }); setCart([]); }
+    if (d.success) { setDone({ orderId: d.orderId, orderName: d.orderName, margine: d.margineVenditore }); setCart([]); setNote(''); setNoteMag(''); }
     else { setToast(d.error || 'Errore creazione preventivo'); setTimeout(() => setToast(''), 3000); }
   };
 
@@ -370,8 +371,14 @@ export default function CatalogoPage() {
                   <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white" />
                 </label>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (opzionale)…" rows={2}
-                  className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white placeholder-slate-400" />
+                <label className="block text-xs text-slate-400">Nota ordine <span className="text-slate-500">(resta nel chatter)</span>
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Es. accordi o richieste del cliente…" rows={2}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white placeholder-slate-400" />
+                </label>
+                <label className="block text-xs text-slate-400">Nota magazzino / autista <span className="text-slate-500">(note interne)</span>
+                  <textarea value={noteMag} onChange={(e) => setNoteMag(e.target.value)} placeholder="Es. citofono rotto, consegnare sul retro…" rows={2}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 text-sm text-white placeholder-slate-400" />
+                </label>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Totale</span><span className="font-bold text-white">{fmtCHF(cartTotal)}</span>
                 </div>

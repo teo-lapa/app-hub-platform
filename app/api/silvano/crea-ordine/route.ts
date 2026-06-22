@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const seller = await resolveSalesperson(request);
     const body = await request.json();
-    const { clientId, contactId, deliveryAddressId, deliveryDate, note } = body || {};
+    const { clientId, contactId, deliveryAddressId, deliveryDate, note, noteMagazzino } = body || {};
     const lines: InLine[] = body?.lines || [];
 
     if (!clientId || !Array.isArray(lines) || lines.length === 0) {
@@ -91,6 +91,13 @@ export async function POST(request: NextRequest) {
         model: 'sale.order', res_id: orderId, body: noteHtml, message_type: 'comment', subtype_id: 1,
       }], {});
     } catch { /* non critico */ }
+
+    // Nota magazzino/autista → note interne dell'ordine (campo che l'autista vede).
+    if (noteMagazzino) {
+      try {
+        await callOdooAsAdmin('sale.order', 'write', [[orderId], { internal_note: String(noteMagazzino) }], {});
+      } catch { /* campo opzionale, non bloccare la creazione */ }
+    }
 
     const created = await callOdooAsAdmin('sale.order', 'search_read', [], {
       domain: [['id', '=', orderId]], fields: ['name', 'amount_total'], limit: 1,
