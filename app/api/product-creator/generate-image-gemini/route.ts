@@ -163,13 +163,12 @@ REGOLE FONDAMENTALI:
       }
 
       // Parole "contenitore"/UdM da ignorare: non identificano il prodotto
-      const STOP = new Set(['cartone','cartoni','confezione','confezioni','scatola','scatole','busta','buste','pacco','pezzi','pezzo','sacchetto','barattolo','vasetto','bottiglia','bottiglie','lattina','lattine','vassoio','grammi','sgocciolato','precotta','precotto']);
-      const sig = (s: string) => new Set(
-        (s || '').toLowerCase().replace(/[^a-zà-ÿ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w))
-      );
+      const STOP = ['cartone','cartoni','confezione','confezioni','scatola','scatole','busta','buste','pacco','pezzi','pezzo','sacchetto','barattolo','vasetto','bottiglia','bottiglie','lattina','lattine','vassoio','grammi','sgocciolato','precotta','precotto'];
+      const sig = (s: string): string[] =>
+        (s || '').toLowerCase().replace(/[^a-zà-ÿ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && STOP.indexOf(w) === -1);
       const wanted = sig(productName);
       const got = sig(targetName);
-      const matches = [...wanted].some(w => got.has(w));
+      const matches = wanted.some(w => got.indexOf(w) !== -1);
 
       if (!targetName || !matches) {
         console.error(`🛑 MISMATCH id/nome: ${targetModel} ${productId} = "${targetName}" ma richiesto "${productName}" — FOTO NON SCRITTA`);
