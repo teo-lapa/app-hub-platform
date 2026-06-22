@@ -138,12 +138,53 @@ REGOLE FONDAMENTALI:
 
     // If productId is provided, upload to Odoo
     if (productId) {
+      const targetModel = productModel || 'product.template';
+      const odooUrl = process.env.ODOO_URL;
+
+      // SICUREZZA — verifica id<->nome PRIMA di scrivere la foto.
+      // Un id e' ambiguo: il numero di una variante (product.product) puo' coincidere con
+      // quello di un template (product.template) di un ALTRO prodotto. Senza questo controllo
+      // la foto finiva sul prodotto sbagliato (bug figliata->pinsa del 16/06/2026).
+      // Se il nome del prodotto target non combacia col nome richiesto -> NON scrivere.
+      let targetName = '';
       try {
-        console.log(`📤 Uploading image to Odoo product ${productId}`);
+        const checkRes = await fetch(`${odooUrl}/web/dataset/call_kw`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cookie': `session_id=${sessionId}` },
+          body: JSON.stringify({
+            jsonrpc: '2.0', method: 'call',
+            params: { model: targetModel, method: 'read', args: [[productId], ['name']], kwargs: {} },
+            id: Math.floor(Math.random() * 1000000000),
+          })
+        });
+        targetName = (await checkRes.json()).result?.[0]?.name || '';
+      } catch (e) {
+        console.error('⚠️ Impossibile leggere il nome del prodotto target:', e);
+      }
 
-        const odooUrl = process.env.ODOO_URL;
+      // Parole "contenitore"/UdM da ignorare: non identificano il prodotto
+      const STOP = new Set(['cartone','cartoni','confezione','confezioni','scatola','scatole','busta','buste','pacco','pezzi','pezzo','sacchetto','barattolo','vasetto','bottiglia','bottiglie','lattina','lattine','vassoio','grammi','sgocciolato','precotta','precotto']);
+      const sig = (s: string) => new Set(
+        (s || '').toLowerCase().replace(/[^a-zà-ÿ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w))
+      );
+      const wanted = sig(productName);
+      const got = sig(targetName);
+      const matches = [...wanted].some(w => got.has(w));
 
-        // Update product with image
+      if (!targetName || !matches) {
+        console.error(`🛑 MISMATCH id/nome: ${targetModel} ${productId} = "${targetName}" ma richiesto "${productName}" — FOTO NON SCRITTA`);
+        return NextResponse.json({
+          success: false,
+          mismatch: true,
+          error: `Sicurezza: l'id ${productId} corrisponde a "${targetName || 'prodotto inesistente'}", non a "${productName}". Foto NON scritta per evitare di sovrascrivere il prodotto sbagliato.`,
+          imageBase64,
+          mimeType: imageMimeType,
+        }, { status: 409 });
+      }
+
+      try {
+        console.log(`📤 Uploading image to Odoo ${targetModel} ${productId} ("${targetName}")`);
+
         const updateResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
           method: 'POST',
           headers: {
@@ -154,7 +195,7 @@ REGOLE FONDAMENTALI:
             jsonrpc: '2.0',
             method: 'call',
             params: {
-              model: productModel || 'product.template',
+              model: targetModel,
               method: 'write',
               args: [
                 [productId],
