@@ -33,7 +33,8 @@ interface TeamData {
   name: string;
   revenue_current_month: number;
   revenue_paid: number; // Fatturato pagato
-  payment_percentage: number; // Percentuale di pagamento
+  payment_percentage: number; // Percentuale di pagamento (generale, display)
+  bonus_payment_percentage: number; // % incasso dei soli clienti qualificati (base del bonus reale)
   threshold: number;
   threshold_met: boolean;
   // Soglie dettagliate
@@ -136,7 +137,7 @@ async function getSalespersonData(
         ['invoice_date', '>=', startDateStr],
         ['invoice_date', '<=', endDateStr],
       ],
-      fields: ['id', 'name', 'partner_id', 'amount_total', 'invoice_date'],
+      fields: ['id', 'name', 'partner_id', 'amount_total', 'amount_residual', 'invoice_date'],
     });
 
     activePartnerIds = Array.from(new Set<number>(monthInvoices.map((inv: any) => inv.partner_id[0])));
@@ -149,6 +150,7 @@ async function getSalespersonData(
       revenue_current_month: 0,
       revenue_paid: 0,
       payment_percentage: 0,
+      bonus_payment_percentage: 0,
       threshold: THRESHOLD,
       threshold_met: false,
       threshold_tier1: THRESHOLD_TIER1,
@@ -229,30 +231,40 @@ async function getSalespersonData(
 
   const thresholdMet = revenueMonth >= THRESHOLD;
 
-  // 5a. Calcola fatturato PAGATO (da fatture pagate del team)
-  let revenuePaid = 0;
-
-  try {
-    const paidInvoices = await callOdoo(cookies, 'account.move', 'search_read', [], {
-      domain: [
-        ['invoice_user_id', '=', userId],
-        ['move_type', '=', 'out_invoice'],
-        ['state', '=', 'posted'],
-        ['payment_state', 'in', ['paid', 'in_payment']],
-        ['invoice_date', '>=', startDateStr],
-        ['invoice_date', '<=', endDateStr],
-      ],
-      fields: ['id', 'name', 'amount_total', 'payment_state', 'invoice_date'],
-    });
-
-    revenuePaid = paidInvoices.reduce((sum: number, inv: any) => sum + inv.amount_total, 0);
-    console.log(`💰 ${userName}: Fatturato pagato = ${revenuePaid.toFixed(2)} CHF (da ${paidInvoices.length} fatture)`);
-  } catch (error) {
-    console.warn(`⚠️ Impossibile recuperare fatture pagate per ${userName}:`, error);
-    revenuePaid = 0;
+  // 5a. INCASSATO VERO per cliente (totale - residuo, ACCONTI COMPRESI).
+  //     Il bonus reale si paga su quello che i clienti hanno DAVVERO pagato,
+  //     non solo sulle fatture saldate al 100%.
+  let monthInvoicesForPaid: any[] = monthInvoices; // mesi passati: già le ho
+  if (isCurrentMonth) {
+    // Mese corrente: monthInvoices è vuoto (ho preso gli ordini), prendo le fatture emesse nel mese
+    try {
+      monthInvoicesForPaid = await callOdoo(cookies, 'account.move', 'search_read', [], {
+        domain: [
+          ['invoice_user_id', '=', userId],
+          ['move_type', '=', 'out_invoice'],
+          ['state', '=', 'posted'],
+          ['invoice_date', '>=', startDateStr],
+          ['invoice_date', '<=', endDateStr],
+        ],
+        fields: ['id', 'partner_id', 'amount_total', 'amount_residual'],
+      });
+    } catch (error) {
+      console.warn(`⚠️ Impossibile recuperare fatture mese per ${userName}:`, error);
+      monthInvoicesForPaid = [];
+    }
   }
 
-  // Calcola percentuale di pagamento
+  const collectedByPartner: Record<number, number> = {};
+  let revenuePaid = 0;
+  monthInvoicesForPaid.forEach((inv: any) => {
+    const pid = inv.partner_id[0];
+    const collected = inv.amount_total - (inv.amount_residual || 0); // incassato vero (acconti compresi)
+    collectedByPartner[pid] = (collectedByPartner[pid] || 0) + collected;
+    revenuePaid += collected;
+  });
+  console.log(`💰 ${userName}: Incassato vero = ${revenuePaid.toFixed(2)} CHF (da ${monthInvoicesForPaid.length} fatture)`);
+
+  // Percentuale di incasso GENERALE (solo per il display "Fatturato Pagato")
   const paymentPercentage = revenueMonth > 0 ? (revenuePaid / revenueMonth) * 100 : 0;
 
   // 5b. Crea mappa per calcolare revenue per cliente
@@ -359,7 +371,15 @@ async function getSalespersonData(
 
   bonusTheoretical = qualifiedRevenue * bonusRate;
 
-  const bonusReal = bonusTheoretical * (paymentPercentage / 100);
+  // Incassato VERO dei soli clienti qualificati: è su QUESTO che si paga il bonus reale
+  const qualifiedCollected = qualifiedClients.reduce(
+    (sum, c) => sum + (collectedByPartner[c.id] || 0),
+    0
+  );
+  const bonusPaymentPercentage = qualifiedRevenue > 0 ? (qualifiedCollected / qualifiedRevenue) * 100 : 0;
+
+  // Bonus reale = 8% sull'incassato dei clienti qualificati (quello che hanno DAVVERO pagato)
+  const bonusReal = qualifiedCollected * bonusRate;
 
   return {
     id: userId,
@@ -367,6 +387,7 @@ async function getSalespersonData(
     revenue_current_month: revenueMonth,
     revenue_paid: revenuePaid,
     payment_percentage: paymentPercentage,
+    bonus_payment_percentage: bonusPaymentPercentage,
     threshold: THRESHOLD,
     threshold_met: thresholdMet,
     // Soglie dettagliate
