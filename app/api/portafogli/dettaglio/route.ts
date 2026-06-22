@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       callOdooAsAdmin('sale.order.line', 'read_group', [
         [['order_id.commercial_partner_id', '=', id], ['order_id.state', 'in', ['sale', 'done']], ['order_id.date_order', '>=', start12]],
         ['price_subtotal:sum', 'product_uom_qty:sum'], ['product_id'],
-      ], { lazy: false, orderby: 'price_subtotal desc', limit: 8 }),
+      ], { lazy: false, orderby: 'price_subtotal desc', limit: 8, context: { lang: 'it_IT' } }),
     ]);
 
     const p = partnerArr[0] || {};
