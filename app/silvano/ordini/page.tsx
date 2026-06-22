@@ -16,7 +16,7 @@ interface Riga {
 interface OrdineDettaglio {
   id: number; name: string; cliente: string; clienteId: number; deliveryAddress: string;
   deliveryDate: string | null; dateOrder: string | null;
-  total: number; untaxed: number; state: string; editable: boolean; stateLabel: string;
+  total: number; untaxed: number; state: string; editable: boolean; cancellable: boolean; stateLabel: string;
   note: string; margineVenditore: number; righe: Riga[];
 }
 interface CatProd {
@@ -137,6 +137,21 @@ export default function OrdiniPage() {
     });
   };
 
+  const annullaOrdine = async () => {
+    if (!sel) return;
+    const isPrev = sel.state === 'draft' || sel.state === 'sent';
+    if (!confirm(`${isPrev ? 'Annullare il preventivo' : "Annullare l'ordine"} ${sel.name}?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/silvano/ordine/${sel.id}/annulla`, { method: 'POST' });
+      const d = await res.json();
+      if (!d.success) { flash(d.error || 'Errore'); return; }
+      flash('Annullato');
+      setSel(null);
+      load();
+    } finally { setBusy(false); }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -224,6 +239,12 @@ export default function OrdiniPage() {
                     className="ml-auto flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 font-semibold text-slate-900 hover:bg-emerald-400">
                     <FileText size={18} /> Scarica PDF
                   </a>
+                  {sel.cancellable && (
+                    <button onClick={annullaOrdine} disabled={busy}
+                      className="flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2.5 font-semibold text-red-300 hover:bg-red-500/30 disabled:opacity-50">
+                      <X size={18} /> {sel.state === 'draft' || sel.state === 'sent' ? 'Annulla preventivo' : 'Annulla ordine'}
+                    </button>
+                  )}
                 </div>
 
                 {sel.note && <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300">{sel.note}</div>}
