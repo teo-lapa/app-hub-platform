@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const orders = await callOdooAsAdmin('sale.order', 'search_read', [], {
       domain: [['id', '=', id]],
       fields: ['id', 'name', 'partner_id', 'partner_shipping_id', 'commitment_date', 'date_order',
-        'amount_total', 'amount_untaxed', 'state', 'order_line', 'pricelist_id', 'note'],
+        'amount_total', 'amount_untaxed', 'state', 'order_line', 'pricelist_id', 'note', 'picking_ids'],
       limit: 1,
     });
     if (!orders?.length) return NextResponse.json({ success: false, error: 'Ordine non trovato' }, { status: 404 });
@@ -119,6 +119,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       });
     }
 
+    // Annullabile: preventivo (draft/sent) sempre; ordine confermato solo se
+    // NESSUN picking è già stato preparato/consegnato (assigned/done).
+    let cancellable = EDITABLE_STATES.includes(o.state);
+    if (o.state === 'sale') {
+      const pickIds: number[] = o.picking_ids || [];
+      if (pickIds.length) {
+        const picks = await callOdooAsAdmin('stock.picking', 'search_read', [], {
+          domain: [['id', 'in', pickIds]],
+          fields: ['state'],
+        });
+        cancellable = !picks.some((p: any) => p.state === 'assigned' || p.state === 'done');
+      } else {
+        cancellable = true;
+      }
+    }
+
     const STATE_LABEL: Record<string, string> = {
       draft: 'Bozza', sent: 'Inviato', sale: 'Confermato', done: 'Completato', cancel: 'Annullato',
     };
@@ -137,6 +153,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         untaxed: o.amount_untaxed || 0,
         state: o.state,
         editable: EDITABLE_STATES.includes(o.state),
+        cancellable,
         stateLabel: STATE_LABEL[o.state] || o.state,
         note: o.note || '',
         margineVenditore: totMargine,
