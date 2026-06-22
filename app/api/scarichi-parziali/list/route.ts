@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAdminSession } from '@/lib/odoo/admin-session';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
 export const dynamic = 'force-dynamic';
@@ -232,16 +232,8 @@ async function checkReturnCreated(sessionId: string, residualPickingName: string
 
 export async function GET(request: NextRequest) {
   try {
-    // Autentica con sessione utente
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
-
-    if (!sessionId) {
-      return NextResponse.json(
-        { success: false, error: 'Non autenticato' },
-        { status: 401 }
-      );
-    }
+    // Sessione admin/service account: la sessione utente scade → "Session expired"
+    const { sessionId } = await getAdminSession();
 
     console.log('📋 Ricerca ordini OUT residui...');
 
