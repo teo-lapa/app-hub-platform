@@ -52,6 +52,28 @@ export async function GET(_request: NextRequest) {
       limit: 2000,
     });
 
+    // 3) Serie mensile per cliente (per il mini-grafico/trend) — stesso dominio, aggregata su azienda
+    const serieRows = await callOdooAsAdmin('sale.order', 'read_group', [
+      [['date_order', '>=', DA], ['state', 'in', ['sale', 'done']]],
+      ['amount_untaxed:sum'],
+      ['commercial_partner_id', 'date_order:month'],
+    ], { lazy: false });
+
+    const mesiSet = new Set<string>();
+    const perCliente: Record<number, Record<string, number>> = {};
+    for (const r of serieRows) {
+      const cp = r.commercial_partner_id;
+      if (!cp) continue;
+      const id = Array.isArray(cp) ? cp[0] : cp;
+      const from: string = r.__range?.['date_order:month']?.from || '';
+      const m = from.slice(0, 7); // YYYY-MM
+      if (!m) continue;
+      mesiSet.add(m);
+      if (!perCliente[id]) perCliente[id] = {};
+      perCliente[id][m] = r.amount_untaxed || 0;
+    }
+    const months = Array.from(mesiSet).sort();
+
     const clienti = partners.map((p: any) => ({
       id: p.id,
       name: p.name,
@@ -62,13 +84,14 @@ export async function GET(_request: NextRequest) {
       venditoreId: Array.isArray(p.user_id) ? p.user_id[0] : null,
       fatturato: fatturato[p.id] || 0,
       ordini: ordini[p.id] || 0,
+      serie: months.map(m => perCliente[p.id]?.[m] || 0),
       col: colFromUser(Array.isArray(p.user_id) ? p.user_id[0] : null),
     }));
 
     // Ordina per fatturato decrescente (i piu' importanti in alto)
     clienti.sort((a: any, b: any) => b.fatturato - a.fatturato);
 
-    return NextResponse.json({ success: true, count: clienti.length, clienti });
+    return NextResponse.json({ success: true, count: clienti.length, months, clienti });
   } catch (error: any) {
     console.error('💥 [PORTAFOGLI/GET]', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

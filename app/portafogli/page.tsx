@@ -13,6 +13,7 @@ type Cliente = {
   venditoreId: number | null;
   fatturato: number;
   ordini: number;
+  serie: number[];
   col: Col;
   origCol: Col;
 };
@@ -26,6 +27,104 @@ const COLS: { key: Col; titolo: string; sotto: string; accent: string }[] = [
 const fmtCHF = (n: number) =>
   'CHF ' + (n || 0).toLocaleString('it-CH', { maximumFractionDigits: 0 });
 
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const meseLabel = (key: string) => MESI[parseInt(key.slice(5, 7), 10) - 1] || key;
+
+type Trend = { dir: 'up' | 'down' | 'flat'; pct: number };
+function calcTrend(serie: number[]): Trend {
+  const n = serie.length;
+  if (n < 2) return { dir: 'flat', pct: 0 };
+  const mx = (n - 1) / 2;
+  const my = serie.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (i - mx) * (serie[i] - my); den += (i - mx) ** 2; }
+  const slope = den ? num / den : 0;
+  const half = Math.floor(n / 2);
+  const a = serie.slice(0, half).reduce((s, v) => s + v, 0) / Math.max(1, half);
+  const b = serie.slice(half).reduce((s, v) => s + v, 0) / Math.max(1, n - half);
+  const base = (a + b) / 2 || 1;
+  const pct = Math.round(((b - a) / base) * 100);
+  const dir: Trend['dir'] = slope > 0 && pct > 10 ? 'up' : slope < 0 && pct < -10 ? 'down' : 'flat';
+  return { dir, pct };
+}
+const trendColor = (d: Trend['dir']) => d === 'up' ? '#34d399' : d === 'down' ? '#f87171' : '#94a3b8';
+const trendIcon = (d: Trend['dir']) => d === 'up' ? '📈' : d === 'down' ? '📉' : '➖';
+const trendLabel = (d: Trend['dir']) => d === 'up' ? 'In salita' : d === 'down' ? 'In discesa' : 'Stabile';
+
+function Sparkline({ serie, color }: { serie: number[]; color: string }) {
+  const w = 84, h = 26, pad = 2;
+  if (serie.length < 2) return null;
+  const max = Math.max(...serie);
+  const min = Math.min(...serie);
+  const range = max - min || 1;
+  const pts = serie.map((v, i) => {
+    const x = pad + (i * (w - 2 * pad)) / (serie.length - 1);
+    const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return (
+    <svg width={w} height={h} className="block">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DettaglioModal({ c, months, onClose }: { c: Cliente; months: string[]; onClose: () => void }) {
+  const t = calcTrend(c.serie);
+  const max = Math.max(...c.serie, 1);
+  const ultimo = c.serie[c.serie.length - 1] || 0;
+  const media = c.serie.length ? c.serie.reduce((a, b) => a + b, 0) / c.serie.length : 0;
+  const col = trendColor(t.dir);
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="text-lg font-bold">{c.name}</div>
+            <div className="text-xs text-slate-400">
+              {[c.city, c.cantone].filter(Boolean).join(' · ') || '—'} · {c.venditore || 'nessun venditore'}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-3 py-1 rounded-full text-sm font-semibold" style={{ background: col + '22', color: col }}>
+            {trendIcon(t.dir)} {trendLabel(t.dir)} {t.pct > 0 ? `+${t.pct}%` : `${t.pct}%`}
+          </span>
+          <span className="text-xs text-slate-500">1ª metà vs 2ª metà del periodo</span>
+        </div>
+
+        <div className="flex items-end gap-2 h-32 mb-1">
+          {c.serie.map((v, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+              <div className="w-full rounded-t" title={fmtCHF(v)}
+                style={{ height: `${(v / max) * 100}%`, background: col, minHeight: v > 0 ? 3 : 0 }} />
+              <div className="text-[10px] text-slate-500 mt-1">{meseLabel(months[i] || '')}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+          <div className="bg-slate-800/60 rounded-lg p-2">
+            <div className="text-xs text-slate-400">Totale</div>
+            <div className="text-sm font-semibold">{fmtCHF(c.fatturato)}</div>
+          </div>
+          <div className="bg-slate-800/60 rounded-lg p-2">
+            <div className="text-xs text-slate-400">Media/mese</div>
+            <div className="text-sm font-semibold">{fmtCHF(media)}</div>
+          </div>
+          <div className="bg-slate-800/60 rounded-lg p-2">
+            <div className="text-xs text-slate-400">Ultimo mese</div>
+            <div className="text-sm font-semibold">{fmtCHF(ultimo)}</div>
+          </div>
+        </div>
+        <div className="text-xs text-slate-500 mt-3">{c.ordini} ordini nel periodo · l&apos;ultimo mese può essere parziale</div>
+      </div>
+    </div>
+  );
+}
+
 export default function PortafogliPage() {
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +133,8 @@ export default function PortafogliPage() {
   const [msg, setMsg] = useState('');
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<Set<number>>(new Set());
+  const [months, setMonths] = useState<string[]>([]);
+  const [detail, setDetail] = useState<Cliente | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +143,7 @@ export default function PortafogliPage() {
       const r = await fetch('/api/portafogli');
       const d = await r.json();
       if (!d.success) throw new Error(d.error || 'Errore caricamento');
+      setMonths(d.months || []);
       setClienti(d.clienti.map((c: any) => ({ ...c, origCol: c.col })));
     } catch (e: any) {
       setError(e.message);
@@ -221,6 +323,22 @@ export default function PortafogliPage() {
                             {c.venditore || 'nessun venditore'}
                           </div>
                         </div>
+                        {(() => {
+                          const tr = calcTrend(c.serie);
+                          return (
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); setDetail(c); }}
+                              title="Vedi andamento"
+                              className="shrink-0 flex flex-col items-end gap-0.5 hover:opacity-80"
+                            >
+                              <Sparkline serie={c.serie} color={trendColor(tr.dir)} />
+                              <span className="text-[10px]" style={{ color: trendColor(tr.dir) }}>
+                                {trendIcon(tr.dir)} {tr.pct > 0 ? `+${tr.pct}%` : `${tr.pct}%`}
+                              </span>
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -235,6 +353,8 @@ export default function PortafogliPage() {
           })}
         </div>
       )}
+
+      {detail && <DettaglioModal c={detail} months={months} onClose={() => setDetail(null)} />}
     </div>
   );
 }
