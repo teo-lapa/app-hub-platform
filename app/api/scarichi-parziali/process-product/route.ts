@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAdminSession } from '@/lib/odoo/admin-session';
 import { GoogleGenAI } from '@google/genai';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
@@ -64,9 +64,7 @@ Rispondi SOLO in questo formato JSON:
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
-    if (!sessionId) return NextResponse.json({ success: false, error: 'Non autenticato' }, { status: 401 });
+    const { sessionId } = await getAdminSession();
 
     const body = await request.json();
     const { action, product, order, photo, reason, messaggiAutista } = body;

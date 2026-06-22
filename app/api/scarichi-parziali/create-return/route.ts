@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAdminSession } from '@/lib/odoo/admin-session';
 import { injectLangContext } from '@/lib/odoo/user-lang';
 
 const ODOO_URL = process.env.ODOO_URL || 'https://lapadevadmin-lapa-v2-main-7268478.dev.odoo.com';
@@ -83,16 +83,8 @@ interface ResidualOrder {
 
 export async function POST(request: NextRequest) {
   try {
-    // Autentica con sessione utente
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('odoo_session_id')?.value;
-
-    if (!sessionId) {
-      return NextResponse.json(
-        { success: false, error: 'Non autenticato' },
-        { status: 401 }
-      );
-    }
+    // Sessione admin/service account: la sessione utente scade → "Session expired"
+    const { sessionId } = await getAdminSession();
 
     const body = await request.json();
     const { ordine } = body as { ordine: ResidualOrder };
