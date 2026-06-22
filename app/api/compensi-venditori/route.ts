@@ -15,10 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOdooSession, callOdoo } from '@/lib/odoo-auth';
 
 const SALESPEOPLE = [
-  { id: 7, name: 'Paul Teodorescu' },
-  { id: 8, name: 'Laura Teodorescu' },
-  { id: 14, name: 'Mihai Nita' },
-  { id: 450, name: 'Silvano Barbera' }
+  { id: 14, name: 'Mihai Nita' }
 ];
 const THRESHOLD_TIER1 = 80000; // Inizio scaglione 1 (2.5%)
 const THRESHOLD = 95000; // Soglia principale - Scaglione 2 (8%)
