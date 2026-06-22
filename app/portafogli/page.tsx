@@ -69,57 +69,126 @@ function Sparkline({ serie, color }: { serie: number[]; color: string }) {
   );
 }
 
-function DettaglioModal({ c, months, onClose }: { c: Cliente; months: string[]; onClose: () => void }) {
-  const t = calcTrend(c.serie);
-  const max = Math.max(...c.serie, 1);
-  const ultimo = c.serie[c.serie.length - 1] || 0;
-  const media = c.serie.length ? c.serie.reduce((a, b) => a + b, 0) / c.serie.length : 0;
-  const col = trendColor(t.dir);
+function KPI({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 mb-3">
+    <div className="bg-slate-800/60 rounded-lg p-3">
+      <div className="text-[11px] text-slate-400">{label}</div>
+      <div className="text-base font-bold" style={color ? { color } : undefined}>{value}</div>
+      {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
+    </div>
+  );
+}
+
+function DettaglioModal({ c, onClose }: { c: Cliente; onClose: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/portafogli/dettaglio?id=${c.id}`)
+      .then(r => r.json())
+      .then(j => { if (!alive) return; if (j.success) setD(j); else setErr(j.error || 'Errore'); })
+      .catch(e => alive && setErr(e.message));
+    return () => { alive = false; };
+  }, [c.id]);
+
+  const valori: number[] = d?.serie?.valori || [];
+  const months: string[] = d?.serie?.months || [];
+  const recente = calcTrend(valori.slice(-6));
+  const colR = trendColor(recente.dir);
+  const max = Math.max(...valori, 1);
+  const yoy = d?.yoy?.pct;
+  const info = d?.info;
+  const anni = info?.primoOrdine
+    ? ((Date.now() - new Date(info.primoOrdine).getTime()) / (365.25 * 86400000)).toFixed(1)
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-3xl my-6" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <div className="text-lg font-bold">{c.name}</div>
+            <div className="text-xl font-bold">{c.name}</div>
             <div className="text-xs text-slate-400">
-              {[c.city, c.cantone].filter(Boolean).join(' · ') || '—'} · {c.venditore || 'nessun venditore'}
+              {[c.city, c.cantone].filter(Boolean).join(' · ') || '—'} · venditore: {c.venditore || 'nessuno'} · {c.isCompany ? 'azienda' : 'privato'}
             </div>
+            {info?.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {info.tags.map((t: string) => (
+                  <span key={t} className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[11px]">{t}</span>
+                ))}
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-3 py-1 rounded-full text-sm font-semibold" style={{ background: col + '22', color: col }}>
-            {trendIcon(t.dir)} {trendLabel(t.dir)} {t.pct > 0 ? `+${t.pct}%` : `${t.pct}%`}
-          </span>
-          <span className="text-xs text-slate-500">1ª metà vs 2ª metà del periodo</span>
-        </div>
+        {err && <div className="text-red-400 text-sm">⚠️ {err}</div>}
+        {!d && !err && <div className="text-slate-400 text-sm py-10 text-center">Caricamento analisi…</div>}
 
-        <div className="flex items-end gap-2 h-32 mb-1">
-          {c.serie.map((v, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-              <div className="w-full rounded-t" title={fmtCHF(v)}
-                style={{ height: `${(v / max) * 100}%`, background: col, minHeight: v > 0 ? 3 : 0 }} />
-              <div className="text-[10px] text-slate-500 mt-1">{meseLabel(months[i] || '')}</div>
+        {d && (
+          <>
+            {/* Trend badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="px-3 py-1 rounded-full text-sm font-semibold" style={{ background: colR + '22', color: colR }}>
+                {trendIcon(recente.dir)} {trendLabel(recente.dir)} {recente.pct > 0 ? `+${recente.pct}%` : `${recente.pct}%`} <span className="opacity-70">(ultimi 6 mesi)</span>
+              </span>
+              {yoy !== null && yoy !== undefined && (
+                <span className="px-3 py-1 rounded-full text-sm font-semibold"
+                  style={{ background: (yoy >= 0 ? '#34d399' : '#f87171') + '22', color: yoy >= 0 ? '#34d399' : '#f87171' }}>
+                  {yoy >= 0 ? '▲' : '▼'} {yoy > 0 ? `+${yoy}%` : `${yoy}%`} vs anno scorso
+                </span>
+              )}
             </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-          <div className="bg-slate-800/60 rounded-lg p-2">
-            <div className="text-xs text-slate-400">Totale</div>
-            <div className="text-sm font-semibold">{fmtCHF(c.fatturato)}</div>
-          </div>
-          <div className="bg-slate-800/60 rounded-lg p-2">
-            <div className="text-xs text-slate-400">Media/mese</div>
-            <div className="text-sm font-semibold">{fmtCHF(media)}</div>
-          </div>
-          <div className="bg-slate-800/60 rounded-lg p-2">
-            <div className="text-xs text-slate-400">Ultimo mese</div>
-            <div className="text-sm font-semibold">{fmtCHF(ultimo)}</div>
-          </div>
-        </div>
-        <div className="text-xs text-slate-500 mt-3">{c.ordini} ordini nel periodo · l&apos;ultimo mese può essere parziale</div>
+            {/* KPI grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <KPI label="Fatturato anno in corso" value={fmtCHF(d.yoy.ytdCur)} sub={`anno scorso: ${fmtCHF(d.yoy.ytdPrev)}`} />
+              <KPI label="Totale storico" value={fmtCHF(info.fatturatoTotale)} sub={`${info.ordiniTotali} ordini in totale`} />
+              <KPI label="Ordine medio" value={fmtCHF(info.ticketMedio)} sub={info.freqGiorni ? `ordina ogni ~${info.freqGiorni} gg` : undefined} />
+              <KPI label="Ultimo ordine"
+                value={info.giorniDaUltimo != null ? `${info.giorniDaUltimo} gg fa` : '—'}
+                sub={info.ultimoOrdine || undefined}
+                color={info.giorniDaUltimo != null && info.giorniDaUltimo > 30 ? '#f87171' : undefined} />
+              <KPI label="Cliente da" value={anni ? `${anni} anni` : '—'} sub={info.primoOrdine || undefined} />
+              <KPI label="Saldo / scaduto"
+                value={info.totalDue > 0 ? fmtCHF(info.totalDue) : 'in regola'}
+                sub={info.totalDue > 0 ? 'da incassare' : undefined}
+                color={info.totalDue > 0 ? '#f87171' : '#34d399'} />
+            </div>
+
+            {/* Grafico 18 mesi */}
+            <div className="text-xs text-slate-400 mb-1">Andamento mensile (ultimi 18 mesi)</div>
+            <div className="flex items-end gap-1 h-36 mb-1">
+              {valori.map((v, i) => {
+                const isYearStart = months[i]?.slice(5) === '01';
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <div className="w-full rounded-t" title={`${meseLabel(months[i])} ${months[i]?.slice(0, 4)}: ${fmtCHF(v)}`}
+                      style={{ height: `${(v / max) * 100}%`, background: isYearStart ? '#64748b' : colR, minHeight: v > 0 ? 2 : 0 }} />
+                    <div className="text-[9px] text-slate-500 mt-1">{meseLabel(months[i])}</div>
+                    <div className="text-[9px] text-slate-600">{isYearStart ? months[i].slice(0, 4) : ''}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Top prodotti */}
+            <div className="text-xs text-slate-400 mt-4 mb-2">Cosa compra (ultimi 12 mesi)</div>
+            <div className="space-y-1">
+              {d.topProdotti.map((p: any, i: number) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-sm bg-slate-800/40 rounded px-2 py-1">
+                  <span className="truncate">{p.name}</span>
+                  <span className="shrink-0 text-slate-300 font-medium">{fmtCHF(p.subtotal)}</span>
+                </div>
+              ))}
+              {d.topProdotti.length === 0 && <div className="text-xs text-slate-500">nessun prodotto nel periodo</div>}
+            </div>
+
+            <div className="text-[11px] text-slate-500 mt-3">Dati aggregati sull&apos;azienda (ordini dei contatti figli inclusi). L&apos;ultimo mese può essere parziale.</div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -133,7 +202,6 @@ export default function PortafogliPage() {
   const [msg, setMsg] = useState('');
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<Set<number>>(new Set());
-  const [months, setMonths] = useState<string[]>([]);
   const [detail, setDetail] = useState<Cliente | null>(null);
 
   const load = useCallback(async () => {
@@ -143,7 +211,6 @@ export default function PortafogliPage() {
       const r = await fetch('/api/portafogli');
       const d = await r.json();
       if (!d.success) throw new Error(d.error || 'Errore caricamento');
-      setMonths(d.months || []);
       setClienti(d.clienti.map((c: any) => ({ ...c, origCol: c.col })));
     } catch (e: any) {
       setError(e.message);
@@ -354,7 +421,7 @@ export default function PortafogliPage() {
         </div>
       )}
 
-      {detail && <DettaglioModal c={detail} months={months} onClose={() => setDetail(null)} />}
+      {detail && <DettaglioModal c={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }
