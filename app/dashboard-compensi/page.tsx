@@ -18,6 +18,7 @@ interface SalespersonData {
   revenue_current_month: number;
   revenue_paid: number;
   payment_percentage: number;
+  bonus_payment_percentage?: number;
   threshold: number;
   threshold_met: boolean;
   // Soglie dettagliate
@@ -563,7 +564,7 @@ export default function DashboardCompensi() {
                   </p>
                 </div>
                 <div className="bg-blue-50 rounded-lg p-3 md:p-4 border-2 border-blue-300">
-                  <p className="text-xs uppercase text-blue-700 mb-1">Bonus Reale Mese ({person.payment_percentage.toFixed(0)}% pagato)</p>
+                  <p className="text-xs uppercase text-blue-700 mb-1">Bonus Reale Mese ({(person.bonus_payment_percentage ?? person.payment_percentage).toFixed(0)}% incassato qualificati)</p>
                   <p className="text-xl md:text-2xl font-bold text-blue-600">
                     {formatCurrency(person.bonus_real)}
                   </p>
