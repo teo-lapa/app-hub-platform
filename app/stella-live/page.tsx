@@ -260,8 +260,10 @@ export default function StellaLivePage() {
     }
     else if (t === 'response.done') { responseActiveRef.current = false; if (!dispatchingRef.current) resumeIdle(); }
     else if (t === 'error') {
-      const msg = ev.error?.message || 'errore realtime';
-      setMessages(m => [...m, { role: 'stella', text: '⚠️ ' + msg }]);
+      // errori realtime spesso benigni (es. race su response.create): non sporcare la chat, recupera lo stato
+      try { console.warn('realtime error:', ev.error?.message || ev); } catch {}
+      responseActiveRef.current = false;
+      if (!dispatchingRef.current) resumeIdle();
     }
   }
 
