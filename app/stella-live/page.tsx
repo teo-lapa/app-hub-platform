@@ -126,11 +126,11 @@ export default function StellaLivePage() {
     const orb = orbRef.current;
     if (orb) {
       const lv = Math.min(level, 0.5);
-      orb.style.transform = `scale(${(1 + lv * 1.0).toFixed(3)})`;
-      const glow = 26 + lv * 150;
-      const c = ph === 'speaking' ? '176,124,255' : ph === 'thinking' ? '120,166,255' : ph === 'listening' ? '54,200,180' : '54,150,255';
-      orb.style.boxShadow = `0 0 ${glow.toFixed(0)}px rgba(${c},.8), inset 0 0 50px rgba(255,255,255,.22)`;
-      orb.style.background = `radial-gradient(circle at 36% 30%, rgba(${c},1), rgba(${c},.28))`;
+      orb.style.transform = `scale(${(1 + lv * 0.6).toFixed(3)})`;
+      const glow = 12 + lv * 70;
+      const c = ph === 'speaking' ? '155,123,255' : ph === 'thinking' ? '77,140,255' : ph === 'listening' ? '47,225,192' : '90,150,255';
+      orb.style.boxShadow = `0 0 ${glow.toFixed(0)}px rgba(${c},.9), inset 0 0 22px rgba(255,255,255,.28)`;
+      orb.style.background = `radial-gradient(circle at 36% 30%, rgba(${c},1), rgba(${c},.30))`;
     }
   }
 
@@ -334,55 +334,108 @@ export default function StellaLivePage() {
   const phaseLabel: Record<Phase, string> = {
     off: 'STELLA LIVE', connecting: 'CONNESSIONE', listening: 'IN ASCOLTO', speaking: 'STELLA PARLA', thinking: 'STO CONTROLLANDO',
   };
+  const phColor: Record<Phase, string> = {
+    off: '#5f7bb0', connecting: '#8ea2cf', listening: '#2fe1c0', speaking: '#9b7bff', thinking: '#4d8cff',
+  };
   const active = phase !== 'off';
 
   return (
-    <div style={{ height: '100dvh', background: 'radial-gradient(circle at 50% -10%, #11244a, #060b16 60%)', color: '#eaf1ff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
+    <div className="sl-root">
+      <style jsx>{`
+        .sl-root{position:relative;height:100dvh;display:flex;flex-direction:column;overflow:hidden;color:#e9f0ff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:radial-gradient(130% 90% at 50% -20%,#16204a 0%,#0a1030 45%,#05070f 100%);}
+        .sl-aurora{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+        .sl-b{position:absolute;border-radius:50%;filter:blur(64px);mix-blend-mode:screen;}
+        .sl-b1{width:62vw;height:62vw;left:-12vw;top:-14vw;background:radial-gradient(circle,#1f7bff,transparent 70%);opacity:.5;animation:sld1 19s ease-in-out infinite;}
+        .sl-b2{width:58vw;height:58vw;right:-18vw;top:6vh;background:radial-gradient(circle,#9b7bff,transparent 70%);opacity:.42;animation:sld2 23s ease-in-out infinite;}
+        .sl-b3{width:54vw;height:54vw;left:6vw;bottom:-24vh;background:radial-gradient(circle,#2fe1c0,transparent 70%);opacity:.3;animation:sld3 27s ease-in-out infinite;}
+        @keyframes sld1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(7vw,6vh) scale(1.15)}}
+        @keyframes sld2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-6vw,7vh) scale(1.1)}}
+        @keyframes sld3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(5vw,-6vh) scale(1.18)}}
+        .sl-header{position:relative;z-index:1;padding:14px 16px 8px;text-align:center;}
+        .sl-bell{position:absolute;right:12px;top:12px;background:transparent;border:none;cursor:pointer;font-size:23px;line-height:1;}
+        .sl-badge{position:absolute;top:-2px;right:-4px;background:#ff4d6d;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;}
+        .sl-notifs{position:absolute;right:10px;top:50px;z-index:40;background:rgba(12,20,44,.94);backdrop-filter:blur(12px);border:1px solid rgba(150,180,255,.28);border-radius:14px;padding:10px;width:280px;text-align:left;box-shadow:0 14px 40px rgba(0,0,0,.6);}
+        .sl-notif-item{display:flex;width:100%;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:none;color:#e9f0ff;border-radius:10px;padding:9px 10px;margin-bottom:6px;cursor:pointer;text-align:left;}
+        .sl-notif-n{background:#2563ff;border-radius:9px;font-size:12px;font-weight:700;padding:1px 7px;}
+        .sl-eyebrow{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.34em;text-transform:uppercase;}
+        .sl-title{margin:6px 0 0;font-size:19px;font-weight:800;letter-spacing:.4px;background:linear-gradient(90deg,#cdd9ff,#9b7bff 55%,#2fe1c0);-webkit-background-clip:text;background-clip:text;color:transparent;}
+        .sl-install{margin-top:8px;background:linear-gradient(135deg,#2563ff,#7b5bff);border:none;color:#fff;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+        .sl-convo{position:relative;z-index:1;flex:1;min-height:0;overflow-y:auto;padding:12px 14px 4px;display:flex;flex-direction:column;gap:9px;}
+        .sl-empty{text-align:center;opacity:.5;margin:auto 0;line-height:1.7;font-size:14px;}
+        .sl-bubble{max-width:86%;padding:10px 13px;border-radius:16px;line-height:1.45;font-size:14px;white-space:pre-wrap;word-break:break-word;}
+        .sl-bubble.me{align-self:flex-end;background:linear-gradient(135deg,#2563ff,#5f8bff);color:#fff;border-bottom-right-radius:5px;box-shadow:0 6px 20px rgba(37,99,255,.32);}
+        .sl-bubble.her{align-self:flex-start;background:rgba(255,255,255,.065);border:1px solid rgba(150,180,255,.16);border-bottom-left-radius:5px;}
+        .sl-msg{animation:slin .26s ease;}
+        @keyframes slin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        .sl-dock{position:relative;z-index:1;padding:8px 14px calc(16px + env(safe-area-inset-bottom));}
+        .sl-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;}
+        .sl-chips::-webkit-scrollbar{display:none;}
+        .sl-chip{white-space:nowrap;flex:0 0 auto;padding:7px 13px;font-size:12.5px;border-radius:14px;cursor:pointer;color:#cfe0ff;background:rgba(120,150,255,.12);border:1px solid rgba(150,180,255,.2);}
+        .sl-chip:disabled{opacity:.38;}
+        .sl-form{display:flex;gap:8px;margin-top:8px;}
+        .sl-input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(150,180,255,.25);color:#e9f0ff;border-radius:18px;padding:11px 15px;font-size:15px;outline:none;}
+        .sl-send{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:50%;background:linear-gradient(135deg,#2563ff,#7b5bff);color:#fff;font-size:18px;cursor:pointer;}
+        .sl-send:disabled{opacity:.4;}
+        .sl-status{font:500 12px/1.3 ui-monospace,Menlo,monospace;color:#8ea2cf;text-align:center;min-height:15px;margin:8px 0 10px;}
+        .sl-controls{display:flex;align-items:center;gap:10px;}
+        .sl-core-btn{position:relative;width:60px;height:60px;flex:0 0 auto;border:none;background:transparent;cursor:pointer;padding:0;}
+        .sl-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(150,190,255,.35);animation:slp 2.6s ease-in-out infinite;}
+        .sl-ring[data-on="1"]{border-color:rgba(90,235,205,.55);}
+        @keyframes slp{0%,100%{transform:scale(.82);opacity:.45}50%{transform:scale(1);opacity:.9}}
+        .sl-core{position:absolute;inset:9px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:radial-gradient(circle at 36% 30%,rgba(90,150,255,1),rgba(90,150,255,.3));box-shadow:0 0 12px rgba(90,150,255,.9),inset 0 0 22px rgba(255,255,255,.28);transition:background .25s;will-change:transform;}
+        .sl-pills{display:flex;gap:7px;flex-wrap:wrap;flex:1;}
+        .sl-pill{padding:8px 12px;font-size:12px;border-radius:14px;cursor:pointer;color:#9bb8ff;background:rgba(255,255,255,.045);border:1px solid rgba(150,180,255,.22);}
+        .sl-pill.on{background:rgba(47,225,192,.16);border-color:rgba(47,225,192,.55);color:#9af0dd;}
+        .sl-gate{position:fixed;inset:0;z-index:50;background:#05070f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;}
+        .sl-gate-orb{width:92px;height:92px;border-radius:50%;background:radial-gradient(circle at 36% 30%,#5a9bff,rgba(90,150,255,.3));box-shadow:0 0 44px rgba(90,150,255,.7);animation:slp 2.6s ease-in-out infinite;}
+        .sl-login{background:linear-gradient(135deg,#2563ff,#7b5bff);border:none;color:#fff;border-radius:24px;padding:12px 30px;font-size:16px;font-weight:700;cursor:pointer;}
+        @media (prefers-reduced-motion: reduce){.sl-b,.sl-msg,.sl-ring,.sl-gate-orb{animation:none!important;}}
+      `}</style>
+
+      <div aria-hidden className="sl-aurora"><span className="sl-b sl-b1" /><span className="sl-b sl-b2" /><span className="sl-b sl-b3" /></div>
       <audio ref={audioElRef} autoPlay hidden />
 
       {authed === false && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#060b16', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 24, textAlign: 'center' }}>
-          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'radial-gradient(circle at 36% 30%, #3696ff, rgba(54,150,255,.3))', boxShadow: '0 0 44px rgba(54,150,255,.75)' }} />
+        <div className="sl-gate">
+          <div className="sl-gate-orb" />
           <h2 style={{ margin: 0, fontSize: 22 }}>Stella Live</h2>
           <p style={{ opacity: .7, maxWidth: 280, lineHeight: 1.5, fontSize: 14 }}>Per usare Stella accedi una volta con il tuo account LAPA.</p>
-          <button onClick={goLogin} style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: 24, padding: '12px 30px', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>🔑 Accedi</button>
+          <button onClick={goLogin} className="sl-login">🔑 Accedi</button>
         </div>
       )}
 
-      <header style={{ padding: '16px', textAlign: 'center', borderBottom: '1px solid rgba(120,160,255,.12)', position: 'relative' }}>
-        <button onClick={() => setShowNotifs(s => !s)} title="Cose da fare" style={{ position: 'absolute', right: 12, top: 12, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 24, lineHeight: 1 }}>
-          🔔{notif > 0 && <span style={{ position: 'absolute', top: -2, right: -4, background: '#ff4d4d', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 5px' }}>{notif}</span>}
+      <header className="sl-header">
+        <button onClick={() => setShowNotifs(s => !s)} title="Cose da fare" className="sl-bell">
+          🔔{notif > 0 && <span className="sl-badge">{notif}</span>}
         </button>
         {showNotifs && (
-          <div style={{ position: 'absolute', right: 10, top: 52, zIndex: 40, background: '#0c1830', border: '1px solid rgba(120,160,255,.3)', borderRadius: 14, padding: 10, width: 280, textAlign: 'left', boxShadow: '0 10px 34px rgba(0,0,0,.55)' }}>
+          <div className="sl-notifs">
             <div style={{ fontSize: 13, fontWeight: 700, opacity: .85, padding: '2px 6px 8px' }}>📋 Cose da fare</div>
             {notifItems.length === 0 && <div style={{ opacity: .6, fontSize: 13, padding: '6px' }}>Tutto a posto ✅</div>}
             {notifItems.map((it: any) => (
-              <button key={it.key} onClick={() => { setShowNotifs(false); sendUserText(it.ask); }} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.05)', border: 'none', color: '#eaf1ff', borderRadius: 10, padding: '9px 10px', marginBottom: 6, cursor: 'pointer', textAlign: 'left' }}>
+              <button key={it.key} onClick={() => { setShowNotifs(false); sendUserText(it.ask); }} className="sl-notif-item">
                 <span style={{ fontSize: 18 }}>{it.icon}</span>
                 <span style={{ flex: 1, fontSize: 13 }}>{it.label}</span>
-                <span style={{ background: '#1f6feb', borderRadius: 9, fontSize: 12, fontWeight: 700, padding: '1px 7px' }}>{it.n}</span>
+                <span className="sl-notif-n">{it.n}</span>
               </button>
             ))}
             <div style={{ fontSize: 11, opacity: .5, padding: '4px 6px 0' }}>Tocca una voce: lo chiedo a Stella</div>
           </div>
         )}
-        <div style={{ fontSize: 12, letterSpacing: 3, color: phase === 'off' ? '#5f7bb0' : '#7da8ff' }}>
-          {phase === 'off' ? '○ OFFLINE' : '● ' + phaseLabel[phase]}
-        </div>
-        <h1 style={{ fontSize: 20, margin: '4px 0 0', fontWeight: 700 }}>Stella Live</h1>
-        {installEvt && <button onClick={installApp} style={{ marginTop: 8, background: '#1f6feb', border: 'none', color: '#fff', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📲 Installa</button>}
+        <div className="sl-eyebrow" style={{ color: phColor[phase] }}>{phase === 'off' ? '○ OFFLINE' : '● ' + phaseLabel[phase]}</div>
+        <h1 className="sl-title">Stella Live</h1>
+        {installEvt && <button onClick={installApp} className="sl-install">📲 Installa</button>}
       </header>
 
-      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div ref={scrollRef} className="sl-convo">
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', opacity: .45, marginTop: 24, lineHeight: 1.7, fontSize: 14 }}>
+          <div className="sl-empty">
             Tocca la sfera e parla naturalmente.<br />La puoi interrompere quando vuoi.<br />“Come stiamo con gli ordini oggi?”
-            <div style={{ marginTop: 16, fontSize: 12, opacity: .8 }}>🚗 In auto: attiva Modalità Auto, collega il Bluetooth e parla a mani libere.</div>
+            <div style={{ marginTop: 16, fontSize: 12, opacity: .85 }}>🚗 In auto: attiva Modalità Auto, collega il Bluetooth e parla a mani libere.</div>
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', background: m.role === 'user' ? '#1f6feb' : 'rgba(255,255,255,.08)', padding: '9px 13px', borderRadius: 15, borderBottomRightRadius: m.role === 'user' ? 4 : 15, borderBottomLeftRadius: m.role === 'stella' ? 4 : 15, whiteSpace: 'pre-wrap', lineHeight: 1.45, fontSize: 14 }}>
+          <div key={i} className={'sl-msg sl-bubble ' + (m.role === 'user' ? 'me' : 'her')}>
             {renderText(m.text)}
             {m.images && m.images.map((src, j) => src.startsWith('data:application/pdf')
               ? <a key={j} href={src} target="_blank" rel="noreferrer" style={{ ...linkStyle, display: 'inline-block', marginTop: 8 }}>📄 Apri PDF</a>
@@ -391,59 +444,44 @@ export default function StellaLivePage() {
         ))}
       </div>
 
-      <div style={{ padding: '8px 16px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', maxWidth: '100%', width: '100%', padding: '0 2px' }}>
+      <div className="sl-dock">
+        <div className="sl-chips">
           {([
             ['☀️ Briefing', 'Fammi il briefing del mattino: in breve come va oggi (ordini, incassi e pagamenti, email importanti, urgenze).'],
             ['📦 Ordini oggi', 'Quanti ordini abbiamo oggi e qual e il totale?'],
             ['📧 Email', 'Leggimi le email importanti di oggi.'],
             ['📅 Scadenze', 'Cosa scade a breve nel magazzino?'],
           ] as [string, string][]).map(([label, prompt]) => (
-            <button key={label} onClick={() => sendUserText(prompt)} disabled={phase === 'thinking' || phase === 'speaking'} style={chipStyle}>{label}</button>
+            <button key={label} onClick={() => sendUserText(prompt)} disabled={phase === 'thinking' || phase === 'speaking'} className="sl-chip">{label}</button>
           ))}
         </div>
-        <div style={{ fontSize: 13, opacity: .75, minHeight: 18, textAlign: 'center' }}>{status}</div>
 
         {showInput && (
-          <form onSubmit={(e) => { e.preventDefault(); const t = typed.trim(); if (t) { sendUserText(t); setTyped(''); } }} style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 460 }}>
-            <input autoFocus value={typed} onChange={e => setTyped(e.target.value)} placeholder="Scrivi a Stella…"
-              style={{ flex: 1, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(120,160,255,.3)', color: '#eaf1ff', borderRadius: 22, padding: '11px 16px', fontSize: 15, outline: 'none' }} />
-            <button type="submit" disabled={!typed.trim() || phase === 'thinking' || phase === 'speaking'} style={{ background: '#1f6feb', border: 'none', color: '#fff', borderRadius: '50%', width: 44, height: 44, fontSize: 18, cursor: 'pointer', flex: '0 0 auto' }}>➤</button>
+          <form onSubmit={(e) => { e.preventDefault(); const t = typed.trim(); if (t) { sendUserText(t); setTyped(''); } }} className="sl-form">
+            <input autoFocus value={typed} onChange={e => setTyped(e.target.value)} placeholder="Scrivi a Stella…" className="sl-input" />
+            <button type="submit" disabled={!typed.trim() || phase === 'thinking' || phase === 'speaking'} className="sl-send">➤</button>
           </form>
         )}
 
-        <button onClick={active ? stop : start} aria-label="Parla con Stella"
-          style={{ width: 132, height: 132, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: 'transparent', position: 'relative', outline: 'none' }}>
-          <div ref={orbRef} style={{
-            width: 132, height: 132, borderRadius: '50%',
-            background: 'radial-gradient(circle at 36% 30%, rgba(54,150,255,1), rgba(54,150,255,.28))',
-            boxShadow: '0 0 26px rgba(54,150,255,.8), inset 0 0 50px rgba(255,255,255,.22)',
-            transition: 'background .25s', willChange: 'transform',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40,
-          }}>
-            {active ? '' : '🎤'}
-          </div>
-        </button>
+        <div className="sl-status">{status}</div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button onClick={toggleAuto} style={{ ...btnStyle, ...(autoMode ? { background: 'rgba(54,200,180,.18)', borderColor: 'rgba(54,200,180,.6)', color: '#9af0dd' } : {}) }}>🚗 Auto{autoMode ? ' ON' : ''}</button>
-          <button onClick={() => setShowInput(s => !s)} style={btnStyle}>⌨️ Scrivi</button>
-          {active && <button onClick={stop} style={btnStyle}>■ Termina</button>}
-          <button onClick={newChat} style={btnStyle}>Nuova conversazione</button>
+        <div className="sl-controls">
+          <button onClick={active ? stop : start} aria-label="Parla con Stella" className="sl-core-btn">
+            <span className="sl-ring" data-on={active ? '1' : '0'} />
+            <div ref={orbRef} className="sl-core">{active ? '' : '🎤'}</div>
+          </button>
+          <div className="sl-pills">
+            <button onClick={toggleAuto} className={'sl-pill' + (autoMode ? ' on' : '')}>🚗 Auto{autoMode ? ' ON' : ''}</button>
+            <button onClick={() => setShowInput(s => !s)} className={'sl-pill' + (showInput ? ' on' : '')}>⌨️ Scrivi</button>
+            {active && <button onClick={stop} className="sl-pill">■ Stop</button>}
+            <button onClick={newChat} className="sl-pill">↺ Nuova</button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  background: 'transparent', border: '1px solid rgba(120,160,255,.3)', color: '#9bb8ff',
-  borderRadius: 20, padding: '6px 16px', fontSize: 12, cursor: 'pointer',
-};
 const linkStyle: React.CSSProperties = {
   color: '#7db4ff', fontWeight: 600, textDecoration: 'underline', wordBreak: 'break-word',
-};
-const chipStyle: React.CSSProperties = {
-  whiteSpace: 'nowrap', background: 'rgba(31,111,235,.18)', border: '1px solid rgba(120,160,255,.35)', color: '#cfe0ff',
-  borderRadius: 18, padding: '7px 14px', fontSize: 13, cursor: 'pointer', flex: '0 0 auto',
 };
