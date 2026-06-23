@@ -27,11 +27,7 @@ const INSTRUCTIONS = [
   '',
   'Le chiacchiere, i saluti, le riformulazioni e i chiarimenti li gestisci tu direttamente, senza tool.',
   'Per cose importanti o irreversibili, prima ripeti a voce cosa stai per fare e aspetta l\'OK di Paul.',
-  '',
-  'LINGUA: Paul parla quasi sempre ITALIANO, a volte TEDESCO o RUMENO. Rispondi SEMPRE in italiano,',
-  'salvo che ti parli chiaramente in tedesco o rumeno e voglia risposta in quella lingua.',
-  'NON interpretare MAI l\'audio come lingue asiatiche (giapponese, cinese, coreano) o altre lingue strane:',
-  'se senti un suono breve, un respiro o qualcosa di poco chiaro, IGNORALO e aspetta in silenzio, non rispondere a vuoto.',
+  'Parli in italiano (capisci anche tedesco e rumeno). Se senti un suono breve o un respiro poco chiaro, ignoralo e aspetta.',
 ].join(' ');
 
 export default function StellaLivePage() {
@@ -62,14 +58,13 @@ export default function StellaLivePage() {
   const pendingTextRef = useRef<string>('');
   const dispatchingRef = useRef(false);
   const responseActiveRef = useRef(false);
-  const suppressRespIdRef = useRef<string | null>(null);
-  const armSuppressRef = useRef(false);
   const handledCalls = useRef<Set<string>>(new Set());
 
   function setPh(p: Phase) { phaseRef.current = p; setPhase(p); }
   function send(obj: any) { const dc = dcRef.current; if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj)); }
   // crea una risposta del modello, annullando prima quella eventualmente attiva (evita "active response")
   function requestResponse() { if (responseActiveRef.current) send({ type: 'response.cancel' }); send({ type: 'response.create' }); }
+  function micOn(on: boolean) { micStreamRef.current?.getAudioTracks().forEach(tr => { tr.enabled = on; }); }
   function scrollBottom() { const el = scrollRef.current; if (el) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight })); }
 
   useEffect(() => { scrollBottom(); }, [messages, phase]);
@@ -94,6 +89,13 @@ export default function StellaLivePage() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
+  // chat scritta aperta => microfono SPENTO (Stella non ascolta e non parte); chiusa => riacceso
+  useEffect(() => {
+    const tracks = micStreamRef.current?.getAudioTracks();
+    if (tracks) tracks.forEach(tr => { tr.enabled = !showInput; });
+    if (showInput && activeRef.current) setStatus('Chat scritta — microfono in pausa');
+    else if (!showInput && activeRef.current && phaseRef.current === 'listening') setStatus('Parla pure, ti ascolto');
+  }, [showInput]);
 
   function goLogin() { window.location.href = '/?redirect=' + encodeURIComponent('/stella-live'); }
 
@@ -141,9 +143,8 @@ export default function StellaLivePage() {
         output_modalities: ['audio'],
         audio: {
           input: {
-            transcription: { model: 'gpt-4o-mini-transcribe', language: 'it', prompt: 'Conversazione di lavoro in italiano (a volte tedesco o rumeno). Azienda alimentare LAPA: ordini, clienti, fornitori, magazzino, consegne, fatture, prodotti.' },
-            // meno sensibile: soglia piu alta (ignora respiri/rumori) e attesa silenzio piu lunga (non taglia sulle pause)
-            turn_detection: { type: 'server_vad', threshold: 0.62, prefix_padding_ms: 300, silence_duration_ms: 1100, create_response: true, interrupt_response: true },
+            transcription: { model: 'gpt-4o-mini-transcribe', language: 'it' },
+            turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 800, create_response: true, interrupt_response: true },
           },
           output: { voice: process.env.NEXT_PUBLIC_STELLA_VOICE || 'marin' },
         },
@@ -183,6 +184,7 @@ export default function StellaLivePage() {
       const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       micStreamRef.current = mic;
       mic.getTracks().forEach(tr => pc.addTrack(tr, mic));
+      if (showInput) mic.getAudioTracks().forEach(tr => { tr.enabled = false; }); // chat aperta: mic in pausa
 
       const Ctx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
       const ctx = new Ctx(); ctxRef.current = ctx; await ctx.resume();
@@ -220,11 +222,7 @@ export default function StellaLivePage() {
 
   function handleEvent(ev: any) {
     const t = ev.type as string;
-    const respId = ev.response_id || ev.response?.id || null;
-    if (t === 'response.created') {
-      responseActiveRef.current = true;
-      if (armSuppressRef.current) { suppressRespIdRef.current = respId; armSuppressRef.current = false; }
-    }
+    if (t === 'response.created') { responseActiveRef.current = true; }
     else if (t === 'input_audio_buffer.speech_started') { if (phaseRef.current !== 'thinking') setPh('listening'); setStatus('Ti ascolto…'); }
     else if (t === 'conversation.item.input_audio_transcription.completed' || t === 'input_audio_transcription.completed') {
       if (ev.transcript) setMessages(m => [...m, { role: 'user', text: ev.transcript }]);
@@ -233,9 +231,7 @@ export default function StellaLivePage() {
       if (phaseRef.current !== 'thinking') { setPh('speaking'); setStatus('Stella sta parlando…'); }
     }
     else if (t === 'response.output_audio_transcript.done' || t === 'response.audio_transcript.done') {
-      // salta solo il transcript della risposta che ha letto il risultato di Claude (gia mostrato come bolla autorevole)
-      if (suppressRespIdRef.current && respId === suppressRespIdRef.current) { suppressRespIdRef.current = null; }
-      else if (ev.transcript) setMessages(m => [...m, { role: 'stella', text: ev.transcript }]);
+      if (ev.transcript) setMessages(m => [...m, { role: 'stella', text: ev.transcript }]);
     }
     else if (t === 'response.function_call_arguments.done') {
       if (ev.name === 'chiedi_a_stella') { let d = ''; try { d = JSON.parse(ev.arguments || '{}').domanda || ''; } catch {} dispatchToClaude(d, ev.call_id); }
@@ -255,22 +251,25 @@ export default function StellaLivePage() {
     handledCalls.current.add(callId);
     dispatchingRef.current = true;
     setPh('thinking'); setStatus('Stella sta controllando…');
+    micOn(false); // mentre aspetta il cloud: mic spento, cosi NON si inventa risposte su rumori/parole
     try {
       const res = await fetch('/api/stella-live/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: domanda }) });
       const data = await res.json();
       if (res.status === 403 || data.needLogin) {
         send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify({ errore: 'Sessione scaduta: devo riaccedere.' }) } });
-        dispatchingRef.current = false; requestResponse(); setAuthed(false); return;
+        dispatchingRef.current = false; micOn(!showInput); requestResponse(); setAuthed(false); return;
       }
       const reply = data.error ? ('Errore: ' + data.error) : (data.reply || 'Nessuna risposta.');
-      const shown = !!(data.reply || (data.images && data.images.length));
-      if (shown) { setMessages(m => [...m, { role: 'stella', text: data.reply || '', images: data.images }]); armSuppressRef.current = true; }
+      // mostra SOLO eventuali foto/PDF di Claude; il testo lo legge la voce (niente bolla doppia)
+      if (data.images && data.images.length) setMessages(m => [...m, { role: 'stella', text: '', images: data.images }]);
       send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify({ risposta: reply }) } });
       dispatchingRef.current = false;
+      micOn(!showInput); // ora ha il dato vero: riapre il mic (interrompibile mentre legge)
       requestResponse();
     } catch (e) {
       dispatchingRef.current = false;
       send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify({ errore: 'Non sono riuscita a recuperare il dato dal gestionale.' }) } });
+      micOn(!showInput);
       requestResponse();
     }
   }
@@ -297,8 +296,7 @@ export default function StellaLivePage() {
     try { if (audioElRef.current) audioElRef.current.srcObject = null; } catch {}
     try { wakeRef.current?.release(); wakeRef.current = null; } catch {}
     pcRef.current = null; dcRef.current = null; micStreamRef.current = null; ctxRef.current = null; micAnRef.current = null;
-    activeRef.current = false; dispatchingRef.current = false; responseActiveRef.current = false;
-    suppressRespIdRef.current = null; armSuppressRef.current = false; handledCalls.current.clear();
+    activeRef.current = false; dispatchingRef.current = false; responseActiveRef.current = false; handledCalls.current.clear();
   }
 
   function stop() {
@@ -339,7 +337,7 @@ export default function StellaLivePage() {
   const active = phase !== 'off';
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 50% -10%, #11244a, #060b16 60%)', color: '#eaf1ff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: 'radial-gradient(circle at 50% -10%, #11244a, #060b16 60%)', color: '#eaf1ff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
       <audio ref={audioElRef} autoPlay hidden />
 
       {authed === false && (
@@ -376,7 +374,7 @@ export default function StellaLivePage() {
         {installEvt && <button onClick={installApp} style={{ marginTop: 8, background: '#1f6feb', border: 'none', color: '#fff', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📲 Installa</button>}
       </header>
 
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', opacity: .45, marginTop: 24, lineHeight: 1.7, fontSize: 14 }}>
             Tocca la sfera e parla naturalmente.<br />La puoi interrompere quando vuoi.<br />“Come stiamo con gli ordini oggi?”
