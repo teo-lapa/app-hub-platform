@@ -27,6 +27,11 @@ const INSTRUCTIONS = [
   '',
   'Le chiacchiere, i saluti, le riformulazioni e i chiarimenti li gestisci tu direttamente, senza tool.',
   'Per cose importanti o irreversibili, prima ripeti a voce cosa stai per fare e aspetta l\'OK di Paul.',
+  '',
+  'LINGUA: Paul parla quasi sempre ITALIANO, a volte TEDESCO o RUMENO. Rispondi SEMPRE in italiano,',
+  'salvo che ti parli chiaramente in tedesco o rumeno e voglia risposta in quella lingua.',
+  'NON interpretare MAI l\'audio come lingue asiatiche (giapponese, cinese, coreano) o altre lingue strane:',
+  'se senti un suono breve, un respiro o qualcosa di poco chiaro, IGNORALO e aspetta in silenzio, non rispondere a vuoto.',
 ].join(' ');
 
 export default function StellaLivePage() {
@@ -136,8 +141,9 @@ export default function StellaLivePage() {
         output_modalities: ['audio'],
         audio: {
           input: {
-            transcription: { model: 'gpt-4o-mini-transcribe', language: 'it' },
-            turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 600, create_response: true, interrupt_response: true },
+            transcription: { model: 'gpt-4o-mini-transcribe', language: 'it', prompt: 'Conversazione di lavoro in italiano (a volte tedesco o rumeno). Azienda alimentare LAPA: ordini, clienti, fornitori, magazzino, consegne, fatture, prodotti.' },
+            // meno sensibile: soglia piu alta (ignora respiri/rumori) e attesa silenzio piu lunga (non taglia sulle pause)
+            turn_detection: { type: 'server_vad', threshold: 0.62, prefix_padding_ms: 300, silence_duration_ms: 1100, create_response: true, interrupt_response: true },
           },
           output: { voice: process.env.NEXT_PUBLIC_STELLA_VOICE || 'marin' },
         },
