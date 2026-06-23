@@ -65,6 +65,24 @@ export default function StellaLivePage() {
   // crea una risposta del modello, annullando prima quella eventualmente attiva (evita "active response")
   function requestResponse() { if (responseActiveRef.current) send({ type: 'response.cancel' }); send({ type: 'response.create' }); }
   function micOn(on: boolean) { micStreamRef.current?.getAudioTracks().forEach(tr => { tr.enabled = on; }); }
+  // Servizio in background NATIVO (solo dentro l'APK Capacitor): tiene viva la voce a schermo spento / telefono in tasca.
+  // Nel browser non esiste e non fa nulla (li il SO sospende comunque la pagina).
+  function fgService(on: boolean) {
+    try {
+      const Cap = (window as any).Capacitor;
+      if (!Cap?.isNativePlatform?.()) return;
+      const FS = Cap.Plugins?.ForegroundService;
+      if (!FS) return;
+      if (on) {
+        Promise.resolve(FS.createNotificationChannel?.({ id: 'stella_live', name: 'Stella Live', description: 'Voce attiva in background', importance: 3 }))
+          .catch(() => {})
+          .then(() => FS.startForegroundService({ id: 7, title: 'Stella Live', body: 'In ascolto — tocca per tornare', smallIcon: 'ic_launcher', notificationChannelId: 'stella_live', serviceType: 128 }))
+          .catch(() => {});
+      } else {
+        Promise.resolve(FS.stopForegroundService?.()).catch(() => {});
+      }
+    } catch {}
+  }
   function scrollBottom() { const el = scrollRef.current; if (el) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight })); }
 
   useEffect(() => { scrollBottom(); }, [messages, phase]);
@@ -196,6 +214,7 @@ export default function StellaLivePage() {
       dc.onopen = () => {
         send(sessionUpdate());
         activeRef.current = true;
+        fgService(true); // tieni viva la voce anche a schermo spento (solo APK)
         setPh('listening'); setStatus('Parla pure, ti ascolto');
         rafRef.current = requestAnimationFrame(loop);
         if (pendingTextRef.current) { const t = pendingTextRef.current; pendingTextRef.current = ''; setTimeout(() => sendUserText(t), 250); }
@@ -295,6 +314,7 @@ export default function StellaLivePage() {
     try { if (ctxRef.current && ctxRef.current.state !== 'closed') ctxRef.current.close(); } catch {}
     try { if (audioElRef.current) audioElRef.current.srcObject = null; } catch {}
     try { wakeRef.current?.release(); wakeRef.current = null; } catch {}
+    fgService(false);
     pcRef.current = null; dcRef.current = null; micStreamRef.current = null; ctxRef.current = null; micAnRef.current = null;
     activeRef.current = false; dispatchingRef.current = false; responseActiveRef.current = false; handledCalls.current.clear();
   }
