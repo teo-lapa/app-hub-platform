@@ -1,0 +1,16 @@
+{
+  "name": "Romeo Live - Assistente",
+  "short_name": "Romeo Live",
+  "description": "Parla in tempo reale con Romeo, l'assistente AI di Laura. Interrompibile, hands-free, anche in auto.",
+  "start_url": "/romeo-live",
+  "scope": "/romeo-live",
+  "display": "standalone",
+  "background_color": "#04100e",
+  "theme_color": "#0b2a26",
+  "orientation": "portrait",
+  "lang": "it",
+  "icons": [
+    { "src": "/icons/romeo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/romeo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
