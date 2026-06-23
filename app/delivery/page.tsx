@@ -3011,6 +3011,13 @@ export default function DeliveryPage() {
                         {product.picked ? '✓' : idx + 1}
                       </div>
 
+                      {/* Foto prodotto */}
+                      {product.image ? (
+                        <img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-16 h-16 object-contain rounded bg-white p-0.5 border flex-shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
+                      )}
+
                       {/* Product Info */}
                       <div className="flex-1">
                         <div className={`font-medium ${product.picked ? 'text-green-700' : 'text-gray-800'}`}>
