@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 const ALLOWED = (process.env.STELLA_ALLOWED_EMAILS || 'paul@lapa.ch,laura@lapa.ch')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-const MODEL = process.env.STELLA_LIVE_MODEL || 'gpt-realtime';
+const MODEL = process.env.STELLA_LIVE_MODEL || 'gpt-realtime-mini';
 const VOICE = process.env.STELLA_LIVE_VOICE || 'marin';
 
 function auth(request: NextRequest) {
