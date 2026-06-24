@@ -162,6 +162,31 @@ function safeName(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+/** P.IVA di LAPA (CLIENTE sui documenti fornitore): da ignorare quando cerco il fornitore. */
+export const LAPA_VAT = '357325599';
+
+/**
+ * Estrae le P.IVA candidate dal testo OCR.
+ * L'LLM sbaglia spesso il nome del fornitore, ma la P.IVA è strutturata e la legge giusta.
+ * IT: 11 cifre consecutive (anche precedute da IT). CHE: 9 cifre (CHE-123.456.789).
+ */
+export function extractVatNumbers(text: string): string[] {
+  const found: string[] = [];
+  const seen = new Set<string>();
+  let m: RegExpExecArray | null;
+  const reChe = /CHE[-\s]?(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})/gi;
+  while ((m = reChe.exec(text)) !== null) {
+    const v = m[1] + m[2] + m[3];
+    if (!seen.has(v)) { seen.add(v); found.push(v); }
+  }
+  const reIt = /\b(?:IT)?(\d{11})\b/g;
+  while ((m = reIt.exec(text)) !== null) {
+    const v = m[1];
+    if (!seen.has(v)) { seen.add(v); found.push(v); }
+  }
+  return found;
+}
+
 export function buildCleanedName(
   original: string,
   header: OCRHeader | undefined,
