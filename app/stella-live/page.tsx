@@ -91,7 +91,7 @@ export default function StellaLivePage() {
     fetch('/api/stella-live/session').then(r => r.json()).then(d => setAuthed(!!d.authed)).catch(() => setAuthed(true));
   }, []);
   useEffect(() => {
-    if (authed) fetch('/api/stella-voce/notifs').then(r => r.json()).then(d => { setNotif(d.count || 0); setNotifItems(d.items || []); }).catch(() => {});
+    if (authed) fetch('/api/stella-live/notifs').then(r => r.json()).then(d => { setNotif(d.count || 0); setNotifItems(d.items || []); }).catch(() => {});
   }, [authed]);
   useEffect(() => {
     const h = (e: any) => { e.preventDefault(); setInstallEvt(e); };
