@@ -58,6 +58,7 @@ export default function StellaLivePage() {
   const pendingTextRef = useRef<string>('');
   const dispatchingRef = useRef(false);
   const responseActiveRef = useRef(false);
+  const autoStartedRef = useRef(false);
   const handledCalls = useRef<Set<string>>(new Set());
 
   function setPh(p: Phase) { phaseRef.current = p; setPhase(p); }
@@ -92,6 +93,19 @@ export default function StellaLivePage() {
   }, []);
   useEffect(() => {
     if (authed) fetch('/api/stella-live/notifs').then(r => r.json()).then(d => { setNotif(d.count || 0); setNotifItems(d.items || []); }).catch(() => {});
+  }, [authed]);
+  // Modalita Auto persistente: se lasciata accesa, all'apertura dell'app (es. aperta dalla Routine quando ti
+  // colleghi al Bluetooth dell'auto) parte gia in ascolto. Solo dentro l'APK nativo, una volta sola.
+  useEffect(() => {
+    if (authed !== true) return;
+    let persisted = false;
+    try { persisted = localStorage.getItem('stellaLiveAuto') === '1'; } catch {}
+    if (persisted) setAutoMode(true);
+    const native = !!(window as any).Capacitor?.isNativePlatform?.();
+    if (persisted && native && !autoStartedRef.current && !activeRef.current) {
+      autoStartedRef.current = true;
+      setTimeout(() => start(), 400);
+    }
   }, [authed]);
   useEffect(() => {
     const h = (e: any) => { e.preventDefault(); setInstallEvt(e); };
@@ -335,6 +349,7 @@ export default function StellaLivePage() {
 
   function toggleAuto() {
     const next = !autoMode; setAutoMode(next);
+    try { localStorage.setItem('stellaLiveAuto', next ? '1' : '0'); } catch {}
     if (next && !activeRef.current) start();
   }
 
