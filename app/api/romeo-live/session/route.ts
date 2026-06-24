@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 
 const ALLOWED = (process.env.ROMEO_ALLOWED_EMAILS || 'laura@lapa.ch,paul@lapa.ch')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-const MODEL = process.env.ROMEO_LIVE_MODEL || 'gpt-realtime';
+const MODEL = process.env.ROMEO_LIVE_MODEL || 'gpt-realtime-mini';
 const VOICE = process.env.ROMEO_LIVE_VOICE || 'cedar';
 
 function auth(request: NextRequest) {
