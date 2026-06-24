@@ -15,50 +15,27 @@ export const EMAIL_PROJECT_IDS = [109, 110, 111, 112, 113, 114];
 export const TAG_OCR_DONE = 'OCR_done';
 export const TAG_OCR_FAILED = 'OCR_failed';
 
-/** Soglia minima dimensione file per essere candidato OCR (loghi/emoticon esclusi). */
-export const MIN_ATTACHMENT_BYTES = 50 * 1024;
+/** Soglia minima per le IMMAGINI: sotto è un pixel di tracking/spacer, non una foto. I PDF passano sempre. */
+export const MIN_IMAGE_BYTES = 4 * 1024;
 
-/** Pattern di file da escludere (loghi, icone, firme, biglietti, banner, certificazioni dup). */
-const JUNK_NAME_PATTERNS = [
-  /\blogo\b/i,
-  /\bicona?\b/i,
-  /\bicon\b/i,
-  /\bemoticon/i,
-  /\bsignature\b/i,
-  /\bfirma\b/i,
-  /\bfacebook\b/i,
-  /\binstagram\b/i,
-  /\btiktok\b/i,
-  /\blinkedin\b/i,
-  /\btwitter\b/i,
-  /\bsito web\b/i,
-  /tracking[-_]?pixel/i,
-  /\bbiglietto\s+da\s+visita\b/i,
-  /\bbiglietto\s+ingresso\b/i,
-  /\bbanner\b/i,
-  /\bscreenshot\b/i,
-  /\bcertificazione\b/i,
-  /\binvito\s+(?:aperitivo|fier[ae])/i,
-  /\bcontatto\s+[A-Z]/,
-  /^image\d+\.(?:png|jpe?g|gif)$/i,
-];
-
-export function isJunkAttachment(name: string, fileSize: number, mimetype: string): { skip: boolean; reason?: string } {
-  if (fileSize < MIN_ATTACHMENT_BYTES) {
-    return { skip: true, reason: `troppo piccolo (${fileSize}B < ${MIN_ATTACHMENT_BYTES}B)` };
-  }
+/**
+ * Ogni PDF e ogni foto deve avere il suo MD (l'OCR gira sul Jetson, non costa nulla).
+ * Quindi: PDF sempre processato; immagini sempre, tranne i pixel di tracking minuscoli.
+ */
+export function isJunkAttachment(_name: string, fileSize: number, mimetype: string): { skip: boolean; reason?: string } {
   if (!mimetype) {
     return { skip: true, reason: 'mimetype mancante' };
   }
-  if (mimetype !== 'application/pdf' && !mimetype.startsWith('image/')) {
-    return { skip: true, reason: `mimetype non supportato: ${mimetype}` };
+  if (mimetype === 'application/pdf') {
+    return { skip: false };
   }
-  for (const pattern of JUNK_NAME_PATTERNS) {
-    if (pattern.test(name)) {
-      return { skip: true, reason: `match junk pattern: ${pattern}` };
+  if (mimetype.startsWith('image/')) {
+    if (fileSize < MIN_IMAGE_BYTES) {
+      return { skip: true, reason: `immagine troppo piccola (${fileSize}B < ${MIN_IMAGE_BYTES}B)` };
     }
+    return { skip: false };
   }
-  return { skip: false };
+  return { skip: true, reason: `mimetype non supportato: ${mimetype}` };
 }
 
 /** Vero se nella lista esiste un .md con stesso basename del file. */

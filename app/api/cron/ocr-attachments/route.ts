@@ -12,6 +12,8 @@ import {
   imageFallbackName,
   extensionOf,
   buildChatterHtml,
+  extractVatNumbers,
+  LAPA_VAT,
   type OCRHeader,
 } from '@/lib/ocr/attachments-pipeline';
 
@@ -108,6 +110,27 @@ interface AttachState {
   detail: string;
 }
 
+/**
+ * Risolve il nome ufficiale del fornitore dalla P.IVA letta nel documento.
+ * L'LLM sbaglia spesso header.vendor (banca, indirizzo, nome prodotto, "LAPA"):
+ * la P.IVA invece è strutturata e affidabile. Cerco la prima P.IVA (≠ LAPA) che
+ * corrisponde a un partner in anagrafica e uso quel nome. Se non trovo nulla,
+ * lascio il vendor com'era (zero regressioni).
+ */
+async function resolveVendorName(text: string): Promise<string | null> {
+  const vats = extractVatNumbers(text).filter((v) => v !== LAPA_VAT);
+  for (const vat of vats) {
+    const partners = await callOdoo(null, 'res.partner', 'search_read', [
+      [['vat', 'ilike', vat]],
+      ['name', 'commercial_company_name', 'supplier_rank'],
+    ], { limit: 1, order: 'supplier_rank desc' });
+    if (partners.length > 0) {
+      return partners[0].commercial_company_name || partners[0].name || null;
+    }
+  }
+  return null;
+}
+
 // Core riusabile: processa gli allegati di UN record qualsiasi (model-agnostico).
 // Non fa tagging. Crea l'MD compagno e posta nel chatter del record.
 async function processAttachmentList(
@@ -165,7 +188,11 @@ async function processAttachmentList(
         }
         // status = done
         const result = status.result!;
-        const header = result.header as OCRHeader | undefined;
+        let header = result.header as OCRHeader | undefined;
+        const docText = result.cleaned_markdown || result.markdown || '';
+        // L'LLM sbaglia spesso header.vendor: lo correggo dalla P.IVA letta nel documento.
+        const resolvedVendor = await resolveVendorName(docText);
+        if (resolvedVendor && header) header = { ...header, vendor: resolvedVendor };
         const ext = extensionOf(att.name) || (att.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
         let newName: string;
         if (header && (header.doc_type || header.vendor)) {
