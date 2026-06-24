@@ -1,5 +1,5 @@
 /**
- * Badge/pannello notifiche per Stella/Romeo: le "cose da fare" (sola lettura, auth proprietari).
+ * Badge/pannello notifiche per Stella Live: le "cose da fare" (sola lettura, auth Paul/Laura).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { callOdoo } from '@/lib/odoo/odoo-helper';
@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
     { key: 'scadute', icon: '💰', label: 'Fatture clienti scadute', n: scadute, ask: 'Quali sono i 10 clienti con il maggior scaduto e da quanto?' },
   ].filter(it => it.n > 0);
 
-  // il pallino conta solo le cose "da fare oggi" (ordini + consegne), non lo scaduto storico
   const todo = ordini + consegne;
   return NextResponse.json({ count: todo, items });
 }
