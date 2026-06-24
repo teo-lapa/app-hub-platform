@@ -131,6 +131,57 @@ async function resolveVendorName(text: string): Promise<string | null> {
   return null;
 }
 
+/**
+ * Aggancia automaticamente il documento al PO del fornitore giusto.
+ * Chiave: il numero ordine LAPA (P#####) scritto DENTRO il documento + verifica P.IVA.
+ * Funziona sia per le email dirette del fornitore sia per i pacchetti dei trasportatori
+ * (LDF/Interfrigo), perche' non guarda chi ha mandato l'email ma cosa c'e' scritto nel documento.
+ * Salta le nostre richieste d'ordine e i doppioni. Se non trova nulla, non fa niente.
+ */
+async function autoLinkToPurchaseOrder(
+  docText: string,
+  pdfAttId: number,
+  mdAttId: number | null,
+  fileName: string,
+): Promise<string | null> {
+  // Le nostre richieste d'ordine non sono documenti fornitore: non ri-agganciarle.
+  if (/Request for New Order|ZERO PENSIERI/i.test(docText)) return null;
+  // Riferimenti ordine LAPA nel testo: P + 5 cifre.
+  const refs = Array.from(new Set(docText.match(/\bP\d{5}\b/g) || []));
+  if (refs.length === 0) return null;
+  const docVats = extractVatNumbers(docText).filter((v) => v !== LAPA_VAT);
+  for (const ref of refs) {
+    const pos = await callOdoo(null, 'purchase.order', 'search_read', [
+      [['name', '=', ref], ['state', 'in', ['draft', 'sent', 'purchase']]],
+      ['id', 'partner_id'],
+    ], { limit: 1 });
+    if (!pos.length) continue;
+    const po = pos[0];
+    // Sicurezza: il fornitore del PO deve combaciare con la P.IVA del documento.
+    if (docVats.length > 0 && po.partner_id) {
+      const partners = await callOdoo(null, 'res.partner', 'read', [[po.partner_id[0]], ['vat']]);
+      const poVat = (partners[0]?.vat || '').replace(/\D/g, '');
+      if (poVat && !docVats.some((v) => poVat.includes(v) || v.includes(poVat))) continue;
+    }
+    // Gia' agganciato? (stesso nome file sul PO)
+    const existing = await callOdoo(null, 'ir.attachment', 'search_read', [
+      [['res_model', '=', 'purchase.order'], ['res_id', '=', po.id], ['name', '=', fileName]],
+      ['id'],
+    ], { limit: 1 });
+    if (existing.length) return `gia su ${ref}`;
+    // Copia PDF (+ MD compagno) sul PO.
+    await callOdoo(null, 'ir.attachment', 'copy', [[pdfAttId]], { default: { res_model: 'purchase.order', res_id: po.id } });
+    if (mdAttId) await callOdoo(null, 'ir.attachment', 'copy', [[mdAttId]], { default: { res_model: 'purchase.order', res_id: po.id } });
+    await callOdoo(null, 'purchase.order', 'message_post', [[po.id]], {
+      body: `📎 Documento agganciato in automatico dall'OCR: ${fileName} (rif. ${ref} letto nel testo).`,
+      message_type: 'comment',
+      subtype_xmlid: 'mail.mt_note',
+    });
+    return `agganciato a ${ref}`;
+  }
+  return null;
+}
+
 // Core riusabile: processa gli allegati di UN record qualsiasi (model-agnostico).
 // Non fa tagging. Crea l'MD compagno e posta nel chatter del record.
 async function processAttachmentList(
@@ -231,7 +282,12 @@ async function processAttachmentList(
           message_type: 'comment',
           subtype_xmlid: 'mail.mt_note',
         });
-        states.push({ ...baseState, outcome: 'done', detail: `OK ${att.name} -> ${newName} (${result.num_pages}p, ${Math.round(status.wall_time_s || 0)}s)` });
+        // Auto-aggancio al PO del fornitore (solo per i documenti arrivati nei task email).
+        let linkInfo = '';
+        if (resModel === 'project.task') {
+          linkInfo = (await autoLinkToPurchaseOrder(docText, att.id, mdAttachmentId, newName).catch(() => null)) || '';
+        }
+        states.push({ ...baseState, outcome: 'done', detail: `OK ${att.name} -> ${newName} (${result.num_pages}p, ${Math.round(status.wall_time_s || 0)}s)${linkInfo ? ' | ' + linkInfo : ''}` });
       } catch (err: any) {
         const errMsg = err?.message || String(err);
         const isExpired = /HTTP 404|not found|scaduto/i.test(errMsg);
