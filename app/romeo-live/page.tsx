@@ -172,7 +172,7 @@ export default function RomeoLivePage() {
         audio: {
           input: {
             transcription: { model: 'gpt-4o-mini-transcribe', language: 'it' },
-            turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 800, create_response: true, interrupt_response: true },
+            turn_detection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: true, interrupt_response: true },
           },
           output: { voice: process.env.NEXT_PUBLIC_ROMEO_VOICE || 'cedar' },
         },
