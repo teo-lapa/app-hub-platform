@@ -173,11 +173,14 @@ export const LAPA_VAT = '357325599';
 export function extractVatNumbers(text: string): string[] {
   const found: string[] = [];
   const seen = new Set<string>();
-  for (const m of text.matchAll(/CHE[-\s]?(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})/gi)) {
+  let m: RegExpExecArray | null;
+  const reChe = /CHE[-\s]?(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})/gi;
+  while ((m = reChe.exec(text)) !== null) {
     const v = m[1] + m[2] + m[3];
     if (!seen.has(v)) { seen.add(v); found.push(v); }
   }
-  for (const m of text.matchAll(/\b(?:IT)?(\d{11})\b/g)) {
+  const reIt = /\b(?:IT)?(\d{11})\b/g;
+  while ((m = reIt.exec(text)) !== null) {
     const v = m[1];
     if (!seen.has(v)) { seen.add(v); found.push(v); }
   }
