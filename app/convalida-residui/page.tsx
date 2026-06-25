@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { QRScanner } from '@/components/prelievo-zone/QRScanner';
 
 // ============================================================================
 // INTERFACCE TYPESCRIPT
@@ -53,6 +54,12 @@ interface Product {
   incoming_qty?: number;
   incoming_date?: string | null;
   uom_name?: string;
+  // Campi extra quando il prodotto arriva da una ubicazione scansionata
+  x_ubic_loc_id?: number;
+  x_ubic_loc_name?: string;
+  x_ubic_lot_id?: number;
+  x_ubic_lot_name?: string;
+  x_ubic_lot_expiry?: string | null;
 }
 
 interface SaleOrder {
@@ -290,6 +297,9 @@ export default function ConvalidaResiduiPage() {
   const [selectedSostituto, setSelectedSostituto] = useState<Product | null>(null);
   const [sostituzioneQty, setSostituzioneQty] = useState(0);
   const [sostituzioneLoading, setSostituzioneLoading] = useState(false);
+  // Sostituzione da ubicazione scansionata (QR/barcode)
+  const [showUbicScanner, setShowUbicScanner] = useState(false);
+  const [ubicLocationName, setUbicLocationName] = useState('');
 
   // Convalida Picking
   const [convalidaLoading, setConvalidaLoading] = useState<number | null>(null);
@@ -1691,6 +1701,7 @@ export default function ConvalidaResiduiPage() {
     setSelectedSostituto(null);
     setSostituzioneSearch('');
     setSostituzioneSuggestions([]);
+    setUbicLocationName('');
     setShowSostituzioneModal(true);
   };
 
@@ -1712,6 +1723,7 @@ export default function ConvalidaResiduiPage() {
     setSelectedSostituto(null);
     setSostituzioneSearch('ALTERNATIVE');
     setSostituzioneSuggestions([]);
+    setUbicLocationName('');
     setShowSostituzioneModal(true);
 
     // Carica i prodotti alternativi da product.template
@@ -1755,6 +1767,137 @@ export default function ConvalidaResiduiPage() {
     } catch (error: any) {
       console.error('Errore caricamento alternative:', error);
       showToastMessage(`Errore: ${error.message}`);
+    } finally {
+      setSostituzioneLoading(false);
+    }
+  };
+
+  // Apre lo scanner per scegliere il prodotto sostitutivo dall'ubicazione fisica
+  const handleOpenSostituzioneUbicazione = (move: StockMove, pick: StockPicking) => {
+    setSostituzioneData({
+      moveId: move.id,
+      pickingId: pick.id,
+      pickingName: pick.name,
+      originalProductId: move.product_id[0],
+      originalProductName: move.product_id[1],
+      originalQty: move.product_uom_qty,
+      locationId: move.location_id[0],
+      locationDestId: move.location_dest_id[0],
+      saleOrderId: pick.sale_id ? pick.sale_id[0] : null,
+      saleOrderName: pick.sale_id ? pick.sale_id[1] : null
+    });
+    setSostituzioneQty(move.product_uom_qty);
+    setSelectedSostituto(null);
+    setSostituzioneSearch('UBICAZIONE');
+    setSostituzioneSuggestions([]);
+    setUbicLocationName('');
+    setShowUbicScanner(true);
+  };
+
+  // Carica i prodotti presenti sull'ubicazione scansionata e apre il modal sostituzione
+  const loadUbicazioneProdotti = async (code: string) => {
+    setShowSostituzioneModal(true);
+    setSostituzioneLoading(true);
+    setSostituzioneSuggestions([]);
+    setSelectedSostituto(null);
+    setUbicLocationName('');
+    try {
+      const term = code.trim();
+      // 1. Trova l'ubicazione: prima per barcode, poi per nome completo/nome
+      let loc = await searchReadConvalida<any>('stock.location', [['barcode', '=', term]], ['id', 'complete_name', 'name'], 1);
+      if (loc.length === 0) {
+        loc = await searchReadConvalida<any>(
+          'stock.location',
+          orDomainConvalida([['complete_name', '=', term], ['name', '=', term]]),
+          ['id', 'complete_name', 'name'],
+          1
+        );
+      }
+      if (loc.length === 0) {
+        // Fallback: match parziale sul nome (come fa l'app prelievo-zone)
+        loc = await searchReadConvalida<any>(
+          'stock.location',
+          [['usage', '=', 'internal'], ['name', 'ilike', term]],
+          ['id', 'complete_name', 'name'],
+          1
+        );
+      }
+      if (loc.length === 0) {
+        showToastMessage(`Ubicazione non trovata: ${term}`);
+        return;
+      }
+      const locId = loc[0].id;
+      const locName = loc[0].complete_name || loc[0].name;
+      setUbicLocationName(locName);
+
+      // 2. Quants disponibili su quell'ubicazione
+      const quants = await searchReadConvalida<any>(
+        'stock.quant',
+        [['location_id', '=', locId], ['quantity', '>', 0]],
+        ['product_id', 'quantity', 'reserved_quantity', 'lot_id'],
+        0
+      );
+      if (quants.length === 0) {
+        showToastMessage('Nessun prodotto su questa ubicazione');
+        return;
+      }
+
+      // 3. Scadenze dei lotti
+      const lotIds = Array.from(new Set(quants.filter((q: any) => q.lot_id).map((q: any) => q.lot_id[0])));
+      const lotsInfo = lotIds.length > 0
+        ? await searchReadConvalida<any>('stock.lot', [['id', 'in', lotIds]], ['id', 'name', 'expiration_date', 'use_date'], 0)
+        : [];
+      const lotMap = new Map<number, { name: string; expiry: string | null }>(
+        lotsInfo.map((l: any) => [l.id, { name: l.name, expiry: l.expiration_date || l.use_date || null }])
+      );
+
+      // 4. Dettagli prodotto (immagine, uom, codice)
+      const prodIds = Array.from(new Set(quants.map((q: any) => q.product_id[0]))) as number[];
+      const prods = await searchReadConvalida<Product>(
+        'product.product',
+        [['id', 'in', prodIds]],
+        ['id', 'name', 'display_name', 'default_code', 'barcode', 'uom_id', 'lst_price', 'image_128'],
+        0
+      );
+      const prodMap = new Map<number, Product>(prods.map((p) => [p.id, p] as [number, Product]));
+
+      // 5. Aggrega per prodotto: somma qty all'ubicazione, lotto FEFO (scadenza più vicina)
+      const byProduct = new Map<number, { qtyLoc: number; lotId?: number; lotName?: string; lotExpiry?: string | null }>();
+      quants.forEach((q: any) => {
+        const pid = q.product_id[0];
+        const lot = q.lot_id ? lotMap.get(q.lot_id[0]) : null;
+        const cur = byProduct.get(pid) || { qtyLoc: 0 };
+        cur.qtyLoc += q.quantity;
+        if (q.lot_id) {
+          const exp = lot?.expiry || null;
+          if (cur.lotId === undefined || (exp && (!cur.lotExpiry || exp < cur.lotExpiry))) {
+            cur.lotId = q.lot_id[0];
+            cur.lotName = lot?.name;
+            cur.lotExpiry = exp;
+          }
+        }
+        byProduct.set(pid, cur);
+      });
+
+      // 6. Costruisci la lista (riusa il formato Product del modal sostituzione)
+      const suggestions: Product[] = prodIds
+        .filter((pid) => prodMap.has(pid))
+        .map((pid) => {
+          const base = prodMap.get(pid) as Product;
+          const agg = byProduct.get(pid)!;
+          return {
+            ...base,
+            qty_available: agg.qtyLoc, // mostra la quantità presente su QUESTA ubicazione
+            x_ubic_loc_id: locId,
+            x_ubic_loc_name: locName,
+            x_ubic_lot_id: agg.lotId,
+            x_ubic_lot_name: agg.lotName,
+            x_ubic_lot_expiry: agg.lotExpiry,
+          };
+        });
+      setSostituzioneSuggestions(suggestions);
+    } catch (error: any) {
+      showToastMessage(`Errore ubicazione: ${error.message}`);
     } finally {
       setSostituzioneLoading(false);
     }
@@ -1857,7 +2000,12 @@ export default function ConvalidaResiduiPage() {
 
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
-      const message = `🔄 Sostituzione Prodotto\nProdotto originale (mancante): ${sostituzioneData.originalProductName}\nQuantità richiesta: ${sostituzioneData.originalQty}\nProdotto sostitutivo: ${selectedSostituto.name}\nQuantità sostitutiva: ${sostituzioneQty}\nData: ${timestamp}\nAggiunto all'ordine ${sostituzioneData.saleOrderName}`;
+      const ubicPart = selectedSostituto.x_ubic_loc_name
+        ? `\nUbicazione: ${selectedSostituto.x_ubic_loc_name}` +
+          (selectedSostituto.x_ubic_lot_name ? `\nLotto: ${selectedSostituto.x_ubic_lot_name}` : '') +
+          (selectedSostituto.x_ubic_lot_expiry ? `\nScadenza: ${selectedSostituto.x_ubic_lot_expiry}` : '')
+        : '';
+      const message = `🔄 Sostituzione Prodotto\nProdotto originale (mancante): ${sostituzioneData.originalProductName}\nQuantità richiesta: ${sostituzioneData.originalQty}\nProdotto sostitutivo: ${selectedSostituto.name}\nQuantità sostitutiva: ${sostituzioneQty}${ubicPart}\nData: ${timestamp}\nAggiunto all'ordine ${sostituzioneData.saleOrderName}`;
 
       await callKwConvalida('stock.picking', 'message_post', [[sostituzioneData.pickingId]], {
         body: message,
@@ -2689,6 +2837,16 @@ export default function ConvalidaResiduiPage() {
                 style={{ fontSize: '11px', padding: '6px 10px', background: '#14b8a6', borderColor: '#0d9488' }}
               >
                 {sostituzioneLoading ? '...' : '🔀 ALTERNATIVA'}
+              </button>
+              <button
+                className="btn slim"
+                type="button"
+                onClick={() => handleOpenSostituzioneUbicazione(move, pick)}
+                disabled={!hasDriver || sostituzioneLoading}
+                title={!hasDriver ? 'Assegna autista prima' : 'Scansiona il QR dell\'ubicazione e scegli il prodotto presente'}
+                style={{ fontSize: '11px', padding: '6px 10px', background: '#0ea5e9', borderColor: '#0284c7', color: '#fff' }}
+              >
+                {sostituzioneLoading ? '...' : '📍 UBICAZIONE'}
               </button>
               {lotInfo && (
                 <button
@@ -4137,8 +4295,26 @@ export default function ConvalidaResiduiPage() {
                   </div>
                 </div>
 
-                {/* Ricerca prodotto sostitutivo */}
-                <div style={{ marginBottom: '16px' }}>
+                {/* Banner ubicazione scansionata */}
+                {ubicLocationName && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '12px',
+                    background: '#e0f2fe',
+                    borderRadius: '10px',
+                    border: '1px solid #7dd3fc'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#075985', marginBottom: '4px', fontWeight: '600' }}>
+                      📍 Prodotti su questa ubicazione
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0c4a6e' }}>
+                      {ubicLocationName}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ricerca prodotto sostitutivo (nascosta in modalità ubicazione) */}
+                <div style={{ marginBottom: '16px', display: ubicLocationName ? 'none' : 'block' }}>
                   <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
                     Cerca prodotto sostitutivo
                   </div>
@@ -4285,6 +4461,13 @@ export default function ConvalidaResiduiPage() {
                               </span>
                             )}
                           </div>
+                          {/* Lotto + scadenza dell'ubicazione scansionata */}
+                          {prod.x_ubic_lot_name && (
+                            <div style={{ fontSize: '11px', color: '#7c3aed', marginTop: '2px', fontWeight: 600 }}>
+                              🏷️ Lotto {prod.x_ubic_lot_name}
+                              {prod.x_ubic_lot_expiry ? ` · scad. ${new Date(prod.x_ubic_lot_expiry).toLocaleDateString('it-IT')}` : ''}
+                            </div>
+                          )}
                           {/* Codice */}
                           {prod.default_code && (
                             <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
@@ -4364,6 +4547,15 @@ export default function ConvalidaResiduiPage() {
           </div>
         </div>
       </div>
+
+      {/* Scanner QR/Barcode Ubicazione (sostituzione diretta) */}
+      <QRScanner
+        isOpen={showUbicScanner}
+        scanMode="location"
+        title="Scansiona Ubicazione"
+        onClose={() => setShowUbicScanner(false)}
+        onScan={(code) => { loadUbicazioneProdotti(code); return true; }}
+      />
 
       {/* Modal Correggi Scadenza - Semplificato */}
       <div className={`qa-modal-convalida ${showScadenzaModal ? 'show' : ''}`}>
