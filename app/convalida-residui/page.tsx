@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { QRScanner } from '@/components/prelievo-zone/QRScanner';
+import QrScannerLib from 'qr-scanner';
 
 // ============================================================================
 // INTERFACCE TYPESCRIPT
@@ -336,6 +336,9 @@ export default function ConvalidaResiduiPage() {
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sostituzioneInputRef = useRef<HTMLInputElement>(null);
   const sostituzioneSearchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const ubicVideoRef = useRef<HTMLVideoElement>(null);
+  const ubicScannerRef = useRef<QrScannerLib | null>(null);
+  const [ubicScanError, setUbicScanError] = useState('');
 
   // --------------------------------------------------------------------------
   // EFFECTS
@@ -359,6 +362,47 @@ export default function ConvalidaResiduiPage() {
       setTimeout(() => sostituzioneInputRef.current?.focus(), 50);
     }
   }, [showSostituzioneModal]);
+
+  // Avvia/ferma la fotocamera dello scanner ubicazione
+  useEffect(() => {
+    let cancelled = false;
+    const stop = () => {
+      if (ubicScannerRef.current) {
+        try { ubicScannerRef.current.stop(); ubicScannerRef.current.destroy(); } catch {}
+        ubicScannerRef.current = null;
+      }
+    };
+    if (showUbicScanner) {
+      setUbicScanError('');
+      // attende il mount del <video> nel modal
+      setTimeout(async () => {
+        if (cancelled || !ubicVideoRef.current) return;
+        try {
+          const scanner = new QrScannerLib(
+            ubicVideoRef.current,
+            (result: any) => {
+              const code = typeof result === 'string' ? result : result?.data;
+              if (!code) return;
+              if ('vibrate' in navigator) navigator.vibrate(150);
+              stop();
+              setShowUbicScanner(false);
+              loadUbicazioneProdotti(code);
+            },
+            { highlightScanRegion: true, highlightCodeOutline: true, returnDetailedScanResult: true } as any
+          );
+          ubicScannerRef.current = scanner;
+          await scanner.start();
+          scanner.setCamera('environment').catch(() => {});
+          if (cancelled) stop();
+        } catch (e) {
+          setUbicScanError('Impossibile accedere alla fotocamera. Usa l\'inserimento manuale.');
+        }
+      }, 100);
+    } else {
+      stop();
+    }
+    return () => { cancelled = true; stop(); };
+  }, [showUbicScanner]);
 
   // Cleanup timer
   useEffect(() => {
@@ -4548,14 +4592,45 @@ export default function ConvalidaResiduiPage() {
         </div>
       </div>
 
-      {/* Scanner QR/Barcode Ubicazione (sostituzione diretta) */}
-      <QRScanner
-        isOpen={showUbicScanner}
-        scanMode="location"
-        title="Scansiona Ubicazione"
-        onClose={() => setShowUbicScanner(false)}
-        onScan={(code) => { loadUbicazioneProdotti(code); return true; }}
-      />
+      {/* Scanner Ubicazione - usa il modal della pagina (z-index alto, sicuro su mobile) */}
+      <div className={`qa-modal-convalida ${showUbicScanner ? 'show' : ''}`}>
+        <div className="qa-dialog" style={{ width: '480px' }}>
+          <div className="qa-head">
+            <h3>📍 Scansiona Ubicazione</h3>
+            <button className="qa-close" onClick={() => setShowUbicScanner(false)}>✕</button>
+          </div>
+          <div className="qa-body">
+            <div style={{ position: 'relative', background: '#000', borderRadius: '10px', overflow: 'hidden' }}>
+              <video
+                ref={ubicVideoRef}
+                playsInline
+                muted
+                style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', marginTop: '10px' }}>
+              Inquadra il QR / codice a barre dello scaffale
+            </p>
+            {ubicScanError && (
+              <div style={{ marginTop: '10px', padding: '10px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', fontSize: '13px' }}>
+                {ubicScanError}
+              </div>
+            )}
+          </div>
+          <div className="qa-foot">
+            <button
+              className="btn light"
+              onClick={() => {
+                const code = window.prompt('Codice ubicazione (manuale):');
+                if (code && code.trim()) { setShowUbicScanner(false); loadUbicazioneProdotti(code.trim()); }
+              }}
+            >
+              Inserimento manuale
+            </button>
+            <button className="btn light" onClick={() => setShowUbicScanner(false)}>Annulla</button>
+          </div>
+        </div>
+      </div>
 
       {/* Modal Correggi Scadenza - Semplificato */}
       <div className={`qa-modal-convalida ${showScadenzaModal ? 'show' : ''}`}>
