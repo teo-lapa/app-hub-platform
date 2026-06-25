@@ -106,6 +106,8 @@ export default function DeliveryPage() {
 
   // Estados nota autista (post-consegna)
   const [showNoteModal, setShowNoteModal] = useState(false);
+  // Riepilogo note del giro (in cima alla lista) — apribile/richiudibile
+  const [showNotesPanel, setShowNotesPanel] = useState(true);
   const [noteText, setNoteText] = useState('');
   const [notePhoto, setNotePhoto] = useState<string | null>(null);
   const [noteType, setNoteType] = useState<'extra' | 'generica'>('generica');
@@ -2590,6 +2592,38 @@ export default function DeliveryPage() {
           <div className="space-y-3 p-4">
             {loading && <div className="text-center py-8 text-gray-500">Caricamento...</div>}
 
+            {/* RIEPILOGO NOTE DEL GIRO — tutte le note in cima, così si leggono prima di partire */}
+            {!loading && filteredDeliveries.some(d => d.note) && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl overflow-hidden shadow-sm">
+                <button
+                  onClick={() => setShowNotesPanel(!showNotesPanel)}
+                  className="w-full flex items-center justify-between p-3 text-left active:bg-amber-100"
+                >
+                  <span className="font-bold text-amber-800 flex items-center gap-2">
+                    ⚠️ Note del giro ({filteredDeliveries.filter(d => d.note).length})
+                  </span>
+                  <span className="text-amber-700 text-xs font-semibold">{showNotesPanel ? '▲ nascondi' : '▼ mostra'}</span>
+                </button>
+                {showNotesPanel && (
+                  <div className="px-3 pb-3 space-y-2">
+                    {filteredDeliveries.filter(d => d.note).map((d, i) => (
+                      <div
+                        key={`note-${d.id}`}
+                        onClick={() => d.type === 'pickup' ? openPickupModal(d) : openDelivery(d)}
+                        className="bg-white rounded-lg p-2 border border-amber-200 cursor-pointer active:scale-[0.98] transition-transform"
+                      >
+                        <div className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+                          <span className="bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[11px] flex-shrink-0">{d.sequence || i + 1}</span>
+                          {d.type === 'pickup' ? (d.supplier || d.customerName) : d.customerName}
+                        </div>
+                        <div className="text-sm text-amber-900 mt-1">📝 {stripHtml(d.note)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {!loading && filteredDeliveries.length === 0 && stats.pending === 0 && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📦</div>
@@ -2663,6 +2697,14 @@ export default function DeliveryPage() {
                     delivery.customerName
                   )}
                 </div>
+
+                {/* Nota cliente — testo visibile sulla scheda, non solo nel triangolo */}
+                {delivery.note && (
+                  <div className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded-lg p-2 mb-2 flex items-start gap-2">
+                    <span className="flex-shrink-0">⚠️</span>
+                    <span className="font-medium">{stripHtml(delivery.note)}</span>
+                  </div>
+                )}
 
                 {/* Purchase order for pickups */}
                 {delivery.type === 'pickup' && delivery.purchase_order && (
