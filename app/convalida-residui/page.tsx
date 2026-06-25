@@ -2042,12 +2042,56 @@ export default function ConvalidaResiduiPage() {
         }
       }
 
+      // Se la sostituzione viene da un'ubicazione scansionata, aggancia il movimento
+      // generato a QUELL'ubicazione e a QUEL lotto: l'inventario deve scalare da dove
+      // il prodotto e' stato fisicamente preso (non da dove decide Odoo con FEFO).
+      let ubicBound = false;
+      if (selectedSostituto.x_ubic_loc_id) {
+        try {
+          const findMoves = () => searchReadConvalida<any>(
+            'stock.move',
+            [['sale_line_id', '=', newLineId], ['state', 'not in', ['done', 'cancel']]],
+            ['id', 'picking_id'],
+            0
+          );
+          let moves = await findMoves();
+          if (moves.length === 0) {
+            await new Promise((r) => setTimeout(r, 900));
+            moves = await findMoves();
+          }
+          for (const mv of moves) {
+            // crea/aggiorna le righe operazione (move.line)
+            if (mv.picking_id) {
+              await callKwConvalida('stock.picking', 'action_assign', [[mv.picking_id[0]]], {});
+            }
+            const lineVals: any = { location_id: selectedSostituto.x_ubic_loc_id };
+            if (selectedSostituto.x_ubic_lot_id) lineVals.lot_id = selectedSostituto.x_ubic_lot_id;
+            const mls = await searchReadConvalida<any>('stock.move.line', [['move_id', '=', mv.id]], ['id'], 0);
+            if (mls.length > 0) {
+              await callKwConvalida('stock.move.line', 'write', [mls.map((m: any) => m.id), lineVals], {});
+            } else {
+              await callKwConvalida('stock.move.line', 'create', [{
+                move_id: mv.id,
+                picking_id: mv.picking_id ? mv.picking_id[0] : false,
+                product_id: selectedSostituto.id,
+                quantity: sostituzioneQty,
+                ...lineVals,
+              }], {});
+            }
+            ubicBound = true;
+          }
+        } catch (e) {
+          console.warn('Aggancio ubicazione/lotto al movimento non riuscito:', e);
+        }
+      }
+
       // Traccia nel chatter del picking
       const timestamp = new Date().toLocaleString('it-IT');
       const ubicPart = selectedSostituto.x_ubic_loc_name
         ? `\nUbicazione: ${selectedSostituto.x_ubic_loc_name}` +
           (selectedSostituto.x_ubic_lot_name ? `\nLotto: ${selectedSostituto.x_ubic_lot_name}` : '') +
-          (selectedSostituto.x_ubic_lot_expiry ? `\nScadenza: ${selectedSostituto.x_ubic_lot_expiry}` : '')
+          (selectedSostituto.x_ubic_lot_expiry ? `\nScadenza: ${selectedSostituto.x_ubic_lot_expiry}` : '') +
+          (ubicBound ? `\n(Prelievo agganciato a questa ubicazione/lotto)` : `\n⚠️ Movimento NON agganciato all'ubicazione - verificare il prelievo a mano`)
         : '';
       const message = `🔄 Sostituzione Prodotto\nProdotto originale (mancante): ${sostituzioneData.originalProductName}\nQuantità richiesta: ${sostituzioneData.originalQty}\nProdotto sostitutivo: ${selectedSostituto.name}\nQuantità sostitutiva: ${sostituzioneQty}${ubicPart}\nData: ${timestamp}\nAggiunto all'ordine ${sostituzioneData.saleOrderName}`;
 
