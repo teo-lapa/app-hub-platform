@@ -37,6 +37,12 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
           token: data.data?.token || null,
         });
+        // Salva le credenziali per il ri-login automatico quando Odoo 19 stacca la
+        // sessione (vedi SessionKeeper): così l'app resta sul TUO account e non cade
+        // mai sull'account di servizio. App interna su dispositivi aziendali.
+        try {
+          localStorage.setItem('lapa-cred', btoa(encodeURIComponent(JSON.stringify({ email, password }))));
+        } catch {}
         console.log('✅ AuthStore: Login successful, user authenticated:', data.data?.user?.name);
         toast.success(data.message || 'Login effettuato con successo!');
       } else {
@@ -93,6 +99,8 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
         token: null,
       });
+      // Rimuovi le credenziali salvate per il ri-login automatico
+      try { localStorage.removeItem('lapa-cred'); } catch {}
 
       // Prova a chiamare l'API di logout
       const response = await fetch('/api/auth/logout', {

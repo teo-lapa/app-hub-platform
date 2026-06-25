@@ -7,6 +7,7 @@ import { PWAInstaller } from '@/components/pwa/PWAInstaller';
 import { Toaster } from 'react-hot-toast';
 import { OfflineIndicator } from '@/components/maestro/OfflineIndicator';
 import { GlobalAppTracker } from '@/components/GlobalAppTracker';
+import { SessionKeeper } from '@/components/SessionKeeper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -64,6 +65,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <>
+            <SessionKeeper />
             <GlobalAppTracker />
             {children}
             <OfflineIndicator />

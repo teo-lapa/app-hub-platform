@@ -260,9 +260,19 @@ export async function callOdoo(
     console.error(`❌ [ODOO-CALL] ${model}.${method} FAILED:`, data.error);
     console.error(`❌ [ODOO-CALL] Error data:`, JSON.stringify(data.error, null, 2));
 
-    // Se la sessione è scaduta E abbiamo credenziali fallback, prova a riautenticare
-    if (retryWithFallback && data.error.data?.name === 'odoo.http.SessionExpiredException') {
-      console.warn('⚠️ [ODOO-CALL] Sessione scaduta, tentativo autenticazione fallback...');
+    // ⛔ ATTRIBUZIONE: se la chiamata è a nome di un UTENTE loggato (cookies presenti) e la
+    // SUA sessione Odoo è scaduta, NON scrivere MAI con l'account di servizio (feedback).
+    // Segnala SESSION_EXPIRED: il client si ri-logga con le credenziali dello STESSO utente e
+    // riprova, così ogni operazione resta attribuita a chi l'ha fatta davvero.
+    if (data.error.data?.name === 'odoo.http.SessionExpiredException' && cookies) {
+      const sessionErr: any = new Error('SESSION_EXPIRED');
+      sessionErr.code = 'SESSION_EXPIRED';
+      throw sessionErr;
+    }
+
+    // Solo contesto server/cron (NESSUN utente loggato): qui il fallback al service account è corretto.
+    if (retryWithFallback && !cookies && data.error.data?.name === 'odoo.http.SessionExpiredException') {
+      console.warn('⚠️ [ODOO-CALL] Sessione scaduta (contesto server), tentativo autenticazione fallback...');
 
       try {
         let newCookie: string;
