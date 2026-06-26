@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, generateToken } from '@/lib/auth';
+import { authenticateUser, generateToken, signUserCred } from '@/lib/auth';
 import { ApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -231,6 +231,16 @@ export async function POST(request: NextRequest) {
         secure: true,
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60,
+        path: '/',
+      });
+
+      // Credenziali firmate (httpOnly): il server rinnova da solo la sessione Odoo come
+      // QUESTO utente quando Odoo 19 la stacca, senza buttarlo fuori e con attribuzione corretta.
+      response.cookies.set('lapa_ucred', signUserCred(email, password), {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60,
         path: '/',
       });
 

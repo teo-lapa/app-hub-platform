@@ -13,6 +13,7 @@
 
 import { getOdooSessionManager } from './odoo/sessionManager';
 import { injectLangContext } from './odoo/user-lang';
+import { verifyUserCred } from './auth';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
@@ -27,6 +28,55 @@ const getOdooPassword = () => process.env.ODOO_PASSWORD || process.env.ODOO_ADMI
 
 // Cache sessione fallback per evitare re-autenticazioni multiple
 let cachedFallbackSession: { cookie: string; expires: number } | null = null;
+
+// Cache sessione PER UTENTE: quando Odoo 19 stacca la sessione, il server la rinnova
+// da solo autenticandosi come lo STESSO utente (dalle credenziali firmate nel cookie
+// lapa_ucred), così l'utente non viene mai buttato fuori e l'attribuzione resta corretta.
+const userSessionCache = new Map<string, { cookie: string; uid: number; expires: number }>();
+
+/**
+ * Rinnova la sessione Odoo come l'utente loggato usando il cookie lapa_ucred (httpOnly).
+ * Ritorna sessione+uid REALI dell'utente, oppure null se non ci sono credenziali valide.
+ */
+async function authAsUser(userCookies?: string): Promise<{ cookies: string; uid: number } | null> {
+  if (!userCookies) return null;
+  const m = userCookies.match(/lapa_ucred=([^;]+)/);
+  if (!m) return null;
+  const creds = verifyUserCred(decodeURIComponent(m[1]));
+  if (!creds) return null;
+
+  const cached = userSessionCache.get(creds.email);
+  if (cached && cached.expires > Date.now()) {
+    return { cookies: cached.cookie, uid: cached.uid };
+  }
+
+  try {
+    const authResponse = await fetch(`${getOdooUrl()}/web/session/authenticate`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(20000),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        params: { db: getOdooDb(), login: creds.email, password: creds.password }
+      })
+    });
+    const authData = await authResponse.json();
+    if (authData.error || !authData.result?.uid) return null;
+
+    const setCookie = authResponse.headers.get('set-cookie');
+    const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
+    if (!sessionMatch) return null;
+
+    const cookie = `session_id=${sessionMatch[1]}`;
+    const uid = authData.result.uid;
+    userSessionCache.set(creds.email, { cookie, uid, expires: Date.now() + 30 * 60 * 1000 });
+    console.log('✅ [ODOO-AUTH] Sessione rinnovata come utente:', creds.email, 'UID:', uid);
+    return { cookies: cookie, uid };
+  } catch (e) {
+    console.warn('⚠️ [ODOO-AUTH] authAsUser fallita:', e);
+    return null;
+  }
+}
 
 /**
  * Autentica con Odoo usando la sessione dell'utente loggato
@@ -93,11 +143,16 @@ export async function getOdooSession(userCookies?: string) {
           console.log('✅ [ODOO-AUTH] UID estratto dalla sessione Odoo:', uid);
           return { cookies: odooCookie, uid };
         } else {
-          console.warn('⚠️ [ODOO-AUTH] Nessun UID nella risposta di session_info, uso fallback');
+          // Sessione Odoo staccata: rinnova come lo STESSO utente (attribuzione corretta)
+          console.warn('⚠️ [ODOO-AUTH] Sessione utente scaduta, rinnovo come utente...');
+          const renewed = await authAsUser(userCookies);
+          if (renewed) return renewed;
           return { cookies: odooCookie, uid: 1 };
         }
       } catch (e) {
         console.warn('⚠️ [ODOO-AUTH] Errore chiamata session_info:', e);
+        const renewed = await authAsUser(userCookies);
+        if (renewed) return renewed;
         return { cookies: odooCookie, uid: 1 };
       }
     }
@@ -133,6 +188,11 @@ export async function getOdooSession(userCookies?: string) {
   } else {
     console.warn('⚠️ [ODOO-AUTH] userCookies è undefined o vuoto');
   }
+
+  // Prima del service account: se l'utente ha le credenziali firmate, rinnova come LUI
+  // (così resta tutto a suo nome e non viene buttato fuori).
+  const renewedUser = await authAsUser(userCookies);
+  if (renewedUser) return renewedUser;
 
   // Se non ci sono cookies validi, USA CREDENZIALI DI FALLBACK
   console.log('🔑 [ODOO-AUTH] Usando credenziali di fallback:', ODOO_LOGIN);
