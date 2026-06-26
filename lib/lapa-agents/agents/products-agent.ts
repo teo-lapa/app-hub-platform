@@ -245,7 +245,15 @@ export class ProductsAgent {
       // in-memory è vuota ad ogni cold start. findSimilarProducts va direttamente
       // al database PostgreSQL (pgvector) che ha sempre gli embeddings.
       // ========================================
-      if (filters.query) {
+      // RAG-first DISATTIVATO (2026-06-26, audit agenti): la tabella product_embeddings e' STALE
+      // (contiene ID prodotto pre-migrazione Odoo 19) e il DB Neon pgvector risponde 402 (quota
+      // compute esaurita). Risultato: il RAG restituiva vicini semantici sbagliati (es. "mascarpone"
+      // -> Panna Vegetale/Tartellette) e con il return anticipato scavalcava la ricerca keyword Odoo
+      // qui sotto, che invece i prodotti reali li trova benissimo (sinonimi + rete di sicurezza).
+      // RIATTIVARE mettendo RAG_SEMANTIC_ENABLED = true DOPO aver: 1) riattivato il progetto Neon,
+      // 2) risincronizzato gli embeddings (syncProductEmbeddings con gli ID Odoo attuali).
+      const RAG_SEMANTIC_ENABLED = false;
+      if (RAG_SEMANTIC_ENABLED && filters.query) {
         console.log('🧠 RAG: Tentativo ricerca semantica per:', filters.query);
 
         try {
