@@ -31,5 +31,14 @@ export async function POST() {
     path: '/',
   });
 
+  // Rimuovi le credenziali firmate per l'auto-rinnovo sessione
+  response.cookies.set('lapa_ucred', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+
   return response;
 }

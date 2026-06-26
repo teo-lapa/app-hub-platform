@@ -22,6 +22,21 @@ export const generateToken = (user: User, odooUserId?: number): string => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 };
 
+// Cookie credenziali utente (httpOnly): permette al SERVER di rinnovare la sessione Odoo
+// come lo STESSO utente quando Odoo 19 la stacca, senza buttare fuori chi è loggato e
+// mantenendo l'attribuzione corretta. Firmato con JWT_SECRET, mai leggibile dal JS del browser.
+export const signUserCred = (email: string, password: string): string =>
+  jwt.sign({ uc: { email, password } }, JWT_SECRET, { expiresIn: '30d' });
+
+export const verifyUserCred = (token: string): { email: string; password: string } | null => {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    return decoded?.uc?.email && decoded?.uc?.password ? decoded.uc : null;
+  } catch {
+    return null;
+  }
+};
+
 export const verifyToken = (token: string): { id: string; email: string; role: UserRole } | null => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;

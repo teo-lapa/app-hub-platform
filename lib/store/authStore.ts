@@ -214,8 +214,15 @@ export const useAuthStore = create<AuthState>()(
         });
       }
     } catch (error: any) {
-      console.error('💥 [AuthStore] Errore durante checkAuth:', error.message);
-      console.error('💥 [AuthStore] RESETTO AUTENTICAZIONE - utente verrà disconnesso');
+      const msg = error?.message || '';
+      // Errore di RETE/timeout (tablet, wifi ballerino): NON buttare fuori l'utente,
+      // mantieni la sessione persistita. Disconnetti solo su token davvero non valido (HTTP).
+      if (!msg.startsWith('HTTP ')) {
+        console.warn('🌐 [AuthStore] checkAuth: errore di rete, mantengo la sessione:', msg);
+        set({ isLoading: false });
+        return;
+      }
+      console.error('💥 [AuthStore] checkAuth: token non valido, disconnessione:', msg);
       set({
         user: null,
         isAuthenticated: false,
