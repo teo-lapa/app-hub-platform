@@ -412,6 +412,15 @@ export default function ConvalidaResiduiPage() {
     };
   }, []);
 
+  // Auto-ricarica quando cambiano i filtri Data/Tipo: niente piu' click su CERCA
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    if (viewMode === 'home' || viewMode === 'prenotazioni') return;
+    handleLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter, typeFilter]);
+
   // --------------------------------------------------------------------------
   // UTILITY FUNCTIONS
   // --------------------------------------------------------------------------
