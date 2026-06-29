@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Calendar, X, FileText, Package, ChevronRight, Plus, Minus, Trash2, Search, Pencil } from 'lucide-react';
+import { Calendar, X, FileText, Package, ChevronRight, Plus, Minus, Trash2, Search, Pencil, Lock } from 'lucide-react';
 import { Card, Badge, Spinner, Empty, fmtCHF, fmtNum, fmtDate } from '../_components/ui';
 
 interface OrdineList {
@@ -110,6 +110,23 @@ export default function OrdiniPage() {
       setEditLine(null);
       await refresh(sel.id);
       load();
+    } finally { setBusy(false); }
+  };
+
+  const requestLock = async (productId: number, productName: string, price: number) => {
+    if (!sel) return;
+    const reason = window.prompt('Motivo del blocco prezzo (facoltativo):', '');
+    if (reason === null) return; // annullato
+    setBusy(true);
+    try {
+      const res = await fetch('/api/silvano/blocco-prezzo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: sel.id, productId, productName, clientName: sel.cliente, price, reason }),
+      });
+      const d = await res.json();
+      if (!d.success) { flash(d.error || 'Errore'); return; }
+      flash('Richiesta blocco prezzo inviata a Laura');
+      setEditLine(null);
     } finally { setBusy(false); }
   };
 
@@ -315,7 +332,8 @@ export default function OrdiniPage() {
       )}
 
       {editLine && (
-        <LineModal target={editLine} busy={busy} onClose={() => setEditLine(null)} onSave={saveLine} />
+        <LineModal target={editLine} busy={busy} onClose={() => setEditLine(null)} onSave={saveLine}
+          onLockRequest={editLine.lineId ? (price) => requestLock(editLine.productId, editLine.name, price) : undefined} />
       )}
 
       {addOpen && sel && (
@@ -328,8 +346,9 @@ export default function OrdiniPage() {
 }
 
 /* ============ Modal riga (qty + prezzo + margine live) ============ */
-function LineModal({ target, busy, onClose, onSave }: {
+function LineModal({ target, busy, onClose, onSave, onLockRequest }: {
   target: EditTarget; busy: boolean; onClose: () => void; onSave: (qty: number, price: number) => void;
+  onLockRequest?: (price: number) => void;
 }) {
   const [qty, setQty] = useState(target.qty || 1);
   const [price, setPrice] = useState(target.price || target.base || 0);
@@ -385,6 +404,13 @@ function LineModal({ target, busy, onClose, onSave }: {
             {busy ? 'Salvo…' : (target.lineId ? 'Salva modifica' : 'Aggiungi all\'ordine')}
           </button>
         </div>
+
+        {onLockRequest && (
+          <button onClick={() => onLockRequest(price)} disabled={busy}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
+            <Lock size={16} /> Richiesta blocco prezzo a Laura
+          </button>
+        )}
       </div>
     </div>
   );
