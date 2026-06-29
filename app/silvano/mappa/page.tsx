@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MapPin } from 'lucide-react';
-import { Card, Spinner, Empty } from '../_components/ui';
+import { Spinner, Empty } from '../_components/ui';
 import type { ClienteMappa } from './ClientiMap';
 
 const ClientiMap = dynamic(() => import('./ClientiMap'), {
@@ -36,28 +36,25 @@ export default function MappaPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col gap-4">
-      <Card className="shrink-0 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300">
-            <MapPin size={20} />
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">Mappa clienti</div>
-            <div className="text-lg font-semibold text-white">{validi.length} clienti sulla mappa</div>
-          </div>
-        </div>
-      </Card>
-
-      {loading ? (
-        <Spinner />
-      ) : !validi.length ? (
-        <Empty>Nessun cliente geolocalizzato</Empty>
-      ) : (
-        <Card className="min-h-0 flex-1 overflow-hidden p-0">
+    <>
+      {/* Mappa a tutto schermo, da bordo a bordo, sotto la barra Area Venditore */}
+      <div className="fixed inset-x-0 bottom-0 top-[60px] z-10 bg-slate-950">
+        {loading ? (
+          <div className="flex h-full items-center justify-center"><Spinner label="Carico la mappa…" /></div>
+        ) : !validi.length ? (
+          <div className="flex h-full items-center justify-center"><Empty>Nessun cliente geolocalizzato</Empty></div>
+        ) : (
           <ClientiMap clienti={validi} />
-        </Card>
-      )}
-    </div>
+        )}
+      </div>
+
+      {/* Badge conteggio, galleggiante sopra la mappa */}
+      <div className="fixed left-3 top-[4.5rem] z-20 sm:left-5">
+        <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 shadow-lg backdrop-blur">
+          <MapPin size={16} className="text-emerald-300" />
+          <span className="text-sm font-semibold text-white">{validi.length} clienti sulla mappa</span>
+        </div>
+      </div>
+    </>
   );
 }

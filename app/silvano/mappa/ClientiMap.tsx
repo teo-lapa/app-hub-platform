@@ -48,7 +48,12 @@ export default function ClientiMap({ clienti }: { clienti: ClienteMappa[] }) {
       center={center}
       zoom={9}
       onLoad={onLoad}
-      options={{ streetViewControl: false, mapTypeControl: true, fullscreenControl: true }}
+      options={{
+        streetViewControl: false,
+        mapTypeControl: true,
+        mapTypeControlOptions: { position: google.maps.ControlPosition.TOP_RIGHT },
+        fullscreenControl: true,
+      }}
     >
       {clienti.map((c) => (
         <Marker
