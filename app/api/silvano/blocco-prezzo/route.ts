@@ -10,15 +10,16 @@ const SALE_ORDER_MODEL_ID = 996;    // ir.model di sale.order
 
 /**
  * POST /api/silvano/blocco-prezzo
- * Crea un'attività per Laura: richiesta di blocco prezzo di UN prodotto su un preventivo/ordine.
- * Quando Laura completa l'attività, l'automazione Odoo (218) blocca quel prezzo nel listino del cliente.
- * body: { orderId, productId, productName?, clientName?, price, reason? }
+ * Crea un'attività per Laura + marca la riga del preventivo (flag + prezzo richiesto).
+ * Quando Laura completa l'attività, l'automazione Odoo (219, sul messaggio di completamento)
+ * blocca quel prezzo nel listino del cliente leggendo le righe marcate.
+ * body: { orderId, lineId?, productId, productName?, clientName?, price, reason? }
  */
 export async function POST(request: NextRequest) {
   try {
     const seller = await resolveSalesperson(request);
     const body = await request.json();
-    const { orderId, productId, productName, clientName, price, reason } = body || {};
+    const { orderId, lineId, productId, productName, clientName, price, reason } = body || {};
 
     if (!orderId || !productId || price == null) {
       return NextResponse.json({ success: false, error: 'orderId, productId e price sono obbligatori' }, { status: 400 });
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest) {
       x_lapa_blocco_product_id: productId,
       x_lapa_blocco_price: prezzo,
     }], {});
+
+    // Marca la riga: l'automazione 219 blocca le righe marcate alla conferma dell'attività.
+    if (lineId) {
+      try {
+        await callOdooAsAdmin('sale.order.line', 'write',
+          [[lineId], { x_lapa_blocco_richiesto: true, x_lapa_blocco_prezzo: prezzo }], {});
+      } catch { /* flag opzionale, non bloccare la richiesta */ }
+    }
 
     return NextResponse.json({ success: true, activityId });
   } catch (error: any) {
