@@ -12,7 +12,7 @@ export interface ClienteMappa {
   totalInvoiced: number;
 }
 
-const containerStyle = { width: '100%', height: '70vh' };
+const containerStyle = { width: '100%', height: '100%' };
 
 export default function ClientiMap({ clienti }: { clienti: ClienteMappa[] }) {
   const { isLoaded, loadError } = useJsApiLoader({

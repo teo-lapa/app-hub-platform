@@ -36,8 +36,8 @@ export default function MappaPage() {
   );
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
+    <div className="flex h-[calc(100vh-7rem)] flex-col gap-4">
+      <Card className="shrink-0 p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300">
             <MapPin size={20} />
@@ -54,7 +54,7 @@ export default function MappaPage() {
       ) : !validi.length ? (
         <Empty>Nessun cliente geolocalizzato</Empty>
       ) : (
-        <Card className="overflow-hidden p-0">
+        <Card className="min-h-0 flex-1 overflow-hidden p-0">
           <ClientiMap clienti={validi} />
         </Card>
       )}
