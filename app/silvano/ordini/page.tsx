@@ -113,7 +113,7 @@ export default function OrdiniPage() {
     } finally { setBusy(false); }
   };
 
-  const requestLock = async (productId: number, productName: string, price: number) => {
+  const requestLock = async (lineId: number, productId: number, productName: string, price: number) => {
     if (!sel) return;
     const reason = window.prompt('Motivo del blocco prezzo (facoltativo):', '');
     if (reason === null) return; // annullato
@@ -121,7 +121,7 @@ export default function OrdiniPage() {
     try {
       const res = await fetch('/api/silvano/blocco-prezzo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: sel.id, productId, productName, clientName: sel.cliente, price, reason }),
+        body: JSON.stringify({ orderId: sel.id, lineId, productId, productName, clientName: sel.cliente, price, reason }),
       });
       const d = await res.json();
       if (!d.success) { flash(d.error || 'Errore'); return; }
@@ -333,7 +333,7 @@ export default function OrdiniPage() {
 
       {editLine && (
         <LineModal target={editLine} busy={busy} onClose={() => setEditLine(null)} onSave={saveLine}
-          onLockRequest={editLine.lineId ? (price) => requestLock(editLine.productId, editLine.name, price) : undefined} />
+          onLockRequest={editLine.lineId ? (price) => requestLock(editLine.lineId!, editLine.productId, editLine.name, price) : undefined} />
       )}
 
       {addOpen && sel && (
