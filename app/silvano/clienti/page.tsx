@@ -71,6 +71,12 @@ export default function ClientiPage() {
             className="w-full rounded-xl border border-white/10 bg-slate-800/60 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-400 outline-none focus:border-emerald-400" />
         </div>
 
+        {!loadingList && clienti.length > 0 && (
+          <div className="px-1 text-xs font-medium text-slate-400">
+            {clienti.length} {clienti.length === 1 ? 'cliente' : 'clienti'}
+          </div>
+        )}
+
         {loadingList ? <Spinner /> : !clienti.length ? <Empty>Nessun cliente</Empty> : (
           <div className="space-y-2">
             {clienti.map((c) => (
