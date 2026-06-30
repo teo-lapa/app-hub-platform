@@ -348,11 +348,32 @@ export default function StellaLivePage() {
     setPh('off'); setStatus('Conversazione terminata. Tocca per ricominciare.');
   }
 
+  // Riapre il microfono con/senza echo cancellation e sostituisce la traccia WebRTC (niente riconnessione).
+  // echo=false serve in vivavoce: con l'EC attiva la voce del cliente (che esce dall'altoparlante) viene
+  // cancellata come "eco" e non si registra. echo=true e il default per parlare con Stella senza feedback.
+  async function swapMic(echo: boolean) {
+    const pc = pcRef.current; if (!pc) return;
+    try {
+      const raw = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: echo, noiseSuppression: echo, autoGainControl: echo } });
+      const nt = raw.getAudioTracks()[0];
+      const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+      if (sender) await sender.replaceTrack(nt);
+      try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+      micStreamRef.current = raw;
+      nt.enabled = true;
+      try {
+        const ctx = ctxRef.current;
+        if (ctx) { const sn = ctx.createMediaStreamSource(raw); const an = ctx.createAnalyser(); an.fftSize = 1024; sn.connect(an); micAnRef.current = an; }
+      } catch {}
+    } catch {}
+  }
+
   // entra in modalita passiva: Stella trascrive ma non parla
-  function enterRecording() {
+  async function enterRecording() {
     recordTxtRef.current = [];
     recordingRef.current = true; setRecording(true);
     send(sessionUpdate(true));
+    await swapMic(false); // echo OFF: capta anche il cliente dall'altoparlante
     micOn(true);
     setPh('recording'); setStatus('📞 Registro la telefonata — parla pure col cliente');
   }
@@ -364,6 +385,7 @@ export default function StellaLivePage() {
 
   function stopRecording() {
     recordingRef.current = false; setRecording(false);
+    swapMic(true); // ripristina echo cancellation: dopo Stella parla e non deve sentire sé stessa
     send(sessionUpdate(false)); // torna interattiva (Stella riparla)
     const txt = recordTxtRef.current.join(' ').trim();
     recordTxtRef.current = [];
