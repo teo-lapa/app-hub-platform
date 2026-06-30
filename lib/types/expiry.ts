@@ -96,6 +96,13 @@ export interface GetExpiryProductsResponse {
   error?: string;
 }
 
+export interface ZoneBandCounts {
+  red: number;    // scaduti + scade entro 3 giorni
+  yellow: number; // 4-7 giorni
+  green: number;  // 8-14 giorni
+  total: number;
+}
+
 export interface GetExpiryCountsResponse {
   success: boolean;
   counts: {
@@ -109,6 +116,9 @@ export interface GetExpiryCountsResponse {
     };
     byZone: {
       [zoneId: string]: number;
+    };
+    byZoneBand?: {
+      [zoneId: string]: ZoneBandCounts;
     };
   };
   error?: string;

@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
     const expiringThreshold = 7; // giorni
 
     // Inizializza contatori
+    const emptyBand = () => ({ red: 0, yellow: 0, green: 0, total: 0 });
     const counts = {
       byUrgency: {
         expired: 0,
@@ -119,7 +120,15 @@ export async function GET(request: NextRequest) {
         secco: 0,
         'secco-sopra': 0,
         pingu: 0
-      }
+      },
+      // Breakdown a 3 fasce per zona (per la vista "Gestione Scadenze a zone")
+      // red = scaduti + scade entro 3 giorni · yellow = 4-7 giorni · green = 8-14 giorni
+      byZoneBand: {
+        frigo: emptyBand(),
+        secco: emptyBand(),
+        'secco-sopra': emptyBand(),
+        pingu: emptyBand()
+      } as Record<string, { red: number; yellow: number; green: number; total: number }>
     };
 
     // STEP 4: Processa ogni quant e aggiorna contatori
@@ -154,22 +163,42 @@ export async function GET(request: NextRequest) {
       const pathSegments = locationCompleteName.split('/').map((s: string) => s.toLowerCase().trim());
 
       // Cerca nei segmenti del path per determinare la zona
+      let zoneId: string | null = null;
       for (const segment of pathSegments) {
         if (segment === 'pingu' || segment.includes('pn01') || segment.startsWith('pingu')) {
-          counts.byZone.pingu++;
+          zoneId = 'pingu';
           break;
         }
         if (segment === 'secco-sopra' || segment.includes('sc03') || segment === 'secco sopra') {
-          counts.byZone['secco-sopra']++;
+          zoneId = 'secco-sopra';
           break;
         }
         if (segment === 'frigo' || segment.includes('fr02') || segment.startsWith('frigo')) {
-          counts.byZone.frigo++;
+          zoneId = 'frigo';
           break;
         }
         if (segment === 'secco' || segment.includes('sc02') || segment.startsWith('secco')) {
-          counts.byZone.secco++;
+          zoneId = 'secco';
           break;
+        }
+      }
+
+      if (zoneId && counts.byZone[zoneId as keyof typeof counts.byZone] !== undefined) {
+        counts.byZone[zoneId as keyof typeof counts.byZone]++;
+
+        // Breakdown a fasce: solo prodotti "a ridosso" (entro 14 giorni)
+        const band = counts.byZoneBand[zoneId];
+        if (band) {
+          if (daysUntilExpiry <= 3) {
+            band.red++;
+            band.total++;
+          } else if (daysUntilExpiry <= 7) {
+            band.yellow++;
+            band.total++;
+          } else if (daysUntilExpiry <= 14) {
+            band.green++;
+            band.total++;
+          }
         }
       }
     }

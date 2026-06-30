@@ -2,17 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2, Bell, Search, X, Tag } from 'lucide-react';
+import { Calendar, ArrowLeft, AlertTriangle, MapPin, Package, Clock, CheckCircle, Trash2, Bell, Search, X, Tag, Camera, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { ExpiryProductCard } from '@/components/scadenze/ExpiryProductCard';
 import { UrgencyFilterBar } from '@/components/scadenze/UrgencyFilterBar';
 import { WasteTransferModal } from '@/components/inventario/WasteTransferModal';
 import { ProductManagementModal } from '@/components/maestro/ProductManagementModal';
 import { VerificationRequestsModal } from '@/components/scadenze/VerificationRequestsModal';
-import { ExpiryProduct } from '@/lib/types/expiry';
+import { ZoneOverview, ZoneOverviewItem } from '@/components/scadenze/ZoneOverview';
+import { BandSelector, ScadenzaBand } from '@/components/scadenze/BandSelector';
+import { AisleProductGrid } from '@/components/scadenze/AisleProductGrid';
+import { QuantityAdjustModal } from '@/components/scadenze/QuantityAdjustModal';
+import { AddToOrderModal } from '@/components/scadenze/AddToOrderModal';
+import { QRScanner } from '@/components/inventario/QRScanner';
+import { ExpiryCamera } from '@/components/gestione-scadenze/ExpiryCamera';
+import { ExpiryConfirmModal } from '@/components/gestione-scadenze/ExpiryConfirmModal';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { ExpiryProduct, ZoneBandCounts } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
+
+// Fasce -> intervallo giorni alla scadenza (la fascia 'red' include gli scaduti)
+const BAND_RANGE: Record<ScadenzaBand, { bandMin?: number; bandMax: number }> = {
+  red: { bandMax: 3 },
+  yellow: { bandMin: 4, bandMax: 7 },
+  green: { bandMin: 8, bandMax: 14 },
+};
 
 // Configurazione warehouse disponibili
 const WAREHOUSES = [
@@ -57,12 +72,30 @@ export default function ScadenzePage() {
   const { user } = useAuthStore();
 
   // Stati principali
-  const [currentView, setCurrentView] = useState<'filter' | 'products' | 'zones'>('filter');
+  // Flusso a livelli: zones (home) -> bands (3 fasce) -> products (per corsia)
+  // 'filter' resta disponibile per la vecchia vista per-urgenza (accessibile dalla home)
+  const [currentView, setCurrentView] = useState<'zones' | 'bands' | 'filter' | 'products'>('zones');
   const [selectedWarehouse, setSelectedWarehouse] = useState<number>(1); // Default: EMBRACH (ID 1)
   const [selectedUrgency, setSelectedUrgency] = useState<'expired' | 'expiring' | 'ok' | 'all' | 'no-movement-30' | 'no-movement-90' | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [selectedBand, setSelectedBand] = useState<ScadenzaBand | null>(null);
   const [products, setProducts] = useState<ExpiryProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ExpiryProduct | null>(null);
+
+  // Breakdown a fasce per zona (per la panoramica)
+  const [zoneBandCounts, setZoneBandCounts] = useState<Record<string, ZoneBandCounts>>({});
+
+  // Flash QR ubicazione (obbligatorio prima delle azioni) + azioni nuove
+  const [pendingProduct, setPendingProduct] = useState<ExpiryProduct | null>(null);
+  const [showLocationScanner, setShowLocationScanner] = useState(false);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [showAddToOrderModal, setShowAddToOrderModal] = useState(false);
+
+  // Aggiorna scadenza/lotto da foto (riusa il motore di /gestione-scadenze)
+  const [showExpiryCamera, setShowExpiryCamera] = useState(false);
+  const [showExpiryConfirm, setShowExpiryConfirm] = useState(false);
+  const [processingAI, setProcessingAI] = useState(false);
+  const [extractedData, setExtractedData] = useState<{ lotNumber: string; expiryDate: string; confidence: number; photos: string[] } | null>(null);
 
   // Conteggi
   const [urgencyCounts, setUrgencyCounts] = useState({
@@ -132,10 +165,48 @@ export default function ScadenzePage() {
       if (data.success) {
         setUrgencyCounts(data.counts.byUrgency);
         setZoneCounts(data.counts.byZone);
+        setZoneBandCounts(data.counts.byZoneBand || {});
       }
     } catch (error) {
       console.error('Errore caricamento conteggi:', error);
       toast.error('Errore caricamento conteggi');
+    }
+  };
+
+  const emptyBand: ZoneBandCounts = { red: 0, yellow: 0, green: 0, total: 0 };
+
+  // Livello 1 -> 2: apri le fasce di una zona
+  const handleSelectZone = (zoneId: string) => {
+    setSelectedZone(zoneId);
+    setCurrentView('bands');
+  };
+
+  // Livello 2 -> 3: carica i prodotti di zona + fascia, raggruppati per corsia
+  const handleSelectBand = async (band: ScadenzaBand) => {
+    if (!selectedZone) return;
+    setSelectedBand(band);
+    setCurrentView('products');
+    setLoading(true);
+    try {
+      const range = BAND_RANGE[band];
+      const params = new URLSearchParams({
+        zone: selectedZone,
+        warehouseId: String(selectedWarehouse),
+        bandMax: String(range.bandMax),
+      });
+      if (range.bandMin !== undefined) params.set('bandMin', String(range.bandMin));
+
+      const response = await fetch(`/api/scadenze/products?${params.toString()}`, { credentials: 'include' });
+      const data = await response.json();
+      if (data.success) {
+        setProducts(data.products || []);
+      } else {
+        toast.error(data.error || 'Errore caricamento prodotti');
+      }
+    } catch (error: any) {
+      toast.error('Errore: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -254,13 +325,55 @@ export default function ScadenzePage() {
       );
     });
 
-  // Click su card prodotto
-  const handleProductClick = async (product: ExpiryProduct) => {
+  // Click su card prodotto -> PRIMA flash QR ubicazione (per essere sicuri di essere sul posto)
+  const handleProductClick = (product: ExpiryProduct) => {
+    setPendingProduct(product);
+    setShowLocationScanner(true);
+  };
+
+  // Normalizza un codice ubicazione per confronto
+  const normLoc = (s?: string) => (s || '').toUpperCase().replace(/[\s\-_.]/g, '');
+
+  // Apre davvero la scheda azioni del prodotto
+  const openProductSheet = async (product: ExpiryProduct) => {
     setSelectedProduct(product);
     setShowProductModal(true);
-
-    // Carica prezzi dettagliati
     await loadProductPrices(product.id);
+  };
+
+  // Callback dello scanner ubicazione
+  const handleLocationScanned = async (code: string) => {
+    setShowLocationScanner(false);
+    const product = pendingProduct;
+    if (!product) return;
+
+    const scanned = normLoc(code);
+    const t1 = normLoc(product.locationName);
+    const t2 = normLoc(product.locationCompleteName);
+    const match = scanned.length > 0 && (
+      (t1 && (t1.includes(scanned) || scanned.includes(t1))) ||
+      (t2 && (t2.includes(scanned) || scanned.includes(t2)))
+    );
+
+    if (!match) {
+      toast.error(`⚠️ Ubicazione diversa! Hai scansionato "${code}" ma il prodotto è in ${product.locationName}. Sei nel posto giusto?`, { duration: 6000 });
+      setPendingProduct(null);
+      return;
+    }
+
+    toast.success(`📍 Ubicazione confermata: ${product.locationName}`);
+    await openProductSheet(product);
+    setPendingProduct(null);
+  };
+
+  // Bypass scan (es. QR ubicazione mancante) — sblocca senza bloccare il lavoro
+  const handleSkipScan = async () => {
+    setShowLocationScanner(false);
+    if (pendingProduct) {
+      toast('⚠️ Scansione saltata — verifica di essere all\'ubicazione giusta', { icon: '📍' });
+      await openProductSheet(pendingProduct);
+      setPendingProduct(null);
+    }
   };
 
   // Carica prezzi dettagliati per un prodotto
@@ -455,14 +568,139 @@ export default function ScadenzePage() {
     }
   };
 
-  // Torna indietro
+  // ===== Azioni: aggiorna scadenza/lotto da FOTO (riusa motore /gestione-scadenze) =====
+  const handleOpenExpiryCamera = () => {
+    setShowProductModal(false);
+    setShowExpiryCamera(true);
+  };
+
+  const handlePhotosCapture = async (photos: string[]) => {
+    if (!selectedProduct || photos.length === 0) {
+      toast.error('Nessuna foto scattata');
+      return;
+    }
+    setShowExpiryCamera(false);
+    setProcessingAI(true);
+    try {
+      const res = await fetch('/api/gestione-scadenze/extract-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          photos,
+          productName: selectedProduct.name,
+          currentLot: selectedProduct.lotName,
+          currentExpiry: selectedProduct.expirationDate,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Errore estrazione dati');
+      setExtractedData({
+        lotNumber: data.lotNumber || '',
+        expiryDate: data.expiryDate || '',
+        confidence: data.confidence || 0,
+        photos,
+      });
+      setShowExpiryConfirm(true);
+    } catch (e: any) {
+      toast.error('Errore: ' + e.message);
+    } finally {
+      setProcessingAI(false);
+    }
+  };
+
+  const handleConfirmExpiry = async (lotNumber: string, expiryDate: string) => {
+    if (!selectedProduct || !extractedData) return;
+    try {
+      setLoading(true);
+      const res = await fetch('/api/gestione-scadenze/save-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'update_expiry',
+          productId: selectedProduct.id,
+          lotName: lotNumber,
+          expiryDate,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Errore salvataggio');
+
+      const lotIdToUse = data.lotId || selectedProduct.lotId;
+      if (extractedData.photos?.length > 0) {
+        await fetch('/api/gestione-scadenze/save-expiry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'upload_photos',
+            productId: selectedProduct.id,
+            lotId: lotIdToUse,
+            photos: extractedData.photos,
+          }),
+        });
+      }
+
+      // Aggiorna in lista
+      setProducts(prev => prev.map(p =>
+        p.id === selectedProduct.id && p.locationId === selectedProduct.locationId
+          ? { ...p, lotName: lotNumber, expirationDate: expiryDate }
+          : p
+      ));
+      toast.success(`✅ Scadenza aggiornata: ${selectedProduct.name}`);
+      setShowExpiryConfirm(false);
+      setExtractedData(null);
+    } catch (e: any) {
+      toast.error('Errore: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Aggiorna quantità
+  const handleOpenQuantity = () => {
+    setShowProductModal(false);
+    setShowQuantityModal(true);
+  };
+  const handleQuantitySaved = (newQty: number) => {
+    setShowQuantityModal(false);
+    if (selectedProduct) {
+      setProducts(prev => prev.map(p =>
+        p.id === selectedProduct.id && p.locationId === selectedProduct.locationId && p.lotId === selectedProduct.lotId
+          ? { ...p, quantity: newQty }
+          : p
+      ));
+    }
+  };
+
+  // Inserisci in ordine
+  const handleOpenAddToOrder = () => {
+    setShowProductModal(false);
+    setShowAddToOrderModal(true);
+  };
+
+  // Torna indietro (rispetta i livelli zones -> bands -> products)
   const handleBack = () => {
     if (currentView === 'products') {
-      setCurrentView('filter');
-      setSelectedUrgency(null);
+      if (selectedBand) {
+        setCurrentView('bands');
+        setSelectedBand(null);
+        setProducts([]);
+      } else {
+        setCurrentView('filter');
+        setSelectedUrgency(null);
+        setProducts([]);
+        loadCounts();
+      }
+    } else if (currentView === 'bands') {
+      setCurrentView('zones');
       setSelectedZone(null);
-      setProducts([]);
-      loadCounts(); // Ricarica conteggi aggiornati
+      loadCounts();
+    } else if (currentView === 'filter') {
+      setCurrentView('zones');
+      setSelectedUrgency(null);
+      loadCounts();
     } else {
       router.back();
     }
@@ -490,7 +728,97 @@ export default function ScadenzePage() {
       />
 
       <main className="container mx-auto p-4 max-w-7xl">
-        {/* Vista: Selezione Urgenza */}
+        {/* Vista 1: Panoramica ZONE (home) */}
+        {currentView === 'zones' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="flex justify-center gap-2 mb-2">
+              {WAREHOUSES.map((warehouse) => (
+                <button
+                  key={warehouse.id}
+                  onClick={() => handleWarehouseChange(warehouse.id)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2
+                    ${selectedWarehouse === warehouse.id ? 'bg-blue-500 text-white' : 'glass-strong text-slate-300 hover:bg-white/10'}`}
+                >
+                  <span>{warehouse.icon}</span>
+                  <span>{warehouse.name}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="text-center mb-2">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2">📅 Gestione Scadenze</h1>
+              <p className="text-slate-400">Scegli una zona — i numeri sono i prodotti a ridosso</p>
+            </div>
+
+            <ZoneOverview
+              zones={ZONES.map((z): ZoneOverviewItem => ({
+                id: z.id,
+                name: z.name,
+                icon: z.icon,
+                gradient: z.gradient,
+                bands: zoneBandCounts[z.id] || emptyBand,
+              }))}
+              onSelectZone={handleSelectZone}
+            />
+
+            {/* Accesso alla vista classica per-urgenza (scaduti/fermi/ecc.) */}
+            <div className="text-center pt-2">
+              <button
+                onClick={() => { setCurrentView('filter'); }}
+                className="text-sm text-slate-400 underline hover:text-slate-200"
+              >
+                Vista avanzata per urgenza (scaduti, fermi, tutti…)
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Vista 2: FASCE della zona scelta */}
+        {currentView === 'bands' && selectedZone && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <BandSelector
+              zoneName={ZONES.find(z => z.id === selectedZone)?.name || ''}
+              zoneIcon={ZONES.find(z => z.id === selectedZone)?.icon || '📦'}
+              bands={zoneBandCounts[selectedZone] || emptyBand}
+              onSelectBand={handleSelectBand}
+            />
+          </motion.div>
+        )}
+
+        {/* Vista 3: PRODOTTI per corsia (flusso zone->fasce) */}
+        {currentView === 'products' && selectedBand && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            <div className="glass p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">
+                  {ZONES.find(z => z.id === selectedZone)?.icon} {ZONES.find(z => z.id === selectedZone)?.name}
+                  {' · '}
+                  {selectedBand === 'red' ? '🔴 Urgenti (≤3gg)' : selectedBand === 'yellow' ? '🟡 4-7 giorni' : '🟢 8-14 giorni'}
+                </h2>
+                <p className="text-sm text-slate-400">{products.length} prodotti · raggruppati per corsia</p>
+              </div>
+              <div className="px-4 py-2 bg-blue-500/20 rounded-full border border-blue-500">
+                <span className="font-bold text-blue-400">{products.length}</span>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+              </div>
+            ) : products.length === 0 ? (
+              <div className="glass p-12 rounded-xl text-center">
+                <div className="text-6xl mb-4">✅</div>
+                <h3 className="text-xl font-bold mb-2">Niente in questa fascia</h3>
+                <p className="text-slate-400">Ottimo, nessun prodotto da gestire qui</p>
+              </div>
+            ) : (
+              <AisleProductGrid products={products} onSelectProduct={handleProductClick} />
+            )}
+          </motion.div>
+        )}
+
+        {/* Vista: Selezione Urgenza (classica) */}
         {currentView === 'filter' && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -535,8 +863,8 @@ export default function ScadenzePage() {
           </motion.div>
         )}
 
-        {/* Vista: Lista Prodotti */}
-        {currentView === 'products' && (
+        {/* Vista: Lista Prodotti (flusso classico per-urgenza) */}
+        {currentView === 'products' && !selectedBand && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -817,6 +1145,60 @@ export default function ScadenzePage() {
               {/* Azioni */}
               <div className="space-y-3">
                 <h3 className="font-bold text-lg mb-3">Azioni Disponibili</h3>
+
+                {/* Aggiorna scadenza/lotto da FOTO */}
+                <button
+                  onClick={handleOpenExpiryCamera}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-cyan-500/20 transition-all
+                           flex items-center justify-between group border-2 border-cyan-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                      <Camera className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-cyan-400">Aggiorna Scadenza/Lotto (foto)</div>
+                      <div className="text-xs text-slate-400">Scatta foto: l&apos;AI legge lotto e scadenza</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-cyan-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Aggiorna quantità */}
+                <button
+                  onClick={handleOpenQuantity}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-green-500/20 transition-all
+                           flex items-center justify-between group border-2 border-green-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-green-400">Aggiorna Quantità</div>
+                      <div className="text-xs text-slate-400">Conta e correggi la giacenza (come in Inventario)</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-green-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Inserisci in ordine cliente */}
+                <button
+                  onClick={handleOpenAddToOrder}
+                  className="w-full glass-strong p-4 rounded-lg hover:bg-blue-500/20 transition-all
+                           flex items-center justify-between group border-2 border-blue-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <ShoppingCart className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-blue-400">Inserisci in Ordine Cliente</div>
+                      <div className="text-xs text-slate-400">Crea ordine con tracciamento lotto/ubicazione</div>
+                    </div>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 rotate-180 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                </button>
 
                 {/* Trasferisci a scarti */}
                 <button
@@ -1249,6 +1631,71 @@ export default function ScadenzePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Flash QR ubicazione (prima delle azioni) */}
+      <QRScanner
+        isOpen={showLocationScanner}
+        onClose={handleSkipScan}
+        onScan={handleLocationScanned}
+        title={pendingProduct ? `📍 Scansiona ${pendingProduct.locationName}` : 'Scansiona ubicazione'}
+      />
+
+      {/* Overlay elaborazione AI */}
+      {processingAI && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70]">
+          <div className="glass-strong p-6 rounded-xl text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p>🤖 Analizzando etichetta...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Camera per foto scadenza */}
+      {selectedProduct && (
+        <ExpiryCamera
+          isOpen={showExpiryCamera}
+          onClose={() => setShowExpiryCamera(false)}
+          onCapture={handlePhotosCapture}
+          productName={selectedProduct.name}
+          maxPhotos={3}
+        />
+      )}
+
+      {/* Conferma scadenza estratta */}
+      {selectedProduct && extractedData && (
+        <ExpiryConfirmModal
+          isOpen={showExpiryConfirm}
+          onClose={() => { setShowExpiryConfirm(false); setExtractedData(null); }}
+          onConfirm={handleConfirmExpiry}
+          onRetry={() => { setShowExpiryConfirm(false); setExtractedData(null); setShowExpiryCamera(true); }}
+          productName={selectedProduct.name}
+          extractedLot={extractedData.lotNumber}
+          extractedExpiry={extractedData.expiryDate}
+          confidence={extractedData.confidence}
+          currentLot={selectedProduct.lotName}
+          currentExpiry={selectedProduct.expirationDate}
+        />
+      )}
+
+      {/* Aggiorna quantità */}
+      {showQuantityModal && selectedProduct && (
+        <QuantityAdjustModal
+          isOpen={showQuantityModal}
+          product={selectedProduct}
+          onClose={() => setShowQuantityModal(false)}
+          onSaved={handleQuantitySaved}
+        />
+      )}
+
+      {/* Inserisci in ordine cliente */}
+      {showAddToOrderModal && selectedProduct && (
+        <AddToOrderModal
+          isOpen={showAddToOrderModal}
+          product={selectedProduct}
+          onClose={() => setShowAddToOrderModal(false)}
+          onDone={() => setShowAddToOrderModal(false)}
+        />
+      )}
     </div>
   );
 }
