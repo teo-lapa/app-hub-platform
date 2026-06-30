@@ -620,6 +620,7 @@ export default function ScadenzePage() {
         body: JSON.stringify({
           action: 'update_expiry',
           productId: selectedProduct.id,
+          lotId: selectedProduct.lotId,
           lotName: lotNumber,
           expiryDate,
         }),
