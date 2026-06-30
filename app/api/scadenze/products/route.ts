@@ -22,7 +22,14 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7');
     const warehouseId = parseInt(searchParams.get('warehouseId') || '1'); // Default: warehouse 1 (EMBRACH)
 
-    console.log('🔍 Ricerca prodotti:', { urgency, zone, days, warehouseId });
+    // Filtro per fascia (giorni alla scadenza): se presenti, hanno priorita' su urgency.
+    // Usato dalla vista a zone: red=<=3, yellow=4-7, green=8-14
+    const bandMinRaw = searchParams.get('bandMin');
+    const bandMaxRaw = searchParams.get('bandMax');
+    const bandMin = bandMinRaw !== null ? parseInt(bandMinRaw) : null;
+    const bandMax = bandMaxRaw !== null ? parseInt(bandMaxRaw) : null;
+
+    console.log('🔍 Ricerca prodotti:', { urgency, zone, days, warehouseId, bandMin, bandMax });
 
     // Se urgency è no-movement-30 o no-movement-90, usa logica diversa
     if (urgency === 'no-movement-30' || urgency === 'no-movement-90') {
@@ -155,8 +162,11 @@ export async function GET(request: NextRequest) {
         urgencyLevel = 'ok';
       }
 
-      // Filtra per urgency
-      if (urgency !== 'all' && urgencyLevel !== urgency) {
+      // Filtra per fascia (giorni) se richiesta, altrimenti per urgency
+      if (bandMin !== null || bandMax !== null) {
+        if (bandMin !== null && daysUntilExpiry < bandMin) continue;
+        if (bandMax !== null && daysUntilExpiry > bandMax) continue;
+      } else if (urgency !== 'all' && urgencyLevel !== urgency) {
         continue;
       }
 
