@@ -1497,6 +1497,27 @@ export default function PrelievoZonePage() {
 
             <h2 className="text-2xl font-bold mb-6 text-center">Seleziona Zona</h2>
 
+            {/* Banner unico con tutte le note interne (messaggi cliente), una volta sola */}
+            {(() => {
+              const allNotes = Object.values(zoneNotes).flat();
+              const uniqueNotes = allNotes.filter((n, idx, arr) =>
+                arr.findIndex(o => o.customer === n.customer && o.note === n.note) === idx
+              );
+
+              if (uniqueNotes.length === 0) return null;
+
+              return (
+                <div className="mb-6 space-y-2">
+                  {uniqueNotes.map((n, idx) => (
+                    <div key={idx} className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-3">
+                      <p className="text-sm font-bold text-yellow-400 mb-1">⚠️ {n.customer}</p>
+                      <p className="text-base text-yellow-100 whitespace-pre-wrap">{stripHtmlTags(n.note)}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             <div className="grid gap-4 md:grid-cols-2">
               {ZONES.map(zone => {
                 const stats = zoneStats[zone.id] || emptyZoneStats;
@@ -1553,18 +1574,6 @@ export default function PrelievoZonePage() {
                       <p className="text-xs text-muted-foreground">ubicazioni</p>
                     </div>
                   </div>
-
-                  {/* Note interne (messaggi cliente) per esteso, per non farle ignorare */}
-                  {zoneNotes[zone.id] && zoneNotes[zone.id].length > 0 && (
-                    <div className="mt-3 space-y-2 text-left">
-                      {zoneNotes[zone.id].map((n, idx) => (
-                        <div key={idx} className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-3 py-2">
-                          <p className="text-xs font-bold text-yellow-400 mb-1">⚠️ {n.customer}</p>
-                          <p className="text-sm text-yellow-100 whitespace-pre-wrap">{stripHtmlTags(n.note)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </button>
                 );
               })}
