@@ -793,7 +793,8 @@ export default function PrelievoZonePage() {
       });
 
       // Aggiorna cache stato ubicazione corrente E la cache delle operazioni
-      if (currentLocation && currentBatch) {
+      const cacheOwnerId = isSinglePickingMode ? currentSinglePicking?.id : currentBatch?.id;
+      if (currentLocation && cacheOwnerId) {
         const fullyCompletedOps = updated.filter(op => op.qty_done >= op.quantity).length;
         const partialOps = updated.filter(op => op.qty_done > 0 && op.qty_done < op.quantity).length;
         const completedOps = fullyCompletedOps + partialOps;
@@ -803,7 +804,9 @@ export default function PrelievoZonePage() {
         locationStatusCacheRef.current[currentLocation.id] = { completedOps, totalOps, isFullyCompleted };
 
         // IMPORTANTE: Aggiorna anche la cache delle operazioni con i nuovi dati!
-        const cacheKey = `${currentBatch.id}-${currentLocation.id}`;
+        const cacheKey = isSinglePickingMode
+          ? `single-${cacheOwnerId}-${currentLocation.id}`
+          : `${cacheOwnerId}-${currentLocation.id}`;
         operationsCacheRef.current[cacheKey] = updated;
         cacheTimestampsRef.current[cacheKey] = Date.now();
 
