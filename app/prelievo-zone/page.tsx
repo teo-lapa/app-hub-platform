@@ -95,6 +95,7 @@ export default function PrelievoZonePage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
   const [customerNoteText, setCustomerNoteText] = useState('');
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; name: string } | null>(null);
 
   // Stati per picking singolo
   const [showSinglePickingModal, setShowSinglePickingModal] = useState(false);
@@ -1867,7 +1868,8 @@ export default function PrelievoZonePage() {
                         <img
                           src={operation.image}
                           alt={operation.productName}
-                          className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border border-gray-600"
+                          onClick={() => setZoomedImage({ url: operation.image!, name: operation.productName })}
+                          className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border border-gray-600 cursor-pointer active:scale-95 transition-transform"
                         />
                       ) : (
                         <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center text-2xl md:text-3xl">
@@ -2239,6 +2241,24 @@ export default function PrelievoZonePage() {
             </div>
           </div>
         )}
+
+      {/* Foto prodotto ingrandita */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="max-w-2xl w-full text-center">
+            <img
+              src={zoomedImage.url}
+              alt={zoomedImage.name}
+              className="w-full max-h-[80vh] object-contain rounded-xl"
+            />
+            <p className="text-white text-lg font-semibold mt-4">{zoomedImage.name}</p>
+            <p className="text-gray-400 text-sm mt-1">Tocca per chiudere</p>
+          </div>
+        </div>
+      )}
 
       {/* MODAL MESSAGGIO CLIENTE */}
       {showCustomerNoteModal && (
