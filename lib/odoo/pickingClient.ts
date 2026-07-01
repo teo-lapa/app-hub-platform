@@ -1194,7 +1194,9 @@ export class PickingOdooClient {
   // Reset del prelievo: toglie il flag "prelevato" e fa ricalcolare a Odoo la prenotazione reale
   async resetOperationPick(lineId: number, pickingId: number): Promise<boolean> {
     try {
-      await this.rpc('stock.move.line', 'write', [[lineId], { picked: false }]);
+      // Azzera SEMPRE prima, indipendentemente dalla quantita' scritta (anche se > richiesta):
+      // action_assign completa solo la prenotazione mancante, non la riduce mai da sola.
+      await this.rpc('stock.move.line', 'write', [[lineId], { quantity: 0, picked: false }]);
       await this.rpc('stock.picking', 'action_assign', [[pickingId]]);
       return true;
     } catch (error) {
