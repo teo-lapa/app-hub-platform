@@ -484,6 +484,84 @@ export class PickingOdooClient {
     }
   }
 
+  // Carica statistiche live per zona (totale/prelevati/rimanenti/clienti/pick/ubicazioni) per un batch
+  async getBatchZoneStats(batchId: number): Promise<{ [key: string]: { total: number; done: number; remaining: number; customers: number; pickings: number; locations: number } }> {
+    const emptyStats = () => ({ total: 0, done: 0, remaining: 0, customers: 0, pickings: 0, locations: 0 });
+    const zoneStats: { [key: string]: ReturnType<typeof emptyStats> } = {
+      'secco': emptyStats(), 'secco_sopra': emptyStats(), 'pingu': emptyStats(), 'frigo': emptyStats()
+    };
+
+    try {
+      const batch: OdooPickingBatch = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['picking_ids']]
+      ).then(res => res[0]);
+
+      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+        return zoneStats;
+      }
+
+      const [moveLines, pickings] = await Promise.all([
+        this.rpc(
+          'stock.move.line',
+          'search_read',
+          [[['picking_id', 'in', batch.picking_ids]], ['location_id', 'picking_id', 'picked']],
+          {}
+        ),
+        this.rpc(
+          'stock.picking',
+          'search_read',
+          [[['id', 'in', batch.picking_ids]], ['id', 'partner_id']],
+          {}
+        )
+      ]);
+
+      const partnerByPicking = new Map(pickings.map((p: any) => [p.id, p.partner_id ? p.partner_id[0] : null]));
+
+      const customersPerZone: { [key: string]: Set<number> } = { secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set() };
+      const pickingsPerZone: { [key: string]: Set<number> } = { secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set() };
+      const locationsPerZone: { [key: string]: Set<number> } = { secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set() };
+
+      for (const line of moveLines) {
+        if (!line.location_id || !Array.isArray(line.location_id)) continue;
+
+        const locationPath = line.location_id[1].toLowerCase();
+        let zoneId: string | null = null;
+        if (locationPath.includes('secco sopra')) zoneId = 'secco_sopra';
+        else if (locationPath.includes('secco')) zoneId = 'secco';
+        else if (locationPath.includes('pingu')) zoneId = 'pingu';
+        else if (locationPath.includes('frigo')) zoneId = 'frigo';
+        if (!zoneId) continue;
+
+        zoneStats[zoneId].total++;
+        if (line.picked) zoneStats[zoneId].done++;
+
+        locationsPerZone[zoneId].add(line.location_id[0]);
+
+        const pickingId = line.picking_id ? line.picking_id[0] : null;
+        if (pickingId) {
+          pickingsPerZone[zoneId].add(pickingId);
+          const partnerId = partnerByPicking.get(pickingId);
+          if (partnerId) customersPerZone[zoneId].add(partnerId);
+        }
+      }
+
+      for (const zoneId of Object.keys(zoneStats)) {
+        zoneStats[zoneId].remaining = zoneStats[zoneId].total - zoneStats[zoneId].done;
+        zoneStats[zoneId].customers = customersPerZone[zoneId].size;
+        zoneStats[zoneId].pickings = pickingsPerZone[zoneId].size;
+        zoneStats[zoneId].locations = locationsPerZone[zoneId].size;
+      }
+
+      return zoneStats;
+
+    } catch (error) {
+      console.error('Errore caricamento statistiche zone:', error);
+      return zoneStats;
+    }
+  }
+
   // Carica le note interne (messaggi cliente) dei picking di un batch, raggruppate per zona
   async getBatchZoneNotes(batchId: number): Promise<{ [key: string]: { customer: string; note: string }[] }> {
     const zoneNotes: { [key: string]: { customer: string; note: string }[] } = {

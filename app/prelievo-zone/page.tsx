@@ -119,12 +119,13 @@ export default function PrelievoZonePage() {
   const [operationStartTimes, setOperationStartTimes] = useState<Record<number, Date>>({});
   const [operationDurations, setOperationDurations] = useState<Record<number, number>>({});
 
-  // Conteggi per zona usando gli ID
-  const [zoneCounts, setZoneCounts] = useState<{ [key: string]: number }>({
-    'secco': 0,
-    'secco_sopra': 0,
-    'pingu': 0,
-    'frigo': 0
+  // Statistiche live per zona: totale/prelevati/rimanenti/clienti/pick/ubicazioni
+  const emptyZoneStats = { total: 0, done: 0, remaining: 0, customers: 0, pickings: 0, locations: 0 };
+  const [zoneStats, setZoneStats] = useState<{ [key: string]: typeof emptyZoneStats }>({
+    'secco': emptyZoneStats,
+    'secco_sopra': emptyZoneStats,
+    'pingu': emptyZoneStats,
+    'frigo': emptyZoneStats
   });
 
   // Note interne (messaggi cliente) per zona
@@ -182,6 +183,19 @@ export default function PrelievoZonePage() {
   }, [user]);
 
   // Timer rimosso - ora gestito dal componente TimerDisplay separato
+
+  // Aggiorna live le statistiche delle card zona (potrebbero entrare nuovi ordini nel batch)
+  useEffect(() => {
+    if (!showZoneSelector || !currentBatch) {
+      return;
+    }
+
+    const statsInterval = setInterval(() => {
+      loadZoneStats(currentBatch.id);
+    }, 15000); // ogni 15 secondi
+
+    return () => clearInterval(statsInterval);
+  }, [showZoneSelector, currentBatch]);
 
   // Background refresh automatico ogni 30 secondi quando sei nella lista ubicazioni
   useEffect(() => {
@@ -528,8 +542,8 @@ export default function PrelievoZonePage() {
       totalTime: 0
     });
 
-    // Carica conteggi zone e note interne
-    await loadZoneCounts(batch.id);
+    // Carica statistiche zone e note interne
+    await loadZoneStats(batch.id);
     loadZoneNotes(batch.id);
 
     toast.success(`Batch ${batch.name} selezionato`);
@@ -544,12 +558,12 @@ export default function PrelievoZonePage() {
     }
   };
 
-  const loadZoneCounts = async (batchId: number) => {
+  const loadZoneStats = async (batchId: number) => {
     try {
-      const counts = await pickingClient.getBatchZoneCounts(batchId);
-      setZoneCounts(counts);
+      const stats = await pickingClient.getBatchZoneStats(batchId);
+      setZoneStats(stats);
     } catch (error) {
-      toast.error('Errore nel caricamento dei conteggi zone');
+      toast.error('Errore nel caricamento delle statistiche zone');
     }
   };
 
@@ -1484,10 +1498,13 @@ export default function PrelievoZonePage() {
             <h2 className="text-2xl font-bold mb-6 text-center">Seleziona Zona</h2>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {ZONES.map(zone => (
+              {ZONES.map(zone => {
+                const stats = zoneStats[zone.id] || emptyZoneStats;
+
+                return (
                 <button
                   key={zone.id}
-                  
+
                   onClick={() => selectZone(zone)}
                   className="glass-strong p-8 rounded-xl hover:bg-white/20 transition-all"
                   style={{
@@ -1497,14 +1514,45 @@ export default function PrelievoZonePage() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-4xl">{zone.displayName.split(' ')[0]}</div>
-                    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm font-bold">
-                      {zoneCounts[zone.id] || 0}
+                    <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      stats.total > 0 && stats.remaining === 0
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {stats.remaining}/{stats.total}
                     </div>
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{zone.displayName.substring(2)}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {zoneCounts[zone.id] || 0} prodotti da prelevare
-                  </p>
+
+                  {/* Mini dashboard live della zona */}
+                  <div className="grid grid-cols-3 gap-2 text-left mb-1">
+                    <div>
+                      <p className="text-lg font-bold text-white">{stats.total}</p>
+                      <p className="text-xs text-muted-foreground">prodotti tot.</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-green-400">{stats.done}</p>
+                      <p className="text-xs text-muted-foreground">prelevati</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-orange-400">{stats.remaining}</p>
+                      <p className="text-xs text-muted-foreground">da fare</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-left">
+                    <div>
+                      <p className="text-sm font-semibold">{stats.customers}</p>
+                      <p className="text-xs text-muted-foreground">clienti</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{stats.pickings}</p>
+                      <p className="text-xs text-muted-foreground">PICK</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{stats.locations}</p>
+                      <p className="text-xs text-muted-foreground">ubicazioni</p>
+                    </div>
+                  </div>
 
                   {/* Note interne (messaggi cliente) per esteso, per non farle ignorare */}
                   {zoneNotes[zone.id] && zoneNotes[zone.id].length > 0 && (
@@ -1518,7 +1566,8 @@ export default function PrelievoZonePage() {
                     </div>
                   )}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1546,6 +1595,11 @@ export default function PrelievoZonePage() {
                     setShowLocationList(false);
                     setShowZoneSelector(true);
                     setCurrentZone(null);
+
+                    // Aggiorna subito le statistiche zona (potrebbero essere entrati nuovi ordini)
+                    if (currentBatch) {
+                      loadZoneStats(currentBatch.id);
+                    }
                   }
                 }}
                 className="glass px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
