@@ -25,6 +25,8 @@ interface OrderLine {
   product_name?: string; // Optional, used for better error messages
   price?: number; // Optional, used for offer/urgent products with custom price
   source?: 'offer' | 'urgent'; // Optional, indicates if product is from offer or urgent
+  forceLotId?: number; // Forza il lotto esatto sul movimento di consegna (controllo scadenze)
+  forceLocationId?: number; // Forza l'ubicazione esatta sul movimento di consegna (controllo scadenze)
 }
 
 interface AIMatch {
@@ -67,6 +69,7 @@ interface CreateOrderRequest {
   warehouseNotes?: string; // Internal notes (goes to internal_note field)
   deliveryDate?: string; // Format: YYYY-MM-DD
   aiData?: AIData; // AI processing data (transcription, matches)
+  confirmOrder?: boolean; // Se true, conferma l'ordine (action_confirm) e forza lotto/ubicazione richiesti
 }
 
 export async function POST(request: NextRequest) {
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { customerId, deliveryAddressId, orderLines, orderNotes, warehouseNotes, deliveryDate, aiData } = body;
+    const { customerId, deliveryAddressId, orderLines, orderNotes, warehouseNotes, deliveryDate, aiData, confirmOrder } = body;
 
     console.log('📋 [CREATE-ORDER-API] Request data:', {
       customerId,
@@ -358,18 +361,81 @@ export async function POST(request: NextRequest) {
         console.log(`✅ [CREATE-ORDER-API] Added ${badge} badge to product ${line.product_id}`);
       }
 
-      return callOdoo(
+      const lineId = await callOdoo(
         cookies,
         'sale.order.line',
         'create',
         [lineData],
         {}
       );
+
+      return { lineId, line };
     });
 
-    await Promise.all(orderLinePromises);
+    const createdLines = await Promise.all(orderLinePromises);
 
     console.log(`✅ [CREATE-ORDER-API] Created ${orderLines.length} order lines`);
+
+    // Conferma l'ordine e forza lotto/ubicazione esatti sul movimento di consegna
+    // (flusso controllo scadenze: il prodotto va prelevato ESATTAMENTE da quel lotto/ubicazione)
+    let orderConfirmed = false;
+
+    if (confirmOrder) {
+      try {
+        console.log('📝 [CREATE-ORDER-API] Confirming order (action_confirm)...');
+        await callOdoo(cookies, 'sale.order', 'action_confirm', [[odooOrderId]], {});
+        orderConfirmed = true;
+        console.log('✅ [CREATE-ORDER-API] Order confirmed');
+      } catch (confirmError: any) {
+        console.error('⚠️ [CREATE-ORDER-API] Failed to confirm order:', confirmError.message);
+      }
+
+      if (orderConfirmed) {
+        for (const { lineId, line } of createdLines) {
+          if (!line.forceLotId || !line.forceLocationId) continue;
+
+          try {
+            const moves = await callOdoo(
+              cookies,
+              'stock.move',
+              'search_read',
+              [],
+              {
+                domain: [['sale_line_id', '=', lineId]],
+                fields: ['id', 'picking_id', 'location_dest_id', 'product_uom', 'move_line_ids']
+              }
+            );
+
+            for (const move of moves) {
+              if (move.move_line_ids && move.move_line_ids.length > 0) {
+                await callOdoo(cookies, 'stock.move.line', 'unlink', [move.move_line_ids], {});
+              }
+
+              await callOdoo(
+                cookies,
+                'stock.move.line',
+                'create',
+                [{
+                  move_id: move.id,
+                  picking_id: move.picking_id ? move.picking_id[0] : false,
+                  product_id: line.product_id,
+                  lot_id: line.forceLotId,
+                  quantity: line.quantity,
+                  location_id: line.forceLocationId,
+                  location_dest_id: move.location_dest_id[0],
+                  product_uom_id: move.product_uom[0],
+                }],
+                {}
+              );
+            }
+
+            console.log(`✅ [CREATE-ORDER-API] Lotto ${line.forceLotId} forzato su ${moves.length} movimento/i per prodotto ${line.product_id}`);
+          } catch (lotError: any) {
+            console.error('⚠️ [CREATE-ORDER-API] Impossibile forzare lotto/ubicazione:', lotError.message);
+          }
+        }
+      }
+    }
 
     // Fetch order details from Odoo
     console.log('🔍 [CREATE-ORDER-API] Fetching order details...');
@@ -737,7 +803,8 @@ export async function POST(request: NextRequest) {
       orderId: odooOrderId,
       orderName: orderName,
       total: createdOrder?.[0]?.amount_total || 0,
-      itemsCount: orderLines.length
+      itemsCount: orderLines.length,
+      confirmed: orderConfirmed
     });
 
   } catch (error: any) {
