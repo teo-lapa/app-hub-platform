@@ -484,6 +484,79 @@ export class PickingOdooClient {
     }
   }
 
+  // Carica le note interne (messaggi cliente) dei picking di un batch, raggruppate per zona
+  async getBatchZoneNotes(batchId: number): Promise<{ [key: string]: { customer: string; note: string }[] }> {
+    const zoneNotes: { [key: string]: { customer: string; note: string }[] } = {
+      'secco': [], 'secco_sopra': [], 'pingu': [], 'frigo': []
+    };
+
+    try {
+      const batch: OdooPickingBatch = await this.rpc(
+        'stock.picking.batch',
+        'read',
+        [[batchId], ['picking_ids']]
+      ).then(res => res[0]);
+
+      if (!batch.picking_ids || !Array.isArray(batch.picking_ids) || batch.picking_ids.length === 0) {
+        return zoneNotes;
+      }
+
+      // Solo i picking con una nota interna compilata
+      const pickings = await this.rpc(
+        'stock.picking',
+        'search_read',
+        [[['id', 'in', batch.picking_ids], ['note', '!=', false]], ['id', 'note', 'partner_id']],
+        {}
+      );
+
+      if (pickings.length === 0) {
+        return zoneNotes;
+      }
+
+      const pickingsWithNote = new Map(pickings.map((p: any) => [p.id, p]));
+
+      const moveLines = await this.rpc(
+        'stock.move.line',
+        'search_read',
+        [[['picking_id', 'in', Array.from(pickingsWithNote.keys())]], ['picking_id', 'location_id']],
+        {}
+      );
+
+      const seenPerZone: { [key: string]: Set<number> } = {
+        secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set()
+      };
+
+      for (const line of moveLines) {
+        if (!line.location_id || !Array.isArray(line.location_id) || !line.picking_id) continue;
+
+        const pickingId = line.picking_id[0];
+        const picking = pickingsWithNote.get(pickingId);
+        if (!picking) continue;
+
+        const locationPath = line.location_id[1].toLowerCase();
+        let zoneId: string | null = null;
+        if (locationPath.includes('secco sopra')) zoneId = 'secco_sopra';
+        else if (locationPath.includes('secco')) zoneId = 'secco';
+        else if (locationPath.includes('pingu')) zoneId = 'pingu';
+        else if (locationPath.includes('frigo')) zoneId = 'frigo';
+
+        if (!zoneId || seenPerZone[zoneId].has(pickingId)) continue;
+        seenPerZone[zoneId].add(pickingId);
+
+        zoneNotes[zoneId].push({
+          customer: picking.partner_id ? picking.partner_id[1] : '',
+          note: picking.note || ''
+        });
+      }
+
+      return zoneNotes;
+
+    } catch (error) {
+      console.error('Errore caricamento note zone:', error);
+      return zoneNotes;
+    }
+  }
+
   // Carica le move lines per un batch e una zona
   async getBatchMoveLines(batchId: number, zone?: string): Promise<StockMoveLine[]> {
     try {
