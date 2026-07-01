@@ -96,14 +96,18 @@ export function AddToOrderModal({ isOpen, product, onClose, onDone }: AddToOrder
             quantity: qty,
             product_name: product.name,
             source: 'urgent',
+            forceLotId: product.lotId,
+            forceLocationId: product.locationId,
           }],
           warehouseNotes: tracciamento,
           deliveryDate,
+          confirmOrder: true,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`✅ Ordine ${data.orderName} creato per ${selected.name}`);
+        const confermato = data.confirmed ? ' e confermato con lotto tracciato' : '';
+        toast.success(`✅ Ordine ${data.orderName} creato${confermato} per ${selected.name}`);
         onDone(data.orderName);
       } else {
         toast.error(data.error || 'Errore creazione ordine');
