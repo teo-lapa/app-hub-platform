@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 type Msg = { role: 'user' | 'stella'; text: string; images?: string[] };
-type Phase = 'off' | 'connecting' | 'listening' | 'speaking' | 'thinking';
+type Phase = 'off' | 'connecting' | 'listening' | 'speaking' | 'thinking' | 'recording';
 
 const INSTRUCTIONS = [
   'Sei Romeo, l\'assistente vocale personale di Laura (amministrazione di LAPA). Parli SEMPRE in italiano,',
@@ -41,6 +41,7 @@ export default function RomeoLivePage() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [installEvt, setInstallEvt] = useState<any>(null);
+  const [recording, setRecording] = useState(false);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -59,6 +60,10 @@ export default function RomeoLivePage() {
   const responseActiveRef = useRef(false);
   const autoStartedRef = useRef(false);
   const handledCalls = useRef<Set<string>>(new Set());
+  // Registra chiamata: Romeo ascolta MUTO il vivavoce, accumula la trascrizione e a fine la riassume.
+  const recordingRef = useRef(false);
+  const recordTxtRef = useRef<string[]>([]);
+  const pendingRecordRef = useRef(false);
 
   function setPh(p: Phase) { phaseRef.current = p; setPhase(p); }
   function send(obj: any) { const dc = dcRef.current; if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj)); }
@@ -149,20 +154,21 @@ export default function RomeoLivePage() {
     let level = 0;
     if (ph === 'speaking') level = 0.14 + 0.13 * Math.abs(Math.sin(t / 160));
     else if (ph === 'thinking') level = 0.06 + 0.05 * Math.abs(Math.sin(t / 260));
-    else if (ph === 'listening' && micAnRef.current) level = rms(micAnRef.current);
+    else if ((ph === 'listening' || ph === 'recording') && micAnRef.current) level = rms(micAnRef.current);
 
     const orb = orbRef.current;
     if (orb) {
       const lv = Math.min(level, 0.5);
       orb.style.transform = `scale(${(1 + lv * 0.6).toFixed(3)})`;
       const glow = 12 + lv * 70;
-      const c = ph === 'speaking' ? '120,210,160' : ph === 'thinking' ? '60,190,210' : ph === 'listening' ? '45,225,200' : '34,200,180';
+      const c = ph === 'speaking' ? '120,210,160' : ph === 'thinking' ? '60,190,210' : ph === 'recording' ? '255,107,107' : ph === 'listening' ? '45,225,200' : '34,200,180';
       orb.style.boxShadow = `0 0 ${glow.toFixed(0)}px rgba(${c},.9), inset 0 0 22px rgba(255,255,255,.28)`;
       orb.style.background = `radial-gradient(circle at 36% 30%, rgba(${c},1), rgba(${c},.30))`;
     }
   }
 
-  function sessionUpdate() {
+  // passive=true (modalita Registra chiamata): Romeo trascrive ma NON risponde mai (non interrompe la telefonata).
+  function sessionUpdate(passive = false) {
     return {
       type: 'session.update',
       session: {
@@ -172,7 +178,7 @@ export default function RomeoLivePage() {
         audio: {
           input: {
             transcription: { model: 'gpt-4o-mini-transcribe', language: 'it' },
-            turn_detection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: true, interrupt_response: true },
+            turn_detection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: !passive, interrupt_response: !passive },
           },
           output: { voice: process.env.NEXT_PUBLIC_ROMEO_VOICE || 'cedar' },
         },
@@ -227,7 +233,8 @@ export default function RomeoLivePage() {
         fgService(true);
         setPh('listening'); setStatus('Parla pure, ti ascolto');
         rafRef.current = requestAnimationFrame(loop);
-        if (pendingTextRef.current) { const t = pendingTextRef.current; pendingTextRef.current = ''; setTimeout(() => sendUserText(t), 250); }
+        if (pendingRecordRef.current) { pendingRecordRef.current = false; setTimeout(() => enterRecording(), 200); }
+        else if (pendingTextRef.current) { const t = pendingTextRef.current; pendingTextRef.current = ''; setTimeout(() => sendUserText(t), 250); }
       };
       dc.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch {} };
       dc.onclose = () => { if (activeRef.current) { stop(); setStatus('Connessione chiusa. Tocca per riprovare.'); } };
@@ -252,9 +259,9 @@ export default function RomeoLivePage() {
   function handleEvent(ev: any) {
     const t = ev.type as string;
     if (t === 'response.created') { responseActiveRef.current = true; }
-    else if (t === 'input_audio_buffer.speech_started') { if (phaseRef.current !== 'thinking') setPh('listening'); setStatus('Ti ascolto…'); }
+    else if (t === 'input_audio_buffer.speech_started') { if (recordingRef.current) { setStatus('📞 Registro…'); } else if (phaseRef.current !== 'thinking') { setPh('listening'); setStatus('Ti ascolto…'); } }
     else if (t === 'conversation.item.input_audio_transcription.completed' || t === 'input_audio_transcription.completed') {
-      if (ev.transcript) setMessages(m => [...m, { role: 'user', text: ev.transcript }]);
+      if (ev.transcript) { if (recordingRef.current) recordTxtRef.current.push(ev.transcript); setMessages(m => [...m, { role: 'user', text: ev.transcript }]); }
     }
     else if (t === 'output_audio_buffer.started' || t === 'response.output_audio.delta' || t === 'response.audio_transcript.delta') {
       if (phaseRef.current !== 'thinking') { setPh('speaking'); setStatus('Romeo sta parlando…'); }
@@ -327,11 +334,45 @@ export default function RomeoLivePage() {
     fgService(false);
     pcRef.current = null; dcRef.current = null; micStreamRef.current = null; ctxRef.current = null; micAnRef.current = null;
     activeRef.current = false; dispatchingRef.current = false; responseActiveRef.current = false; handledCalls.current.clear();
+    recordingRef.current = false; pendingRecordRef.current = false; recordTxtRef.current = []; setRecording(false);
   }
 
   function stop() {
     cleanup();
     setPh('off'); setStatus('Conversazione terminata. Tocca per ricominciare.');
+  }
+
+  // entra in modalita passiva: Romeo trascrive ma non parla.
+  // NB: sullo STESSO telefono Android in vivavoce il microfono e uno solo (lo tiene la telefonata):
+  // per catturare entrambe le voci si usa un SECONDO dispositivo accanto al telefono in vivavoce.
+  function enterRecording() {
+    recordTxtRef.current = [];
+    recordingRef.current = true; setRecording(true);
+    send(sessionUpdate(true));
+    micOn(true);
+    setPh('recording'); setStatus('📞 Registro — parla pure');
+  }
+
+  function startRecording() {
+    if (!activeRef.current) { pendingRecordRef.current = true; start(); return; }
+    enterRecording();
+  }
+
+  function stopRecording() {
+    recordingRef.current = false; setRecording(false);
+    send(sessionUpdate(false)); // torna interattivo (Romeo riparla)
+    const txt = recordTxtRef.current.join(' ').trim();
+    recordTxtRef.current = [];
+    if (!txt) { setPh('listening'); setStatus('Niente da trascrivere. Riprova.'); return; }
+    const prompt = 'Ho appena registrato una telefonata in vivavoce con un cliente (io sono LAPA, l\'altra voce e il cliente). '
+      + 'Ecco la trascrizione grezza, puo contenere errori:\n\n"' + txt + '"\n\n'
+      + 'Dimmi in modo breve e parlato se e un ORDINE, un APPUNTAMENTO o un PROMEMORIA e cosa hai capito '
+      + '(cliente, prodotti e quantita, oppure data e ora, oppure la nota). NON registrare ancora niente. '
+      + 'Chiedimi conferma: solo quando ti dico ok usa chiedi_a_romeo per registrarlo davvero.';
+    setMessages(m => [...m, { role: 'user', text: '📞 [Telefonata registrata]' }]);
+    send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] } });
+    setPh('thinking'); setStatus('Romeo riassume la telefonata…');
+    requestResponse();
   }
 
   async function newChat() {
@@ -363,10 +404,10 @@ export default function RomeoLivePage() {
   }
 
   const phaseLabel: Record<Phase, string> = {
-    off: 'ROMEO LIVE', connecting: 'CONNESSIONE', listening: 'IN ASCOLTO', speaking: 'ROMEO PARLA', thinking: 'STO CONTROLLANDO',
+    off: 'ROMEO LIVE', connecting: 'CONNESSIONE', listening: 'IN ASCOLTO', speaking: 'ROMEO PARLA', thinking: 'STO CONTROLLANDO', recording: 'REGISTRO CHIAMATA',
   };
   const phColor: Record<Phase, string> = {
-    off: '#5f9b90', connecting: '#8ecfc4', listening: '#2fe1c0', speaking: '#78d6a8', thinking: '#52c7d6',
+    off: '#5f9b90', connecting: '#8ecfc4', listening: '#2fe1c0', speaking: '#78d6a8', thinking: '#52c7d6', recording: '#ff6b6b',
   };
   const active = phase !== 'off';
 
@@ -502,6 +543,9 @@ export default function RomeoLivePage() {
             <div ref={orbRef} className="rl-core">{active ? '' : '🎤'}</div>
           </button>
           <div className="rl-pills">
+            {!recording
+              ? <button onClick={startRecording} className="rl-pill">📞 Registra chiamata</button>
+              : <button onClick={stopRecording} className="rl-pill on">● Stop e riassumi</button>}
             <button onClick={toggleAuto} className={'rl-pill' + (autoMode ? ' on' : '')}>🚗 Auto{autoMode ? ' ON' : ''}</button>
             <button onClick={() => setShowInput(s => !s)} className={'rl-pill' + (showInput ? ' on' : '')}>⌨️ Scrivi</button>
             {active && <button onClick={stop} className="rl-pill">■ Stop</button>}
