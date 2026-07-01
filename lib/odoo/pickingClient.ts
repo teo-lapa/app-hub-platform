@@ -517,7 +517,7 @@ export class PickingOdooClient {
         )
       ]);
 
-      const partnerByPicking = new Map(pickings.map((p: any) => [p.id, p.partner_id ? p.partner_id[0] : null]));
+      const partnerByPicking = new Map<number, number | null>(pickings.map((p: any) => [p.id, p.partner_id ? p.partner_id[0] : null]));
 
       const customersPerZone: { [key: string]: Set<number> } = { secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set() };
       const pickingsPerZone: { [key: string]: Set<number> } = { secco: new Set(), secco_sopra: new Set(), pingu: new Set(), frigo: new Set() };
@@ -591,7 +591,7 @@ export class PickingOdooClient {
         return zoneNotes;
       }
 
-      const pickingsWithNote = new Map(pickings.map((p: any) => [p.id, p]));
+      const pickingsWithNote = new Map<number, any>(pickings.map((p: any) => [p.id, p]));
 
       const moveLines = await this.rpc(
         'stock.move.line',
