@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ShoppingCart, User, MapPin, Check } from 'lucide-react';
+import { Search, ShoppingCart, User, MapPin, Check, Calendar } from 'lucide-react';
 import { ExpiryProduct } from '@/lib/types/expiry';
 import toast from 'react-hot-toast';
 
@@ -32,6 +32,10 @@ export function AddToOrderModal({ isOpen, product, onClose, onDone }: AddToOrder
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [qty, setQty] = useState<number>(product.quantity);
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -66,6 +70,10 @@ export function AddToOrderModal({ isOpen, product, onClose, onDone }: AddToOrder
       toast.error('Quantità non valida');
       return;
     }
+    if (!deliveryDate) {
+      toast.error('Data di consegna obbligatoria');
+      return;
+    }
     setSubmitting(true);
     try {
       const scad = product.expirationDate ? new Date(product.expirationDate).toLocaleDateString('it-IT') : 'n/d';
@@ -90,6 +98,7 @@ export function AddToOrderModal({ isOpen, product, onClose, onDone }: AddToOrder
             source: 'urgent',
           }],
           warehouseNotes: tracciamento,
+          deliveryDate,
         }),
       });
       const data = await res.json();
@@ -146,6 +155,19 @@ export function AddToOrderModal({ isOpen, product, onClose, onDone }: AddToOrder
             className="w-full glass p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-xs text-slate-500 mt-1">Disponibile: {product.quantity} {product.uom}</p>
+        </div>
+
+        {/* Data di consegna */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-400" /> Data di consegna *
+          </label>
+          <input
+            type="date"
+            value={deliveryDate}
+            onChange={(e) => setDeliveryDate(e.target.value)}
+            className="w-full glass p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         {/* Cliente selezionato o ricerca */}
