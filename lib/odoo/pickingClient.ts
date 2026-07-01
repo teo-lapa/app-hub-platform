@@ -323,6 +323,7 @@ export class PickingOdooClient {
           productBarcode: product?.barcode || '',
           locationId: ml.location_id[0],
           locationName: ml.location_id[1],
+          pickingId: ml.picking_id ? ml.picking_id[0] : pickingId,
           quantity: ml.quantity || 0,
           qty_done: ml.picked ? (ml.quantity || 0) : 0,
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
@@ -999,6 +1000,7 @@ export class PickingOdooClient {
           productBarcode: product?.barcode || '',
           locationId: ml.location_id[0],
           locationName: ml.location_id[1],
+          pickingId: ml.picking_id ? ml.picking_id[0] : undefined,
           quantity: ml.quantity || 0,
           qty_done: ml.picked ? (ml.quantity || 0) : 0,
           uom: ml.product_uom_id && typeof ml.product_uom_id[1] === 'string' ? ml.product_uom_id[1].split(' ')[0] : 'PZ',
@@ -1035,6 +1037,18 @@ export class PickingOdooClient {
     } catch (error) {
       console.error('Errore aggiornamento quantità:', error);
       throw error;
+    }
+  }
+
+  // Reset del prelievo: toglie il flag "prelevato" e fa ricalcolare a Odoo la prenotazione reale
+  async resetOperationPick(lineId: number, pickingId: number): Promise<boolean> {
+    try {
+      await this.rpc('stock.move.line', 'write', [[lineId], { picked: false }]);
+      await this.rpc('stock.picking', 'action_assign', [[pickingId]]);
+      return true;
+    } catch (error) {
+      console.error('Errore reset operazione:', error);
+      return false;
     }
   }
 
