@@ -127,6 +127,14 @@ export default function PrelievoZonePage() {
     'frigo': 0
   });
 
+  // Note interne (messaggi cliente) per zona
+  const [zoneNotes, setZoneNotes] = useState<{ [key: string]: { customer: string; note: string }[] }>({
+    'secco': [],
+    'secco_sopra': [],
+    'pingu': [],
+    'frigo': []
+  });
+
   // Cache PERSISTENTE usando useRef invece di useState (non viene persa quando cambi schermata!)
   const operationsCacheRef = useRef<{ [key: string]: Operation[] }>({});
   const cacheTimestampsRef = useRef<{ [key: string]: number }>({});
@@ -520,10 +528,20 @@ export default function PrelievoZonePage() {
       totalTime: 0
     });
 
-    // Carica conteggi zone
+    // Carica conteggi zone e note interne
     await loadZoneCounts(batch.id);
+    loadZoneNotes(batch.id);
 
     toast.success(`Batch ${batch.name} selezionato`);
+  };
+
+  const loadZoneNotes = async (batchId: number) => {
+    try {
+      const notes = await pickingClient.getBatchZoneNotes(batchId);
+      setZoneNotes(notes);
+    } catch (error) {
+      // Non bloccante: le note sono un'informazione in piu', non essenziale al flusso
+    }
   };
 
   const loadZoneCounts = async (batchId: number) => {
@@ -1487,6 +1505,18 @@ export default function PrelievoZonePage() {
                   <p className="text-sm text-muted-foreground">
                     {zoneCounts[zone.id] || 0} prodotti da prelevare
                   </p>
+
+                  {/* Note interne (messaggi cliente) per esteso, per non farle ignorare */}
+                  {zoneNotes[zone.id] && zoneNotes[zone.id].length > 0 && (
+                    <div className="mt-3 space-y-2 text-left">
+                      {zoneNotes[zone.id].map((n, idx) => (
+                        <div key={idx} className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-3 py-2">
+                          <p className="text-xs font-bold text-yellow-400 mb-1">⚠️ {n.customer}</p>
+                          <p className="text-sm text-yellow-100 whitespace-pre-wrap">{stripHtmlTags(n.note)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
