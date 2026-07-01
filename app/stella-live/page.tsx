@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 type Msg = { role: 'user' | 'stella'; text: string; images?: string[] };
-type Phase = 'off' | 'connecting' | 'listening' | 'speaking' | 'thinking';
+type Phase = 'off' | 'connecting' | 'listening' | 'speaking' | 'thinking' | 'recording';
 
 const INSTRUCTIONS = [
   'Sei Stella, l\'assistente vocale personale di Paul (titolare di LAPA). Parli SEMPRE in italiano,',
@@ -42,6 +42,7 @@ export default function StellaLivePage() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [installEvt, setInstallEvt] = useState<any>(null);
+  const [recording, setRecording] = useState(false);
 
   const phaseRef = useRef<Phase>('off');
   const activeRef = useRef(false);
@@ -60,6 +61,10 @@ export default function StellaLivePage() {
   const responseActiveRef = useRef(false);
   const autoStartedRef = useRef(false);
   const handledCalls = useRef<Set<string>>(new Set());
+  // Registra chiamata: Stella ascolta MUTA il vivavoce, accumula la trascrizione e a fine chiamata la riassume.
+  const recordingRef = useRef(false);
+  const recordTxtRef = useRef<string[]>([]);
+  const pendingRecordRef = useRef(false);
 
   function setPh(p: Phase) { phaseRef.current = p; setPhase(p); }
   function send(obj: any) { const dc = dcRef.current; if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj)); }
@@ -153,20 +158,21 @@ export default function StellaLivePage() {
     let level = 0;
     if (ph === 'speaking') level = 0.14 + 0.13 * Math.abs(Math.sin(t / 160));
     else if (ph === 'thinking') level = 0.06 + 0.05 * Math.abs(Math.sin(t / 260));
-    else if (ph === 'listening' && micAnRef.current) level = rms(micAnRef.current);
+    else if ((ph === 'listening' || ph === 'recording') && micAnRef.current) level = rms(micAnRef.current);
 
     const orb = orbRef.current;
     if (orb) {
       const lv = Math.min(level, 0.5);
       orb.style.transform = `scale(${(1 + lv * 0.6).toFixed(3)})`;
       const glow = 12 + lv * 70;
-      const c = ph === 'speaking' ? '155,123,255' : ph === 'thinking' ? '77,140,255' : ph === 'listening' ? '47,225,192' : '90,150,255';
+      const c = ph === 'speaking' ? '155,123,255' : ph === 'thinking' ? '77,140,255' : ph === 'recording' ? '255,107,107' : ph === 'listening' ? '47,225,192' : '90,150,255';
       orb.style.boxShadow = `0 0 ${glow.toFixed(0)}px rgba(${c},.9), inset 0 0 22px rgba(255,255,255,.28)`;
       orb.style.background = `radial-gradient(circle at 36% 30%, rgba(${c},1), rgba(${c},.30))`;
     }
   }
 
-  function sessionUpdate() {
+  // passive=true (modalita Registra chiamata): Stella trascrive ma NON risponde mai (non interrompe la telefonata).
+  function sessionUpdate(passive = false) {
     return {
       type: 'session.update',
       session: {
@@ -176,7 +182,7 @@ export default function StellaLivePage() {
         audio: {
           input: {
             transcription: { model: 'gpt-4o-mini-transcribe', language: 'it' },
-            turn_detection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: true, interrupt_response: true },
+            turn_detection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: !passive, interrupt_response: !passive },
           },
           output: { voice: process.env.NEXT_PUBLIC_STELLA_VOICE || 'marin' },
         },
@@ -231,7 +237,8 @@ export default function StellaLivePage() {
         fgService(true); // tieni viva la voce anche a schermo spento (solo APK)
         setPh('listening'); setStatus('Parla pure, ti ascolto');
         rafRef.current = requestAnimationFrame(loop);
-        if (pendingTextRef.current) { const t = pendingTextRef.current; pendingTextRef.current = ''; setTimeout(() => sendUserText(t), 250); }
+        if (pendingRecordRef.current) { pendingRecordRef.current = false; setTimeout(() => enterRecording(), 200); }
+        else if (pendingTextRef.current) { const t = pendingTextRef.current; pendingTextRef.current = ''; setTimeout(() => sendUserText(t), 250); }
       };
       dc.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch {} };
       dc.onclose = () => { if (activeRef.current) { stop(); setStatus('Connessione chiusa. Tocca per riprovare.'); } };
@@ -256,9 +263,9 @@ export default function StellaLivePage() {
   function handleEvent(ev: any) {
     const t = ev.type as string;
     if (t === 'response.created') { responseActiveRef.current = true; }
-    else if (t === 'input_audio_buffer.speech_started') { if (phaseRef.current !== 'thinking') setPh('listening'); setStatus('Ti ascolto…'); }
+    else if (t === 'input_audio_buffer.speech_started') { if (recordingRef.current) { setStatus('📞 Registro…'); } else if (phaseRef.current !== 'thinking') { setPh('listening'); setStatus('Ti ascolto…'); } }
     else if (t === 'conversation.item.input_audio_transcription.completed' || t === 'input_audio_transcription.completed') {
-      if (ev.transcript) setMessages(m => [...m, { role: 'user', text: ev.transcript }]);
+      if (ev.transcript) { if (recordingRef.current) recordTxtRef.current.push(ev.transcript); setMessages(m => [...m, { role: 'user', text: ev.transcript }]); }
     }
     else if (t === 'output_audio_buffer.started' || t === 'response.output_audio.delta' || t === 'response.audio_transcript.delta') {
       if (phaseRef.current !== 'thinking') { setPh('speaking'); setStatus('Stella sta parlando…'); }
@@ -333,11 +340,47 @@ export default function StellaLivePage() {
     fgService(false);
     pcRef.current = null; dcRef.current = null; micStreamRef.current = null; ctxRef.current = null; micAnRef.current = null;
     activeRef.current = false; dispatchingRef.current = false; responseActiveRef.current = false; handledCalls.current.clear();
+    recordingRef.current = false; pendingRecordRef.current = false; recordTxtRef.current = []; setRecording(false);
   }
 
   function stop() {
     cleanup();
     setPh('off'); setStatus('Conversazione terminata. Tocca per ricominciare.');
+  }
+
+  // entra in modalita passiva: Stella trascrive ma non parla.
+  // NB: niente swap del microfono. In vivavoce sullo STESSO telefono Android non lascia coesistere
+  // "mic della chiamata" (il cliente ti sente) e "mic senza echo cancellation" (Stella sente il cliente):
+  // se forziamo l'echo off, la telefonata perde il microfono. Per catturare entrambe le voci si usa un
+  // SECONDO dispositivo accanto al telefono in vivavoce (vedi messaggio).
+  function enterRecording() {
+    recordTxtRef.current = [];
+    recordingRef.current = true; setRecording(true);
+    send(sessionUpdate(true));
+    micOn(true);
+    setPh('recording'); setStatus('📞 Registro — parla pure');
+  }
+
+  function startRecording() {
+    if (!activeRef.current) { pendingRecordRef.current = true; start(); return; }
+    enterRecording();
+  }
+
+  function stopRecording() {
+    recordingRef.current = false; setRecording(false);
+    send(sessionUpdate(false)); // torna interattiva (Stella riparla)
+    const txt = recordTxtRef.current.join(' ').trim();
+    recordTxtRef.current = [];
+    if (!txt) { setPh('listening'); setStatus('Niente da trascrivere. Riprova.'); return; }
+    const prompt = 'Ho appena registrato una telefonata in vivavoce con un cliente (io sono LAPA, l\'altra voce e il cliente). '
+      + 'Ecco la trascrizione grezza, puo contenere errori:\n\n"' + txt + '"\n\n'
+      + 'Dimmi in modo breve e parlato se e un ORDINE, un APPUNTAMENTO o un PROMEMORIA e cosa hai capito '
+      + '(cliente, prodotti e quantita, oppure data e ora, oppure la nota). NON registrare ancora niente. '
+      + 'Chiedimi conferma: solo quando ti dico ok usa chiedi_a_stella per registrarlo davvero.';
+    setMessages(m => [...m, { role: 'user', text: '📞 [Telefonata registrata]' }]);
+    send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] } });
+    setPh('thinking'); setStatus('Stella riassume la telefonata…');
+    requestResponse();
   }
 
   async function newChat() {
@@ -369,10 +412,10 @@ export default function StellaLivePage() {
   }
 
   const phaseLabel: Record<Phase, string> = {
-    off: 'STELLA LIVE', connecting: 'CONNESSIONE', listening: 'IN ASCOLTO', speaking: 'STELLA PARLA', thinking: 'STO CONTROLLANDO',
+    off: 'STELLA LIVE', connecting: 'CONNESSIONE', listening: 'IN ASCOLTO', speaking: 'STELLA PARLA', thinking: 'STO CONTROLLANDO', recording: 'REGISTRO CHIAMATA',
   };
   const phColor: Record<Phase, string> = {
-    off: '#5f7bb0', connecting: '#8ea2cf', listening: '#2fe1c0', speaking: '#9b7bff', thinking: '#4d8cff',
+    off: '#5f7bb0', connecting: '#8ea2cf', listening: '#2fe1c0', speaking: '#9b7bff', thinking: '#4d8cff', recording: '#ff6b6b',
   };
   const active = phase !== 'off';
 
@@ -508,6 +551,9 @@ export default function StellaLivePage() {
             <div ref={orbRef} className="sl-core">{active ? '' : '🎤'}</div>
           </button>
           <div className="sl-pills">
+            {!recording
+              ? <button onClick={startRecording} className="sl-pill">📞 Registra chiamata</button>
+              : <button onClick={stopRecording} className="sl-pill on">● Stop e riassumi</button>}
             <button onClick={toggleAuto} className={'sl-pill' + (autoMode ? ' on' : '')}>🚗 Auto{autoMode ? ' ON' : ''}</button>
             <button onClick={() => setShowInput(s => !s)} className={'sl-pill' + (showInput ? ' on' : '')}>⌨️ Scrivi</button>
             {active && <button onClick={stop} className="sl-pill">■ Stop</button>}
