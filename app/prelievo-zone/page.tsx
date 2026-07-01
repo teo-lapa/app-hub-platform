@@ -941,6 +941,41 @@ export default function PrelievoZonePage() {
     }
   };
 
+  // Reset del prelievo di una riga: toglie "prelevato" e fa ricalcolare a Odoo la prenotazione reale
+  const resetOperation = async (operation: Operation) => {
+    if (!window.confirm(`Sei sicuro di voler resettare la quantità prelevata di "${operation.productName}"?`)) {
+      return;
+    }
+
+    const pickingId = isSinglePickingMode ? currentSinglePicking?.id : operation.pickingId;
+    if (!pickingId || !currentLocation) {
+      toast.error('Impossibile determinare il picking da resettare');
+      return;
+    }
+
+    const success = await pickingClient.resetOperationPick(operation.id, pickingId);
+    if (!success) {
+      toast.error('Errore nel reset della quantità');
+      return;
+    }
+
+    const cacheKey = isSinglePickingMode
+      ? `single-${pickingId}-${currentLocation.id}`
+      : `${currentBatch?.id}-${currentLocation.id}`;
+    delete operationsCacheRef.current[cacheKey];
+    delete cacheTimestampsRef.current[cacheKey];
+    sessionStorage.setItem('pickingOperationsCache', JSON.stringify(operationsCacheRef.current));
+    sessionStorage.setItem('pickingCacheTimestamps', JSON.stringify(cacheTimestampsRef.current));
+
+    toast.success('Quantità resettata su Odoo');
+
+    if (isSinglePickingMode) {
+      await loadSinglePickingOperations(currentLocation);
+    } else {
+      await loadLocationOperations(currentLocation);
+    }
+  };
+
   // Handler per tastiera numerica - memoizzato
   const handleNumericConfirm = useCallback((value: number) => {
     if (selectedOperation) {
@@ -1799,6 +1834,16 @@ export default function PrelievoZonePage() {
                       </span>
                       <span className="text-lg md:text-xl font-semibold text-blue-400 bg-blue-400/10 px-2 py-1 rounded">{operation.uom}</span>
                     </div>
+
+                    {operation.qty_done > 0 && (
+                      <button
+                        onClick={() => resetOperation(operation)}
+                        title="Resetta quantità prelevata"
+                        className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Pulsanti operazione più compatti */}

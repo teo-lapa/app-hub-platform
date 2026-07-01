@@ -88,6 +88,7 @@ export interface Operation {
   productBarcode?: string;
   locationId: number;
   locationName: string;
+  pickingId?: number;
   quantity: number;
   qty_done: number;
   uom?: string;
