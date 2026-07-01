@@ -24,19 +24,23 @@ import toast from 'react-hot-toast';
 
 export default function LandingPage() {
   const router = useRouter();
-  const { login, register, isLoading, isAuthenticated } = useAuthStore();
+  const { login, register, isLoading, isAuthenticated, checkAuth } = useAuthStore();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-  // Se già autenticato, redirect (a 'redirect' se presente, altrimenti dashboard)
+  // Prima di rimbalzare, verifica la sessione col server: isAuthenticated e' persistito in
+  // localStorage e puo' restare 'true' col cookie 'token' scaduto (Odoo stacca la sessione),
+  // mandando l'app installata in loop login->home->login. checkAuth conferma o resetta lo stato.
+  const [authChecked, setAuthChecked] = useState(false);
+  useEffect(() => { checkAuth().finally(() => setAuthChecked(true)); }, [checkAuth]);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authChecked && isAuthenticated) {
       const redirect = new URLSearchParams(window.location.search).get('redirect');
       router.push(redirect || '/dashboard');
     }
-  }, [isAuthenticated, router]);
+  }, [authChecked, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
